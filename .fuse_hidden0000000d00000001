@@ -14,8 +14,7 @@ path = "src/lib.rs"
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
-xmip-core = { git = "https://github.com/IlleNilsson/xmip-core", branch = "main" }
-
+xmip-core = { git = "https://github.com/IlleNilsson/xmip-core", rev = "ac579cd3804804ff47cff79b96157d817ed059c5" }
 [dev-dependencies]
 toml = "0.9"
 
