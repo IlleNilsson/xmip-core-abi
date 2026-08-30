@@ -1,19 +1,7 @@
-# Xmip repository template
+# xmip-core-abi
 
-This repository is the starter snapshot for a Rust-based Xmip component repository. It is not an Xmip runtime capability.
+The Xmip application binary interface (ABI): the stable boundary used by the runtime, operator surfaces, and loadable Modules.
 
-A repository generated from this template has independent history. Later template changes do not automatically rewrite generated repositories.
+The C header and its specification are normative. The Rust crate is a convenience binding over that boundary; it must not introduce Rust-specific types into the ABI.
 
-## Before implementation
-
-Follow [TEMPLATE_SETUP.md](TEMPLATE_SETUP.md). The new repository must be classified and declared in the authoritative [Xmip architecture manifest](https://github.com/IlleNilsson/Xmip/blob/main/xmip-architecture.json) before its responsibility or dependencies are treated as accepted architecture.
-
-## Shared governance
-
-Repository-specific licensing remains explicit in [LICENSE](LICENSE). Contribution, security, support, issue and pull-request defaults are inherited from [IlleNilsson/.github](https://github.com/IlleNilsson/.github) when they are not overridden locally.
-
-## Verification
-
-The included workflow is manual-only and calls the versioned shared workflow at `IlleNilsson/.github@v1`. It does not run on pushes, pull requests or a schedule.
-
-The ordered stages are formatting, semantic analysis, linting, compilation and linking, and test execution. Packaging and publishing are not configured.
+Status: planned, with the Rust binding and module manifest model already present.
