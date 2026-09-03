@@ -188,8 +188,7 @@ pub struct Writer {
 pub struct VtableHeader {
     pub trait_major: u32,
     pub trait_minor: u32,
-    pub configure:
-        Option<unsafe extern "C" fn(state: *mut core::ffi::c_void, toml: Str) -> i32>,
+    pub configure: Option<unsafe extern "C" fn(state: *mut core::ffi::c_void, toml: Str) -> i32>,
     pub start: Option<unsafe extern "C" fn(state: *mut core::ffi::c_void) -> i32>,
     pub stop: Option<unsafe extern "C" fn(state: *mut core::ffi::c_void) -> i32>,
 }
@@ -258,7 +257,10 @@ mod tests {
     fn retryable_matches_the_header_macro() {
         assert!(status::is_retryable(status::TIMEOUT));
         assert!(status::is_retryable(status::AGAIN));
-        assert!(!status::is_retryable(status::IO), "IO faults repeat; the header says so");
+        assert!(
+            !status::is_retryable(status::IO),
+            "IO faults repeat; the header says so"
+        );
         assert!(!status::is_retryable(status::PANIC));
     }
 
