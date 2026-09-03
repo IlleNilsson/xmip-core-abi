@@ -180,7 +180,7 @@ Consequences:
   such cases exist: `last_error` and `XmipDiagnostic`, both valid only until
   the next call on the same instance. A caller that needs them longer copies
   them.
-- Opaque handles — `XmipNode`, the `void*` from `compile` and `load` — are
+- Opaque handles — `XmipValue`, the `void*` from `compile` and `load` — are
   released by the module that produced them, through that module's `release`.
   They are meaningless to anyone else and must not outlive their producer's
   `stop`.
@@ -469,3 +469,26 @@ on jurisdiction. Anyone intending to ship a module under a different licence
 should take their own advice rather than rely on this document.
 
 Recorded as clause 9 of ADR-0012.
+
+## 15. The operator boundary
+
+This document specifies the boundary a Module plugs *into*. There is a second
+boundary, for the surfaces that drive Xmip *from outside* — the `xmip`
+executable, the PowerShell module, the GUI — and it is a separate header:
+`include/xmip_operate.h`, decided by ADR-0027.
+
+It shares sections 2, 3 and 8 of this specification — `XmipStr`, the status
+codes, the reader and writer pair — by including this header, and defines
+nothing above those that this one defines. It versions apart:
+`XMIP_OPERATE_VERSION` is not `XMIP_ABI_VERSION`, because a surface gains a
+command far more often than a trait gains a method.
+
+Its shape is the opposite of this one's. A Module implements a table Xmip
+calls; a surface calls a table Xmip implements. Every call reads a snapshot the
+runtime published, and none makes execution wait — the thing that watches must
+not be able to stop the thing it watches.
+
+What it carries in version 1: health per scope with its evidence, and
+measurements — a scope, what was counted, the value, its window, and when it
+was taken. Scope is an Xmip URI over the execution tree. The Rust mirror is
+`src/operate.rs`, and its tests read the header and check every constant.
