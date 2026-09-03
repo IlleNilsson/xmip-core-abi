@@ -361,21 +361,21 @@ typedef struct {
 /* ===================================================================== */
 
 typedef enum {
-    XMIP_NODE_NULL     = 0,
-    XMIP_NODE_BOOL     = 1,
-    XMIP_NODE_NUMBER   = 2,
-    XMIP_NODE_STRING   = 3,
-    XMIP_NODE_BINARY   = 4,
-    XMIP_NODE_SEQUENCE = 5,
-    XMIP_NODE_MAP      = 6
-} XmipNodeKind;
+    XMIP_VALUE_NULL     = 0,
+    XMIP_VALUE_BOOL     = 1,
+    XMIP_VALUE_NUMBER   = 2,
+    XMIP_VALUE_STRING   = 3,
+    XMIP_VALUE_BINARY   = 4,
+    XMIP_VALUE_SEQUENCE = 5,
+    XMIP_VALUE_MAP      = 6
+} XmipValueKind;
 
 /* An opaque handle into a parsed tree. Meaningful only to the module that
  * produced it, and only while its root is alive. */
 typedef struct {
     void    *ctx;
     uint64_t id;
-} XmipNode;
+} XmipValue;
 
 /*
  * A content handler. It parses a representation into a tree and writes a tree
@@ -389,16 +389,16 @@ typedef struct {
      * out_confidence is 0-100. Must not block and must not allocate. */
     XmipStatus (*probe)(void *state, XmipSlice head, uint8_t *out_confidence);
 
-    XmipStatus (*parse)(void *state, const XmipReader *in, XmipNode *out_root);
-    XmipStatus (*write)(void *state, XmipNode root, const XmipWriter *out);
-    void       (*release)(void *state, XmipNode root);
+    XmipStatus (*parse)(void *state, const XmipReader *in, XmipValue *out_root);
+    XmipStatus (*write)(void *state, XmipValue root, const XmipWriter *out);
+    void       (*release)(void *state, XmipValue root);
 
     /* Tree access. Names are borrowed and valid while the root is alive. */
-    XmipNodeKind (*kind)(void *state, XmipNode n);
-    XmipStatus   (*value)(void *state, XmipNode n, XmipStr *out);
-    XmipStatus   (*child_count)(void *state, XmipNode n, size_t *out);
-    XmipStatus   (*child_at)(void *state, XmipNode n, size_t i,
-                             XmipStr *out_name, XmipNode *out_child);
+    XmipValueKind (*kind)(void *state, XmipValue n);
+    XmipStatus   (*value)(void *state, XmipValue n, XmipStr *out);
+    XmipStatus   (*child_count)(void *state, XmipValue n, size_t *out);
+    XmipStatus   (*child_at)(void *state, XmipValue n, size_t i,
+                             XmipStr *out_name, XmipValue *out_child);
 } XmipMessageVtable;
 
 /* ===================================================================== */
@@ -423,8 +423,8 @@ typedef struct {
 
     XmipStatus (*evaluate)(void *state, void *expr,
                            const XmipMessageVtable *tree, void *tree_state,
-                           XmipNode root,
-                           XmipNode *out, size_t cap, size_t *out_len);
+                           XmipValue root,
+                           XmipValue *out, size_t cap, size_t *out_len);
 } XmipPathVtable;
 
 /* ===================================================================== */
