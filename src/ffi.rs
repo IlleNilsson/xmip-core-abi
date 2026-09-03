@@ -121,8 +121,9 @@ pub struct WireDescriptor {
 pub struct Host {
     pub abi_version: u32,
     pub ctx: *mut core::ffi::c_void,
-    pub log:
-        Option<unsafe extern "C" fn(ctx: *mut core::ffi::c_void, level: i32, target: Str, message: Str)>,
+    pub log: Option<
+        unsafe extern "C" fn(ctx: *mut core::ffi::c_void, level: i32, target: Str, message: Str),
+    >,
     pub cancelled: Option<unsafe extern "C" fn(ctx: *mut core::ffi::c_void) -> i32>,
     pub journey_id: Option<unsafe extern "C" fn(ctx: *mut core::ffi::c_void) -> Str>,
 }
@@ -140,6 +141,103 @@ pub struct Module {
 /// `XmipCreateModuleFn`: the one exported symbol's signature, named
 /// [`crate::XMIP_ENTRYPOINT`].
 pub type CreateModuleFn = unsafe extern "C" fn(host: *const Host, out: *mut Module) -> i32;
+
+/// An owned byte buffer crossing the boundary. Header section 2:
+/// released by calling the function it carries — never `free()`, never the
+/// receiver's allocator, because no allocator is shared across the boundary
+/// (specification section 4, the rule with no exceptions).
+#[repr(C)]
+pub struct Buffer {
+    pub ptr: *mut u8,
+    pub len: usize,
+    pub owner: *mut core::ffi::c_void,
+    pub release:
+        Option<unsafe extern "C" fn(owner: *mut core::ffi::c_void, ptr: *mut u8, len: usize)>,
+}
+
+/// Pull source; header section 5. Streams may be larger than memory, so a
+/// stream never crosses as a buffer. `read` returns bytes written, 0 at end
+/// of stream, or a negative status — and a short read is not end of stream.
+#[repr(C)]
+pub struct Reader {
+    pub ctx: *mut core::ffi::c_void,
+    pub read:
+        Option<unsafe extern "C" fn(ctx: *mut core::ffi::c_void, buf: *mut u8, len: usize) -> i64>,
+}
+
+/// Push sink; header section 5. A partial write is legal and the caller
+/// re-offers the remainder. `finish` is called exactly once, including on the
+/// failure path, with the outcome so far — so a sink can tell a completed
+/// stream from an abandoned one.
+#[repr(C)]
+pub struct Writer {
+    pub ctx: *mut core::ffi::c_void,
+    pub write: Option<
+        unsafe extern "C" fn(ctx: *mut core::ffi::c_void, buf: *const u8, len: usize) -> i64,
+    >,
+    pub finish: Option<unsafe extern "C" fn(ctx: *mut core::ffi::c_void, outcome: i32) -> i32>,
+}
+
+/// Every trait table begins with this; header section 8. `configure` runs
+/// once before `start`; `start` and `stop` may repeat in that order; calls on
+/// the trait itself are legal only between them. Conformance rule 7: a module
+/// tolerates `stop` without `start` and unknown keys in the TOML fragment,
+/// because a host crashing during recovery calls these in orders no happy
+/// path produces.
+#[repr(C)]
+pub struct VtableHeader {
+    pub trait_major: u32,
+    pub trait_minor: u32,
+    pub configure:
+        Option<unsafe extern "C" fn(state: *mut core::ffi::c_void, toml: Str) -> i32>,
+    pub start: Option<unsafe extern "C" fn(state: *mut core::ffi::c_void) -> i32>,
+    pub stop: Option<unsafe extern "C" fn(state: *mut core::ffi::c_void) -> i32>,
+}
+
+/// `XMIP_DIR_RECEIVE` / `XMIP_DIR_SEND`; header section 9. One module may
+/// declare both — ADR-0010's direction neutrality, which retired a split that
+/// once said everything twice across 44 repositories.
+pub const DIR_RECEIVE: u32 = 1;
+pub const DIR_SEND: u32 = 2;
+
+/// Where a receiving transport hands a stream to the host; header section 9.
+/// The one place the boundary is concurrent in the module-to-host direction:
+/// the module calls `deliver` on threads of its own choosing, and the host's
+/// sink is thread-safe (specification section 5). `reply` is null when the
+/// transport has no reply channel — a fact about the protocol, never about
+/// the artifact.
+#[repr(C)]
+pub struct DeliverySink {
+    pub ctx: *mut core::ffi::c_void,
+    pub deliver: Option<
+        unsafe extern "C" fn(
+            ctx: *mut core::ffi::c_void,
+            body: *const Reader,
+            peer: Str,
+            reply: *const Writer,
+        ) -> i32,
+    >,
+}
+
+/// The transport trait table; header section 9. Receiving is push — the host
+/// installs the sink after `configure` and before `start`, and the module
+/// delivers when a stream arrives. Sending is pull. A module that declares
+/// one direction answers `UNSUPPORTED` from the other.
+#[repr(C)]
+pub struct TransportVtable {
+    pub header: VtableHeader,
+    pub directions: u32,
+    pub set_sink: Option<
+        unsafe extern "C" fn(state: *mut core::ffi::c_void, sink: *const DeliverySink) -> i32,
+    >,
+    pub send: Option<
+        unsafe extern "C" fn(
+            state: *mut core::ffi::c_void,
+            body: *const Reader,
+            reply: *const Writer,
+        ) -> i32,
+    >,
+}
 
 #[cfg(test)]
 mod tests {
