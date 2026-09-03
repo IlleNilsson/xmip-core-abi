@@ -24,8 +24,8 @@
               own comment says the vtable eventually will"
 )]
 
-use xmip_core_abi::ffi::{status, Host, Module, Str, WireDescriptor};
 use xmip_core_abi::XMIP_ABI_VERSION;
+use xmip_core_abi::ffi::{Host, Module, Str, WireDescriptor, status};
 
 /// The one exported symbol, named by `XMIP_ENTRYPOINT`.
 ///

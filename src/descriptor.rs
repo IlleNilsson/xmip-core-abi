@@ -168,6 +168,10 @@ mod tests {
     fn the_descriptor_reads_as_the_repository_name() {
         // ADR-0011: the three name parts are the repository's three parts, so
         // the descriptor prints as the thing an operator would clone.
-        assert!(saxon_xslt().to_string().starts_with("xmip-saxon-transform-xslt "));
+        assert!(
+            saxon_xslt()
+                .to_string()
+                .starts_with("xmip-saxon-transform-xslt ")
+        );
     }
 }

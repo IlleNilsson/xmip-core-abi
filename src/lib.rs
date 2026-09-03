@@ -13,9 +13,7 @@ pub mod descriptor;
 pub mod ffi;
 pub mod manifest;
 
-pub use descriptor::{
-    validate_module_abi, ModuleDescriptor, XMIP_ABI_VERSION, XMIP_ENTRYPOINT,
-};
+pub use descriptor::{ModuleDescriptor, XMIP_ABI_VERSION, XMIP_ENTRYPOINT, validate_module_abi};
 pub use manifest::{
     ExecutionHostKind, ExtensionEntrypoint, ExtensionManifest, HandlerInvocation, HandlerResult,
     HandlerStatus, ModuleCapability, ModuleEntrypoint, ModuleIdentity, ModuleManifest, XmipModule,
