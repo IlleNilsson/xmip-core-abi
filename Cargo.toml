@@ -19,6 +19,16 @@ xmip-core = { git = "https://github.com/IlleNilsson/xmip-core", branch = "main" 
 [dev-dependencies]
 toml = "0.9"
 
+# The conformance fixture: a loadable module as small as conformance allows,
+# built as a cdylib so xmip-core-cli's probe and xmip-core-powershell's
+# Get-XmipModuleDescriptor have a conforming artifact to load.
+#
+#     cargo build --example conforming
+#
+[[example]]
+name = "conforming"
+crate-type = ["cdylib"]
+
 [lints.rust]
 # deny, not forbid. This is the crate that will eventually hold the `extern "C"`
 # vtable over include/xmip_module.h, and forbid cannot be lifted at the one call

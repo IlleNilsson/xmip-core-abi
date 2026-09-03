@@ -9,8 +9,13 @@
 //! layout, so it never appears in a signature that reaches the header. The
 //! traits below are Xmip-side ergonomics over a `#[repr(C)]` vtable.
 
+pub mod descriptor;
+pub mod ffi;
 pub mod manifest;
 
+pub use descriptor::{
+    validate_module_abi, ModuleDescriptor, XMIP_ABI_VERSION, XMIP_ENTRYPOINT,
+};
 pub use manifest::{
     ExecutionHostKind, ExtensionEntrypoint, ExtensionManifest, HandlerInvocation, HandlerResult,
     HandlerStatus, ModuleCapability, ModuleEntrypoint, ModuleIdentity, ModuleManifest, XmipModule,
