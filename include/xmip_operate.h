@@ -68,17 +68,15 @@ typedef XmipStr XmipScope;
  * yellow is degraded or correctable before it becomes red, red is failing.
  * Health propagates upward using the worst active state.
  *
- * UNREACHABLE is not a state a node reports about itself - a node that can
- * answer is by definition reachable. It exists because a surface aggregating
- * a cluster asks each node, and must be able to say "this one did not answer"
- * as something distinct from "this one says it is well". ADR-0027 clause 8:
- * unreachable is health information, and a design that loses it is worse.
+ * Three states and no fourth. A node that does not answer is RED, with "no
+ * answer" as its evidence - a surface aggregating a cluster says that about
+ * the node it could not reach, and an operator reads it the way they read
+ * every other red. The owner's call, 2026-09-05: common terminology.
  */
 typedef enum {
-    XMIP_HEALTH_GREEN       = 0,
-    XMIP_HEALTH_YELLOW      = 1,
-    XMIP_HEALTH_RED         = 2,
-    XMIP_HEALTH_UNREACHABLE = 3
+    XMIP_HEALTH_GREEN  = 0,
+    XMIP_HEALTH_YELLOW = 1,
+    XMIP_HEALTH_RED    = 2
 } XmipHealth;
 
 /*
