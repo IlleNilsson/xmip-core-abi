@@ -125,6 +125,8 @@ impl Counted {
 pub struct HealthEntry {
     pub scope: Scope,
     pub health: i32,
+    /// How far from healthy, 0 to 100, shading the colour. Paused is 30.
+    pub severity: u8,
     pub evidence: Str,
     pub observed_unix_nanos: i64,
 }
@@ -162,6 +164,12 @@ pub type MeasureFn = unsafe extern "C" fn(
     out_len: *mut usize,
 ) -> i32;
 
+/// `pause` in the table: everything at and beneath the scope, by `who`.
+pub type PauseFn = unsafe extern "C" fn(ctx: *mut u8, scope: Scope, who: Str) -> i32;
+
+/// `resume` in the table.
+pub type ResumeFn = unsafe extern "C" fn(ctx: *mut u8, scope: Scope) -> i32;
+
 /// `destroy` in the table.
 pub type DestroyFn = unsafe extern "C" fn(ctx: *mut u8);
 
@@ -173,6 +181,8 @@ pub struct Operate {
     pub ctx: *mut u8,
     pub health: Option<HealthFn>,
     pub measure: Option<MeasureFn>,
+    pub pause: Option<PauseFn>,
+    pub resume: Option<ResumeFn>,
     pub destroy: Option<DestroyFn>,
 }
 
@@ -299,6 +309,7 @@ mod tests {
     fn the_wire_structs_are_plain_c_layouts() {
         // repr(C) with only scalars and Str inside, so a surface in any
         // language reads them by offset. Sizes are what C would compute.
+        // i32 health + u8 severity + 3 bytes of padding is the second 8.
         assert_eq!(size_of::<HealthEntry>(), 2 * size_of::<Str>() + 8 + 8);
         assert_eq!(size_of::<Measurement>(), size_of::<Str>() + 8 + 8 + 3 * 8);
     }
