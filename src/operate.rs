@@ -31,11 +31,6 @@ pub mod health {
     pub const GREEN: i32 = 0;
     pub const YELLOW: i32 = 1;
     pub const RED: i32 = 2;
-
-    /// A surface's word, never a node's. A node that answers is reachable;
-    /// this is what an aggregating surface says about one that did not.
-    /// ADR-0027 clause 8.
-    pub const UNREACHABLE: i32 = 3;
 }
 
 /// Header section 4, as it crosses.
@@ -53,7 +48,6 @@ pub enum Health {
     Green,
     Yellow,
     Red,
-    Unreachable,
 }
 
 impl Health {
@@ -64,7 +58,6 @@ impl Health {
             health::GREEN => Some(Self::Green),
             health::YELLOW => Some(Self::Yellow),
             health::RED => Some(Self::Red),
-            health::UNREACHABLE => Some(Self::Unreachable),
             _ => None,
         }
     }
@@ -76,7 +69,6 @@ impl Health {
             Self::Green => health::GREEN,
             Self::Yellow => health::YELLOW,
             Self::Red => health::RED,
-            Self::Unreachable => health::UNREACHABLE,
         }
     }
 
@@ -247,10 +239,6 @@ mod tests {
             header_value("XMIP_HEALTH_YELLOW")
         );
         assert_eq!(i64::from(health::RED), header_value("XMIP_HEALTH_RED"));
-        assert_eq!(
-            i64::from(health::UNREACHABLE),
-            header_value("XMIP_HEALTH_UNREACHABLE")
-        );
     }
 
     #[test]
@@ -275,12 +263,7 @@ mod tests {
 
     #[test]
     fn health_round_trips_and_refuses_the_unknown() {
-        for value in [
-            Health::Green,
-            Health::Yellow,
-            Health::Red,
-            Health::Unreachable,
-        ] {
+        for value in [Health::Green, Health::Yellow, Health::Red] {
             assert_eq!(Health::from_wire(value.to_wire()), Some(value));
         }
 
@@ -293,7 +276,6 @@ mod tests {
         // means every endpoint beneath it is green.
         assert_eq!(Health::Green.worst(Health::Yellow), Health::Yellow);
         assert_eq!(Health::Red.worst(Health::Yellow), Health::Red);
-        assert_eq!(Health::Unreachable.worst(Health::Red), Health::Unreachable);
         assert_eq!(Health::Green.worst(Health::Green), Health::Green);
     }
 
