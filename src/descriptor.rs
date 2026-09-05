@@ -2,7 +2,7 @@
 //!
 //! The Rust side of `include/xmip_module.h` sections 1 and 4. The header is
 //! normative (ADR-0012 clause 1); every name here follows it, less the `Xmip`
-//! prefix the crate already supplies — `xmip_abi::XmipModuleDescriptor` would
+//! prefix the crate already supplies — `abi::XmipModuleDescriptor` would
 //! say Xmip twice, `rust-style.md` section 5.
 //!
 //! This surface existed in the header from the start and not in this crate,

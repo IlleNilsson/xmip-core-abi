@@ -6,7 +6,7 @@
 //! describe seventeen traits, which is the whole reason that clause exists.
 
 use serde::{Deserialize, Serialize};
-use xmip_core::{JourneyId, MessageId};
+use xcore::{JourneyId, MessageId};
 
 /// Name and version. The kind is deliberately absent — see the module note.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
