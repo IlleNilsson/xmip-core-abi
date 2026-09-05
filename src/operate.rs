@@ -321,6 +321,9 @@ mod tests {
         assert!(HEADER.contains("#include \"xmip_module.h\""));
         assert!(!HEADER.contains("} XmipStr;"));
         assert!(!HEADER.contains("} XmipSlice;"));
-        assert!(!HEADER.contains("XMIP_OK "));
+        // The definition, not a mention: the operator header may name a status
+        // in prose (it does, describing what validate returns) but must not
+        // #define one — those belong to xmip_module.h it includes.
+        assert!(!HEADER.contains("#define XMIP_OK"));
     }
 }
