@@ -195,6 +195,37 @@ typedef struct {
  */
 typedef XmipStatus (*XmipOperateFn)(uint32_t version, XmipOperate *out);
 
+/* ===================================================================== */
+/* 6. Lifecycle: starting and validating a node                          */
+/* ===================================================================== */
+
+/*
+ * Two more symbols an Xmip runtime exports, for the surfaces that configure a
+ * node rather than only watch one - the desktop editor, ADR-0014. Both are the
+ * config editor's, not part of the XmipOperate table an observer holds.
+ *
+ * xmip_start_v1 takes a filesystem PATH to a saved node configuration, reads
+ * it, builds and validates the execution tree, and publishes what it planned
+ * as health - the running estate then shows it. XMIP_OK when it validated,
+ * XMIP_E_INVALID when it did not (the published health says why),
+ * XMIP_E_MALFORMED when the path is not UTF-8.
+ *
+ * xmip_validate_v1 takes the configuration TEXT the editor is holding - not a
+ * path, because the point is to check a document before it is saved - reads
+ * and validates it, and publishes NOTHING. It is the editor's Validate button:
+ * ADR-0027 clause 9, a proposed configuration validated without being applied.
+ * The report is written into the caller's buffer as UTF-8, one line per
+ * problem, and out_len carries the true byte length whether or not it fit.
+ * XMIP_OK and an empty report means the configuration is good; XMIP_E_INVALID
+ * with a report means it is not.
+ */
+typedef XmipStatus (*XmipStartFn)(XmipStr path);
+typedef XmipStatus (*XmipValidateFn)(XmipStr configuration,
+                                     uint8_t *report, size_t cap, size_t *out_len);
+
+#define XMIP_START_ENTRYPOINT    "xmip_start_v1"
+#define XMIP_VALIDATE_ENTRYPOINT "xmip_validate_v1"
+
 #ifdef __cplusplus
 }
 #endif
