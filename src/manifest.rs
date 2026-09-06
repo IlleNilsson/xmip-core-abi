@@ -112,7 +112,7 @@ pub enum HandlerStatus {
 /// Nothing else is declared here. ADR-0012 clause 6 gives each core module its
 /// own trait, versioned on its own schedule, so `Transport` lives in the
 /// transport module and not in the binding crate.
-pub trait XmipModule: Send + Sync {
+pub trait Module: Send + Sync {
     fn manifest(&self) -> &ModuleManifest;
 }
 
