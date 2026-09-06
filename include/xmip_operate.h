@@ -87,8 +87,8 @@ typedef enum {
 } XmipHealth;
 
 /*
- * One scope's health, with the evidence behind it. Every state drills down to
- * its evidence; for green the evidence may be empty, for anything else it is
+ * One scope's health, with the evidence behind it. Every mood drills down to
+ * its evidence; for FINE the evidence may be empty, for anything else it is
  * the one line an operator reads first. observed is when the runtime took the
  * snapshot, not when the surface asked - a reader that cannot see staleness
  * will eventually mistake a stalled publisher for an idle estate.
@@ -97,9 +97,9 @@ typedef struct {
     XmipScope  scope;
     XmipHealth health;
     /*
-     * How far from healthy, 0 to 100, shading the colour. The word says which
-     * of three states; the number says how bad within it - a yellow at 40 is
-     * a backlog worth watching, a yellow at 85 is one about to turn red. What
+     * How far from healthy, 0 to 100, shading the mood within itself. The mood
+     * says which; the number says how bad within it - a STRESSED at 40 is a
+     * backlog worth watching, a STRESSED at 85 is one close to EXHAUSTED. What
      * it measures is the publisher's business: backlog against capacity,
      * failures against attempts, latency against threshold. Paused is a
      * category rather than a measurement and publishes a fixed 30. Added
@@ -184,8 +184,8 @@ typedef struct {
      * puts back what was there. XMIP_E_NOT_FOUND when the scope names
      * nothing. `who` is the operator, for the evidence line. Added 2026-09-05,
      * ADR-0027 amendment; Xmip will not always run smoothly, and an operator
-     * stopping a Location on purpose is the correctable yellow of
-     * observability-model.md section 6, not a fault.
+     * stopping a Location on purpose is a correctable hold
+     * (observability-model.md section 6), not a fault.
      */
     XmipStatus (*pause)(void *ctx, XmipScope scope, XmipStr who);
     XmipStatus (*resume)(void *ctx, XmipScope scope);
