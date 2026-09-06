@@ -41,83 +41,12 @@ pub mod counted {
     pub const BYTES: i32 = 4;
 }
 
-/// Health, typed. observability-model.md section 6: worst active state wins
-/// upward, and that ordering is this enum's ordering.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub enum Health {
-    Green,
-    Yellow,
-    Red,
-}
-
-impl Health {
-    /// From the wire, or `None` for a value this build does not know.
-    #[must_use]
-    pub const fn from_wire(value: i32) -> Option<Self> {
-        match value {
-            health::GREEN => Some(Self::Green),
-            health::YELLOW => Some(Self::Yellow),
-            health::RED => Some(Self::Red),
-            _ => None,
-        }
-    }
-
-    /// To the wire.
-    #[must_use]
-    pub const fn to_wire(self) -> i32 {
-        match self {
-            Self::Green => health::GREEN,
-            Self::Yellow => health::YELLOW,
-            Self::Red => health::RED,
-        }
-    }
-
-    /// The worse of two, which is how health propagates up the tree.
-    #[must_use]
-    pub fn worst(self, other: Self) -> Self {
-        if other > self { other } else { self }
-    }
-}
-
-/// What a measurement counts, typed. Never a bare number — ADR-0027 clause 5.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Counted {
-    Streams,
-    Messages,
-    Journeys,
-    Bytes,
-}
-
-impl Counted {
-    /// From the wire, or `None` for a value this build does not know.
-    #[must_use]
-    pub const fn from_wire(value: i32) -> Option<Self> {
-        match value {
-            counted::STREAMS => Some(Self::Streams),
-            counted::MESSAGES => Some(Self::Messages),
-            counted::JOURNEYS => Some(Self::Journeys),
-            counted::BYTES => Some(Self::Bytes),
-            _ => None,
-        }
-    }
-
-    /// To the wire.
-    #[must_use]
-    pub const fn to_wire(self) -> i32 {
-        match self {
-            Self::Streams => counted::STREAMS,
-            Self::Messages => counted::MESSAGES,
-            Self::Journeys => counted::JOURNEYS,
-            Self::Bytes => counted::BYTES,
-        }
-    }
-
-    /// Whether the value is a byte count rather than a count of things.
-    #[must_use]
-    pub const fn is_bytes(self) -> bool {
-        matches!(self, Self::Bytes)
-    }
-}
+// The typed `Health` and `Counted` enums live in `xmip-core-observe`, which owns
+// the domain model (observability-model.md section 6, ADR-0027 clause 5). This
+// crate keeps only the wire vocabulary — the `health::` and `counted::` int
+// constants and the `#[repr(C)]` structs below — and the one conversion between
+// the enum and the wire int lives at the runtime bridge (`runtime/src/operate.rs`),
+// the single place that has both. ADR-0009-era duplication removed 2026-09-06.
 
 /// Header section 3. One scope's health and the evidence behind it.
 #[repr(C)]
@@ -269,40 +198,6 @@ mod tests {
             i64::from(counted::BYTES),
             header_value("XMIP_COUNTED_BYTES")
         );
-    }
-
-    #[test]
-    fn health_round_trips_and_refuses_the_unknown() {
-        for value in [Health::Green, Health::Yellow, Health::Red] {
-            assert_eq!(Health::from_wire(value.to_wire()), Some(value));
-        }
-
-        assert_eq!(Health::from_wire(99), None);
-    }
-
-    #[test]
-    fn worst_state_wins_upward() {
-        // observability-model.md section 6: an installation showing green
-        // means every endpoint beneath it is green.
-        assert_eq!(Health::Green.worst(Health::Yellow), Health::Yellow);
-        assert_eq!(Health::Red.worst(Health::Yellow), Health::Red);
-        assert_eq!(Health::Green.worst(Health::Green), Health::Green);
-    }
-
-    #[test]
-    fn counted_round_trips_and_only_bytes_is_bytes() {
-        for value in [
-            Counted::Streams,
-            Counted::Messages,
-            Counted::Journeys,
-            Counted::Bytes,
-        ] {
-            assert_eq!(Counted::from_wire(value.to_wire()), Some(value));
-        }
-
-        assert!(Counted::Bytes.is_bytes());
-        assert!(!Counted::Journeys.is_bytes());
-        assert_eq!(Counted::from_wire(0), None);
     }
 
     #[test]

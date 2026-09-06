@@ -20,6 +20,6 @@ pub use manifest::{
     HandlerStatus, Module, ModuleCapability, ModuleEntrypoint, ModuleIdentity, ModuleManifest,
 };
 pub use operate::{
-    Counted, Health, HealthEntry, Measurement, Operate, OperateFn, Scope, XMIP_OPERATE_ENTRYPOINT,
+    HealthEntry, Measurement, Operate, OperateFn, Scope, XMIP_OPERATE_ENTRYPOINT,
     XMIP_OPERATE_VERSION,
 };
