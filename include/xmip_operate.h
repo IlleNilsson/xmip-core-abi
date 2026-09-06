@@ -65,10 +65,11 @@ typedef XmipStr XmipScope;
 
 /*
  * observability-model.md section 6. Health is a mood, not a colour: it names
- * what a human gets out of a resource under load, and a surface renders it. Five
- * leaf moods, worsening: FINE (results flowing), WORKING (handling the load),
- * STRESSED (strained - change the load), EXHAUSTED (spent - replace hardware),
- * DONE (blocked or failed - the pain: a cert, a password, a missing folder).
+ * what a human gets out of a resource under load, and a surface renders it. The
+ * leaf moods, worsening: FINE (results flowing), PAUSED (a deliberate hold - an
+ * operator is working on it), WORKING (handling the load), STRESSED (strained -
+ * change the load), EXHAUSTED (spent - replace hardware), DONE (blocked or
+ * failed - the pain: a cert, a password, a missing folder).
  *
  * HOLDING is the rollup mood (ADR-0041). A leaf's mood does NOT propagate: in a
  * perfect world everything is FINE, and the moment anything below is not, the
@@ -79,11 +80,12 @@ typedef XmipStr XmipScope;
  */
 typedef enum {
     XMIP_HEALTH_FINE      = 0,
-    XMIP_HEALTH_WORKING   = 1,
-    XMIP_HEALTH_STRESSED  = 2,
-    XMIP_HEALTH_EXHAUSTED = 3,
-    XMIP_HEALTH_DONE      = 4,
-    XMIP_HEALTH_HOLDING   = 5
+    XMIP_HEALTH_PAUSED      = 1,
+    XMIP_HEALTH_WORKING   = 2,
+    XMIP_HEALTH_STRESSED  = 3,
+    XMIP_HEALTH_EXHAUSTED = 4,
+    XMIP_HEALTH_DONE      = 5,
+    XMIP_HEALTH_HOLDING   = 6
 } XmipHealth;
 
 /*
