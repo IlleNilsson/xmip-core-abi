@@ -17,7 +17,7 @@ pub mod operate;
 pub use descriptor::{ModuleDescriptor, XMIP_ABI_VERSION, XMIP_ENTRYPOINT, validate_module_abi};
 pub use manifest::{
     ExecutionHostKind, ExtensionEntrypoint, ExtensionManifest, HandlerInvocation, HandlerResult,
-    HandlerStatus, ModuleCapability, ModuleEntrypoint, ModuleIdentity, ModuleManifest, XmipModule,
+    HandlerStatus, Module, ModuleCapability, ModuleEntrypoint, ModuleIdentity, ModuleManifest,
 };
 pub use operate::{
     Counted, Health, HealthEntry, Measurement, Operate, OperateFn, Scope, XMIP_OPERATE_ENTRYPOINT,
