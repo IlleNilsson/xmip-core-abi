@@ -27,13 +27,15 @@ pub const XMIP_OPERATE_ENTRYPOINT: &str = "xmip_operate_v1";
 pub type Scope = Str;
 
 /// Header section 3, as it crosses: an `int`. Health is a mood, not a colour
-/// (observability-model §6); four moods in worsening order. `HOLDING` is the
-/// rollup mood a scope shows when a `DONE` is below it (ADR-0041).
+/// (observability-model §6). Five leaf moods in worsening order, then `HOLDING`,
+/// the rollup mood a parent shows when anything below it is not `FINE` (ADR-0041).
 pub mod health {
     pub const FINE: i32 = 0;
-    pub const AVERAGE: i32 = 1;
-    pub const HOLDING: i32 = 2;
-    pub const DONE: i32 = 3;
+    pub const WORKING: i32 = 1;
+    pub const STRESSED: i32 = 2;
+    pub const EXHAUSTED: i32 = 3;
+    pub const DONE: i32 = 4;
+    pub const HOLDING: i32 = 5;
 }
 
 /// Header section 4, as it crosses.
@@ -177,14 +179,22 @@ mod tests {
     fn every_health_value_matches_the_header() {
         assert_eq!(i64::from(health::FINE), header_value("XMIP_HEALTH_FINE"));
         assert_eq!(
-            i64::from(health::AVERAGE),
-            header_value("XMIP_HEALTH_AVERAGE")
+            i64::from(health::WORKING),
+            header_value("XMIP_HEALTH_WORKING")
         );
+        assert_eq!(
+            i64::from(health::STRESSED),
+            header_value("XMIP_HEALTH_STRESSED")
+        );
+        assert_eq!(
+            i64::from(health::EXHAUSTED),
+            header_value("XMIP_HEALTH_EXHAUSTED")
+        );
+        assert_eq!(i64::from(health::DONE), header_value("XMIP_HEALTH_DONE"));
         assert_eq!(
             i64::from(health::HOLDING),
             header_value("XMIP_HEALTH_HOLDING")
         );
-        assert_eq!(i64::from(health::DONE), header_value("XMIP_HEALTH_DONE"));
     }
 
     #[test]

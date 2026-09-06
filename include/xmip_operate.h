@@ -64,23 +64,26 @@ typedef XmipStr XmipScope;
 /* ===================================================================== */
 
 /*
- * observability-model.md section 6. Health is a mood, not a colour: this names
- * how a scope is doing, and a surface renders it however it likes. FINE is
- * healthy and active, AVERAGE is degraded or correctable, HOLDING is the rollup
- * mood - a scope above a DONE - and DONE is failing.
+ * observability-model.md section 6. Health is a mood, not a colour: it names
+ * what a human gets out of a resource under load, and a surface renders it. Five
+ * leaf moods, worsening: FINE (results flowing), WORKING (handling the load),
+ * STRESSED (strained - change the load), EXHAUSTED (spent - replace hardware),
+ * DONE (blocked or failed - the pain: a cert, a password, a missing folder).
  *
- * Four moods (ADR-0041, revising the 2026-09-05 three-state call). A DONE does
- * NOT propagate: it is a leaf's mood, and any scope above a DONE leaf reports
- * HOLDING - attention, drill in - so one fault cannot carry the cluster to DONE.
- * An operator drills down through the HOLDING and AVERAGE scopes to the DONE
- * itself. FINE up the tree still means every leaf beneath is FINE. A node that
- * does not answer is DONE at that node, with "no answer" as its evidence.
+ * HOLDING is the rollup mood (ADR-0041). A leaf's mood does NOT propagate: in a
+ * perfect world everything is FINE, and the moment anything below is not, the
+ * parent is displeased and reports HOLDING - drill in. So a parent is only ever
+ * FINE or HOLDING; the leaf carries the real mood, and an operator drills down
+ * through the HOLDING scopes to it. FINE up the tree means every leaf beneath is
+ * FINE. A node that does not answer is DONE at that node, "no answer" its evidence.
  */
 typedef enum {
-    XMIP_HEALTH_FINE    = 0,
-    XMIP_HEALTH_AVERAGE = 1,
-    XMIP_HEALTH_HOLDING = 2,
-    XMIP_HEALTH_DONE    = 3
+    XMIP_HEALTH_FINE      = 0,
+    XMIP_HEALTH_WORKING   = 1,
+    XMIP_HEALTH_STRESSED  = 2,
+    XMIP_HEALTH_EXHAUSTED = 3,
+    XMIP_HEALTH_DONE      = 4,
+    XMIP_HEALTH_HOLDING   = 5
 } XmipHealth;
 
 /*
