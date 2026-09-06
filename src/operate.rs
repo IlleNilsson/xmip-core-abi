@@ -26,11 +26,14 @@ pub const XMIP_OPERATE_ENTRYPOINT: &str = "xmip_operate_v1";
 /// clause 4, with a Party as a query filter and never a level.
 pub type Scope = Str;
 
-/// Header section 3, as it crosses: an `int`.
+/// Header section 3, as it crosses: an `int`. Health is a mood, not a colour
+/// (observability-model §6); four moods in worsening order. `HOLDING` is the
+/// rollup mood a scope shows when a `DONE` is below it (ADR-0041).
 pub mod health {
-    pub const GREEN: i32 = 0;
-    pub const YELLOW: i32 = 1;
-    pub const RED: i32 = 2;
+    pub const FINE: i32 = 0;
+    pub const AVERAGE: i32 = 1;
+    pub const HOLDING: i32 = 2;
+    pub const DONE: i32 = 3;
 }
 
 /// Header section 4, as it crosses.
@@ -172,12 +175,16 @@ mod tests {
 
     #[test]
     fn every_health_value_matches_the_header() {
-        assert_eq!(i64::from(health::GREEN), header_value("XMIP_HEALTH_GREEN"));
+        assert_eq!(i64::from(health::FINE), header_value("XMIP_HEALTH_FINE"));
         assert_eq!(
-            i64::from(health::YELLOW),
-            header_value("XMIP_HEALTH_YELLOW")
+            i64::from(health::AVERAGE),
+            header_value("XMIP_HEALTH_AVERAGE")
         );
-        assert_eq!(i64::from(health::RED), header_value("XMIP_HEALTH_RED"));
+        assert_eq!(
+            i64::from(health::HOLDING),
+            header_value("XMIP_HEALTH_HOLDING")
+        );
+        assert_eq!(i64::from(health::DONE), header_value("XMIP_HEALTH_DONE"));
     }
 
     #[test]

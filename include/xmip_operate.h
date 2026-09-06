@@ -64,19 +64,23 @@ typedef XmipStr XmipScope;
 /* ===================================================================== */
 
 /*
- * observability-model.md section 6, unchanged: green is healthy and active,
- * yellow is degraded or correctable before it becomes red, red is failing.
- * Health propagates upward using the worst active state.
+ * observability-model.md section 6. Health is a mood, not a colour: this names
+ * how a scope is doing, and a surface renders it however it likes. FINE is
+ * healthy and active, AVERAGE is degraded or correctable, HOLDING is the rollup
+ * mood - a scope above a DONE - and DONE is failing.
  *
- * Three states and no fourth. A node that does not answer is RED, with "no
- * answer" as its evidence - a surface aggregating a cluster says that about
- * the node it could not reach, and an operator reads it the way they read
- * every other red. The owner's call, 2026-09-05: common terminology.
+ * Four moods (ADR-0041, revising the 2026-09-05 three-state call). A DONE does
+ * NOT propagate: it is a leaf's mood, and any scope above a DONE leaf reports
+ * HOLDING - attention, drill in - so one fault cannot carry the cluster to DONE.
+ * An operator drills down through the HOLDING and AVERAGE scopes to the DONE
+ * itself. FINE up the tree still means every leaf beneath is FINE. A node that
+ * does not answer is DONE at that node, with "no answer" as its evidence.
  */
 typedef enum {
-    XMIP_HEALTH_GREEN  = 0,
-    XMIP_HEALTH_YELLOW = 1,
-    XMIP_HEALTH_RED    = 2
+    XMIP_HEALTH_FINE    = 0,
+    XMIP_HEALTH_AVERAGE = 1,
+    XMIP_HEALTH_HOLDING = 2,
+    XMIP_HEALTH_DONE    = 3
 } XmipHealth;
 
 /*
