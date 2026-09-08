@@ -238,9 +238,72 @@ pub struct TransportVtable {
     >,
 }
 
+/// One thing the module has to say about a stream; header section 3. Borrowed
+/// from the module and valid until the next call on the same instance.
+/// `offset` is `u64::MAX` when the diagnostic has no byte position.
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct Diagnostic {
+    pub code: i32,
+    pub message: Str,
+    pub location: Str,
+    pub offset: u64,
+}
+
+/// The contract trait table; header section 12. `load` interprets the
+/// descriptor in the standard's own terms — a schema document, a pattern, a
+/// message type — and hands back an opaque contract; `validate` judges a
+/// stream against it, `OK` with `out_len` 0 when the stream holds; `implies`
+/// answers what the contract already determines about a key, or `NOT_FOUND`.
+/// The Rust technologies under `xmip-core-contract` implement the same shape
+/// through the `Contract` trait; this is the form a module in any other
+/// language presents (ADR-0042 decision 3).
+#[repr(C)]
+pub struct ContractVtable {
+    pub header: VtableHeader,
+    pub load: Option<
+        unsafe extern "C" fn(
+            state: *mut core::ffi::c_void,
+            descriptor: Str,
+            out_contract: *mut *mut core::ffi::c_void,
+        ) -> i32,
+    >,
+    pub release: Option<
+        unsafe extern "C" fn(state: *mut core::ffi::c_void, contract: *mut core::ffi::c_void),
+    >,
+    pub validate: Option<
+        unsafe extern "C" fn(
+            state: *mut core::ffi::c_void,
+            contract: *mut core::ffi::c_void,
+            input: *const Reader,
+            out: *mut *const Diagnostic,
+            out_len: *mut usize,
+        ) -> i32,
+    >,
+    pub implies: Option<
+        unsafe extern "C" fn(
+            state: *mut core::ffi::c_void,
+            contract: *mut core::ffi::c_void,
+            key: Str,
+            out: *mut Str,
+        ) -> i32,
+    >,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_contract_table_is_the_headers_shape() {
+        // Five words of header, then four function pointers, on the wire.
+        let pointer = core::mem::size_of::<usize>();
+        assert_eq!(
+            core::mem::size_of::<ContractVtable>(),
+            core::mem::size_of::<VtableHeader>() + 4 * pointer
+        );
+        assert_eq!(core::mem::size_of::<Diagnostic>(), 8 + 2 * 2 * pointer + 8);
+    }
 
     #[test]
     fn the_status_numbers_are_the_headers_numbers() {
