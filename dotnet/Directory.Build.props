@@ -1,0 +1,58 @@
+<Project>
+
+  <!--
+    Properties every .NET project in this repository shares — the binding and
+    its tests. The same shape as xmip-core-gui's, on purpose: two repositories
+    that must agree about analyzers and warnings will eventually stop agreeing
+    unless the file is the same file.
+  -->
+
+  <PropertyGroup>
+    <!-- ADR-0014, amendment of 2026-08-30: the .NET 11 preview SDK compiles
+         this (global.json), and the target framework is owned by whoever loads
+         the assembly. This binding is loaded by three surfaces, and the lowest
+         of them is pwsh 7.6.5, which hosts .NET 10. A net11.0 executable
+         references a net10.0 library without complaint; a net10.0 host cannot
+         load a net11.0 one. So the binding targets what the lowest host runs. -->
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+
+    <!-- A warning nobody has to fix is a warning nobody reads. -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+
+    <!-- Required by EnforceCodeStyleInBuild: IDE0005, unnecessary usings, only
+         runs when the documentation file is generated. Wanted regardless — a
+         public binding without documentation is one CS1591 away from being
+         told so, and that is the point. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+
+    <!-- A binding over identifiers, status codes and module names. None of it
+         is locale-dependent, and pulling ICU in for it costs about 30 MB in a
+         self-contained build of any surface that carries this. -->
+    <InvariantGlobalization>true</InvariantGlobalization>
+
+    <!-- A restore that resolves differently on two machines is not a problem
+         this repository wants to own. -->
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+
+    <Authors>Ilian Nilsson</Authors>
+    <PackageLicenseExpression>AGPL-3.0-or-later</PackageLicenseExpression>
+  </PropertyGroup>
+
+  <!--
+    unsafe is off by default and turned on per project.
+
+    The Rust crate beside this denies it. Here it cannot be: the binding
+    crosses the C ABI in include/xmip_module.h and include/xmip_operate.h with
+    function pointers and raw structs, which is the whole reason it exists.
+    The test project does not cross the boundary and leaves this alone.
+  -->
+  <PropertyGroup>
+    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+</Project>

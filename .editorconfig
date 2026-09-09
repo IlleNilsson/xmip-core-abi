@@ -16,3 +16,27 @@ indent_size = 2
 
 [*.md]
 trim_trailing_whitespace = false
+
+[*.{cs,csproj,props,targets}]
+indent_style = space
+indent_size = 4
+
+[*.{json,csproj,props,targets}]
+indent_size = 2
+
+# C# style, for the .NET binding under dotnet/. Enforced at build, not by
+# review: TreatWarningsAsErrors in dotnet/Directory.Build.props turns each of
+# these into a failure rather than a note somebody scrolls past.
+[*.cs]
+csharp_style_namespace_declarations = file_scoped:error
+csharp_style_var_for_built_in_types = false:suggestion
+csharp_prefer_braces = true:error
+dotnet_style_require_accessibility_modifiers = always:error
+dotnet_diagnostic.CA1416.severity = error
+
+# CA1716 says `Module` and `Operator` collide with Visual Basic keywords. They
+# are the headers' own words — xmip_module.h and xmip_operate.h — and every
+# Xmip surface is C# or PowerShell (ADR-0014); a binding that renamed the
+# boundary for a language nobody writes it in would be the drift it exists to
+# prevent.
+dotnet_diagnostic.CA1716.severity = none
