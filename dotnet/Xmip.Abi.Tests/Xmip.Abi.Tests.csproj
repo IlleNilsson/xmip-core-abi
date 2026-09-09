@@ -1,0 +1,51 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The binding's tests. The ones that matter compare the C# against the
+    headers themselves — every status, every health mood, every counted kind,
+    the versions and the entrypoints — so that ADR-0012 clause 1 ("the header
+    is normative and this is not") fails a build rather than a module load.
+    The headers are copied beside the test assembly so the comparison needs no
+    path into the repository.
+
+    Target framework and the rest come from Directory.Build.props.
+  -->
+
+  <PropertyGroup>
+    <RootNamespace>Xmip.Abi.Tests</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+
+    <!-- Test classes are public for the runner, not for a reader. -->
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+
+    <!-- The binding targets net10.0 because pwsh hosts .NET 10 — but pwsh
+         carries that runtime privately, and an estate machine installs only
+         the .NET 11 preview SDK (prerequisite.toml). So the test host, which
+         is an executable, runs the net10.0 assemblies on the newest runtime
+         present rather than demanding one nobody installed. -->
+    <RollForward>LatestMajor</RollForward>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.1">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Xmip.Abi\Xmip.Abi.csproj" />
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The normative headers, beside the assembly. -->
+    <None Include="..\..\include\*.h"
+          Link="include\%(Filename)%(Extension)"
+          CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

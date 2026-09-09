@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The .NET binding over the two normative headers, include/xmip_module.h and
+    include/xmip_operate.h. ADR-0014, amendment of 2026-08-26: the cli, the
+    PowerShell module and the GUI all P/Invoke the same C ABI, and writing
+    those declarations three times would mean three things that must agree
+    about struct layout, calling convention and lifetimes — the drift an ABI
+    exists to prevent. So it is written once, here, beside the Rust binding,
+    and the three surfaces reference it.
+
+    ADR-0012 clause 1 applies: the header is normative and this is not. Where
+    the two differ, the header is right and this is a defect.
+
+    Target framework and the rest come from Directory.Build.props.
+  -->
+
+  <PropertyGroup>
+    <RootNamespace>Xmip.Abi</RootNamespace>
+    <AssemblyName>Xmip.Abi</AssemblyName>
+
+    <!-- The whole point of this assembly is to cross a C ABI. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+
+    <!-- The cli publishes ahead-of-time. A binding it carries must not need
+         anything the trimmer removes, and this asks the analyzers to say so. -->
+    <IsAotCompatible>true</IsAotCompatible>
+  </PropertyGroup>
+
+</Project>
