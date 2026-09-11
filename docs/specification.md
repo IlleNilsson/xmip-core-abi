@@ -491,4 +491,4 @@ not be able to stop the thing it watches.
 What it carries in version 1: health per scope with its evidence, and
 measurements — a scope, what was counted, the value, its window, and when it
 was taken. Scope is an Xmip URI over the execution tree. The Rust mirror is
-`src/operate.rs`, and its tests read the header and check every constant.
+`.src/operate.rs`, and its tests read the header and check every constant.
