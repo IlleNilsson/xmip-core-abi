@@ -20,6 +20,14 @@ namespace Xmip.Surface;
 /// </remarks>
 public sealed class SnapshotOperator(string path) : IOperatorSurface
 {
+    private readonly Lock gate = new();
+
+    private Snapshot? cached;
+
+    private DateTime cachedWrite;
+
+    private long cachedLength;
+
     /// <summary>The snapshot file this surface reads.</summary>
     public string Path { get; } = path;
 
@@ -72,9 +80,37 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
     /// than breaking, and <see cref="Source"/> says why.</summary>
     private Snapshot Read()
     {
+        // Parsed once per publication, not once per query: a board asks
+        // several times per render, every two seconds, and a Playground
+        // snapshot is fourteen thousand records. Parsing it four times a
+        // refresh starved the page's own clicks (found 2026-09-11). The
+        // file's write time and length say whether anything changed.
+        lock (gate)
+        {
+            FileInfo file = new(Path);
+
+            if (cached is not null
+                && file.Exists
+                && file.LastWriteTimeUtc == cachedWrite
+                && file.Length == cachedLength)
+            {
+                return cached;
+            }
+
+            Snapshot fresh = Parse(file);
+            cached = fresh;
+            cachedWrite = file.Exists ? file.LastWriteTimeUtc : default;
+            cachedLength = file.Exists ? file.Length : 0;
+
+            return fresh;
+        }
+    }
+
+    private Snapshot Parse(FileInfo file)
+    {
         try
         {
-            if (!Exists)
+            if (!file.Exists)
             {
                 return new Snapshot([], []);
             }

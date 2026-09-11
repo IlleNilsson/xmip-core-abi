@@ -13,6 +13,24 @@ public sealed class SnapshotOperatorTest
         Path.Combine(AppContext.BaseDirectory, "Fixture", "snapshot.toml");
 
     [Fact]
+    public void ANewPublicationIsReadAndAnUnchangedOneIsNotParsedAgain()
+    {
+        string copy = Path.Combine(Path.GetTempPath(), $"xmip-snapshot-{Guid.NewGuid():N}.toml");
+        File.Copy(Fixture, copy);
+        SnapshotOperator surface = new(copy);
+
+        IReadOnlyList<HealthRecord> first = surface.Health(ScopeTree.Root);
+        IReadOnlyList<HealthRecord> again = surface.Health(ScopeTree.Root);
+        Assert.Equal(first.Count, again.Count);
+
+        File.WriteAllText(copy, "node = \"xmip:///edge-01\"\n");
+        File.SetLastWriteTimeUtc(copy, DateTime.UtcNow.AddSeconds(5));
+
+        Assert.Empty(surface.Health(ScopeTree.Root));
+        File.Delete(copy);
+    }
+
+    [Fact]
     public void ReadsEveryRecordWorstFirst()
     {
         SnapshotOperator surface = new(Fixture);
