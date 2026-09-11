@@ -23,9 +23,12 @@ public sealed class EnglishTest
     [Fact]
     public void TheRollupSaysNothingRecordedForNothing()
     {
+        HealthRecord fine = new("xmip:///n/send/a", HealthState.Fine, 0, "", Now);
+        HealthRecord done = new("xmip:///n/send/b", HealthState.Done, 9, "", Now);
+
         Assert.Equal("nothing recorded", English.Rollup([]));
-        Assert.Equal("fine", English.Rollup([new("xmip:///n/send/a", HealthState.Fine, 0, "", Now)]));
-        Assert.Equal("holding", English.Rollup([new("xmip:///n/send/a", HealthState.Done, 9, "", Now)]));
+        Assert.Equal("fine", English.Rollup([fine]));
+        Assert.Equal("holding", English.Rollup([fine, done]));
     }
 
     [Fact]
@@ -52,8 +55,14 @@ public sealed class EnglishTest
     public void StartingSaysWhatTheRuntimeAnswered()
     {
         Assert.Equal("started n.toml", English.Started("n.toml", XmipStatus.Ok));
-        Assert.Contains(OperateAbi.StartEntrypoint, English.Started("n.toml", XmipStatus.Unsupported), StringComparison.Ordinal);
-        Assert.StartsWith("n.toml refused: ", English.Started("n.toml", XmipStatus.Invalid), StringComparison.Ordinal);
+        Assert.Contains(
+            OperateAbi.StartEntrypoint,
+            English.Started("n.toml", XmipStatus.Unsupported),
+            StringComparison.Ordinal);
+        Assert.StartsWith(
+            "n.toml refused: ",
+            English.Started("n.toml", XmipStatus.Invalid),
+            StringComparison.Ordinal);
     }
 
     [Fact]
@@ -72,8 +81,14 @@ public sealed class EnglishTest
     public void PausingAndResumingSayTheScope()
     {
         Assert.Equal("paused xmip:///n", English.Paused("xmip:///n", XmipStatus.Ok));
-        Assert.StartsWith("nothing to pause at xmip:///n", English.Paused("xmip:///n", XmipStatus.NotFound), StringComparison.Ordinal);
+        Assert.StartsWith(
+            "nothing to pause at xmip:///n",
+            English.Paused("xmip:///n", XmipStatus.NotFound),
+            StringComparison.Ordinal);
         Assert.Equal("resumed xmip:///n", English.Resumed("xmip:///n", XmipStatus.Ok));
-        Assert.StartsWith("nothing to resume at xmip:///n", English.Resumed("xmip:///n", XmipStatus.NotFound), StringComparison.Ordinal);
+        Assert.StartsWith(
+            "nothing to resume at xmip:///n",
+            English.Resumed("xmip:///n", XmipStatus.NotFound),
+            StringComparison.Ordinal);
     }
 }

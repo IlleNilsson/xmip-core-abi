@@ -18,10 +18,11 @@ public sealed class SurfaceChoiceTest
             Snapshot = "Fixture/snapshot.toml"
             """);
 
-        IOperatorSurface surface = SurfaceChoice.Open(document.Configuration, AppContext.BaseDirectory);
+        string beside = AppContext.BaseDirectory;
+        IOperatorSurface surface = SurfaceChoice.Open(document.Configuration, beside);
 
         SnapshotOperator snapshot = Assert.IsType<SnapshotOperator>(surface);
-        Assert.Equal(Path.Combine(AppContext.BaseDirectory, "Fixture", "snapshot.toml"), snapshot.Path);
+        Assert.Equal(Path.Combine(beside, "Fixture", "snapshot.toml"), snapshot.Path);
         Assert.Equal(5, snapshot.Health(ScopeTree.Root).Count);
     }
 

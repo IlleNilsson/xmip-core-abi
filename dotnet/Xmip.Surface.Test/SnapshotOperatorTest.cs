@@ -46,7 +46,8 @@ public sealed class SnapshotOperatorTest
 
         HealthRecord partner = surface.Health("xmip:///edge-01/receive/partner").Single();
 
-        Assert.Equal(DateTimeOffset.UnixEpoch.AddTicks(1789111684000000000 / 100), partner.Observed);
+        Assert.Equal(
+            DateTimeOffset.UnixEpoch.AddTicks(1789111684000000000 / 100), partner.Observed);
     }
 
     [Fact]
@@ -83,7 +84,8 @@ public sealed class SnapshotOperatorTest
     [Fact]
     public void AMissingFileIsSaidSoAndReportsNothing()
     {
-        string missing = Path.Combine(Path.GetTempPath(), $"no-such-snapshot-{Guid.NewGuid():n}.toml");
+        string missing = Path.Combine(
+            Path.GetTempPath(), $"no-such-snapshot-{Guid.NewGuid():n}.toml");
         SnapshotOperator surface = new(missing);
 
         Assert.False(surface.Exists);
@@ -117,8 +119,11 @@ public sealed class SnapshotOperatorTest
     {
         SnapshotOperator surface = new(Fixture);
 
-        Assert.Contains("cannot be paused", surface.PauseScope(ScopeTree.Root, "ilian"), StringComparison.Ordinal);
-        Assert.Contains("cannot be resumed", surface.ResumeScope(ScopeTree.Root), StringComparison.Ordinal);
+        string paused = surface.PauseScope(ScopeTree.Root, "ilian");
+        string resumed = surface.ResumeScope(ScopeTree.Root);
+
+        Assert.Contains("cannot be paused", paused, StringComparison.Ordinal);
+        Assert.Contains("cannot be resumed", resumed, StringComparison.Ordinal);
         Assert.Equal(5, surface.Health(ScopeTree.Root).Count);
     }
 }
