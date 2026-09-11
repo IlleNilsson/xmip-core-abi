@@ -10,7 +10,8 @@ repository = "https://github.com/IlleNilsson/xmip-core-abi"
 description = "Rust binding over the Xmip module boundary. The header is normative, this is not."
 
 [lib]
-path = "src/lib.rs"
+# A directory of many usages keeps its source aside (ADR-0049).
+path = ".src/lib.rs"
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
