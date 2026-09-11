@@ -1,0 +1,53 @@
+# A snapshot as a node publishes one: the shape the Playground writes after
+# every tick and the snapshot surface reads. Two nodes; one Done, one
+# Stressed, one Paused, two Fine.
+
+source = "lab"
+node = "xmip:///lab"
+
+[[records]]
+scope = "xmip:///edge-01/receive/orders"
+state = "fine"
+severity = 0
+evidence = ""
+observed_unix_nanos = 1789111688000000000
+
+[[records]]
+scope = "xmip:///edge-01/receive/partner"
+state = "done"
+severity = 95
+evidence = "connection refused by partner-x (10.0.4.21:22)"
+observed_unix_nanos = 1789111684000000000
+
+[[records]]
+scope = "xmip:///edge-01/process/approval"
+state = "stressed"
+severity = 55
+evidence = "3 Journeys waiting longer than 5 minutes"
+observed_unix_nanos = 1789111686000000000
+
+[[records]]
+scope = "xmip:///edge-02/send/warehouse"
+state = "paused"
+severity = 30
+evidence = "paused by ilian"
+observed_unix_nanos = 1789111687000000000
+
+[[records]]
+scope = "xmip:///edge-02/send/billing"
+state = "fine"
+severity = 0
+evidence = ""
+observed_unix_nanos = 1789111688000000000
+
+[[counts]]
+counted = "streams"
+value = 1284
+
+[[counts]]
+counted = "journeys"
+value = 2110
+
+[[counts]]
+counted = "bytes"
+value = 91337412

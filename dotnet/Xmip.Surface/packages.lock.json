@@ -1,0 +1,83 @@
+{
+  "version": 1,
+  "dependencies": {
+    "net10.0": {
+      "Microsoft.Extensions.Configuration": {
+        "type": "Direct",
+        "requested": "[10.0.6, )",
+        "resolved": "10.0.6",
+        "contentHash": "lYQ9S1FGXIWIU7243RimdAXQYsFDeLhSSZvbSDwbeI/kCzZ4MIYXpp3kMQ+bDJXwl9pzMRIYkd4f9zGqcYxfAQ==",
+        "dependencies": {
+          "Microsoft.Extensions.Configuration.Abstractions": "10.0.6",
+          "Microsoft.Extensions.Primitives": "10.0.6"
+        }
+      },
+      "Tomlyn.Extensions.Configuration": {
+        "type": "Direct",
+        "requested": "[2.0.0, )",
+        "resolved": "2.0.0",
+        "contentHash": "j2tkaXy3yfsMUd3fwg5qEKTwmwUsxcI5NSoBGGgOvrEC6M72FJnta0yuah9M72xj1wNT3scI0oUQAIkDWXeSsQ==",
+        "dependencies": {
+          "Microsoft.Extensions.Configuration.FileExtensions": "10.0.6",
+          "Tomlyn": "2.3.0"
+        }
+      },
+      "Microsoft.Extensions.Configuration.Abstractions": {
+        "type": "Transitive",
+        "resolved": "10.0.6",
+        "contentHash": "a7bA7IT3ngIgcOMb/2MVH5CcfSxUCeQ6QXWS1Vt6oFpzLTH3U1+J2Xtc64Uw3whX9akYG8eR/UQeEzxo64zZLg==",
+        "dependencies": {
+          "Microsoft.Extensions.Primitives": "10.0.6"
+        }
+      },
+      "Microsoft.Extensions.Configuration.FileExtensions": {
+        "type": "Transitive",
+        "resolved": "10.0.6",
+        "contentHash": "hils30RkqBbtQVupvgUr7sgxJUYPc6YMEDge1QAXGTOhbRlqk2I0OH+BWMSsQjYnbGX2Ytl6EkrLgu9im6vE0w==",
+        "dependencies": {
+          "Microsoft.Extensions.Configuration": "10.0.6",
+          "Microsoft.Extensions.Configuration.Abstractions": "10.0.6",
+          "Microsoft.Extensions.FileProviders.Abstractions": "10.0.6",
+          "Microsoft.Extensions.FileProviders.Physical": "10.0.6",
+          "Microsoft.Extensions.Primitives": "10.0.6"
+        }
+      },
+      "Microsoft.Extensions.FileProviders.Abstractions": {
+        "type": "Transitive",
+        "resolved": "10.0.6",
+        "contentHash": "iU/lPyrjHVA4jJ7Bl/VpXvgsAD4qJWc4oPSVJjMBeZjmv7IIo8wBKxnOUoXdZcSCUJ6MeBMs3WpXNfncO7OzRg==",
+        "dependencies": {
+          "Microsoft.Extensions.Primitives": "10.0.6"
+        }
+      },
+      "Microsoft.Extensions.FileProviders.Physical": {
+        "type": "Transitive",
+        "resolved": "10.0.6",
+        "contentHash": "t6T7umdzTKkSBOUMe5RYk826cTCsDU0hne9lPN5RGOSb3Kq0Xw8OEErM4zJ4dgZWV3G0ObK1Hf1IVU88uIKe6A==",
+        "dependencies": {
+          "Microsoft.Extensions.FileProviders.Abstractions": "10.0.6",
+          "Microsoft.Extensions.FileSystemGlobbing": "10.0.6",
+          "Microsoft.Extensions.Primitives": "10.0.6"
+        }
+      },
+      "Microsoft.Extensions.FileSystemGlobbing": {
+        "type": "Transitive",
+        "resolved": "10.0.6",
+        "contentHash": "EG9GuYJlj1o1G8maSpKceZdj88OehKFRWaWp8BWUQWlvIJDWD8N0sIYDoRMGL/yX85H8KbVYPR9+dH/UjPEiKw=="
+      },
+      "Microsoft.Extensions.Primitives": {
+        "type": "Transitive",
+        "resolved": "10.0.6",
+        "contentHash": "L8P21mqaG+CXvPheLndean/cHCOcItJqH8nx+0YQnK7wAiOR0G1IOC418ZSzTMD2D6Gmo0f2M5WR70XtpX2B8g=="
+      },
+      "Tomlyn": {
+        "type": "Transitive",
+        "resolved": "2.3.0",
+        "contentHash": "kA3P/rsBD4HUio0Q67GUgYuWdfoV273HhQJmIRfJymKiZKEi1+xgjXTRW0OtcdEJqL4vTzDvKxbOMYR4tjBCPw=="
+      },
+      "xmip.abi": {
+        "type": "Project"
+      }
+    }
+  }
+}
