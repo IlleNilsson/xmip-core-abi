@@ -74,6 +74,24 @@ public static class English
         };
     }
 
+    /// <summary>How a count moved since the board last saw it change: the
+    /// increase, and the rate it implies over the time it took. Nothing yet
+    /// when the board has seen only one value.</summary>
+    public static string Flow(ulong delta, TimeSpan over)
+    {
+        if (over <= TimeSpan.Zero)
+        {
+            return "waiting for the next round";
+        }
+
+        double perSecond = delta / over.TotalSeconds;
+        string rate = perSecond >= 10
+            ? perSecond.ToString("N0", CultureInfo.InvariantCulture)
+            : perSecond.ToString("N1", CultureInfo.InvariantCulture);
+
+        return $"+{delta.ToString("N0", CultureInfo.InvariantCulture)} last round · {rate}/s";
+    }
+
     /// <summary>A byte count scaled to the unit a person reads.</summary>
     public static string Bytes(ulong value)
     {

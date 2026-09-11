@@ -87,9 +87,20 @@ public static class ScopeTree
         return Segment(scope, 0);
     }
 
+    /// <summary>The stage of the message path a scope sits in — <c>receive</c>,
+    /// <c>process</c> or <c>send</c> — wherever that segment falls: directly
+    /// under a node (<c>edge-01/receive/orders</c>) or under a scenario the
+    /// Playground nests between (<c>playground/pingpong/receive/tcp/json</c>).
+    /// Empty for a scope on no stage.</summary>
+    public static string Stage(string scope)
+    {
+        return Parts(scope)
+            .FirstOrDefault(part => part is "receive" or "process" or "send")
+            ?? string.Empty;
+    }
+
     /// <summary>One segment by position, or empty when the scope is not that
-    /// deep. Position 1 is the stage: <c>receive</c>, <c>process</c> or
-    /// <c>send</c>.</summary>
+    /// deep.</summary>
     public static string Segment(string scope, int index)
     {
         return Parts(scope).ElementAtOrDefault(index) ?? string.Empty;

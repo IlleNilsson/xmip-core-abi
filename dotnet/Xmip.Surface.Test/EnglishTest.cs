@@ -91,4 +91,12 @@ public sealed class EnglishTest
             English.Resumed("xmip:///n", XmipStatus.NotFound),
             StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void FlowSaysTheIncreaseAndTheRate()
+    {
+        Assert.Equal("+2,310 last round · 38/s", English.Flow(2_310, TimeSpan.FromSeconds(60)));
+        Assert.Equal("+3 last round · 0.5/s", English.Flow(3, TimeSpan.FromSeconds(6)));
+        Assert.Equal("waiting for the next round", English.Flow(0, TimeSpan.Zero));
+    }
 }
