@@ -1,0 +1,49 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The shared model's tests (ADR-0052 clause 6): the scope tree and its
+    rollup, the worst leaf beneath a scope, runtime discovery, the English,
+    the surface choice and the snapshot surface over a small TOML fixture.
+    Every .NET surface is a thin face over what is tested here, so this is
+    where the board's answer is proved, not on the board.
+
+    Target framework and the rest come from Directory.Build.props.
+  -->
+
+  <PropertyGroup>
+    <RootNamespace>Xmip.Surface.Test</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+
+    <!-- Test classes are public for the runner, not for a reader. -->
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+
+    <!-- The library targets net10.0 because pwsh hosts .NET 10; an estate
+         machine installs only the .NET 11 preview SDK, so the test host runs
+         the net10.0 assemblies on the newest runtime present. -->
+    <RollForward>LatestMajor</RollForward>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.1">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Xmip.Surface\Xmip.Surface.csproj" />
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- A snapshot as a node or the Playground publishes one, beside the
+         test assembly. -->
+    <None Include="Fixture\*.toml"
+          Link="Fixture\%(Filename)%(Extension)"
+          CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

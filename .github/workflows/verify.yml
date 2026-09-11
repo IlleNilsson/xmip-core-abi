@@ -7,6 +7,37 @@ on:
 permissions:
   contents: read
 
+# Two languages, two jobs: the crate is verified as every Rust repository is,
+# and the .NET half — the binding and the surface every .NET operator surface
+# shares (ADR-0014, amendment 2026-09-09; ADR-0052 clause 1) — is built and
+# tested with the SDK dotnet/global.json names (ADR-0052 clause 6).
 jobs:
-  verify:
+  rust:
     uses: IlleNilsson/.github/.github/workflows/rust-verify.yml@v1
+
+  dotnet:
+    name: Verify .NET binding and surface
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install the .NET SDK global.json names
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: dotnet/global.json
+
+      # Directory.Build.props asks for a lock file; a restore that resolves
+      # differently from the lock is a failure here, not a drift.
+      - name: Build the binding
+        run: dotnet build dotnet/Xmip.Abi/Xmip.Abi.csproj --configuration Release -p:RestoreLockedMode=true
+
+      - name: Build the surface
+        run: dotnet build dotnet/Xmip.Surface/Xmip.Surface.csproj --configuration Release -p:RestoreLockedMode=true
+
+      - name: Test the binding
+        run: dotnet test dotnet/Xmip.Abi.Tests/Xmip.Abi.Tests.csproj --configuration Release -p:RestoreLockedMode=true
+
+      - name: Test the surface
+        run: dotnet test dotnet/Xmip.Surface.Test/Xmip.Surface.Test.csproj --configuration Release -p:RestoreLockedMode=true

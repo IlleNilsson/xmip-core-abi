@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    What every .NET operator surface shares (ADR-0052): the surface over the
+    binding, the snapshot surface, the scope tree and its rollup, how the
+    runtime library is found, how a status is said in English, and how a TOML
+    document is read. The cli, the two GUI hosts and the PowerShell module are
+    thin faces over this, so a fix here reaches every surface at once.
+
+    Beside the binding on purpose: ADR-0014's amendment of 2026-09-09 put the
+    binding in the ABI's repository because the ABI is the interface into
+    Xmip, and ADR-0044's rule read for .NET puts code several surfaces need
+    where they all already depend.
+
+    Nothing here crosses the C ABI; Xmip.Abi does that once. unsafe stays off.
+    Target framework and the rest come from Directory.Build.props.
+  -->
+
+  <PropertyGroup>
+    <RootNamespace>Xmip.Surface</RootNamespace>
+    <AssemblyName>Xmip.Surface</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Xmip.Abi\Xmip.Abi.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- On disk the estate is TOML; JSON is reserved for memory and the wire.
+         One reader, here, for a host's configuration and for a published
+         snapshot alike. The versions are the ones Tomlyn 2.0.0 itself rests
+         on, which is what a net10.0 library can carry. -->
+    <PackageReference Include="Tomlyn.Extensions.Configuration" Version="2.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.6" />
+  </ItemGroup>
+
+</Project>
