@@ -23,7 +23,8 @@ public static class TomlDocument
     /// <summary>Add a document to a host's configuration, watched for change.
     /// A relative path resolves the way the host's builder resolves files —
     /// its content root.</summary>
-    public static IConfigurationBuilder Add(IConfigurationBuilder builder, string path, bool optional)
+    public static IConfigurationBuilder Add(
+        IConfigurationBuilder builder, string path, bool optional)
     {
         return builder.AddTomlFile(path, optional, reloadOnChange: true);
     }

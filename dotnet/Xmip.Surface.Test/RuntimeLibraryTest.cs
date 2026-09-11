@@ -12,7 +12,8 @@ public sealed class RuntimeLibraryTest
     [Fact]
     public void ConfigurationWinsAndResolvesAgainstTheBasePath()
     {
-        string chosen = RuntimeLibrary.Choose("lib/runtime.dll", "/elsewhere/runtime.dll", Base, Beside);
+        string chosen = RuntimeLibrary.Choose(
+            "lib/runtime.dll", "/elsewhere/runtime.dll", Base, Beside);
 
         Assert.Equal(Path.GetFullPath(Path.Combine(Base, "lib", "runtime.dll")), chosen);
     }

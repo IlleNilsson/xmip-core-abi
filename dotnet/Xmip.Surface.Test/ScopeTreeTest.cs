@@ -23,7 +23,9 @@ public sealed class ScopeTreeTest
     [Fact]
     public void PartsDropTheSchemeAndAnEmptyAuthority()
     {
-        Assert.Equal(["edge-01", "receive", "orders"], ScopeTree.Parts("xmip:///edge-01/receive/orders"));
+        Assert.Equal(
+            ["edge-01", "receive", "orders"],
+            ScopeTree.Parts("xmip:///edge-01/receive/orders"));
         Assert.Empty(ScopeTree.Parts(ScopeTree.Root));
         Assert.Empty(ScopeTree.Parts("xmip://"));
     }
@@ -74,7 +76,10 @@ public sealed class ScopeTreeTest
     {
         Assert.Equal(HealthState.Fine, ScopeTree.Rolled(HealthState.Fine));
 
-        foreach (HealthState mood in Enum.GetValues<HealthState>().Where(m => m != HealthState.Fine))
+        IEnumerable<HealthState> notFine =
+            Enum.GetValues<HealthState>().Where(mood => mood != HealthState.Fine);
+
+        foreach (HealthState mood in notFine)
         {
             Assert.Equal(HealthState.Holding, ScopeTree.Rolled(mood));
         }
@@ -84,7 +89,9 @@ public sealed class ScopeTreeTest
     public void TheRollupOverLeavesIsHoldingWhenOneIsNotFine()
     {
         Assert.Equal(HealthState.Holding, ScopeTree.Rollup(Leaves));
-        Assert.Equal(HealthState.Fine, ScopeTree.Rollup(Leaves.Where(l => l.State == HealthState.Fine)));
+        Assert.Equal(
+            HealthState.Fine,
+            ScopeTree.Rollup(Leaves.Where(leaf => leaf.State == HealthState.Fine)));
         Assert.Null(ScopeTree.Rollup([]));
     }
 
