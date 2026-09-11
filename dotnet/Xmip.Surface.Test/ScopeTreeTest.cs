@@ -168,4 +168,12 @@ public sealed class ScopeTreeTest
              new Crumb("receive", "xmip:///edge-01/receive")],
             trail);
     }
+
+    [Fact]
+    public void TheStageIsFoundWhereverItSits()
+    {
+        Assert.Equal("receive", ScopeTree.Stage("xmip:///edge-01/receive/orders"));
+        Assert.Equal("send", ScopeTree.Stage("xmip:///playground/pingpong/send/tcp/json"));
+        Assert.Equal(string.Empty, ScopeTree.Stage("xmip:///playground/filing/file/csv"));
+    }
 }
