@@ -181,6 +181,8 @@ mod tests {
     #[test]
     fn the_entrypoint_matches_the_header() {
         assert!(HEADER.contains(&format!("\"{XMIP_OPERATE_ENTRYPOINT}\"")));
+        assert!(HEADER.contains(&format!("\"{XMIP_WAIT_CHANGE_ENTRYPOINT}\"")));
+        assert!(HEADER.contains("XmipWaitChangeFn"));
     }
 
     #[test]

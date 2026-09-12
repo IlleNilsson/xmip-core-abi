@@ -17,10 +17,10 @@
  * gains a command far more often than a trait gains a method, and one constant
  * for both would recompile every module for a change no module can see.
  *
- * Nothing here asks the hot path. Every call reads a snapshot the runtime
- * published; there is no call that makes execution wait for a number. ADR-0027
- * clause 6, and observability-model.md section 6 before it: the thing that
- * watches must not be able to stop the thing it watches.
+ * Nothing here asks the hot path. Data calls read a snapshot the runtime
+ * published. The optional change signal sleeps the observer until that
+ * immutable snapshot advances; publishing only increments a clock and wakes
+ * it. ADR-0027 clause 6: the thing that watches cannot stop the thing it watches.
  */
 
 #ifndef XMIP_OPERATE_H
@@ -36,8 +36,9 @@ extern "C" {
 /* 1. Version and entrypoint                                             */
 /* ===================================================================== */
 
-#define XMIP_OPERATE_VERSION    1u
-#define XMIP_OPERATE_ENTRYPOINT "xmip_operate_v1"
+#define XMIP_OPERATE_VERSION       1u
+#define XMIP_OPERATE_ENTRYPOINT    "xmip_operate_v1"
+#define XMIP_WAIT_CHANGE_ENTRYPOINT "xmip_wait_change_v1"
 
 /* ===================================================================== */
 /* 2. Scope                                                              */
@@ -203,6 +204,19 @@ typedef struct {
  * than failing on the first call.
  */
 typedef XmipStatus (*XmipOperateFn)(uint32_t version, XmipOperate *out);
+
+/*
+ * Wait until the runtime publishes a revision greater than after_revision.
+ * The runtime increments one monotonic process-local revision after replacing
+ * its immutable operator snapshot, then wakes every waiter. A timeout is not
+ * an error: XMIP_OK is returned and out_revision remains after_revision.
+ *
+ * This is a separate optional symbol so the version-1 table remains binary
+ * compatible during rolling upgrades. Waiting observes only the publication
+ * clock and can never delay the execution path.
+ */
+typedef XmipStatus (*XmipWaitChangeFn)(
+    uint64_t after_revision, uint32_t timeout_ms, uint64_t *out_revision);
 
 /* ===================================================================== */
 /* 6. Lifecycle: starting and validating a node                          */
