@@ -19,4 +19,10 @@ public enum Counted
 
     /// <summary>Bytes, wherever content moved.</summary>
     Bytes = 4,
+
+    /// <summary>Delivery or processing attempts awaiting another try.</summary>
+    Retrying = 5,
+
+    /// <summary>Delivery or processing outcomes that ended unsuccessfully.</summary>
+    Failed = 6,
 }

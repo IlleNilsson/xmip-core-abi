@@ -48,6 +48,8 @@ pub mod counted {
     pub const MESSAGES: i32 = 2;
     pub const JOURNEYS: i32 = 3;
     pub const BYTES: i32 = 4;
+    pub const RETRYING: i32 = 5;
+    pub const FAILED: i32 = 6;
 }
 
 // The typed `Health` and `Counted` enums live in `xmip-core-observe`, which owns
@@ -228,6 +230,14 @@ mod tests {
         assert_eq!(
             i64::from(counted::BYTES),
             header_value("XMIP_COUNTED_BYTES")
+        );
+        assert_eq!(
+            i64::from(counted::RETRYING),
+            header_value("XMIP_COUNTED_RETRYING")
+        );
+        assert_eq!(
+            i64::from(counted::FAILED),
+            header_value("XMIP_COUNTED_FAILED")
         );
     }
 
