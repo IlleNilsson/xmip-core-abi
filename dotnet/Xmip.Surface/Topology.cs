@@ -104,6 +104,8 @@ public sealed record TopologySnapshot(
     string Source)
 {
     /// <summary>An empty snapshot from a surface that publishes no topology.</summary>
-    public static TopologySnapshot Empty(string source) =>
-        new([], [], DateTimeOffset.UtcNow, source);
+    public static TopologySnapshot Empty(string source)
+    {
+        return new TopologySnapshot([], [], DateTimeOffset.UtcNow, source);
+    }
 }

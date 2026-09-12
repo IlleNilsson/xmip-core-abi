@@ -82,8 +82,18 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
                 | NotifyFilters.CreationTime,
         };
 
-        FileSystemEventHandler signal = (_, _) => changed.Writer.TryWrite(true);
-        RenamedEventHandler renamed = (_, _) => changed.Writer.TryWrite(true);
+        void Signal(object sender, FileSystemEventArgs arguments)
+        {
+            changed.Writer.TryWrite(true);
+        }
+
+        void Renamed(object sender, RenamedEventArgs arguments)
+        {
+            changed.Writer.TryWrite(true);
+        }
+
+        FileSystemEventHandler signal = Signal;
+        RenamedEventHandler renamed = Renamed;
         watcher.Changed += signal;
         watcher.Created += signal;
         watcher.Deleted += signal;
@@ -265,8 +275,10 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
         }
     }
 
-    private static string? EmptyAsNull(string? value) =>
-        string.IsNullOrWhiteSpace(value) ? null : value;
+    private static string? EmptyAsNull(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? null : value;
+    }
 
     private static TopologyNodeKind ParseNodeKind(string? kind)
     {

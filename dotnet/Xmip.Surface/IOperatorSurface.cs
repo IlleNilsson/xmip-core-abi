@@ -36,8 +36,10 @@ public interface IOperatorSurface
     /// cannot publish topology returns an empty snapshot and names why in its
     /// source; it never infers application meaning from network traffic.
     /// </summary>
-    public TopologySnapshot Topology() =>
-        TopologySnapshot.Empty($"{Source} — topology is not published by this surface");
+    public TopologySnapshot Topology()
+    {
+        return TopologySnapshot.Empty($"{Source} — topology is not published by this surface");
+    }
 
     /// <summary>
     /// Changes to the snapshots this surface reads. The first item announces
