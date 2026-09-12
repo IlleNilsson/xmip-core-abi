@@ -8,4 +8,4 @@ The .NET binding is here too: `dotnet/Xmip.Abi`, one class library declaring bot
 
 Beside the binding is what every .NET surface shares (ADR-0052): `dotnet/Xmip.Surface` — `IOperatorSurface` with its two implementations, `NativeOperator` over the binding and `SnapshotOperator` over a published snapshot; the scope tree, its rollup and the worst leaf beneath a scope (`ScopeTree`); runtime discovery by one rule (`RuntimeLibrary`: `Xmip:RuntimeLibrary`, else `XMIP_RUNTIME_LIBRARY`, else beside the executable); a status said in English once (`English`); the surface a host chose in its TOML (`SurfaceChoice`); the one TOML reader (`TomlDocument`); and one coalescing change stream (`SurfaceChange`) that wakes every surface when a published snapshot advances. The GUI hosts, the cli and the PowerShell module are thin faces over it. `dotnet/Xmip.Surface.Test` covers the tree, discovery, the English and the snapshot surface over a fixture; `dotnet test dotnet/Xmip.Surface.Test` runs them.
 
-Status: planned, with the Rust binding, the .NET binding and the module manifest model already present.
+`architecture.toml` carries the maturity; this file does not repeat it.
