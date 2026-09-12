@@ -131,9 +131,18 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
     /// <inheritdoc />
     public MeasurementRecord? Measure(string scope, Counted counted)
     {
-        ulong value = Read().Counts
+        IReadOnlyList<CountRecord> matching =
+        [
+            .. Read().Counts
             .Where(count => count.Counted == counted && ScopeTree.Beneath(count.Scope, scope))
-            .Aggregate(0UL, (sum, count) => sum + count.Value);
+        ];
+
+        if (matching.Count == 0)
+        {
+            return null;
+        }
+
+        ulong value = matching.Aggregate(0UL, (sum, count) => sum + count.Value);
 
         DateTimeOffset now = DateTimeOffset.UtcNow;
 
@@ -363,6 +372,8 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
             "messages" => Counted.Messages,
             "journeys" => Counted.Journeys,
             "bytes" => Counted.Bytes,
+            "retrying" => Counted.Retrying,
+            "failed" => Counted.Failed,
             _ => Counted.Streams,
         };
     }

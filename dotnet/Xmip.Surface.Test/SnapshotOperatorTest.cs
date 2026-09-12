@@ -86,8 +86,10 @@ public sealed class SnapshotOperatorTest
 
         Assert.Equal(1_284UL, surface.Measure(ScopeTree.Root, Counted.Streams)!.Value);
         Assert.Equal(2_110UL, surface.Measure(ScopeTree.Root, Counted.Journeys)!.Value);
-        Assert.Equal(0UL, surface.Measure(ScopeTree.Root, Counted.Messages)!.Value);
-        Assert.Equal(0UL, surface.Measure("xmip:///edge-01", Counted.Streams)!.Value);
+        Assert.Null(surface.Measure(ScopeTree.Root, Counted.Messages));
+        Assert.Null(surface.Measure("xmip:///edge-01", Counted.Streams));
+        Assert.Equal(2UL, surface.Measure(ScopeTree.Root, Counted.Retrying)!.Value);
+        Assert.Equal(1UL, surface.Measure(ScopeTree.Root, Counted.Failed)!.Value);
     }
 
     [Fact]
@@ -109,7 +111,7 @@ public sealed class SnapshotOperatorTest
         Assert.False(surface.Exists);
         Assert.Equal($"SNAPSHOT — no file at {missing}", surface.Source);
         Assert.Empty(surface.Health(ScopeTree.Root));
-        Assert.Equal(0UL, surface.Measure(ScopeTree.Root, Counted.Streams)!.Value);
+        Assert.Null(surface.Measure(ScopeTree.Root, Counted.Streams));
     }
 
     [Fact]
