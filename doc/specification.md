@@ -61,7 +61,7 @@ transport trait gaining a function does not renumber the path trait. Rules:
   purposes and the host will not load it against the old one.
 - A module built against a lower `trait_minor` than the host's is loadable. The
   host must not call past the end of what the module declared. This is the only
-  case where the host reads `trait_minor` to decide behaviour rather than to
+  case where the host reads `trait_minor` to decide behavior rather than to
   accept or reject.
 
 **Module version** carries no compatibility meaning to the host at all. It
@@ -165,7 +165,7 @@ There is one rule and it has no exceptions:
 
 The host and the module may be built by different compilers, against different
 runtimes, with different allocators. `free()` on a pointer the other side
-allocated is undefined behaviour, and it is the single most likely way to
+allocated is undefined behavior, and it is the single most likely way to
 crash a production node at three in the morning.
 
 Consequences:
@@ -195,7 +195,7 @@ ownership question in every case.
 
 ## 5. Threading
 
-A module instance is **not** required to be thread-safe. The host serialises
+A module instance is **not** required to be thread-safe. The host serializes
 calls on one instance unless the trait says otherwise, and no trait says
 otherwise in ABI version 1.
 
@@ -207,7 +207,7 @@ Two exceptions:
 - `XmipDeliverySink.deliver` is called *by* the module, on whatever thread the
   module chooses, and possibly on several at once. The host's sink is
   thread-safe. This is the only inbound concurrency in the boundary.
-- `XmipHost.cancelled` and `XmipHost.log` are callable from any thread at any
+- `XmipHost.canceled` and `XmipHost.log` are callable from any thread at any
   time between `create` and `destroy`.
 
 `destroy` must not be called while any call on that instance is in flight.
@@ -218,7 +218,7 @@ Two exceptions:
 
 **No exception, panic or unwind may cross the boundary.** Ever.
 
-Unwinding across an FFI boundary is undefined behaviour, not merely
+Unwinding across an FFI boundary is undefined behavior, not merely
 discouraged, and it stays undefined even when both sides happen to be the same
 language. A module that unwinds into the host has corrupted a process that
 was executing other people's messages.
@@ -252,7 +252,7 @@ The split between `XMIP_E_MALFORMED` and `XMIP_E_CONTRACT` is load-bearing.
 Malformed means it is not the standard it claims to be — invalid XML, a broken
 X12 envelope. Contract means it parses perfectly and violates the rules —
 a missing required element, a value out of range. The first is a sender bug in
-their serialiser; the second is a sender bug in their data. Different people
+their serializer; the second is a sender bug in their data. Different people
 fix them.
 
 **Retryability is a property of the code**, expressed once in
@@ -280,7 +280,7 @@ buffer; it crosses as `XmipReader` or `XmipWriter` — a context pointer and one
 or two functions.
 
 This is what makes a transfer-depth journey possible. A module that only moves
-bytes never materialises them, and a 4 GB file costs the same memory as a 4 KB
+bytes never materializes them, and a 4 GB file costs the same memory as a 4 KB
 one.
 
 - `read` returns bytes written, `0` at end of stream, or a negative status. **A
@@ -298,13 +298,13 @@ one.
 
 ## 9. Cancellation
 
-Cooperative. `XmipHost.cancelled` returns non-zero and the module unwinds its
+Cooperative. `XmipHost.canceled` returns non-zero and the module unwinds its
 own work and returns `XMIP_E_CANCELLED`. There is no forced termination,
 because there is no safe way to force-terminate code holding a socket and a
 half-written file.
 
 A module doing long work polls it. In a read loop, per iteration is right.
-`cancelled` is cheap by contract.
+`canceled` is cheap by contract.
 
 ---
 
@@ -385,7 +385,7 @@ A module conforms when:
 6. It returns a retryable status only for a condition that is actually
    retryable.
 7. It tolerates `stop` without `start`, `destroy` without `stop`, and
-   `configure` with a TOML fragment containing keys it does not recognise.
+   `configure` with a TOML fragment containing keys it does not recognize.
 
 Point 7 is not politeness. A host crashing during recovery calls these in
 orders that a happy path never produces.
@@ -433,7 +433,7 @@ in the estate records why.
 
 ---
 
-## 14. The licence of the boundary
+## 14. The license of the boundary
 
 `include/xmip_module.h` is AGPL-3.0-or-later, like the rest of Xmip, and there
 is no exception for the boundary. The reasoning, the rejected permissive
