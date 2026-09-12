@@ -123,15 +123,19 @@ typedef struct {
  * Location are three different quantities and Xmip keeps those words apart on
  * every page. ADR-0027 clause 5.
  *
- * BYTES is its own unit; the other three are counts. The record's table lists
- * unit separately; here the counted thing implies it, because there is no
- * measurement that counts Streams in bytes.
+ * BYTES is its own unit; the others are counts. RETRYING is the number of
+ * work items currently awaiting another attempt; FAILED is the cumulative
+ * unsuccessful outcome count for the measurement window. The record's table
+ * lists unit separately; here the counted thing implies it, because there is
+ * no measurement that counts Streams in bytes.
  */
 typedef enum {
     XMIP_COUNTED_STREAMS  = 1,
     XMIP_COUNTED_MESSAGES = 2,
     XMIP_COUNTED_JOURNEYS = 3,
-    XMIP_COUNTED_BYTES    = 4
+    XMIP_COUNTED_BYTES    = 4,
+    XMIP_COUNTED_RETRYING = 5,
+    XMIP_COUNTED_FAILED   = 6
 } XmipCounted;
 
 /*
