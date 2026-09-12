@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.Extensions.Configuration;
 using Xmip.Abi.Operate;
 
@@ -45,6 +46,12 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
     }
 
     /// <inheritdoc />
+    public TopologySnapshot Topology()
+    {
+        return Read().Topology;
+    }
+
+    /// <inheritdoc />
     public MeasurementRecord? Measure(string scope, Counted counted)
     {
         ulong value = Read().Counts
@@ -70,7 +77,8 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
 
     private sealed record Snapshot(
         IReadOnlyList<HealthRecord> Records,
-        IReadOnlyList<CountRecord> Counts);
+        IReadOnlyList<CountRecord> Counts,
+        TopologySnapshot Topology);
 
     private sealed record CountRecord(string Scope, Counted Counted, ulong Value);
 
@@ -112,7 +120,7 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
         {
             if (!file.Exists)
             {
-                return new Snapshot([], []);
+                return new Snapshot([], [], TopologySnapshot.Empty(Source));
             }
 
             IConfigurationRoot document = TomlDocument.Read(Path);
@@ -138,13 +146,119 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
                     node, ParseCounted(row["counted"]), ParseUlong(row["value"])));
             }
 
-            return new Snapshot(records, counts);
+            List<TopologyNode> nodes = [];
+
+            foreach (IConfigurationSection row in document.GetSection("topology:nodes").GetChildren())
+            {
+                nodes.Add(new TopologyNode(
+                    row["id"] ?? string.Empty,
+                    EmptyAsNull(row["parent"]),
+                    row["label"] ?? row["id"] ?? string.Empty,
+                    ParseNodeKind(row["kind"]),
+                    row["scope"] ?? string.Empty,
+                    ParseState(row["state"]),
+                    ParseOrigin(row["origin"]),
+                    ParseDouble(row["load"]),
+                    ParseDouble(row["activity"]),
+                    row["evidence"] ?? string.Empty));
+            }
+
+            List<CommunicationLink> links = [];
+
+            foreach (IConfigurationSection row in document.GetSection("topology:links").GetChildren())
+            {
+                links.Add(new CommunicationLink(
+                    row["id"] ?? string.Empty,
+                    row["from"] ?? string.Empty,
+                    row["to"] ?? string.Empty,
+                    ParsePattern(row["pattern"]),
+                    ParseOrigin(row["origin"]),
+                    row["protocol"] ?? string.Empty,
+                    ParseState(row["state"]),
+                    ParseUlong(row["volume"]),
+                    ParseDouble(row["rate"]),
+                    ParseDouble(row["latency_ms"]),
+                    ParseDouble(row["progress"]),
+                    ParseUint(row["attempts"]),
+                    row["evidence"] ?? string.Empty));
+            }
+
+            DateTimeOffset observed = ParseObserved(document["topology:observed_unix_nanos"]);
+            string topologySource = document["topology:source"] ?? document["source"] ?? Source;
+
+            return new Snapshot(
+                records,
+                counts,
+                new TopologySnapshot(nodes, links, observed, topologySource));
         }
         catch (Exception exception)
             when (exception is IOException or FormatException or InvalidOperationException)
         {
-            return new Snapshot([], []);
+            return new Snapshot([], [], TopologySnapshot.Empty(Source));
         }
+    }
+
+    private static string? EmptyAsNull(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value;
+
+    private static TopologyNodeKind ParseNodeKind(string? kind)
+    {
+        return kind switch
+        {
+            "computer" => TopologyNodeKind.Computer,
+            "server" => TopologyNodeKind.Server,
+            "virtual-machine" => TopologyNodeKind.VirtualMachine,
+            "gateway" => TopologyNodeKind.Gateway,
+            "appliance" => TopologyNodeKind.Appliance,
+            "service" => TopologyNodeKind.Service,
+            "process" => TopologyNodeKind.Process,
+            "interface" => TopologyNodeKind.Interface,
+            "port" => TopologyNodeKind.Port,
+            "protocol" => TopologyNodeKind.Protocol,
+            "location" => TopologyNodeKind.Location,
+            _ => TopologyNodeKind.Computer,
+        };
+    }
+
+    private static TopologyOrigin ParseOrigin(string? origin)
+    {
+        return origin switch
+        {
+            "configured" => TopologyOrigin.Configured,
+            "observed" => TopologyOrigin.Observed,
+            _ => TopologyOrigin.Both,
+        };
+    }
+
+    private static CommunicationPattern ParsePattern(string? pattern)
+    {
+        return pattern switch
+        {
+            "request-response" => CommunicationPattern.RequestResponse,
+            "send-receive" => CommunicationPattern.SendReceive,
+            "publish-consume" => CommunicationPattern.PublishConsume,
+            "streaming" => CommunicationPattern.Streaming,
+            "fire-and-forget" => CommunicationPattern.FireAndForget,
+            "session" => CommunicationPattern.Session,
+            "retry" => CommunicationPattern.Retry,
+            _ => CommunicationPattern.SendReceive,
+        };
+    }
+
+    private static double ParseDouble(string? value)
+    {
+        return double.TryParse(
+            value,
+            NumberStyles.Float,
+            CultureInfo.InvariantCulture,
+            out double parsed)
+            ? parsed
+            : 0D;
+    }
+
+    private static uint ParseUint(string? value)
+    {
+        return uint.TryParse(value, out uint parsed) ? parsed : 0U;
     }
 
     private static HealthState ParseState(string? state)
