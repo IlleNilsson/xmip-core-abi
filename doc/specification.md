@@ -2,7 +2,7 @@
 
 **Status:** Accepted.
 **ABI version:** 1
-**Header:** [`include/xmip_module.h`](../../include/xmip_module.h)
+**Header:** [`include/xmip_module.h`](../include/xmip_module.h)
 **Decided by:** ADR-0012 (the module boundary), ADR-0011 (naming), ADR-0010 (capability boundaries)
 
 ADR-0012 decided the shape of the boundary and deliberately left the content
@@ -427,48 +427,18 @@ of the boundary, and never normative. A module that skips every binding and writ
 `extern "C"` by hand is exactly as conformant — which is the point of specifying the
 boundary in C rather than in a language.
 
-`xmip-core-abi` replaces two crates that exist today and carry three names between them,
-none of which parse under ADR-0011:
-
-| directory | package | why it fails |
-|---|---|---|
-| `crates/xmip-module-abi/` | `xmip-abi` | directory and package disagree |
-| `crates/xmip-module-api/` | `xmip-module-api` | there is no provider named `module` |
-
-`xmip-module-api` collapses rather than moves. Its entire content is
-`pub use xmip_core::contracts::*` plus a re-export of the other crate. The first of those
-has to go — it is what pulls an implementer into Rust, and into AGPL by linkage — and once
-it does, nothing is left worth renaming.
-
-This is a source change in live crates with dependents, not a specification question, and
-belongs in its own reviewed change.
+The two earlier crates this binding replaced, `xmip-module-abi` and
+`xmip-module-api`, were removed on 2026-08-26; `doc/planning/allocation.toml`
+in the estate records why.
 
 ---
 
 ## 14. The licence of the boundary
 
-`include/xmip_module.h` is AGPL-3.0-or-later, like the rest of Xmip. There is no
-exception for the boundary.
-
-A permissive header was considered and rejected. The case for it: the header is
-the one file a third party must copy into their own build, so under AGPL it
-carries AGPL with it. The case against, and the one that decided it: Xmip does
-not undertake to resolve anyone's licensing position. A user takes Xmip under
-Xmip's licence, and may additionally have to satisfy the licences of what Xmip
-itself depends on. Reconciling that is the user's business.
-
-The boundary remains a boundary in the sense that matters to this document. It
-is a C ABI, it is language-neutral, and no implementer is obliged to write Rust
-or to link Xmip code. What it is not is a licence exemption. "The boundary is
-the trait, not the licence" describes where Xmip stops dictating *design* — it
-was never a promise about *licence*.
-
-A note for implementers, and not legal advice: whether an AGPL header propagates
-to code that includes it is contested, and turns on facts about the header and
-on jurisdiction. Anyone intending to ship a module under a different licence
-should take their own advice rather than rely on this document.
-
-Recorded as clause 9 of ADR-0012.
+`include/xmip_module.h` is AGPL-3.0-or-later, like the rest of Xmip, and there
+is no exception for the boundary. The reasoning, the rejected permissive
+header and the note for implementers are clause 9 of ADR-0012 and ADR-0023 in
+the estate's decision record; this specification does not restate a decision.
 
 ## 15. The operator boundary
 
