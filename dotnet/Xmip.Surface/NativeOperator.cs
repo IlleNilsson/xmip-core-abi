@@ -79,6 +79,13 @@ public sealed class NativeOperator : IOperatorSurface, IDisposable
     }
 
     /// <inheritdoc />
+    public TopologySnapshot Topology()
+    {
+        return TopologySnapshot.Empty(
+            $"{Source} — topology is not yet published by the native operator boundary");
+    }
+
+    /// <inheritdoc />
     public MeasurementRecord? Measure(string scope, Counted counted)
     {
         return Runtime()?.Measure(scope, counted);
