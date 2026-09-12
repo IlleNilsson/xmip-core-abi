@@ -30,6 +30,13 @@ public interface IOperatorSurface
     /// <summary>One kind of count, summed over the scope.</summary>
     public MeasurementRecord? Measure(string scope, Counted counted);
 
+    /// <summary>
+    /// The configured and observed communication topology. A surface that
+    /// cannot publish topology returns an empty snapshot and names why in its
+    /// source; it never infers application meaning from network traffic.
+    /// </summary>
+    public TopologySnapshot Topology();
+
     /// <summary>Pause everything at and beneath a scope, by <paramref name="who"/>.
     /// The first operation that acts rather than reads. Returns what the runtime
     /// said, for the operator to see.</summary>
