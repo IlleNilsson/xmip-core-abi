@@ -20,6 +20,7 @@ public sealed unsafe class Operator : IDisposable
 {
     private readonly nint _library;
     private readonly XmipOperate _table;
+    private readonly delegate* unmanaged[Cdecl]<ulong, uint, ulong*, int> _waitChange;
     private bool _disposed;
 
     // The header says entries are valid until the next call on the table, and
@@ -32,10 +33,15 @@ public sealed unsafe class Operator : IDisposable
     /// <summary>The library this table came from, for a surface to show.</summary>
     public string Source { get; }
 
-    private Operator(nint library, XmipOperate table, string path)
+    private Operator(
+        nint library,
+        XmipOperate table,
+        string path,
+        delegate* unmanaged[Cdecl]<ulong, uint, ulong*, int> waitChange)
     {
         _library = library;
         _table = table;
+        _waitChange = waitChange;
         Source = path;
     }
 
@@ -89,8 +95,15 @@ public sealed unsafe class Operator : IDisposable
             return null;
         }
 
+        delegate* unmanaged[Cdecl]<ulong, uint, ulong*, int> waitChange = null;
+
+        if (NativeLibrary.TryGetExport(library, OperateAbi.ChangeEntrypoint, out nint changeSymbol))
+        {
+            waitChange = (delegate* unmanaged[Cdecl]<ulong, uint, ulong*, int>)changeSymbol;
+        }
+
         reason = string.Empty;
-        return new Operator(library, table, path);
+        return new Operator(library, table, path, waitChange);
     }
 
     /// <summary>
@@ -200,6 +213,30 @@ public sealed unsafe class Operator : IDisposable
         }
 
         return found;
+    }
+
+    /// <summary>Whether this runtime can wake observers when it publishes.</summary>
+    public bool SupportsChangeNotifications => _waitChange != null;
+
+    /// <summary>The revision already published, or zero for an older runtime.</summary>
+    public ulong CurrentRevision => WaitForChange(0, 0) ?? 0;
+
+    /// <summary>
+    /// Wait for a publication newer than <paramref name="afterRevision"/>.
+    /// Null means timeout, refusal, or a runtime predating the signal.
+    /// This waits only on the publication clock; it never enters execution.
+    /// </summary>
+    public ulong? WaitForChange(ulong afterRevision, uint timeoutMilliseconds)
+    {
+        if (_waitChange == null)
+        {
+            return null;
+        }
+
+        ulong revision = afterRevision;
+        int status = _waitChange(afterRevision, timeoutMilliseconds, &revision);
+
+        return status == 0 && revision > afterRevision ? revision : null;
     }
 
     /// <summary>One kind of count, summed over the scope. Null when the scope

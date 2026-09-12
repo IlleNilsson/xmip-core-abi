@@ -22,6 +22,9 @@ pub const XMIP_OPERATE_VERSION: u32 = 1;
 /// Header section 1. The one symbol a runtime exports for surfaces.
 pub const XMIP_OPERATE_ENTRYPOINT: &str = "xmip_operate_v1";
 
+/// Header section 1. Optional wake-up signal for observer surfaces.
+pub const XMIP_WAIT_CHANGE_ENTRYPOINT: &str = "xmip_wait_change_v1";
+
 /// Header section 2. An Xmip URI, borrowed. The one scope tree, ADR-0027
 /// clause 4, with a Party as a query filter and never a level.
 pub type Scope = Str;
@@ -120,6 +123,10 @@ pub struct Operate {
     pub resume: Option<ResumeFn>,
     pub destroy: Option<DestroyFn>,
 }
+
+/// Header section 5. Wait for the immutable published snapshot to advance.
+pub type WaitChangeFn =
+    unsafe extern "C" fn(after_revision: u64, timeout_ms: u32, out_revision: *mut u64) -> i32;
 
 /// Header section 5. The exported entrypoint's shape.
 pub type OperateFn = unsafe extern "C" fn(version: u32, out: *mut Operate) -> i32;
