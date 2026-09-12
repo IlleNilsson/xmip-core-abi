@@ -31,6 +31,15 @@ public interface IOperatorSurface
     /// <summary>One kind of count, summed over the scope.</summary>
     public MeasurementRecord? Measure(string scope, Counted counted);
 
+    /// <summary>The operator's five common flow and outcome figures.</summary>
+    public ActivitySummary Activity(string scope) => ActivitySummary.Read(this, scope);
+
+    /// <summary>One scope in the common operator-facing shape.</summary>
+    public ScopeItem Describe(string scope) => ScopeItem.Read(this, scope);
+
+    /// <summary>The direct children beneath a scope.</summary>
+    public IReadOnlyList<ScopeItem> Children(string scope) => ScopeItem.Children(this, scope);
+
     /// <summary>
     /// The configured and observed communication topology. A surface that
     /// cannot publish topology returns an empty snapshot and names why in its
@@ -69,4 +78,20 @@ public interface IOperatorSurface
 
     /// <summary>Resume everything at and beneath a scope.</summary>
     public string ResumeScope(string scope);
+
+    /// <summary>Start execution at and beneath a scope.</summary>
+    public string StartScope(string scope, string who) =>
+        $"scope start is unsupported by {Source}";
+
+    /// <summary>Stop execution at and beneath a scope.</summary>
+    public string StopScope(string scope, string who) =>
+        $"scope stop is unsupported by {Source}";
+
+    /// <summary>Restart execution at and beneath a scope.</summary>
+    public string RestartScope(string scope, string who) =>
+        $"scope restart is unsupported by {Source}";
+
+    /// <summary>Apply one structured lifecycle operation.</summary>
+    public ScopeOperation ControlScope(string scope, ScopeAction action, string who) =>
+        ScopeOperation.Apply(this, scope, action, who);
 }

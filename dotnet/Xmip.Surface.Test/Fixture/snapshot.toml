@@ -51,3 +51,11 @@ value = 2110
 [[counts]]
 counted = "bytes"
 value = 91337412
+
+[[counts]]
+counted = "retrying"
+value = 2
+
+[[counts]]
+counted = "failed"
+value = 1
