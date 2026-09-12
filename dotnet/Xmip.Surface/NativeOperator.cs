@@ -91,14 +91,13 @@ public sealed class NativeOperator : IOperatorSurface, IDisposable
         [EnumeratorCancellation] CancellationToken stop = default)
     {
         Operator? runtime = Runtime();
+        ulong revision = runtime?.CurrentRevision ?? 0;
         yield return SurfaceChange.Initial(Source);
 
         if (runtime is null)
         {
             yield break;
         }
-
-        ulong revision = runtime.CurrentRevision;
 
         while (!stop.IsCancellationRequested)
         {
@@ -109,7 +108,7 @@ public sealed class NativeOperator : IOperatorSurface, IDisposable
                 try
                 {
                     next = await Task.Run(
-                        () => runtime.WaitForChange(revision, 30_000), stop)
+                        () => runtime.WaitForChange(revision, 1_000), stop)
                         .ConfigureAwait(false);
                 }
                 catch (OperationCanceledException)

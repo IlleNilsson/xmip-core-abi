@@ -57,13 +57,12 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
     public async IAsyncEnumerable<SurfaceChange> WatchAsync(
         [EnumeratorCancellation] CancellationToken stop = default)
     {
-        yield return SurfaceChange.Initial(Source);
-
         string fullPath = System.IO.Path.GetFullPath(Path);
         string? directory = System.IO.Path.GetDirectoryName(fullPath);
 
         if (directory is null || !Directory.Exists(directory))
         {
+            yield return SurfaceChange.Initial(Source);
             yield break;
         }
 
@@ -81,7 +80,6 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
                 | NotifyFilters.LastWrite
                 | NotifyFilters.Size
                 | NotifyFilters.CreationTime,
-            EnableRaisingEvents = true,
         };
 
         FileSystemEventHandler signal = (_, _) => changed.Writer.TryWrite(true);
@@ -90,13 +88,19 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
         watcher.Created += signal;
         watcher.Deleted += signal;
         watcher.Renamed += renamed;
+        watcher.EnableRaisingEvents = true;
 
+        // Attach before announcing the current view. A replacement racing the
+        // first read is then either already visible or queued as a change.
+        yield return SurfaceChange.Initial(Source);
         ulong revision = 0;
 
         try
         {
-            await foreach (bool _ in changed.Reader.ReadAllAsync(stop).ConfigureAwait(false))
+            await foreach (bool notice in changed.Reader.ReadAllAsync(stop).ConfigureAwait(false))
             {
+                _ = notice;
+
                 // Publishers replace atomically. A short yield also coalesces
                 // the several filesystem notifications one replacement can emit.
                 await Task.Delay(TimeSpan.FromMilliseconds(25), stop).ConfigureAwait(false);

@@ -1,5 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
-
 namespace Xmip.Surface;
 
 /// <summary>Which immutable operator snapshots may have advanced.</summary>
