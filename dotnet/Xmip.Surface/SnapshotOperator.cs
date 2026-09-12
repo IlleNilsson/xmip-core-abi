@@ -1,4 +1,6 @@
 using System.Globalization;
+using System.Runtime.CompilerServices;
+using System.Threading.Channels;
 using Microsoft.Extensions.Configuration;
 using Xmip.Abi.Operate;
 
@@ -49,6 +51,67 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
     public TopologySnapshot Topology()
     {
         return Read().Topology;
+    }
+
+    /// <inheritdoc />
+    public async IAsyncEnumerable<SurfaceChange> WatchAsync(
+        [EnumeratorCancellation] CancellationToken stop = default)
+    {
+        yield return SurfaceChange.Initial(Source);
+
+        string fullPath = System.IO.Path.GetFullPath(Path);
+        string? directory = System.IO.Path.GetDirectoryName(fullPath);
+
+        if (directory is null || !Directory.Exists(directory))
+        {
+            yield break;
+        }
+
+        Channel<bool> changed = Channel.CreateBounded<bool>(
+            new BoundedChannelOptions(1)
+            {
+                FullMode = BoundedChannelFullMode.DropWrite,
+                SingleReader = true,
+                SingleWriter = false,
+            });
+
+        using FileSystemWatcher watcher = new(directory, System.IO.Path.GetFileName(fullPath))
+        {
+            NotifyFilter = NotifyFilters.FileName
+                | NotifyFilters.LastWrite
+                | NotifyFilters.Size
+                | NotifyFilters.CreationTime,
+            EnableRaisingEvents = true,
+        };
+
+        FileSystemEventHandler signal = (_, _) => changed.Writer.TryWrite(true);
+        RenamedEventHandler renamed = (_, _) => changed.Writer.TryWrite(true);
+        watcher.Changed += signal;
+        watcher.Created += signal;
+        watcher.Deleted += signal;
+        watcher.Renamed += renamed;
+
+        ulong revision = 0;
+
+        try
+        {
+            await foreach (bool _ in changed.Reader.ReadAllAsync(stop).ConfigureAwait(false))
+            {
+                // Publishers replace atomically. A short yield also coalesces
+                // the several filesystem notifications one replacement can emit.
+                await Task.Delay(TimeSpan.FromMilliseconds(25), stop).ConfigureAwait(false);
+                while (changed.Reader.TryRead(out _))
+                {
+                }
+
+                yield return new SurfaceChange(
+                    ++revision, SurfaceChangeKind.All, DateTimeOffset.UtcNow, Source);
+            }
+        }
+        finally
+        {
+            changed.Writer.TryComplete();
+        }
     }
 
     /// <inheritdoc />

@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using Xmip.Abi.Operate;
 
 namespace Xmip.Surface;
@@ -37,6 +38,27 @@ public interface IOperatorSurface
     /// </summary>
     public TopologySnapshot Topology() =>
         TopologySnapshot.Empty($"{Source} — topology is not published by this surface");
+
+    /// <summary>
+    /// Changes to the snapshots this surface reads. The first item announces
+    /// the current view; later items arrive when its publisher advances.
+    /// Implementations may coalesce changes because snapshots, not events, are
+    /// the source of truth.
+    /// </summary>
+    public async IAsyncEnumerable<SurfaceChange> WatchAsync(
+        [EnumeratorCancellation] CancellationToken stop = default)
+    {
+        yield return SurfaceChange.Initial(Source);
+
+        try
+        {
+            await Task.Delay(Timeout.InfiniteTimeSpan, stop).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            // Cancellation is the normal end of a watch.
+        }
+    }
 
     /// <summary>Pause everything at and beneath a scope, by <paramref name="who"/>.
     /// The first operation that acts rather than reads. Returns what the runtime

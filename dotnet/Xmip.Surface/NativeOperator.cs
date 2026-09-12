@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using Xmip.Abi.Operate;
 
 namespace Xmip.Surface;
@@ -83,6 +84,64 @@ public sealed class NativeOperator : IOperatorSurface, IDisposable
     {
         return TopologySnapshot.Empty(
             $"{Source} — topology is not yet published by the native operator boundary");
+    }
+
+    /// <inheritdoc />
+    public async IAsyncEnumerable<SurfaceChange> WatchAsync(
+        [EnumeratorCancellation] CancellationToken stop = default)
+    {
+        Operator? runtime = Runtime();
+        yield return SurfaceChange.Initial(Source);
+
+        if (runtime is null)
+        {
+            yield break;
+        }
+
+        ulong revision = runtime.CurrentRevision;
+
+        while (!stop.IsCancellationRequested)
+        {
+            ulong? next;
+
+            if (runtime.SupportsChangeNotifications)
+            {
+                try
+                {
+                    next = await Task.Run(
+                        () => runtime.WaitForChange(revision, 30_000), stop)
+                        .ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    yield break;
+                }
+            }
+            else
+            {
+                // A pre-signal runtime remains observable during a rolling
+                // upgrade. Current runtimes take the event-driven path above.
+                try
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(2), stop).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    yield break;
+                }
+
+                next = revision + 1;
+            }
+
+            if (next is not { } changed || changed <= revision)
+            {
+                continue;
+            }
+
+            revision = changed;
+            yield return new SurfaceChange(
+                revision, SurfaceChangeKind.All, DateTimeOffset.UtcNow, Source);
+        }
     }
 
     /// <inheritdoc />

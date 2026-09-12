@@ -20,6 +20,12 @@ public static class OperateAbi
     /// Section 1 of the header.</summary>
     public const string Entrypoint = "xmip_operate_v1";
 
+    /// <summary>
+    /// Wait until the runtime publishes a revision newer than the caller's.
+    /// Separate from the table so version 1 remains binary-compatible.
+    /// </summary>
+    public const string ChangeEntrypoint = "xmip_wait_change_v1";
+
     /// <summary>Start a node from a saved configuration file. Section 6 of the
     /// header; a configurer's symbol, not part of the watcher's table.</summary>
     public const string StartEntrypoint = "xmip_start_v1";
