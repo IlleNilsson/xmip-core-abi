@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using Xmip.Abi.Module;
 using Xmip.Abi.Operate;
 
 namespace Xmip.Surface;
@@ -163,6 +164,24 @@ public sealed class NativeOperator : IOperatorSurface, IDisposable
         return Runtime() is { } runtime
             ? English.Resumed(scope, runtime.ResumeScope(scope))
             : NotLoaded();
+    }
+
+    /// <inheritdoc />
+    public ScopeOperation Control(string scope, ScopeAction action, string who)
+    {
+        if (Runtime() is not { } runtime)
+        {
+            return new ScopeOperation(scope, action, false, NotLoaded());
+        }
+
+        XmipStatus status = action == ScopeAction.Pause
+            ? runtime.PauseScope(scope, who)
+            : runtime.ResumeScope(scope);
+        string said = action == ScopeAction.Pause
+            ? English.Paused(scope, status)
+            : English.Resumed(scope, status);
+
+        return new ScopeOperation(scope, action, status == XmipStatus.Ok, said);
     }
 
     /// <inheritdoc />
