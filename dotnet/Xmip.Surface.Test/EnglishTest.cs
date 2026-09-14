@@ -21,6 +21,34 @@ public sealed class EnglishTest
     }
 
     [Fact]
+    public void EveryWordReadsBackAsItsMoodAndAStrangerAsNone()
+    {
+        foreach (HealthState mood in Enum.GetValues<HealthState>())
+        {
+            Assert.Equal(mood, English.MoodOf(English.Mood(mood)));
+        }
+
+        Assert.Null(English.MoodOf("green"));
+        Assert.Null(English.MoodOf("Fine"));
+        Assert.Null(English.MoodOf(null));
+    }
+
+    [Fact]
+    public void EveryMoodHasTheColorTheRecordGivesIt()
+    {
+        // ADR-0041: the moods and their colors, in one sentence; here in one
+        // table, so the stylesheet's classes and the prompt agree.
+        Assert.Equal("green", English.Color(HealthState.Fine));
+        Assert.Equal("slate", English.Color(HealthState.Paused));
+        Assert.Equal("blue", English.Color(HealthState.Working));
+        Assert.Equal("yellow", English.Color(HealthState.Stressed));
+        Assert.Equal("burnt", English.Color(HealthState.Exhausted));
+        Assert.Equal("red", English.Color(HealthState.Done));
+        Assert.Equal("orange", English.Color(HealthState.Holding));
+        Assert.Equal("muted", English.Color((HealthState)42));
+    }
+
+    [Fact]
     public void TheRollupSaysNothingRecordedForNothing()
     {
         HealthRecord fine = new("xmip:///n/send/a", HealthState.Fine, 0, "", Now);

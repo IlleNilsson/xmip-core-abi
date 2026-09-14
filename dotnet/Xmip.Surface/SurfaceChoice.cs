@@ -24,6 +24,16 @@ public static class SurfaceChoice
     /// <summary>The word for the surface over a published snapshot.</summary>
     public const string Snapshot = "snapshot";
 
+    /// <summary>Whether the configuration names a surface at all. A host
+    /// that has one runtime-discovery fallback — the PowerShell module, whose
+    /// prompt follows whatever library the one rule finds — asks this before
+    /// <see cref="Open"/>, so that nothing configured is said as such rather
+    /// than refused.</summary>
+    public static bool IsChosen(IConfiguration configuration)
+    {
+        return !string.IsNullOrWhiteSpace(configuration[SurfaceKey]);
+    }
+
     /// <summary>Open the surface the configuration names. Relative paths
     /// resolve against <paramref name="basePath"/>, the directory the
     /// configuration's paths are written from.</summary>

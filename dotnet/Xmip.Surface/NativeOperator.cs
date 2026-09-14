@@ -49,28 +49,29 @@ public sealed class NativeOperator : IOperatorSurface, IDisposable
     /// <summary>
     /// Start a node from its configuration file — as far as the runtime can
     /// today, which is read, build, validate and plan. Returns what the
-    /// runtime said. The table's next read shows the result either way.
+    /// runtime said, as the record and the sentence. The table's next read
+    /// shows the result either way.
     /// </summary>
-    public string Start(string configurationPath)
+    public ConfigurationVerdict Start(string configurationPath)
     {
         return Runtime() is { } runtime
-            ? English.Started(configurationPath, runtime.Start(configurationPath))
-            : NotLoaded();
+            ? ConfigurationVerdict.Started(configurationPath, runtime.Start(configurationPath))
+            : ConfigurationVerdict.NotLoaded(configurationPath, _reason);
     }
 
     /// <summary>
     /// Validate a node's configuration file without starting it. The file's
     /// text crosses, not its path — the runtime checks a proposed document and
     /// publishes nothing (ADR-0027 clause 9), so the answer carries the
-    /// problems itself.
+    /// problems itself, and the verdict carries them to whoever asked.
     /// </summary>
-    public string Validate(string configurationPath)
+    public ConfigurationVerdict Validate(string configurationPath)
     {
         return Runtime() is not { } runtime
-            ? NotLoaded()
+            ? ConfigurationVerdict.NotLoaded(configurationPath, _reason)
             : !File.Exists(configurationPath)
-                ? $"no configuration at {configurationPath}"
-                : English.Validated(
+                ? ConfigurationVerdict.NoFile(configurationPath)
+                : ConfigurationVerdict.Validated(
                     configurationPath, runtime.Validate(File.ReadAllText(configurationPath)));
     }
 

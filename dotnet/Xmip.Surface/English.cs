@@ -13,6 +13,12 @@ namespace Xmip.Surface;
 /// </summary>
 public static class English
 {
+    // The inverse of Mood, derived from it rather than written out again: a
+    // snapshot publishes the word and the surface reads the mood back. One
+    // table, so a mood renamed in one place cannot be misread in another.
+    private static readonly Dictionary<string, HealthState> Moods =
+        Enum.GetValues<HealthState>().ToDictionary(Mood, state => state, StringComparer.Ordinal);
+
     /// <summary>The mood as the word the estate uses — the playground's and
     /// the header's, lower case.</summary>
     public static string Mood(HealthState state)
@@ -27,6 +33,37 @@ public static class English
             HealthState.Done => "done",
             HealthState.Holding => "holding",
             _ => "unknown",
+        };
+    }
+
+    /// <summary>The mood a word names, or null when it names none — the
+    /// inverse of <see cref="Mood(HealthState)"/>, for a surface reading a
+    /// published snapshot.</summary>
+    public static HealthState? MoodOf(string? word)
+    {
+        return word is not null && Moods.TryGetValue(word, out HealthState state) ? state : null;
+    }
+
+    /// <summary>
+    /// The color a surface paints a mood in, by name (ADR-0041: Fine green,
+    /// Paused slate, Working blue, Stressed yellow, Exhausted burnt, Done red,
+    /// Holding orange). The name is the estate's — the stylesheet's tokens
+    /// carry the same names, and a console picks its nearest color from the
+    /// word — so the board and the prompt cannot paint one mood two ways
+    /// (ADR-0052 clause 1). A mood this build does not know is muted.
+    /// </summary>
+    public static string Color(HealthState state)
+    {
+        return state switch
+        {
+            HealthState.Fine => "green",
+            HealthState.Paused => "slate",
+            HealthState.Working => "blue",
+            HealthState.Stressed => "yellow",
+            HealthState.Exhausted => "burnt",
+            HealthState.Done => "red",
+            HealthState.Holding => "orange",
+            _ => "muted",
         };
     }
 

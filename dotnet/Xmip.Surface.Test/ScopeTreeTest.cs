@@ -170,6 +170,18 @@ public sealed class ScopeTreeTest
     }
 
     [Fact]
+    public void EachStageCountsItsOwnThingAndNothingElseIsAStage()
+    {
+        // ADR-0027 clause 5: Streams at Receive, Journeys in Process, Messages
+        // at Send — the three words kept apart, on every board.
+        Assert.Equal(["receive", "process", "send"], ScopeTree.Stages);
+        Assert.Equal(Counted.Streams, ScopeTree.CountedAt("receive"));
+        Assert.Equal(Counted.Journeys, ScopeTree.CountedAt("process"));
+        Assert.Equal(Counted.Messages, ScopeTree.CountedAt("send"));
+        Assert.Throws<ArgumentOutOfRangeException>(() => ScopeTree.CountedAt("file"));
+    }
+
+    [Fact]
     public void TheStageIsFoundWhereverItSits()
     {
         Assert.Equal("receive", ScopeTree.Stage("xmip:///edge-01/receive/orders"));

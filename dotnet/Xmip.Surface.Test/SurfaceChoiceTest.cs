@@ -54,10 +54,23 @@ public sealed class SurfaceChoiceTest
             RuntimeLibrary = "lib/xmip_core_runtime.dll"
             """);
 
+        Assert.False(SurfaceChoice.IsChosen(document.Configuration));
+
         InvalidOperationException refused = Assert.Throws<InvalidOperationException>(
             () => SurfaceChoice.Open(document.Configuration, document.Directory));
 
         Assert.Contains("Xmip:Surface is not set", refused.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ASurfaceIsChosenTheMomentTheKeyIsSet()
+    {
+        using Document document = new("""
+            [Xmip]
+            Surface = "snapshot"
+            """);
+
+        Assert.True(SurfaceChoice.IsChosen(document.Configuration));
     }
 
     [Fact]
