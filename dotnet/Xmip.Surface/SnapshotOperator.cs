@@ -161,6 +161,14 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
         return "a snapshot is a record of what was published and cannot be resumed";
     }
 
+    /// <inheritdoc />
+    public ScopeOperation Control(string scope, ScopeAction action, string who)
+    {
+        string said = action == ScopeAction.Pause ? PauseScope(scope, who) : ResumeScope(scope);
+
+        return new ScopeOperation(scope, action, false, said);
+    }
+
     private sealed record Snapshot(
         IReadOnlyList<HealthRecord> Records,
         IReadOnlyList<CountRecord> Counts,

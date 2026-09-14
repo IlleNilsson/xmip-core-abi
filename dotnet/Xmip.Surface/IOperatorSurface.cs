@@ -31,14 +31,23 @@ public interface IOperatorSurface
     /// <summary>One kind of count, summed over the scope.</summary>
     public MeasurementRecord? Measure(string scope, Counted counted);
 
-    /// <summary>The operator's five common flow and outcome figures.</summary>
-    public ActivitySummary Activity(string scope) => ActivitySummary.Read(this, scope);
+    /// <summary>The six figures at a scope, in the order every surface says them.</summary>
+    public Figures Figures(string scope)
+    {
+        return Surface.Figures.Read(this, scope);
+    }
 
-    /// <summary>One scope in the common operator-facing shape.</summary>
-    public ScopeItem Describe(string scope) => ScopeItem.Read(this, scope);
+    /// <summary>One scope as a row of the tree.</summary>
+    public ScopeItem Describe(string scope)
+    {
+        return ScopeItem.Read(this, scope);
+    }
 
-    /// <summary>The direct children beneath a scope.</summary>
-    public IReadOnlyList<ScopeItem> Children(string scope) => ScopeItem.Children(this, scope);
+    /// <summary>The direct children beneath a scope, one row each.</summary>
+    public IReadOnlyList<ScopeItem> Children(string scope)
+    {
+        return ScopeItem.Children(this, scope);
+    }
 
     /// <summary>
     /// The configured and observed communication topology. A surface that
@@ -79,19 +88,17 @@ public interface IOperatorSurface
     /// <summary>Resume everything at and beneath a scope.</summary>
     public string ResumeScope(string scope);
 
-    /// <summary>Start execution at and beneath a scope.</summary>
-    public string StartScope(string scope, string who) =>
-        $"scope start is unsupported by {Source}";
+    /// <summary>
+    /// Apply one <see cref="ScopeAction"/> and say what came of it. The
+    /// default takes the surface at its word; a surface that knows whether
+    /// the runtime applied the act overrides this and says so.
+    /// </summary>
+    public ScopeOperation Control(string scope, ScopeAction action, string who)
+    {
+        string said = action == ScopeAction.Pause
+            ? PauseScope(scope, who)
+            : ResumeScope(scope);
 
-    /// <summary>Stop execution at and beneath a scope.</summary>
-    public string StopScope(string scope, string who) =>
-        $"scope stop is unsupported by {Source}";
-
-    /// <summary>Restart execution at and beneath a scope.</summary>
-    public string RestartScope(string scope, string who) =>
-        $"scope restart is unsupported by {Source}";
-
-    /// <summary>Apply one structured lifecycle operation.</summary>
-    public ScopeOperation ControlScope(string scope, ScopeAction action, string who) =>
-        ScopeOperation.Apply(this, scope, action, who);
+        return new ScopeOperation(scope, action, true, said);
+    }
 }
