@@ -413,19 +413,12 @@ every one of these from outside the module. It does not exist yet.
 
 ## 13. Bindings
 
-`abi` is a core module with a plugin surface, not internal plumbing. It is a **surface
-module** under ADR-0011: a provider extends Xmip's own surface rather than implementing an
-external specification, so the name takes a provider and stops.
-
-```text
-xmip-core-abi     Xmip's Rust binding
-xmip-acme-abi     Acme's binding, in whatever language Acme works in
-```
-
-Anyone may publish one. A binding is a convenience over this header, never the definition
-of the boundary, and never normative. A module that skips every binding and writes
-`extern "C"` by hand is exactly as conformant — which is the point of specifying the
-boundary in C rather than in a language.
+`xmip-core-abi` is Xmip's Rust binding of this header, and anyone may publish
+another in whatever language they work in. That `abi` is a surface module any
+provider may extend under its own name, and how that name is formed, are
+ADR-0012 clause 11 and ADR-0011 in the estate's decision record; that a binding
+is a convenience over this header and never normative is ADR-0012 clause 2.
+This specification does not restate a decision.
 
 The two earlier crates this binding replaced, `xmip-module-abi` and
 `xmip-module-api`, were removed on 2026-08-26; `doc/planning/allocation.toml`

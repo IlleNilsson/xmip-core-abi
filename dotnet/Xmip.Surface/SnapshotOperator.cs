@@ -357,19 +357,11 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
         return uint.TryParse(value, out uint parsed) ? parsed : 0U;
     }
 
+    // The word is English's, read back through English's own inverse; a word
+    // this build does not know is Stressed, so it shows and is looked at.
     private static HealthState ParseState(string? state)
     {
-        return state switch
-        {
-            "fine" => HealthState.Fine,
-            "paused" => HealthState.Paused,
-            "working" => HealthState.Working,
-            "stressed" => HealthState.Stressed,
-            "exhausted" => HealthState.Exhausted,
-            "done" => HealthState.Done,
-            "holding" => HealthState.Holding,
-            _ => HealthState.Stressed,
-        };
+        return English.MoodOf(state) ?? HealthState.Stressed;
     }
 
     private static Counted ParseCounted(string? counted)

@@ -13,6 +13,7 @@ pub mod descriptor;
 pub mod ffi;
 pub mod manifest;
 pub mod operate;
+pub mod runtime_library;
 
 pub use descriptor::{ModuleDescriptor, XMIP_ABI_VERSION, XMIP_ENTRYPOINT, validate_module_abi};
 pub use manifest::{

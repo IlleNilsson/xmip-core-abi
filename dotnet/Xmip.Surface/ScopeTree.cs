@@ -87,6 +87,10 @@ public static class ScopeTree
         return Segment(scope, 0);
     }
 
+    /// <summary>The three stages of the message path, in the order an operator
+    /// reads them: <c>receive</c>, <c>process</c>, <c>send</c>.</summary>
+    public static IReadOnlyList<string> Stages { get; } = ["receive", "process", "send"];
+
     /// <summary>The stage of the message path a scope sits in — <c>receive</c>,
     /// <c>process</c> or <c>send</c> — wherever that segment falls: directly
     /// under a node (<c>edge-01/receive/orders</c>) or under a scenario the
@@ -94,9 +98,24 @@ public static class ScopeTree
     /// Empty for a scope on no stage.</summary>
     public static string Stage(string scope)
     {
-        return Parts(scope)
-            .FirstOrDefault(part => part is "receive" or "process" or "send")
-            ?? string.Empty;
+        return Parts(scope).FirstOrDefault(part => Stages.Contains(part)) ?? string.Empty;
+    }
+
+    /// <summary>What a stage counts (ADR-0027 clause 5, the three words kept
+    /// apart): Streams at Receive, Journeys in Process, Messages at Send. The
+    /// board's tiles and the figures say the same thing because this is the
+    /// one place the stage and its count meet.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">Not a stage.</exception>
+    public static Counted CountedAt(string stage)
+    {
+        return stage switch
+        {
+            "receive" => Counted.Streams,
+            "process" => Counted.Journeys,
+            "send" => Counted.Messages,
+            _ => throw new ArgumentOutOfRangeException(
+                nameof(stage), stage, "not a stage of the message path"),
+        };
     }
 
     /// <summary>One segment by position, or empty when the scope is not that
