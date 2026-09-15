@@ -35,7 +35,14 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Xmip.Surface\Xmip.Surface.csproj" />
+    <ProjectReference Include="..\Xmip.Surface.Relay\Xmip.Surface.Relay.csproj" />
     <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The remote surface is proved against a real hub on a loopback port,
+         hosted here the way the web host hosts it, over the same fixture. -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 
   <ItemGroup>

@@ -88,6 +88,36 @@ public sealed class SurfaceChoiceTest
     }
 
     [Fact]
+    public void ARemoteSurfaceFollowsTheWebHostTheDocumentNames()
+    {
+        using Document document = new("""
+            [Xmip]
+            Surface = "remote"
+            Url = "http://another-host:5087"
+            """);
+
+        IOperatorSurface surface = SurfaceChoice.Open(document.Configuration, document.Directory);
+
+        using RemoteOperator remote = Assert.IsType<RemoteOperator>(surface);
+        Assert.Equal(new Uri("http://another-host:5087/surface"), remote.Hub);
+    }
+
+    [Fact]
+    public void ARemoteSurfaceWithoutAWebHostIsRefused()
+    {
+        using Document document = new("""
+            [Xmip]
+            Surface = "remote"
+            Url = "another-host"
+            """);
+
+        InvalidOperationException refused = Assert.Throws<InvalidOperationException>(
+            () => SurfaceChoice.Open(document.Configuration, document.Directory));
+
+        Assert.Contains("Xmip:Url names no web host", refused.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ASnapshotWithoutAPathIsRefused()
     {
         using Document document = new("""

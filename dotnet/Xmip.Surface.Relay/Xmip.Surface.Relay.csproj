@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    A surface served over the network (ADR-0052, amendment 2026-09-15: a
+    surface is told, it does not ask). SurfaceHub answers what the host's own
+    surface answers, and SurfaceRelay pushes the host's change feed to every
+    connected RemoteOperator, so the CLI, the PowerShell module and a GUI on
+    another machine follow a web host as that host follows a node.
+
+    Only a web host references this; the client half, RemoteOperator, is in
+    Xmip.Surface, so nothing of ASP.NET Core reaches pwsh or the desktop.
+    Target framework and the rest come from Directory.Build.props.
+  -->
+
+  <PropertyGroup>
+    <RootNamespace>Xmip.Surface.Relay</RootNamespace>
+    <AssemblyName>Xmip.Surface.Relay</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Xmip.Surface\Xmip.Surface.csproj" />
+  </ItemGroup>
+
+</Project>
