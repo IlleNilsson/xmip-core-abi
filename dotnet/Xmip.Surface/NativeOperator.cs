@@ -25,6 +25,7 @@ public sealed class NativeOperator : IOperatorSurface, IDisposable
     private string _reason = string.Empty;
     private bool _retry = true;
     private bool _disposed;
+    private ScopeIndex? _index;
 
     /// <summary>Open the runtime at <paramref name="path"/>, found by
     /// <see cref="RuntimeLibrary"/>'s rule.</summary>
@@ -78,7 +79,43 @@ public sealed class NativeOperator : IOperatorSurface, IDisposable
     /// <inheritdoc />
     public IReadOnlyList<HealthRecord> Health(string scope)
     {
-        return Runtime()?.Health(scope) ?? [];
+        return Index().Health(scope);
+    }
+
+    /// <summary>
+    /// The publication as its tree, read across the boundary once per
+    /// revision and kept until the runtime's clock moves (ADR-0052, amendment
+    /// 2026-09-15): a board that asked the runtime for every row, six figures
+    /// each, now asks it once per publication.
+    /// </summary>
+    public ScopeIndex Index()
+    {
+        Operator? runtime = Runtime();
+
+        if (runtime is null)
+        {
+            return ScopeIndex.Empty(Source);
+        }
+
+        ulong revision = runtime.SupportsChangeNotifications ? runtime.CurrentRevision : 0;
+
+        lock (_gate)
+        {
+            if (_index is { } held && revision != 0 && held.Revision == revision)
+            {
+                return held;
+            }
+        }
+
+        ScopeIndex built = ScopeIndex.Build(
+            runtime.Health(ScopeTree.Root), [], revision, runtime.Source);
+
+        lock (_gate)
+        {
+            _index = built;
+        }
+
+        return built;
     }
 
     /// <inheritdoc />

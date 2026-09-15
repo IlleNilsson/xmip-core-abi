@@ -1,23 +1,26 @@
 using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Threading.Channels;
-using Microsoft.Extensions.Configuration;
+using Tomlyn;
+using Tomlyn.Model;
 using Xmip.Abi.Operate;
 
 namespace Xmip.Surface;
 
 /// <summary>
 /// The surface over a published snapshot: what a node — or the Playground,
-/// after every tick — wrote to a file, read fresh on every query so each
-/// render reflects the latest round. The path is given by whoever chose this
-/// surface (ADR-0052 clause 3); nothing here guesses at a temp directory, and
-/// a path with no file behind it says so in <see cref="Source"/> rather than
-/// reporting an empty estate as if it were one.
+/// after every tick — wrote to a file, read once per publication into a
+/// <see cref="ScopeIndex"/> and answered from that by lookup. The path is
+/// given by whoever chose this surface (ADR-0052 clause 3); nothing here
+/// guesses at a temp directory, and a path with no file behind it says so in
+/// <see cref="Source"/> rather than reporting an empty estate as if it were one.
 /// </summary>
 /// <remarks>
 /// The file is TOML — on disk the estate is TOML, and JSON is reserved for
-/// memory and the wire — read with the same reader every surface uses. A
-/// read-only surface: it reports what was published and never acts on it, so
+/// memory and the wire — read as the document it is, not flattened into a
+/// configuration: a Playground snapshot is eleven thousand tables, and the
+/// flattening cost more than the parse (2026-09-15). A read-only surface: it
+/// reports what was published and never acts on it, so
 /// <see cref="PauseScope"/> and <see cref="ResumeScope"/> decline. ADR-0027,
 /// ADR-0028.
 /// </remarks>
@@ -25,11 +28,13 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
 {
     private readonly Lock gate = new();
 
-    private Snapshot? cached;
+    private Publication? cached;
 
     private DateTime cachedWrite;
 
     private long cachedLength;
+
+    private ulong revision;
 
     /// <summary>The snapshot file this surface reads.</summary>
     public string Path { get; } = path;
@@ -41,10 +46,27 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
     public string Source => Exists ? $"SNAPSHOT — {Path}" : $"SNAPSHOT — no file at {Path}";
 
     /// <inheritdoc />
+    public ScopeIndex Index()
+    {
+        return Read().Index;
+    }
+
+    /// <inheritdoc />
     public IReadOnlyList<HealthRecord> Health(string scope)
     {
-        return ScopeTree.WorstFirst(
-            Read().Records.Where(record => ScopeTree.Beneath(record.Scope, scope)));
+        return Read().Index.Health(scope);
+    }
+
+    /// <inheritdoc />
+    public Figures Figures(string scope)
+    {
+        return Read().Index.Figures(scope);
+    }
+
+    /// <inheritdoc />
+    public MeasurementRecord? Measure(string scope, Counted counted)
+    {
+        return Read().Index.Measure(scope, counted);
     }
 
     /// <inheritdoc />
@@ -103,7 +125,7 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
         // Attach before announcing the current view. A replacement racing the
         // first read is then either already visible or queued as a change.
         yield return SurfaceChange.Initial(Source);
-        ulong revision = 0;
+        ulong announced = 0;
 
         try
         {
@@ -119,34 +141,13 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
                 }
 
                 yield return new SurfaceChange(
-                    ++revision, SurfaceChangeKind.All, DateTimeOffset.UtcNow, Source);
+                    ++announced, SurfaceChangeKind.All, DateTimeOffset.UtcNow, Source);
             }
         }
         finally
         {
             changed.Writer.TryComplete();
         }
-    }
-
-    /// <inheritdoc />
-    public MeasurementRecord? Measure(string scope, Counted counted)
-    {
-        IReadOnlyList<CountRecord> matching =
-        [
-            .. Read().Counts
-            .Where(count => count.Counted == counted && ScopeTree.Beneath(count.Scope, scope))
-        ];
-
-        if (matching.Count == 0)
-        {
-            return null;
-        }
-
-        ulong value = matching.Aggregate(0UL, (sum, count) => sum + count.Value);
-
-        DateTimeOffset now = DateTimeOffset.UtcNow;
-
-        return new MeasurementRecord(scope, counted, value, now.AddMinutes(-1), now, now);
     }
 
     /// <inheritdoc />
@@ -169,24 +170,14 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
         return new ScopeOperation(scope, action, false, said);
     }
 
-    private sealed record Snapshot(
-        IReadOnlyList<HealthRecord> Records,
-        IReadOnlyList<CountRecord> Counts,
-        TopologySnapshot Topology);
+    private sealed record Publication(ScopeIndex Index, TopologySnapshot Topology);
 
-    private sealed record CountRecord(string Scope, Counted Counted, ulong Value);
-
-    /// <summary>Parse the file each call. A missing or half-written file (a
-    /// publisher writes atomically, but it may not have ticked yet) reads as an
-    /// empty snapshot rather than an error, so the page shows nothing rather
-    /// than breaking, and <see cref="Source"/> says why.</summary>
-    private Snapshot Read()
+    private Publication Read()
     {
         // Parsed once per publication, not once per query: a board asks
-        // several times per render, every two seconds, and a Playground
-        // snapshot is fourteen thousand records. Parsing it four times a
-        // refresh starved the page's own clicks (found 2026-09-11). The
-        // file's write time and length say whether anything changed.
+        // several times per render, every second, and a Playground snapshot
+        // is eleven thousand records. The file's write time and length say
+        // whether anything changed.
         lock (gate)
         {
             FileInfo file = new(Path);
@@ -199,7 +190,7 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
                 return cached;
             }
 
-            Snapshot fresh = Parse(file);
+            Publication fresh = Parse(file);
             cached = fresh;
             cachedWrite = file.Exists ? file.LastWriteTimeUtc : default;
             cachedLength = file.Exists ? file.Length : 0;
@@ -208,88 +199,156 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
         }
     }
 
-    private Snapshot Parse(FileInfo file)
+    private Publication Parse(FileInfo file)
     {
         try
         {
             if (!file.Exists)
             {
-                return new Snapshot([], [], TopologySnapshot.Empty(Source));
+                return new Publication(ScopeIndex.Empty(Source), TopologySnapshot.Empty(Source));
             }
 
-            IConfigurationRoot document = TomlDocument.Read(Path);
-            string node = document["node"] ?? ScopeTree.Root;
+            TomlTable document = TomlSerializer.Deserialize<TomlTable>(
+                File.ReadAllText(Path), new TomlSerializerOptions { SourceName = Path })
+                ?? [];
+            string node = Text(document, "node") ?? ScopeTree.Root;
+            string source = Text(document, "source") ?? Source;
 
             List<HealthRecord> records = [];
 
-            foreach (IConfigurationSection row in document.GetSection("records").GetChildren())
+            foreach (TomlTable row in Rows(document, "records"))
             {
                 records.Add(new HealthRecord(
-                    row["scope"] ?? string.Empty,
-                    ParseState(row["state"]),
-                    ParseByte(row["severity"]),
-                    row["evidence"] ?? string.Empty,
-                    ParseObserved(row["observed_unix_nanos"])));
+                    Text(row, "scope") ?? string.Empty,
+                    ParseState(Text(row, "state")),
+                    (byte)Math.Clamp(Number(row, "severity"), 0, byte.MaxValue),
+                    Text(row, "evidence") ?? string.Empty,
+                    ParseObserved(row, "observed_unix_nanos")));
             }
 
-            List<CountRecord> counts = [];
+            List<ScopeIndex.Count> counts = [];
 
-            foreach (IConfigurationSection row in document.GetSection("counts").GetChildren())
+            foreach (TomlTable row in Rows(document, "counts"))
             {
-                counts.Add(new CountRecord(
-                    node, ParseCounted(row["counted"]), ParseUlong(row["value"])));
+                counts.Add(new ScopeIndex.Count(
+                    node,
+                    ParseCounted(Text(row, "counted")),
+                    (ulong)Math.Max(0, Number(row, "value")),
+                    null));
             }
 
-            List<TopologyNode> nodes = [];
+            ScopeIndex index = ScopeIndex.Build(records, counts, ++revision, source);
 
-            foreach (IConfigurationSection row in document.GetSection("topology:nodes").GetChildren())
-            {
-                nodes.Add(new TopologyNode(
-                    row["id"] ?? string.Empty,
-                    EmptyAsNull(row["parent"]),
-                    row["label"] ?? row["id"] ?? string.Empty,
-                    ParseNodeKind(row["kind"]),
-                    row["scope"] ?? string.Empty,
-                    ParseState(row["state"]),
-                    ParseOrigin(row["origin"]),
-                    ParseDouble(row["load"]),
-                    ParseDouble(row["activity"]),
-                    row["evidence"] ?? string.Empty));
-            }
-
-            List<CommunicationLink> links = [];
-
-            foreach (IConfigurationSection row in document.GetSection("topology:links").GetChildren())
-            {
-                links.Add(new CommunicationLink(
-                    row["id"] ?? string.Empty,
-                    row["from"] ?? string.Empty,
-                    row["to"] ?? string.Empty,
-                    ParsePattern(row["pattern"]),
-                    ParseOrigin(row["origin"]),
-                    row["protocol"] ?? string.Empty,
-                    ParseState(row["state"]),
-                    ParseUlong(row["volume"]),
-                    ParseDouble(row["rate"]),
-                    ParseDouble(row["latency_ms"]),
-                    ParseDouble(row["progress"]),
-                    ParseUint(row["attempts"]),
-                    row["evidence"] ?? string.Empty));
-            }
-
-            DateTimeOffset observed = ParseObserved(document["topology:observed_unix_nanos"]);
-            string topologySource = document["topology:source"] ?? document["source"] ?? Source;
-
-            return new Snapshot(
-                records,
-                counts,
-                new TopologySnapshot(nodes, links, observed, topologySource));
+            return new Publication(index, ParseTopology(document, source));
         }
         catch (Exception exception)
-            when (exception is IOException or FormatException or InvalidOperationException)
+            when (exception is IOException or FormatException or InvalidOperationException
+                or TomlException)
         {
-            return new Snapshot([], [], TopologySnapshot.Empty(Source));
+            return new Publication(ScopeIndex.Empty(Source), TopologySnapshot.Empty(Source));
         }
+    }
+
+    private static TopologySnapshot ParseTopology(TomlTable document, string source)
+    {
+        TomlTable? topology = document.TryGetValue("topology", out object? found)
+            ? found as TomlTable
+            : null;
+
+        if (topology is null)
+        {
+            return TopologySnapshot.Empty(source);
+        }
+
+        List<TopologyNode> nodes = [];
+
+        foreach (TomlTable row in Rows(topology, "nodes"))
+        {
+            nodes.Add(new TopologyNode(
+                Text(row, "id") ?? string.Empty,
+                EmptyAsNull(Text(row, "parent")),
+                Text(row, "label") ?? Text(row, "id") ?? string.Empty,
+                ParseNodeKind(Text(row, "kind")),
+                Text(row, "scope") ?? string.Empty,
+                ParseState(Text(row, "state")),
+                ParseOrigin(Text(row, "origin")),
+                Real(row, "load"),
+                Real(row, "activity"),
+                Text(row, "evidence") ?? string.Empty));
+        }
+
+        List<CommunicationLink> links = [];
+
+        foreach (TomlTable row in Rows(topology, "links"))
+        {
+            links.Add(new CommunicationLink(
+                Text(row, "id") ?? string.Empty,
+                Text(row, "from") ?? string.Empty,
+                Text(row, "to") ?? string.Empty,
+                ParsePattern(Text(row, "pattern")),
+                ParseOrigin(Text(row, "origin")),
+                Text(row, "protocol") ?? string.Empty,
+                ParseState(Text(row, "state")),
+                (ulong)Math.Max(0, Number(row, "volume")),
+                Real(row, "rate"),
+                Real(row, "latency_ms"),
+                Real(row, "progress"),
+                (uint)Math.Clamp(Number(row, "attempts"), 0, uint.MaxValue),
+                Text(row, "evidence") ?? string.Empty));
+        }
+
+        return new TopologySnapshot(
+            nodes,
+            links,
+            ParseObserved(topology, "observed_unix_nanos"),
+            Text(topology, "source") ?? source);
+    }
+
+    private static TomlTableArray Rows(TomlTable table, string key)
+    {
+        return table.TryGetValue(key, out object? found) && found is TomlTableArray rows
+            ? rows
+            : [];
+    }
+
+    private static string? Text(TomlTable table, string key)
+    {
+        return table.TryGetValue(key, out object? found)
+            ? found switch
+            {
+                string text => text,
+                null => null,
+                _ => Convert.ToString(found, CultureInfo.InvariantCulture),
+            }
+            : null;
+    }
+
+    private static long Number(TomlTable table, string key)
+    {
+        return table.TryGetValue(key, out object? found)
+            ? found switch
+            {
+                long value => value,
+                double value => (long)value,
+                string text when long.TryParse(text, out long value) => value,
+                _ => 0,
+            }
+            : 0;
+    }
+
+    private static double Real(TomlTable table, string key)
+    {
+        return table.TryGetValue(key, out object? found)
+            ? found switch
+            {
+                double value => value,
+                long value => value,
+                string text when double.TryParse(
+                    text, NumberStyles.Float, CultureInfo.InvariantCulture, out double value)
+                    => value,
+                _ => 0D,
+            }
+            : 0D;
     }
 
     private static string? EmptyAsNull(string? value)
@@ -341,22 +400,6 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
         };
     }
 
-    private static double ParseDouble(string? value)
-    {
-        return double.TryParse(
-            value,
-            NumberStyles.Float,
-            CultureInfo.InvariantCulture,
-            out double parsed)
-            ? parsed
-            : 0D;
-    }
-
-    private static uint ParseUint(string? value)
-    {
-        return uint.TryParse(value, out uint parsed) ? parsed : 0U;
-    }
-
     // The word is English's, read back through English's own inverse; a word
     // this build does not know is Stressed, so it shows and is looked at.
     private static HealthState ParseState(string? state)
@@ -378,20 +421,10 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
         };
     }
 
-    private static byte ParseByte(string? value)
+    private static DateTimeOffset ParseObserved(TomlTable table, string key)
     {
-        return byte.TryParse(value, out byte parsed) ? parsed : (byte)0;
-    }
-
-    private static ulong ParseUlong(string? value)
-    {
-        return ulong.TryParse(value, out ulong parsed) ? parsed : 0UL;
-    }
-
-    private static DateTimeOffset ParseObserved(string? nanos)
-    {
-        return long.TryParse(nanos, out long value)
-            ? DateTimeOffset.UnixEpoch.AddTicks(value / 100)
+        return table.TryGetValue(key, out object? found) && found is long nanos
+            ? DateTimeOffset.UnixEpoch.AddTicks(nanos / 100)
             : DateTimeOffset.UtcNow;
     }
 }

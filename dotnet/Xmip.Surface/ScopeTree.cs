@@ -53,23 +53,30 @@ public static class ScopeTree
     /// candidate's.</summary>
     public static bool Beneath(string candidate, string scope)
     {
-        string[] want = Parts(scope);
-        string[] have = Parts(candidate);
+        // By segment, never by prefix — and without splitting either scope:
+        // a board compares eleven thousand records at a time (2026-09-15).
+        ReadOnlySpan<char> want = Trail(scope.AsSpan());
+        ReadOnlySpan<char> have = Trail(candidate.AsSpan());
 
-        if (have.Length < want.Length)
+        return want.IsEmpty
+            || (have.StartsWith(want, StringComparison.Ordinal)
+                && (have.Length == want.Length || have[want.Length] == '/'));
+    }
+
+    /// <summary>The path of a scope after the scheme and the authority, with
+    /// no slash at either end — what <see cref="Parts"/> splits.</summary>
+    private static ReadOnlySpan<char> Trail(ReadOnlySpan<char> scope)
+    {
+        ReadOnlySpan<char> path = scope;
+
+        if (path.StartsWith(Scheme, StringComparison.Ordinal))
         {
-            return false;
+            path = path[Scheme.Length..];
+            int slash = path.IndexOf('/');
+            path = slash < 0 ? [] : path[(slash + 1)..];
         }
 
-        for (int index = 0; index < want.Length; index++)
-        {
-            if (!string.Equals(have[index], want[index], StringComparison.Ordinal))
-            {
-                return false;
-            }
-        }
-
-        return true;
+        return path.Trim('/');
     }
 
     /// <summary>The scope one level up; the root's parent is the root.</summary>

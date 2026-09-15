@@ -37,6 +37,17 @@ public interface IOperatorSurface
         return Surface.Figures.Read(this, scope);
     }
 
+    /// <summary>
+    /// The publication as the scope tree it is, built once and answered from
+    /// by lookup (ADR-0052, amendment 2026-09-15: the index). A surface that
+    /// keeps one per publication returns it; this default builds one from
+    /// everything beneath the root.
+    /// </summary>
+    public ScopeIndex Index()
+    {
+        return ScopeIndex.Build(Health(ScopeTree.Root), [], 0, Source);
+    }
+
     /// <summary>One scope as a row of the tree.</summary>
     public ScopeItem Describe(string scope)
     {

@@ -47,14 +47,12 @@ public sealed record ScopeItem(
     /// <summary>Read the direct children of a scope, one row each.</summary>
     public static IReadOnlyList<ScopeItem> Children(IOperatorSurface surface, string scope)
     {
-        IReadOnlyList<HealthRecord> records = surface.Health(scope);
+        ScopeIndex index = surface.Index();
 
         return
         [
-            .. ScopeTree.Branches(records, scope).Select(branch => From(
-                branch.Scope,
-                [.. records.Where(record => ScopeTree.Beneath(record.Scope, branch.Scope))],
-                surface.Figures(branch.Scope))),
+            .. index.Branches(scope).Select(branch => From(
+                branch.Scope, index.Health(branch.Scope), surface.Figures(branch.Scope))),
         ];
     }
 }
