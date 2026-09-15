@@ -20,10 +20,17 @@ public sealed class ScopeIndex
 
     private readonly Dictionary<string, Entry> entries;
 
+    private readonly Dictionary<string, HealthRecord> stages;
+
     private ScopeIndex(
-        Dictionary<string, Entry> entries, ulong revision, string source, DateTimeOffset? observed)
+        Dictionary<string, Entry> entries,
+        Dictionary<string, HealthRecord> stages,
+        ulong revision,
+        string source,
+        DateTimeOffset? observed)
     {
         this.entries = entries;
+        this.stages = stages;
         Revision = revision;
         Source = source;
         Observed = observed;
@@ -58,6 +65,7 @@ public sealed class ScopeIndex
         IEnumerable<HealthRecord> records, IEnumerable<Count> counts, ulong revision, string source)
     {
         Dictionary<string, Entry> entries = new(StringComparer.Ordinal);
+        Dictionary<string, HealthRecord> stages = new(StringComparer.Ordinal);
         Entry root = Reach(entries, ScopeTree.Root, ScopeTree.Root, "cluster");
         DateTimeOffset? observed = null;
 
@@ -72,6 +80,12 @@ public sealed class ScopeIndex
                 entry = Reach(entries, scope, entry.Scope, label);
                 entry.Leaves.Add(record);
                 entry.Worst = Worse(entry.Worst, record);
+
+                if (ScopeTree.Stages.Contains(label))
+                {
+                    stages[label] = Worse(
+                        stages.TryGetValue(label, out HealthRecord? held) ? held : null, record)!;
+                }
             }
 
             entry.Own = record;
@@ -105,7 +119,7 @@ public sealed class ScopeIndex
             entry.Children.Sort(ByTrouble);
         }
 
-        return new ScopeIndex(entries, revision, source, observed);
+        return new ScopeIndex(entries, stages, revision, source, observed);
     }
 
     /// <summary>Whether the publication says anything at or beneath a scope.</summary>
@@ -170,6 +184,14 @@ public sealed class ScopeIndex
         return entries.TryGetValue(Normal(scope), out Entry? entry)
             ? [.. entry.Children.Select(child => child.Branch)]
             : [];
+    }
+
+    /// <summary>The worst leaf on a stage of the message path — receive, process
+    /// or send — wherever that stage sits in the tree. Null when no leaf is
+    /// on it.</summary>
+    public HealthRecord? WorstAtStage(string stage)
+    {
+        return stages.TryGetValue(stage, out HealthRecord? worst) ? worst : null;
     }
 
     /// <summary>The first segment beneath the root of every scope: the nodes.</summary>
