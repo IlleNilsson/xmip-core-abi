@@ -32,6 +32,12 @@
          on, which is what a net10.0 library can carry. -->
     <PackageReference Include="Tomlyn.Extensions.Configuration" Version="2.0.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.6" />
+
+    <!-- A surface is told, it does not ask (ADR-0052, amendment 2026-09-15):
+         RemoteOperator follows a web host's surface hub over SignalR. The
+         client only; the hub is Xmip.Surface.Relay, which only a web host
+         references, so nothing of ASP.NET Core reaches pwsh or the desktop. -->
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.12" />
   </ItemGroup>
 
 </Project>

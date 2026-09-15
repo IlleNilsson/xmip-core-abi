@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "dependencies": {
+    "net10.0": {
+      "Microsoft.AspNetCore.Http.Connections.Client": {
+        "type": "Transitive",
+        "resolved": "10.0.12",
+        "contentHash": "HEO648tD8OyX6aUNQwJSl1eKQk5eQChuHTqpybv2ep7/518/M27yeDDFxAh2M/LW+22tbbooao6raNEHm7lBhA=="
+      },
+      "Microsoft.AspNetCore.SignalR.Client": {
+        "type": "Transitive",
+        "resolved": "10.0.12",
+        "contentHash": "p5EFZrp20HlS1MbYkreyhHy4nXeq/LrXVLWbQLBuAz2eFCdSnKfoNVlxZYbFoEjzJxa68CYdEFe9ObCaYTUP8Q==",
+        "dependencies": {
+          "Microsoft.AspNetCore.Http.Connections.Client": "10.0.12",
+          "Microsoft.AspNetCore.SignalR.Client.Core": "10.0.12"
+        }
+      },
+      "Microsoft.AspNetCore.SignalR.Client.Core": {
+        "type": "Transitive",
+        "resolved": "10.0.12",
+        "contentHash": "+kCyWCOvZteBkqfbpmoi+ejIR1XVJOY4ydDNYrYt1WdXv/ruJS4WjDfCizGZ5lvn/OmRdMuVdh8opopbNveQcw=="
+      },
+      "Tomlyn": {
+        "type": "Transitive",
+        "resolved": "2.3.0",
+        "contentHash": "kA3P/rsBD4HUio0Q67GUgYuWdfoV273HhQJmIRfJymKiZKEi1+xgjXTRW0OtcdEJqL4vTzDvKxbOMYR4tjBCPw=="
+      },
+      "Tomlyn.Extensions.Configuration": {
+        "type": "Transitive",
+        "resolved": "2.0.0",
+        "contentHash": "j2tkaXy3yfsMUd3fwg5qEKTwmwUsxcI5NSoBGGgOvrEC6M72FJnta0yuah9M72xj1wNT3scI0oUQAIkDWXeSsQ==",
+        "dependencies": {
+          "Tomlyn": "2.3.0"
+        }
+      },
+      "xmip.abi": {
+        "type": "Project"
+      },
+      "xmip.surface": {
+        "type": "Project",
+        "dependencies": {
+          "Microsoft.AspNetCore.SignalR.Client": "[10.0.12, )",
+          "Tomlyn.Extensions.Configuration": "[2.0.0, )",
+          "Xmip.Abi": "[1.0.0, )"
+        }
+      }
+    }
+  }
+}

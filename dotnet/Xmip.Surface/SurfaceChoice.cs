@@ -6,9 +6,11 @@ namespace Xmip.Surface;
 /// The surface a host reads is chosen in its configuration, never guessed
 /// (ADR-0052 clause 3). In the host's <c>[Xmip]</c> table: <c>Surface</c> is
 /// <c>"native"</c> — a runtime library found by <see cref="RuntimeLibrary"/>'s
-/// rule — or <c>"snapshot"</c> — a file at <c>Snapshot</c>. Nothing is chosen
-/// by finding a file in a temp directory, and a configuration that names
-/// neither is refused rather than defaulted.
+/// rule — <c>"snapshot"</c> — a file at <c>Snapshot</c> — or <c>"remote"</c> —
+/// a web host at <c>Url</c>, followed over its surface hub (ADR-0052,
+/// amendment 2026-09-15). Nothing is chosen by finding a file in a temp
+/// directory, and a configuration that names none is refused rather than
+/// defaulted.
 /// </summary>
 public static class SurfaceChoice
 {
@@ -23,6 +25,12 @@ public static class SurfaceChoice
 
     /// <summary>The word for the surface over a published snapshot.</summary>
     public const string Snapshot = "snapshot";
+
+    /// <summary>The key naming the web host, when the surface is remote.</summary>
+    public const string UrlKey = "Xmip:Url";
+
+    /// <summary>The word for the surface over a web host on another machine.</summary>
+    public const string Remote = "remote";
 
     /// <summary>Whether the configuration names a surface at all. A host
     /// that has one runtime-discovery fallback — the PowerShell module, whose
@@ -59,9 +67,21 @@ public static class SurfaceChoice
                 : new SnapshotOperator(TomlDocument.Resolve(path, basePath));
         }
 
+        if (string.Equals(chosen, Remote, StringComparison.OrdinalIgnoreCase))
+        {
+            string? url = configuration[UrlKey];
+
+            return RemoteOperator.IsWebHost(url)
+                ? new RemoteOperator(new Uri(url, UriKind.Absolute))
+                : throw new InvalidOperationException(
+                    $"{SurfaceKey} is \"{Remote}\" and {UrlKey} names no web host");
+        }
+
+        string words = $"\"{Native}\", \"{Snapshot}\" or \"{Remote}\"";
+
         throw new InvalidOperationException(
             chosen.Length == 0
-                ? $"{SurfaceKey} is not set; it is \"{Native}\" or \"{Snapshot}\""
-                : $"{SurfaceKey} is \"{chosen}\"; it is \"{Native}\" or \"{Snapshot}\"");
+                ? $"{SurfaceKey} is not set; it is {words}"
+                : $"{SurfaceKey} is \"{chosen}\"; it is {words}");
     }
 }
