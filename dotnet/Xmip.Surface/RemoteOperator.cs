@@ -39,6 +39,10 @@ public sealed class RemoteOperator : IOperatorSurface, IDisposable
 
     private readonly Lock gate = new();
 
+    private ScopeIndex? index;
+
+    private ulong told;
+
     /// <summary>Whether <paramref name="url"/> names a web host: an absolute
     /// http or https address, which is what a hub is reached at.</summary>
     public static bool IsWebHost([NotNullWhen(true)] string? url)
@@ -121,7 +125,35 @@ public sealed class RemoteOperator : IOperatorSurface, IDisposable
     /// <inheritdoc />
     public IReadOnlyList<HealthRecord> Health(string scope)
     {
-        return Ask<HealthRecord[]>("Health", scope) ?? [];
+        return Index().Health(scope);
+    }
+
+    /// <summary>
+    /// The host's publication as its tree, fetched once per notice and kept
+    /// until the next (ADR-0052, amendment 2026-09-15): one trip per
+    /// publication, not one per row.
+    /// </summary>
+    public ScopeIndex Index()
+    {
+        ulong revision = Volatile.Read(ref told);
+
+        lock (gate)
+        {
+            if (index is { } held && revision != 0 && held.Revision == revision)
+            {
+                return held;
+            }
+        }
+
+        ScopeIndex built = ScopeIndex.Build(
+            Ask<HealthRecord[]>("Health", ScopeTree.Root) ?? [], [], revision, Source);
+
+        lock (gate)
+        {
+            index = built;
+        }
+
+        return built;
     }
 
     /// <inheritdoc />
@@ -215,6 +247,8 @@ public sealed class RemoteOperator : IOperatorSurface, IDisposable
 
     private void Announce(SurfaceChange change)
     {
+        Volatile.Write(ref told, change.Revision);
+
         lock (gate)
         {
             foreach (Channel<SurfaceChange> watcher in watchers)
