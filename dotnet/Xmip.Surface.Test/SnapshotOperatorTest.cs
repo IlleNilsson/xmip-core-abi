@@ -31,6 +31,28 @@ public sealed class SnapshotOperatorTest
     }
 
     [Fact]
+    public void AReadThatCollidesWithThePublisherKeepsWhatWasReadLast()
+    {
+        // 2026-09-18: a file being replaced answers a reader with a sharing
+        // violation or access denied. That is a moment, not an empty estate.
+        string copy = Path.Combine(Path.GetTempPath(), $"xmip-snapshot-{Guid.NewGuid():N}.toml");
+        File.Copy(Fixture, copy);
+        SnapshotOperator surface = new(copy);
+        int before = surface.Health(ScopeTree.Root).Count;
+
+        using (FileStream held = new(copy, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+        {
+            held.SetLength(held.Length + 1);
+            Assert.Equal(before, surface.Health(ScopeTree.Root).Count);
+        }
+
+        File.WriteAllText(copy, "node = \"xmip:///edge-01\"\n");
+        File.SetLastWriteTimeUtc(copy, DateTime.UtcNow.AddSeconds(5));
+        Assert.Empty(surface.Health(ScopeTree.Root));
+        File.Delete(copy);
+    }
+
+    [Fact]
     public void ReadsEveryRecordWorstFirst()
     {
         SnapshotOperator surface = new(Fixture);
