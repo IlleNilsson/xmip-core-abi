@@ -190,7 +190,18 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
                 return cached;
             }
 
-            Publication fresh = Parse(file);
+            Publication? read = Parse(file);
+
+            // The publisher was replacing the file this instant. What was
+            // read last still stands, and the stamps are left alone so the
+            // next question reads again.
+            if (read is null)
+            {
+                return cached
+                    ?? new Publication(ScopeIndex.Empty(Source), TopologySnapshot.Empty(Source));
+            }
+
+            Publication fresh = read;
             cached = fresh;
             cachedWrite = file.Exists ? file.LastWriteTimeUtc : default;
             cachedLength = file.Exists ? file.Length : 0;
@@ -199,7 +210,12 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
         }
     }
 
-    private Publication Parse(FileInfo file)
+    // Null where the file could not be read at all, which is a moment and
+    // not a verdict: on Windows a file being renamed over answers a reader
+    // with a sharing violation or with access denied, and the second is not
+    // an IOException. Until 2026-09-18 it went uncaught, and one such moment
+    // ended the prompt's observer for the rest of the session.
+    private Publication? Parse(FileInfo file)
     {
         try
         {
@@ -242,8 +258,12 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
             return new Publication(index, ParseTopology(document, source));
         }
         catch (Exception exception)
-            when (exception is IOException or FormatException or InvalidOperationException
-                or TomlException)
+            when (exception is IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
+        catch (Exception exception)
+            when (exception is FormatException or InvalidOperationException or TomlException)
         {
             return new Publication(ScopeIndex.Empty(Source), TopologySnapshot.Empty(Source));
         }
