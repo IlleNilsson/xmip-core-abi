@@ -56,8 +56,15 @@ pub mod counted {
 // the domain model (observability-model.md section 6, ADR-0027 clause 5). This
 // crate keeps only the wire vocabulary — the `health::` and `counted::` int
 // constants and the `#[repr(C)]` structs below — and the one conversion between
-// the enum and the wire int lives at the runtime bridge (`runtime/src/operate.rs`),
-// the single place that has both. ADR-0009-era duplication removed 2026-09-06.
+// the enum and the wire int lives at the runtime bridge (`runtime/src/wire.rs`,
+// split out of `operate.rs` on 2026-09-14), the single place that has both.
+// ADR-0009-era duplication removed 2026-09-06.
+//
+// That placement was re-examined on 2026-09-19 and kept (ADR-0058). Bringing
+// the table here would make a Foundation crate depend on `xmip-core-observe`,
+// which is Operation; taking the constants to `observe` would put the wire
+// vocabulary somewhere the header cannot be checked against it. The bridge is
+// the only crate that legitimately has both.
 
 /// Header section 3. One scope's health and the evidence behind it.
 #[repr(C)]
