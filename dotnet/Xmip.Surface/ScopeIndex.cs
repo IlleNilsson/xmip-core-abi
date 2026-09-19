@@ -53,6 +53,10 @@ public sealed class ScopeIndex
     public int Leaves =>
         entries.TryGetValue(ScopeTree.Root, out Entry? root) ? root.Leaves.Count : 0;
 
+    /// <summary>How many scopes it holds altogether, the branches and the root
+    /// included — what a pattern is matched against.</summary>
+    public int Scopes => entries.Count;
+
     /// <summary>A count at a scope, as a publication states it: the sum beneath
     /// the scope is the index's to compute.</summary>
     public sealed record Count(
@@ -161,6 +165,21 @@ public sealed class ScopeIndex
         return parts.Length >= 2 && string.Equals(parts[^1], "capability", StringComparison.Ordinal)
             ? NodeCapability.Declared(parts[^2], record.Evidence)
             : null;
+    }
+
+    /// <summary>
+    /// Every scope a wildcard names, in ordinal order (ADR-0059 clause 7, read
+    /// for a surface that is not PowerShell): the match is
+    /// <see cref="ScopePattern"/>, the same one every surface uses, and a
+    /// pattern with no wildcard names at most the one scope it spells.
+    /// </summary>
+    public IReadOnlyList<string> Matching(string pattern)
+    {
+        return
+        [
+            .. entries.Keys.Where(scope => ScopePattern.Matches(scope, pattern))
+                .OrderBy(scope => scope, StringComparer.Ordinal),
+        ];
     }
 
     /// <summary>Whether the publication says anything at or beneath a scope.</summary>
