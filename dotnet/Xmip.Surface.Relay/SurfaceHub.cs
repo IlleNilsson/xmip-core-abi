@@ -43,6 +43,12 @@ public sealed class SurfaceHub(IOperatorSurface surface) : Hub
         return surface.Topology();
     }
 
+    /// <summary>What the run behind the surface was started with.</summary>
+    public RunHeader Run()
+    {
+        return surface.Run();
+    }
+
     /// <summary>Pause everything at and beneath a scope.</summary>
     public string Pause(string scope, string who)
     {

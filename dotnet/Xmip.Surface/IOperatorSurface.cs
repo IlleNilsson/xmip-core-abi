@@ -71,6 +71,17 @@ public interface IOperatorSurface
     }
 
     /// <summary>
+    /// What the run behind this surface was started with — the tests, the
+    /// nodes, which of them are online, how hard — when its publisher says;
+    /// <see cref="RunHeader.None"/> when it does not, which every surface
+    /// but a Playground snapshot answers today.
+    /// </summary>
+    public RunHeader Run()
+    {
+        return RunHeader.None;
+    }
+
+    /// <summary>
     /// Changes to the snapshots this surface reads. The first item announces
     /// the current view; later items arrive when its publisher advances.
     /// Implementations may coalesce changes because snapshots, not events, are

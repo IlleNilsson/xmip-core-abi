@@ -27,6 +27,14 @@ public enum TopologyNodeKind
     Protocol,
     /// <summary>A configured logical or physical location.</summary>
     Location,
+    /// <summary>An Xmip cluster: the root its nodes hang under.</summary>
+    Cluster,
+    /// <summary>One Xmip node of a cluster.</summary>
+    Node,
+    /// <summary>A stage of the message path on a node: receive, process or send.</summary>
+    Stage,
+    /// <summary>A receiving or sending endpoint of a stage, one per transport.</summary>
+    Endpoint,
 }
 
 /// <summary>Where a topology fact came from.</summary>
