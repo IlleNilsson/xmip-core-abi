@@ -1,10 +1,35 @@
 # A snapshot as a Playground roll publishes one since 2026-09-19: a cluster,
-# its nodes named by role, what the run was started with under [run], and the
-# topology the owner asked for — cluster, nodes, receive, process, send, the
-# endpoints beneath receive and send, and the handoffs R -> P -> S.
+# its nodes named by role, what each node declared it can do, what the run was
+# started with under [run], and the topology the owner asked for — cluster,
+# nodes, receive, process, send, the endpoints beneath receive and send, and
+# the handoffs R -> P -> S.
+#
+# P1 declares two stages and serves one: capability is what a node could do
+# (ADR-0056), never what it happened to do this round.
 
 source = "playground — xmip:///C1"
 node = "xmip:///C1"
+
+[[records]]
+scope = "xmip:///C1/node/R1/capability"
+state = "fine"
+severity = 0
+evidence = "declares receive; online; authentication and runtime capability are not modelled in this rig"
+observed_unix_nanos = 1789111688000000000
+
+[[records]]
+scope = "xmip:///C1/node/P1/capability"
+state = "fine"
+severity = 0
+evidence = "declares process,send; offline; authentication and runtime capability are not modelled in this rig"
+observed_unix_nanos = 1789111688000000000
+
+[[records]]
+scope = "xmip:///C1/node/S1/capability"
+state = "fine"
+severity = 0
+evidence = "declares send; offline; authentication and runtime capability are not modelled in this rig"
+observed_unix_nanos = 1789111688000000000
 
 [[records]]
 scope = "xmip:///C1/node"
@@ -71,6 +96,7 @@ value = 5
 cluster = "C1"
 tests = ["RoundTrip"]
 nodes = ["R1", "P1", "S1"]
+capabilities = ["R1=receive", "P1=process+send", "S1=send"]
 online = ["R1"]
 stress = "realistic"
 

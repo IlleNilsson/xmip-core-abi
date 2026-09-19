@@ -13,6 +13,11 @@ public sealed class ClusterSnapshotTest
     private static readonly string Fixture =
         Path.Combine(AppContext.BaseDirectory, "Fixture", "cluster.toml");
 
+    /// <summary>The run line the cluster fixture publishes, node by node with
+    /// what each was started with.</summary>
+    private const string Line =
+        "RoundTrip · C1 · nodes R1=receive P1=process+send S1=send · online R1 · realistic";
+
     [Fact]
     public void TheRunSaysWhatItWasStartedWith()
     {
@@ -22,8 +27,9 @@ public sealed class ClusterSnapshotTest
         Assert.Equal("C1", run.Cluster);
         Assert.Equal(["RoundTrip"], run.Tests);
         Assert.Equal(["R1", "P1", "S1"], run.Nodes);
+        Assert.Equal(["R1=receive", "P1=process+send", "S1=send"], run.Capabilities);
         Assert.Equal(["R1"], run.Online);
-        Assert.Equal("RoundTrip · C1 · nodes R1 P1 S1 · online R1 · realistic", run.Line());
+        Assert.Equal(Line, run.Line());
     }
 
     [Fact]
@@ -36,10 +42,68 @@ public sealed class ClusterSnapshotTest
         Assert.Equal(string.Empty, run.Line());
         Assert.Equal(
             "C2 · no nodes · calm",
-            new RunHeader("C2", [], [], [], "calm").Line());
+            new RunHeader("C2", [], [], [], [], "calm").Line());
+
+        // A publisher older than capabilities leaves the names bare, and the
+        // line is what it always was.
         Assert.Equal(
             "Filing · C2 · nodes node-01 · none online · harsh",
-            new RunHeader("C2", ["Filing"], ["node-01"], [], "harsh").Line());
+            new RunHeader("C2", ["Filing"], ["node-01"], [], [], "harsh").Line());
+        Assert.Equal(NodeCapability.None, run.Capability("node-01"));
+    }
+
+    [Fact]
+    public void ANodeDeclaresWhatItCanDoAndTheSurfaceAnswersForIt()
+    {
+        IOperatorSurface surface = new SnapshotOperator(Fixture);
+
+        // What the node published wins, and it carries the two kinds this rig
+        // does not model in the publisher's own words (ADR-0056).
+        NodeCapability received = surface.Capability("R1");
+        Assert.True(received.Said);
+        Assert.True(received.Published);
+        Assert.Equal(["receive"], received.Stages);
+        Assert.True(received.Online);
+        Assert.Equal("receive · online", received.Line());
+        Assert.Contains(
+            "authentication and runtime capability are not modelled",
+            received.Evidence,
+            StringComparison.Ordinal);
+
+        // Two stages, in message-path order however the record writes them,
+        // and capability is not what the node happened to serve this round.
+        NodeCapability both = surface.Capability("P1");
+        Assert.Equal(["process", "send"], both.Stages);
+        Assert.Equal("process+send", both.Words);
+        Assert.Equal("process+send · offline", both.Line());
+
+        Assert.Equal(["P1", "R1", "S1"], surface.Index().Capabilities().Select(one => one.Node));
+        Assert.False(surface.Capability("S9").Said);
+    }
+
+    [Fact]
+    public void ANodeThatPublishedNothingFallsBackToWhatTheRunStartedItWith()
+    {
+        RunHeader run = new SnapshotOperator(Fixture).Run();
+        NodeCapability started = run.Capability("P1");
+
+        Assert.False(started.Published);
+        Assert.Equal("what the run started it with", started.Origin);
+        Assert.Equal(["process", "send"], started.Stages);
+        Assert.True(run.Capability("R1").Online);
+        Assert.Equal(NodeCapability.None, run.Capability("nobody"));
+
+        // A node started with no stage of its own is named alone in [run], and
+        // declaring none is a choice said in words, never an absence.
+        NodeCapability whole = NodeCapability.Started("n1");
+        Assert.True(whole.Said);
+        Assert.Empty(whole.Stages);
+        Assert.Equal("no stage · offline", whole.Line());
+        Assert.Equal(
+            "no stage · offline",
+            NodeCapability.Declared("n1", "declares no stage of the message path; offline; x")
+                .Line());
+        Assert.Empty(NodeCapability.Declared("n1", "alive").Stages);
     }
 
     [Fact]

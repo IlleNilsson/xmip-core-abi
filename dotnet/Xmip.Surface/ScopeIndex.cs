@@ -22,15 +22,19 @@ public sealed class ScopeIndex
 
     private readonly Dictionary<string, HealthRecord> stages;
 
+    private readonly Dictionary<string, NodeCapability> declared;
+
     private ScopeIndex(
         Dictionary<string, Entry> entries,
         Dictionary<string, HealthRecord> stages,
+        Dictionary<string, NodeCapability> declared,
         ulong revision,
         string source,
         DateTimeOffset? observed)
     {
         this.entries = entries;
         this.stages = stages;
+        this.declared = declared;
         Revision = revision;
         Source = source;
         Observed = observed;
@@ -66,11 +70,17 @@ public sealed class ScopeIndex
     {
         Dictionary<string, Entry> entries = new(StringComparer.Ordinal);
         Dictionary<string, HealthRecord> stages = new(StringComparer.Ordinal);
+        Dictionary<string, NodeCapability> declared = new(StringComparer.Ordinal);
         Entry root = Reach(entries, ScopeTree.Root, ScopeTree.Root, "cluster");
         DateTimeOffset? observed = null;
 
         foreach (HealthRecord record in records)
         {
+            if (Declaration(record) is { Said: true } said)
+            {
+                declared[said.Node] = said;
+            }
+
             Entry entry = root;
             entry.Leaves.Add(record);
             entry.Worst = Worse(entry.Worst, record);
@@ -119,7 +129,38 @@ public sealed class ScopeIndex
             entry.Children.Sort(ByTrouble);
         }
 
-        return new ScopeIndex(entries, stages, revision, source, observed);
+        return new ScopeIndex(entries, stages, declared, revision, source, observed);
+    }
+
+    /// <summary>
+    /// What a node declared it can do, as the node itself published it at
+    /// <c>&lt;node&gt;/capability</c> (ADR-0056 clause 1: a node declares its
+    /// capabilities and nothing is inferred). <see cref="NodeCapability.None"/>
+    /// when this publication carries no such record for the node — which is
+    /// not the same as a node that declared no stage, and the two never read
+    /// alike.
+    /// </summary>
+    public NodeCapability Capability(string node)
+    {
+        return declared.TryGetValue(node, out NodeCapability? said) ? said : NodeCapability.None;
+    }
+
+    /// <summary>Every node that published what it can do, by name.</summary>
+    public IReadOnlyList<NodeCapability> Capabilities()
+    {
+        return [.. declared.Values.OrderBy(said => said.Node, StringComparer.Ordinal)];
+    }
+
+    /// <summary>A capability record read back as what it declares, or null
+    /// when the record is not one: the leaf is named <c>capability</c> and the
+    /// node is the segment above it.</summary>
+    private static NodeCapability? Declaration(HealthRecord record)
+    {
+        string[] parts = ScopeTree.Parts(record.Scope);
+
+        return parts.Length >= 2 && string.Equals(parts[^1], "capability", StringComparison.Ordinal)
+            ? NodeCapability.Declared(parts[^2], record.Evidence)
+            : null;
     }
 
     /// <summary>Whether the publication says anything at or beneath a scope.</summary>

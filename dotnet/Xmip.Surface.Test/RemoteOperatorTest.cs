@@ -24,7 +24,10 @@ public sealed class RemoteOperatorTest
 
         Assert.True(remote.Connect(), remote.Reason);
         Assert.Equal(
-            "RoundTrip · C1 · nodes R1 P1 S1 · online R1 · realistic", remote.Run().Line());
+            "RoundTrip · C1 · nodes R1=receive P1=process+send S1=send · online R1 · realistic",
+            remote.Run().Line());
+        Assert.Equal(
+            ["process", "send"], ((IOperatorSurface)remote).Capability("P1").Stages);
         Assert.Equal(
             local.Topology().Nodes.Select(node => node.Kind),
             remote.Topology().Nodes.Select(node => node.Kind));

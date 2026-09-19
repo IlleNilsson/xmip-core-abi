@@ -82,6 +82,22 @@ public interface IOperatorSurface
     }
 
     /// <summary>
+    /// What one node declares it can do (ADR-0056), by name. What the node
+    /// itself published wins; a node the publication holds no capability
+    /// record for falls back to what <c>[run]</c> says it was started with,
+    /// and <see cref="NodeCapability.Published"/> says which of the two a
+    /// surface is showing. A face that already holds an index asks the index;
+    /// none of them parses the published file itself (ADR-0014, amendment
+    /// 2026-09-19).
+    /// </summary>
+    public NodeCapability Capability(string node)
+    {
+        NodeCapability published = Index().Capability(node);
+
+        return published.Said ? published : Run().Capability(node);
+    }
+
+    /// <summary>
     /// Changes to the snapshots this surface reads. The first item announces
     /// the current view; later items arrive when its publisher advances.
     /// Implementations may coalesce changes because snapshots, not events, are
