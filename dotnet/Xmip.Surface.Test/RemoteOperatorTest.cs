@@ -15,6 +15,22 @@ namespace Xmip.Surface.Test;
 public sealed class RemoteOperatorTest
 {
     [Fact]
+    public async Task SaysWhatTheHostsRunWasStartedWith()
+    {
+        IOperatorSurface local = new SnapshotOperator(
+            Path.Combine(AppContext.BaseDirectory, "Fixture", "cluster.toml"));
+        await using WebApplication host = await Serve(local).ConfigureAwait(true);
+        using RemoteOperator remote = new(new Uri(host.Urls.First()));
+
+        Assert.True(remote.Connect(), remote.Reason);
+        Assert.Equal(
+            "RoundTrip · C1 · nodes R1 P1 S1 · online R1 · realistic", remote.Run().Line());
+        Assert.Equal(
+            local.Topology().Nodes.Select(node => node.Kind),
+            remote.Topology().Nodes.Select(node => node.Kind));
+    }
+
+    [Fact]
     public async Task AnswersWhatTheHostReadsAndIsToldWhenItChanges()
     {
         string copy = Path.Combine(

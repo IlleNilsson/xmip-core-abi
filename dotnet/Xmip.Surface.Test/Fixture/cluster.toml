@@ -1,0 +1,241 @@
+# A snapshot as a Playground roll publishes one since 2026-09-19: a cluster,
+# its nodes named by role, what the run was started with under [run], and the
+# topology the owner asked for — cluster, nodes, receive, process, send, the
+# endpoints beneath receive and send, and the handoffs R -> P -> S.
+
+source = "playground — xmip:///C1"
+node = "xmip:///C1"
+
+[[records]]
+scope = "xmip:///C1/node"
+state = "stressed"
+severity = 39
+evidence = "3 nodes, 5 of 6 leaves fine; worst S1/send/tcp/json: 2/3 rounds passed, 1 failed"
+observed_unix_nanos = 1789111688000000000
+
+[[records]]
+scope = "xmip:///C1/node/R1/system-process"
+state = "fine"
+severity = 0
+evidence = "alive"
+observed_unix_nanos = 1789111688000000000
+
+[[records]]
+scope = "xmip:///C1/node/R1/receive/tcp/json"
+state = "fine"
+severity = 0
+evidence = "3/3 rounds passed"
+observed_unix_nanos = 1789111688000000000
+
+[[records]]
+scope = "xmip:///C1/node/R1/receive/file/text"
+state = "fine"
+severity = 0
+evidence = "3/3 rounds passed"
+observed_unix_nanos = 1789111688000000000
+
+[[records]]
+scope = "xmip:///C1/node/P1/process/tcp/json"
+state = "fine"
+severity = 0
+evidence = "3/3 rounds passed"
+observed_unix_nanos = 1789111688000000000
+
+[[records]]
+scope = "xmip:///C1/node/S1/send/tcp/json"
+state = "stressed"
+severity = 40
+evidence = "2/3 rounds passed, 1 failed"
+observed_unix_nanos = 1789111688000000000
+
+[[records]]
+scope = "xmip:///C1/node/S1/send/file/text"
+state = "fine"
+severity = 0
+evidence = "3/3 rounds passed"
+observed_unix_nanos = 1789111688000000000
+
+[[counts]]
+counted = "streams"
+value = 6
+
+[[counts]]
+counted = "journeys"
+value = 6
+
+[[counts]]
+counted = "messages"
+value = 5
+
+[run]
+cluster = "C1"
+tests = ["RoundTrip"]
+nodes = ["R1", "P1", "S1"]
+online = ["R1"]
+stress = "realistic"
+
+[topology]
+source = "playground — cluster C1"
+observed_unix_nanos = 1789111688000000000
+
+[[topology.nodes]]
+id = "cluster"
+parent = ""
+label = "C1"
+kind = "cluster"
+scope = "xmip:///C1"
+state = "stressed"
+origin = "configured"
+load = 0.0
+activity = 1.0
+evidence = "3 nodes, 5 of 6 leaves fine"
+
+[[topology.nodes]]
+id = "node/R1"
+parent = "cluster"
+label = "R1"
+kind = "node"
+scope = "xmip:///C1/node/R1"
+state = "fine"
+origin = "both"
+load = 0.0
+activity = 1.0
+evidence = "alive"
+
+[[topology.nodes]]
+id = "node/R1/receive"
+parent = "node/R1"
+label = "receive"
+kind = "stage"
+scope = "xmip:///C1/node/R1/receive"
+state = "fine"
+origin = "both"
+load = 0.0
+activity = 0.0
+evidence = "3/3 rounds passed"
+
+[[topology.nodes]]
+id = "node/R1/receive/file"
+parent = "node/R1/receive"
+label = "file"
+kind = "endpoint"
+scope = "xmip:///C1/node/R1/receive/file"
+state = "fine"
+origin = "both"
+load = 0.0
+activity = 0.0
+evidence = "3/3 rounds passed"
+
+[[topology.nodes]]
+id = "node/R1/receive/tcp"
+parent = "node/R1/receive"
+label = "tcp"
+kind = "endpoint"
+scope = "xmip:///C1/node/R1/receive/tcp"
+state = "fine"
+origin = "both"
+load = 0.0
+activity = 0.0
+evidence = "3/3 rounds passed"
+
+[[topology.nodes]]
+id = "node/P1"
+parent = "cluster"
+label = "P1"
+kind = "node"
+scope = "xmip:///C1/node/P1"
+state = "fine"
+origin = "both"
+load = 0.0
+activity = 1.0
+evidence = "3/3 rounds passed"
+
+[[topology.nodes]]
+id = "node/P1/process"
+parent = "node/P1"
+label = "process"
+kind = "stage"
+scope = "xmip:///C1/node/P1/process"
+state = "fine"
+origin = "both"
+load = 0.0
+activity = 0.0
+evidence = "3/3 rounds passed"
+
+[[topology.nodes]]
+id = "node/S1"
+parent = "cluster"
+label = "S1"
+kind = "node"
+scope = "xmip:///C1/node/S1"
+state = "stressed"
+origin = "both"
+load = 0.0
+activity = 1.0
+evidence = "2/3 rounds passed, 1 failed"
+
+[[topology.nodes]]
+id = "node/S1/send"
+parent = "node/S1"
+label = "send"
+kind = "stage"
+scope = "xmip:///C1/node/S1/send"
+state = "stressed"
+origin = "both"
+load = 0.0
+activity = 0.0
+evidence = "2/3 rounds passed, 1 failed"
+
+[[topology.nodes]]
+id = "node/S1/send/file"
+parent = "node/S1/send"
+label = "file"
+kind = "endpoint"
+scope = "xmip:///C1/node/S1/send/file"
+state = "fine"
+origin = "both"
+load = 0.0
+activity = 0.0
+evidence = "3/3 rounds passed"
+
+[[topology.nodes]]
+id = "node/S1/send/tcp"
+parent = "node/S1/send"
+label = "tcp"
+kind = "endpoint"
+scope = "xmip:///C1/node/S1/send/tcp"
+state = "stressed"
+origin = "both"
+load = 0.0
+activity = 0.0
+evidence = "2/3 rounds passed, 1 failed"
+
+[[topology.links]]
+id = "handoff/R1/P1"
+from = "node/R1/receive"
+to = "node/P1/process"
+pattern = "send-receive"
+origin = "both"
+protocol = "handoff"
+state = "fine"
+volume = 6
+rate = 0.0
+latency_ms = 0.0
+progress = 0.0
+attempts = 0
+evidence = "6 handoffs R1 to P1; worst leaf at either end: 3/3 rounds passed"
+
+[[topology.links]]
+id = "handoff/P1/S1"
+from = "node/P1/process"
+to = "node/S1/send"
+pattern = "send-receive"
+origin = "both"
+protocol = "handoff"
+state = "stressed"
+volume = 6
+rate = 0.0
+latency_ms = 0.0
+progress = 0.0
+attempts = 0
+evidence = "6 handoffs P1 to S1; worst leaf at either end: 2/3 rounds passed, 1 failed"

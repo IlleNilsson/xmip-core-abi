@@ -76,6 +76,12 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
     }
 
     /// <inheritdoc />
+    public RunHeader Run()
+    {
+        return Read().Run;
+    }
+
+    /// <inheritdoc />
     public async IAsyncEnumerable<SurfaceChange> WatchAsync(
         [EnumeratorCancellation] CancellationToken stop = default)
     {
@@ -170,7 +176,15 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
         return new ScopeOperation(scope, action, false, said);
     }
 
-    private sealed record Publication(ScopeIndex Index, TopologySnapshot Topology);
+    private sealed record Publication(
+        ScopeIndex Index, TopologySnapshot Topology, RunHeader Run)
+    {
+        public static Publication Nothing(string source)
+        {
+            return new Publication(
+                ScopeIndex.Empty(source), TopologySnapshot.Empty(source), RunHeader.None);
+        }
+    }
 
     private Publication Read()
     {
@@ -197,8 +211,7 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
             // next question reads again.
             if (read is null)
             {
-                return cached
-                    ?? new Publication(ScopeIndex.Empty(Source), TopologySnapshot.Empty(Source));
+                return cached ?? Publication.Nothing(Source);
             }
 
             Publication fresh = read;
@@ -221,7 +234,7 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
         {
             if (!file.Exists)
             {
-                return new Publication(ScopeIndex.Empty(Source), TopologySnapshot.Empty(Source));
+                return Publication.Nothing(Source);
             }
 
             TomlTable document = TomlSerializer.Deserialize<TomlTable>(
@@ -255,7 +268,8 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
 
             ScopeIndex index = ScopeIndex.Build(records, counts, ++revision, source);
 
-            return new Publication(index, ParseTopology(document, source));
+            return new Publication(
+                index, ParseTopology(document, source), RunHeader.Read(document));
         }
         catch (Exception exception)
             when (exception is IOException or UnauthorizedAccessException)
@@ -265,7 +279,7 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
         catch (Exception exception)
             when (exception is FormatException or InvalidOperationException or TomlException)
         {
-            return new Publication(ScopeIndex.Empty(Source), TopologySnapshot.Empty(Source));
+            return Publication.Nothing(Source);
         }
     }
 
@@ -391,6 +405,10 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
             "port" => TopologyNodeKind.Port,
             "protocol" => TopologyNodeKind.Protocol,
             "location" => TopologyNodeKind.Location,
+            "cluster" => TopologyNodeKind.Cluster,
+            "node" => TopologyNodeKind.Node,
+            "stage" => TopologyNodeKind.Stage,
+            "endpoint" => TopologyNodeKind.Endpoint,
             _ => TopologyNodeKind.Computer,
         };
     }

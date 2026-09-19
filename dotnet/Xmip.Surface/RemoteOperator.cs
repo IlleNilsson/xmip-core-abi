@@ -169,6 +169,12 @@ public sealed class RemoteOperator : IOperatorSurface, IDisposable
     }
 
     /// <inheritdoc />
+    public RunHeader Run()
+    {
+        return Ask<RunHeader>("Run") ?? RunHeader.None;
+    }
+
+    /// <inheritdoc />
     public string PauseScope(string scope, string who)
     {
         return Ask<string>("Pause", scope, who) ?? Source;
