@@ -100,8 +100,8 @@ public static class ScopeTree
 
     /// <summary>The stage of the message path a scope sits in — <c>receive</c>,
     /// <c>process</c> or <c>send</c> — wherever that segment falls: directly
-    /// under a node (<c>edge-01/receive/orders</c>) or under a scenario the
-    /// Playground nests between (<c>playground/pingpong/receive/tcp/json</c>).
+    /// under a node (<c>edge-01/receive/orders</c>) or under a test the
+    /// Playground nests between (<c>playground/round-trip/receive/tcp/json</c>).
     /// Empty for a scope on no stage.</summary>
     public static string Stage(string scope)
     {

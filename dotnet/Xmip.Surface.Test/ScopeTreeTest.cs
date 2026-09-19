@@ -185,7 +185,7 @@ public sealed class ScopeTreeTest
     public void TheStageIsFoundWhereverItSits()
     {
         Assert.Equal("receive", ScopeTree.Stage("xmip:///edge-01/receive/orders"));
-        Assert.Equal("send", ScopeTree.Stage("xmip:///playground/pingpong/send/tcp/json"));
+        Assert.Equal("send", ScopeTree.Stage("xmip:///playground/round-trip/send/tcp/json"));
         Assert.Equal(string.Empty, ScopeTree.Stage("xmip:///playground/filing/file/csv"));
     }
 }
