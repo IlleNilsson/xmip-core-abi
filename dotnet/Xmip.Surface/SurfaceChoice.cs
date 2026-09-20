@@ -17,7 +17,9 @@ public static class SurfaceChoice
     /// <summary>The key naming the surface.</summary>
     public const string SurfaceKey = "Xmip:Surface";
 
-    /// <summary>The key naming the snapshot file, when the surface is one.</summary>
+    /// <summary>The key naming the snapshot file, when the surface is one. It
+    /// takes one path, or a list of them — one per cluster (ADR-0052,
+    /// amendment 2026-09-20).</summary>
     public const string SnapshotKey = "Xmip:Snapshot";
 
     /// <summary>The word for the surface over a runtime library.</summary>
@@ -83,5 +85,88 @@ public static class SurfaceChoice
             chosen.Length == 0
                 ? $"{SurfaceKey} is not set; it is {words}"
                 : $"{SurfaceKey} is \"{chosen}\"; it is {words}");
+    }
+
+    /// <summary>
+    /// Every snapshot path the document names, in the order it names them:
+    /// one where <c>Snapshot</c> is a path, several where it is a list —
+    /// <c>Snapshot = ["…/C1-snapshot.toml", "…/C2-snapshot.toml"]</c> in a
+    /// document, <c>--Xmip:Snapshot:0=… --Xmip:Snapshot:1=…</c> on a line.
+    /// Empty where it names none. A list wins over a path: the two sit at the
+    /// same key from different sources, and a line naming two clusters must
+    /// not be quietly replaced by the one the shipped document names.
+    /// </summary>
+    public static IReadOnlyList<string> Snapshots(IConfiguration configuration)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+
+        string[] listed =
+        [
+            .. configuration.GetSection(SnapshotKey).GetChildren()
+                .Select(child => child.Value)
+                .Where(path => !string.IsNullOrWhiteSpace(path))
+                .Select(path => path!),
+        ];
+
+        if (listed.Length > 0)
+        {
+            return listed;
+        }
+
+        string? one = configuration[SnapshotKey];
+
+        return string.IsNullOrWhiteSpace(one) ? [] : [one];
+    }
+
+    /// <summary>
+    /// Every cluster the configuration names, as one set a face navigates
+    /// (ADR-0052, amendment 2026-09-20). A snapshot surface over a list of
+    /// paths is one surface per path; every other choice is the one surface
+    /// <see cref="Open"/> returns, held as a set of one, so a face reads the
+    /// same shape whatever it was given.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">What <see cref="Open"/>
+    /// refuses, or two paths publishing one cluster.</exception>
+    public static ClusterSurfaces OpenAll(IConfiguration configuration, string basePath)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+
+        IReadOnlyList<string> paths = Listed(configuration);
+
+        return paths.Count > 0
+            ? ClusterSurfaces.Over(
+                paths.Select(path => new SnapshotOperator(TomlDocument.Resolve(path, basePath))))
+            : ClusterSurfaces.Over(Open(configuration, basePath));
+    }
+
+    /// <summary>
+    /// The one surface a host reads where it reads one: the document's choice,
+    /// and the first cluster where the document names several. A command and a
+    /// prompt answer one publication, because a rollup or a sum over two
+    /// clusters would be a figure at a scope that is in neither tree (ADR-0052,
+    /// amendment 2026-09-20).
+    /// </summary>
+    /// <exception cref="InvalidOperationException">What <see cref="Open"/>
+    /// refuses.</exception>
+    public static IOperatorSurface OpenFirst(IConfiguration configuration, string basePath)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+
+        IReadOnlyList<string> paths = Listed(configuration);
+
+        return paths.Count > 0
+            ? new SnapshotOperator(TomlDocument.Resolve(paths[0], basePath))
+            : Open(configuration, basePath);
+    }
+
+    // The snapshot paths, where a snapshot is what the document chose; none
+    // otherwise, so that every other surface goes through Open as it did.
+    private static IReadOnlyList<string> Listed(IConfiguration configuration)
+    {
+        string chosen = configuration[SurfaceKey]?.Trim() ?? string.Empty;
+
+        return string.Equals(chosen, Snapshot, StringComparison.OrdinalIgnoreCase)
+            ? Snapshots(configuration)
+            : [];
     }
 }
