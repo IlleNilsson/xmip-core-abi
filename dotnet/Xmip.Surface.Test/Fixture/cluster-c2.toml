@@ -1,0 +1,104 @@
+# A second cluster rolling beside the one in cluster.toml. Two rolls are two
+# clusters (ADR-0052, amendment 2026-09-14, ruling 1), each publishing its own
+# file, and a face holds both at once (amendment 2026-09-20). Small on purpose:
+# what it has to carry is its own [run].cluster, its own scope root and enough
+# topology for a view to draw something that is plainly not C1's.
+
+source = "playground — xmip:///C2"
+node = "xmip:///C2"
+
+[[records]]
+scope = "xmip:///C2/node/R2/capability"
+state = "fine"
+severity = 0
+evidence = "declares receive; online"
+observed_unix_nanos = 1789111688000000000
+
+[[records]]
+scope = "xmip:///C2/node/R2/receive/tcp/json"
+state = "fine"
+severity = 0
+evidence = "3/3 rounds passed"
+observed_unix_nanos = 1789111688000000000
+
+[[records]]
+scope = "xmip:///C2/node/S2/send/tcp/json"
+state = "done"
+severity = 95
+evidence = "connection refused by billing-x (10.0.9.7:5671)"
+observed_unix_nanos = 1789111688000000000
+
+[[counts]]
+counted = "streams"
+value = 2
+
+[[counts]]
+counted = "journeys"
+value = 2
+
+[[counts]]
+counted = "messages"
+value = 1
+
+[run]
+cluster = "C2"
+tests = ["RoundTrip"]
+nodes = ["R2", "S2"]
+capabilities = ["R2=receive", "S2=send"]
+online = ["R2"]
+stress = "harsh"
+
+[topology]
+source = "playground — cluster C2"
+observed_unix_nanos = 1789111688000000000
+
+[[topology.nodes]]
+id = "cluster"
+parent = ""
+label = "C2"
+kind = "cluster"
+scope = "xmip:///C2"
+state = "done"
+origin = "configured"
+load = 0.0
+activity = 1.0
+evidence = "2 nodes, 1 of 2 leaves fine"
+
+[[topology.nodes]]
+id = "node/R2"
+parent = "cluster"
+label = "R2"
+kind = "node"
+scope = "xmip:///C2/node/R2"
+state = "fine"
+origin = "both"
+load = 0.0
+activity = 1.0
+evidence = "3/3 rounds passed"
+
+[[topology.nodes]]
+id = "node/S2"
+parent = "cluster"
+label = "S2"
+kind = "node"
+scope = "xmip:///C2/node/S2"
+state = "done"
+origin = "both"
+load = 0.0
+activity = 1.0
+evidence = "connection refused by billing-x (10.0.9.7:5671)"
+
+[[topology.links]]
+id = "R2->S2"
+from = "node/R2"
+to = "node/S2"
+pattern = "send-receive"
+origin = "observed"
+protocol = "handoff"
+state = "done"
+volume = 1
+rate = 0.0
+latency_ms = 0.0
+progress = 1.0
+attempts = 1
+evidence = "1 handoff delivered"
