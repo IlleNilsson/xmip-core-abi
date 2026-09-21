@@ -1,11 +1,74 @@
 # xmip-core-abi
 
-The Xmip application binary interface (ABI): the stable boundary used by the runtime, operator surfaces, and loadable Modules.
+The Xmip application binary interface (ABI): the stable boundary used by the
+runtime, operator surfaces, and loadable Modules.
 
-The C header and its specification are normative. The Rust crate is a convenience binding over that boundary; it must not introduce Rust-specific types into the ABI. It also carries the Rust side of runtime discovery (`runtime_library`): the one rule `Xmip.Surface` keeps for .NET, so the language server declares no copy (ADR-0052 clause 1).
+`include/xmip_module.h`, `include/xmip_operate.h` and `doc/specification.md`
+are normative. The Rust crate, whose source sits aside under `.src`
+(ADR-0049), is a convenience binding over that boundary and must not introduce
+Rust-specific types into the ABI: the descriptor, the manifest, the FFI
+shapes, the operate types, and the Rust side of runtime discovery
+(`runtime_library`) — the one rule `Xmip.Surface` keeps for .NET, so the
+language server declares no copy (ADR-0052 clause 1). `examples/conforming.rs`
+builds as a cdylib and is the conforming artifact a loader probe is tested
+against.
 
-The .NET binding is here too: `dotnet/Xmip.Abi`, one class library declaring both `include/xmip_module.h` and `include/xmip_operate.h` for every operator surface — the cli, the PowerShell module and the GUI reference it as a project and bind nothing themselves (ADR-0014, amendment of 2026-08-26). `dotnet/Xmip.Abi.Tests` compares it against the headers; `dotnet test dotnet/Xmip.Abi.Tests` runs them.
+The .NET binding is here too: `dotnet/Xmip.Abi`, one class library declaring
+both headers for every operator surface — the cli, the PowerShell module and
+the GUI reference it as a project and bind nothing themselves (ADR-0014,
+amendment of 2026-08-26). `Module/` carries the module boundary and its probe,
+`Operate/` the operator boundary and its records. `dotnet/Xmip.Abi.Tests`
+compares both against the headers; `dotnet test dotnet/Xmip.Abi.Tests` runs
+them.
 
-Beside the binding is what every .NET surface shares (ADR-0052): `dotnet/Xmip.Surface` — `IOperatorSurface` with its three implementations, `NativeOperator` over the binding, `SnapshotOperator` over a published snapshot and `RemoteOperator` over a web host's surface hub on another machine; the scope tree, its rollup and the worst leaf beneath a scope (`ScopeTree`); a publication read once as that tree, every answer a lookup (`ScopeIndex`, ADR-0052 amendment 2026-09-15); the six figures at a scope in the order every surface says them (`Figures`), one row of the tree (`ScopeItem`) and the one shape a pause or resume answers in (`ScopeOperation`); runtime discovery by one rule (`RuntimeLibrary`: `Xmip:RuntimeLibrary`, else `XMIP_RUNTIME_LIBRARY`, else beside the executable); a status said in English once (`English`); the surface a host chose in its TOML (`SurfaceChoice`); the one TOML reader (`TomlDocument`); and one coalescing change stream (`SurfaceChange`) that wakes every surface when a published snapshot advances. The GUI hosts, the cli and the PowerShell module are thin faces over it. `dotnet/Xmip.Surface.Relay` is the served half — `SurfaceHub`, answering what the host's surface answers, and `SurfaceRelay`, pushing the host's change feed to every remote surface, so a surface is told and never asks (ADR-0052, amendment 2026-09-15); only a web host references it. `dotnet/Xmip.Surface.Test` covers the tree, discovery, the English, the snapshot surface over a fixture and the remote surface against a hub on a loopback port; `dotnet test dotnet/Xmip.Surface.Test` runs them.
+## What every .NET surface shares
+
+`dotnet/Xmip.Surface` (ADR-0052) is the one implementation behind all four
+operator surfaces; the GUI hosts, the cli and the PowerShell module are thin
+faces over it.
+
+- **Surfaces.** `IOperatorSurface` with its three implementations —
+  `NativeOperator` over the binding, `SnapshotOperator` over a published
+  snapshot and `RemoteOperator` over a web host's surface hub on another
+  machine — and `ClusterSurfaces`, the set a face holds when more than one
+  cluster is published: one surface per cluster, and nothing added across them
+  (ADR-0052, amendment 2026-09-20).
+- **The tree.** `ScopeTree` — the tree, its rollup and the worst leaf beneath
+  a scope; `ScopeIndex`, a publication read once as that tree with every
+  answer a lookup (ADR-0052, amendment 2026-09-15); `Branch` and `Crumb` for
+  the drill-down, and `ScopeItem` for one row of it.
+- **Narrowing.** `ScopePattern`, the one wildcard every surface matches with
+  (ADR-0059 clauses 7 and 8), and `ScopeFilter`, that pattern applied to a
+  publication so the views narrow alike and none decides for itself what a
+  pattern means.
+- **Figures.** `Figures`, the six at a scope in the order every surface says
+  them, and `FigureFlow`, the three stage figures as a rate per second.
+- **What a run says.** `RunHeader` for the `[run]` table a publisher writes,
+  `NodeCapability` for what one node declared it can do — never inferred from
+  what the node is called (ADR-0056 clause 1) — and `Topology` for the
+  communication view.
+- **Acts and verdicts.** `ScopeAction`, the two acts `xmip_operate.h` carries
+  and no start, stop or restart; `ScopeOperation`, the one shape they answer
+  in, so an exit code and a pipeline object agree; and
+  `ConfigurationVerdict` for what came of handing the runtime a node
+  configuration.
+- **Plumbing.** `RuntimeLibrary` (discovery by one rule: `Xmip:RuntimeLibrary`,
+  else `XMIP_RUNTIME_LIBRARY`, else beside the executable), `SurfaceChoice`
+  (the surface a host chose in its TOML, and every snapshot it names),
+  `TomlDocument` (the one TOML reader), `ProcessDeclaration` (what a System
+  Process Xmip owns says of itself, ADR-0053 clause 3), `English` (a status
+  said in words once) and `SurfaceChange` (one coalescing change stream that
+  wakes every surface when a published snapshot advances).
+
+`dotnet/Xmip.Surface.Relay` is the served half — `SurfaceHub`, answering what
+the host's surface answers, and `SurfaceRelay`, pushing the host's change feed
+to every remote surface, so a surface is told and never asks (ADR-0052,
+amendment 2026-09-15); only a web host references it.
+
+`dotnet/Xmip.Surface.Test` covers the tree and its index, the pattern and the
+filter, the figures and their flow, runtime discovery, the English, the
+configuration verdict, the process declaration, the snapshot surface and the
+cluster set over fixtures, and the remote surface against a hub on a loopback
+port. `dotnet test dotnet/Xmip.Surface.Test` runs them.
 
 `architecture.toml` carries the maturity; this file does not repeat it.

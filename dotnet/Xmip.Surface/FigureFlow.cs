@@ -1,8 +1,8 @@
 namespace Xmip.Surface;
 
 /// <summary>
-/// What a scope is moving now: the three stage figures as a rate per second,
-/// between two publications a reader saw. The owner, 2026-09-20: *the
+/// What a scope is moving now: five figures as a rate per second, between two
+/// publications a reader saw. The owner, 2026-09-20: *the
 /// CLI/PowerShell status number does not mean anything over time. There has to
 /// be a logical cap on summarising the R, P, S, T and F numbers.* A total is
 /// bounded by uptime and says nothing an operator can act on; a rate is bounded
@@ -21,15 +21,35 @@ namespace Xmip.Surface;
 /// is not known either — a counter only falls where its publisher started over,
 /// and two publications of two different runs are not an interval.
 /// </para>
+/// <para>
+/// <see cref="Retrying"/> and <see cref="Failed"/> are rates for the same
+/// reason the three stages are, and on the same words: the owner named all
+/// five letters in the quote above, and T and F were left as totals on the
+/// assistant's judgement rather than his. A retry total says a run has had
+/// trouble; a retry rate says it is having trouble now, which is the one an
+/// operator can act on. The total has not gone anywhere — <c>xmip-cli
+/// measure</c> reports it, and a surface that wants *has this run had faults
+/// at all* asks <see cref="Figures"/> rather than this (the owner,
+/// 2026-09-20).
+/// </para>
 /// </remarks>
-public sealed record FigureFlow(double? Streams, double? Journeys, double? Messages)
+public sealed record FigureFlow(
+    double? Streams,
+    double? Journeys,
+    double? Messages,
+    double? Retrying = null,
+    double? Failed = null)
 {
     /// <summary>No interval, so no rate: what a reader has after one
     /// publication, and what a publisher that says no figures gives.</summary>
     public static FigureFlow Unknown { get; } = new(null, null, null);
 
-    /// <summary>Whether any of the three rates is known.</summary>
-    public bool Known => Streams is not null || Journeys is not null || Messages is not null;
+    /// <summary>Whether any of the five rates is known.</summary>
+    public bool Known => Streams is not null
+        || Journeys is not null
+        || Messages is not null
+        || Retrying is not null
+        || Failed is not null;
 
     /// <summary>
     /// The rate between two publications, over the time between them.
@@ -49,7 +69,9 @@ public sealed record FigureFlow(double? Streams, double? Journeys, double? Messa
         return new FigureFlow(
             Rate(now.Streams, before.Streams, seconds),
             Rate(now.Journeys, before.Journeys, seconds),
-            Rate(now.Messages, before.Messages, seconds));
+            Rate(now.Messages, before.Messages, seconds),
+            Rate(now.Retrying, before.Retrying, seconds),
+            Rate(now.Failed, before.Failed, seconds));
     }
 
     // A figure neither publication carries has no rate; nor has one that fell,

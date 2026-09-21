@@ -85,4 +85,36 @@ public sealed class FigureFlowTest
             FigureFlow.Unknown,
             FigureFlow.Between(At(1, 1, 1), At(0, 0, 0), TimeSpan.FromSeconds(-3)));
     }
+
+    [Fact]
+    public void RetryingAndFailedAreRatesOnTheSameRuleAsTheStages()
+    {
+        // The owner named all five letters when he capped the numbers, and T
+        // and F were left as totals on the assistant's judgement rather than
+        // his (2026-09-20). A retry total says a run has had trouble; a retry
+        // rate says it is having trouble now.
+        FigureFlow flow = FigureFlow.Between(
+            Troubled(9, 3), Troubled(1, 1), TimeSpan.FromSeconds(4));
+
+        Assert.Equal(2, flow.Retrying);
+        Assert.Equal(0.5, flow.Failed);
+        Assert.True(flow.Known);
+    }
+
+    [Fact]
+    public void ATroubleFigureNobodyPublishedHasNoRateEither()
+    {
+        FigureFlow flow = FigureFlow.Between(
+            At(5_000, 640, 660), At(12, 3, 4), TimeSpan.FromSeconds(2));
+
+        Assert.Null(flow.Retrying);
+        Assert.Null(flow.Failed);
+    }
+
+    // A publication that carries a retry total and a failure total as well as
+    // the three stages.
+    private static Figures Troubled(ulong retrying, ulong failed)
+    {
+        return new Figures("xmip:///", 1, 1, 1, null, retrying, failed, null);
+    }
 }
