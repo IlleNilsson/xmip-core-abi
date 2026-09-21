@@ -51,11 +51,12 @@ public sealed record RunHeader(
 
     /// <summary>
     /// The one line every surface shows:
-    /// <c>RoundTrip · C1 · nodes R1=receive P1=process S1=send · online R1 ·
-    /// realistic</c>. A node is named with what it declared it can do, because
-    /// six bare names say nothing a board could be told apart by; a publisher
-    /// that says no capabilities leaves the names bare, as before. A part the
-    /// publisher left out is left out; no nodes and none online are said in
+    /// <c>RoundTrip · orders · nodes edge-01=receive edge-02=process+send ·
+    /// online edge-01 · realistic</c>. A node is named with what it declared it
+    /// can do, because bare names say nothing a board could be told apart by;
+    /// a publisher that says no capabilities leaves the names bare, as before.
+    /// The names are the operator's and mean nothing to Xmip (ADR-0053). A part
+    /// the publisher left out is left out; no nodes and none online are said in
     /// words, because both are choices.
     /// </summary>
     public string Line()

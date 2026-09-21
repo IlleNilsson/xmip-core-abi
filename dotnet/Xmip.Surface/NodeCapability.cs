@@ -74,9 +74,11 @@ public sealed record NodeCapability(
             evidence);
     }
 
-    /// <summary>One entry of <c>[run].capabilities</c> — <c>R1=receive+send</c>,
-    /// or a bare <c>n1</c> for a node started with no stage of its own. It says
-    /// nothing of the online capability, which <c>[run]</c> lists apart.</summary>
+    /// <summary>One entry of <c>[run].capabilities</c> —
+    /// <c>edge-01=receive+send</c>, or a bare <c>edge-02</c> for a node started
+    /// with no stage of its own. Whatever the node is called is read as a name
+    /// and nothing else. It says nothing of the online capability, which
+    /// <c>[run]</c> lists apart.</summary>
     public static NodeCapability Started(string entry)
     {
         ArgumentNullException.ThrowIfNull(entry);
