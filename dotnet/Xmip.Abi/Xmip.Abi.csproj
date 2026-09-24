@@ -27,4 +27,23 @@
     <IsAotCompatible>true</IsAotCompatible>
   </PropertyGroup>
 
+  <!--
+    The runtime this binds, beside whatever references it, in a composed
+    estate: the library `cargo build` leaves in xmip-core-runtime's
+    target/debug, copied into the output of every project that references
+    this one — the cli, the PowerShell module, the GUI hosts and every test
+    project — so the one discovery rule's last resort, beside the executable
+    (RuntimeLibrary in Xmip.Surface), finds it. Section 7's rules are called
+    in that library, never written here (ADR-0052, amendment 2026-09-24). In a
+    checkout of this repository alone the glob matches nothing and nothing is
+    copied; a deployment puts its own runtime beside it.
+  -->
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)../../../../platform/runtime/target/debug/*xmip_core_runtime.*"
+          Exclude="$(MSBuildThisFileDirectory)../../../../platform/runtime/target/debug/*.rlib;$(MSBuildThisFileDirectory)../../../../platform/runtime/target/debug/*.d;$(MSBuildThisFileDirectory)../../../../platform/runtime/target/debug/*.pdb;$(MSBuildThisFileDirectory)../../../../platform/runtime/target/debug/*.exp;$(MSBuildThisFileDirectory)../../../../platform/runtime/target/debug/*.lib"
+          Link="%(Filename)%(Extension)"
+          CopyToOutputDirectory="PreserveNewest"
+          Visible="false" />
+  </ItemGroup>
+
 </Project>

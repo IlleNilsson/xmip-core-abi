@@ -7,64 +7,42 @@ namespace Xmip.Surface;
 /// <summary>
 /// How a surface says things to a person, once (ADR-0052 clause 1): a mood as
 /// a word, a rollup, an age, a count, and what the runtime answered when it
-/// was asked to start, validate, pause or resume. A status crosses the
+/// was asked to start, validate, pause or resume. A mood's word and color
+/// name are the runtime's (<c>observe::Health</c>), called here and written
+/// nowhere in .NET. A status crosses the
 /// boundary as a code; this is the one place it becomes a sentence, so the
 /// board, the command and the cmdlet say the same thing about the same code.
 /// </summary>
 public static class English
 {
-    // The inverse of Mood, derived from it rather than written out again: a
-    // snapshot publishes the word and the surface reads the mood back. One
-    // table, so a mood renamed in one place cannot be misread in another.
-    private static readonly Dictionary<string, HealthState> Moods =
-        Enum.GetValues<HealthState>().ToDictionary(Mood, state => state, StringComparer.Ordinal);
-
-    /// <summary>The mood as the word the estate uses — the playground's and
-    /// the header's, lower case.</summary>
+    /// <summary>The mood as the word the estate uses, lower case —
+    /// <c>observe::Health::word</c>, called in the runtime, so the word a
+    /// snapshot publishes and the word a surface prints are one word.
+    /// <c>unknown</c> for a value the runtime does not define.</summary>
     public static string Mood(HealthState state)
     {
-        return state switch
-        {
-            HealthState.Fine => "fine",
-            HealthState.Paused => "paused",
-            HealthState.Working => "working",
-            HealthState.Stressed => "stressed",
-            HealthState.Exhausted => "exhausted",
-            HealthState.Done => "done",
-            HealthState.Holding => "holding",
-            _ => "unknown",
-        };
+        return RuntimeLibrary.Rules.Word(state) ?? "unknown";
     }
 
-    /// <summary>The mood a word names, or null when it names none — the
-    /// inverse of <see cref="Mood(HealthState)"/>, for a surface reading a
-    /// published snapshot.</summary>
+    /// <summary>The mood a word names, or null when it names none —
+    /// <c>observe::Health::named</c>, for a surface reading a published
+    /// snapshot.</summary>
     public static HealthState? MoodOf(string? word)
     {
-        return word is not null && Moods.TryGetValue(word, out HealthState state) ? state : null;
+        return word is null ? null : RuntimeLibrary.Rules.Named(word);
     }
 
     /// <summary>
-    /// The color a surface paints a mood in, by name (ADR-0041: Fine green,
-    /// Paused slate, Working blue, Stressed yellow, Exhausted burnt, Done red,
-    /// Holding orange). The name is the estate's — the stylesheet's tokens
-    /// carry the same names, and a console picks its nearest color from the
-    /// word — so the board and the prompt cannot paint one mood two ways
-    /// (ADR-0052 clause 1). A mood this build does not know is muted.
+    /// The color a surface paints a mood in, by name (ADR-0041) —
+    /// <c>observe::Health::color</c>, called in the runtime. The name is the
+    /// estate's — the stylesheet's tokens carry the same names, and a console
+    /// picks its nearest color from the word — so the board and the prompt
+    /// cannot paint one mood two ways (ADR-0052 clause 1). A mood the runtime
+    /// does not define is muted.
     /// </summary>
     public static string Color(HealthState state)
     {
-        return state switch
-        {
-            HealthState.Fine => "green",
-            HealthState.Paused => "slate",
-            HealthState.Working => "blue",
-            HealthState.Stressed => "yellow",
-            HealthState.Exhausted => "burnt",
-            HealthState.Done => "red",
-            HealthState.Holding => "orange",
-            _ => "muted",
-        };
+        return RuntimeLibrary.Rules.Color(state) ?? "muted";
     }
 
     /// <summary>The rollup over a set of leaves as a word: <c>fine</c>,

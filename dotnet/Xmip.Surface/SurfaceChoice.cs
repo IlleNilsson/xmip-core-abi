@@ -54,9 +54,13 @@ public static class SurfaceChoice
     {
         string chosen = configuration[SurfaceKey]?.Trim() ?? string.Empty;
 
+        // Found for every surface, not only a native one: a snapshot or a
+        // remote surface calls the runtime's rules too, in this library.
+        string library = RuntimeLibrary.Find(configuration, basePath);
+
         if (string.Equals(chosen, Native, StringComparison.OrdinalIgnoreCase))
         {
-            return new NativeOperator(RuntimeLibrary.Find(configuration, basePath));
+            return new NativeOperator(library);
         }
 
         if (string.Equals(chosen, Snapshot, StringComparison.OrdinalIgnoreCase))
@@ -184,14 +188,17 @@ public static class SurfaceChoice
         ArgumentNullException.ThrowIfNull(line);
         ArgumentNullException.ThrowIfNull(document);
 
+        // Found whatever the surface: every one calls the runtime's rules in it.
+        string library = RuntimeLibrary.Stated(
+            line.Runtime, document, basePath, besideExecutable);
+
         return !string.IsNullOrWhiteSpace(line.Remote)
             ? new RemoteOperator(new Uri(line.Remote, UriKind.Absolute))
             : !string.IsNullOrWhiteSpace(line.Snapshot)
                 ? new SnapshotOperator(TomlDocument.Resolve(line.Snapshot, basePath))
                 : string.IsNullOrWhiteSpace(line.Runtime) && IsChosen(document)
                     ? OpenFirst(document, basePath)
-                    : new NativeOperator(RuntimeLibrary.Stated(
-                        line.Runtime, document, basePath, besideExecutable));
+                    : new NativeOperator(library);
     }
 
     /// <summary>

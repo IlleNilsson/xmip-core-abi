@@ -75,12 +75,32 @@ public sealed class ScopeIndex
         Dictionary<string, Entry> entries = new(StringComparer.Ordinal);
         Dictionary<string, HealthRecord> stages = new(StringComparer.Ordinal);
         Dictionary<string, NodeCapability> declared = new(StringComparer.Ordinal);
-        Entry root = Reach(entries, ScopeTree.Root, ScopeTree.Root, "cluster");
         DateTimeOffset? observed = null;
 
-        foreach (HealthRecord record in records)
+        // The whole publication in the runtime's worst-first order, asked once:
+        // every "which is worse" below is a lookup of where the runtime put a
+        // record, never an order written here (observe::Standing).
+        HealthRecord[] published = [.. records];
+        Dictionary<HealthRecord, int> rank = new(ReferenceEqualityComparer.Instance);
+        int[] order = RuntimeLibrary.Rules.WorstFirst(published);
+
+        for (int at = 0; at < order.Length; at++)
         {
-            if (Declaration(record) is { Said: true } said)
+            rank[published[order[at]]] = at;
+        }
+
+        HealthRecord? Worse(HealthRecord? now, HealthRecord candidate)
+        {
+            return now is null || rank[candidate] < rank[now] ? candidate : now;
+        }
+
+        Entry root = Reach(entries, ScopeTree.Root, ScopeTree.Root, "cluster");
+
+        foreach (HealthRecord record in published)
+        {
+            string[] parts = ScopeTree.Parts(record.Scope);
+
+            if (Declaration(record, parts) is { Said: true } said)
             {
                 declared[said.Node] = said;
             }
@@ -89,7 +109,7 @@ public sealed class ScopeIndex
             entry.Leaves.Add(record);
             entry.Worst = Worse(entry.Worst, record);
 
-            foreach ((string scope, string label) in Ancestry(record.Scope))
+            foreach ((string scope, string label) in Ancestry(parts))
             {
                 entry = Reach(entries, scope, entry.Scope, label);
                 entry.Leaves.Add(record);
@@ -116,7 +136,7 @@ public sealed class ScopeIndex
 
             root.Sums[kind] = (root.Sums[kind] ?? 0) + count.Value;
 
-            foreach ((string scope, string label) in Ancestry(count.Scope))
+            foreach ((string scope, string label) in Ancestry(ScopeTree.Parts(count.Scope)))
             {
                 Entry entry = Reach(entries, scope, ScopeTree.Parent(scope), label);
                 entry.Sums[kind] = (entry.Sums[kind] ?? 0) + count.Value;
@@ -130,7 +150,14 @@ public sealed class ScopeIndex
 
         foreach (Entry entry in entries.Values)
         {
-            entry.Children.Sort(ByTrouble);
+            if (entry.Children.Count > 1)
+            {
+                List<Entry> ordered = [.. ScopeTree.WorstFirst(entry.Children, Standing)];
+                entry.Children.Clear();
+                entry.Children.AddRange(ordered);
+            }
+
+            entry.Rank = rank;
         }
 
         return new ScopeIndex(entries, stages, declared, revision, source, observed);
@@ -158,10 +185,8 @@ public sealed class ScopeIndex
     /// <summary>A capability record read back as what it declares, or null
     /// when the record is not one: the leaf is named <c>capability</c> and the
     /// node is the segment above it.</summary>
-    private static NodeCapability? Declaration(HealthRecord record)
+    private static NodeCapability? Declaration(HealthRecord record, string[] parts)
     {
-        string[] parts = ScopeTree.Parts(record.Scope);
-
         return parts.Length >= 2 && string.Equals(parts[^1], "capability", StringComparison.Ordinal)
             ? NodeCapability.Declared(parts[^2], record.Evidence)
             : null;
@@ -288,9 +313,8 @@ public sealed class ScopeIndex
 
     /// <summary>Every scope from the first segment down to the scope itself,
     /// each with its label.</summary>
-    private static IEnumerable<(string Scope, string Label)> Ancestry(string scope)
+    private static IEnumerable<(string Scope, string Label)> Ancestry(string[] parts)
     {
-        string[] parts = ScopeTree.Parts(scope);
         string built = ScopeTree.Root;
 
         for (int depth = 0; depth < parts.Length; depth++)
@@ -300,40 +324,17 @@ public sealed class ScopeIndex
         }
     }
 
-    private static HealthRecord? Worse(HealthRecord? held, HealthRecord candidate)
+    /// <summary>An entry as the record it stands as in the worst-first order:
+    /// its worst leaf's mood and severity under its own label, and an entry
+    /// with nothing beneath it as a Fine one.</summary>
+    private static HealthRecord Standing(Entry entry)
     {
-        return held is null || Compare(candidate, held) < 0 ? candidate : held;
-    }
-
-    /// <summary>Worst first: mood, then severity, then scope.</summary>
-    private static int Compare(HealthRecord a, HealthRecord b)
-    {
-        int byState = b.State.CompareTo(a.State);
-
-        if (byState != 0)
-        {
-            return byState;
-        }
-
-        int bySeverity = b.Severity.CompareTo(a.Severity);
-
-        return bySeverity != 0 ? bySeverity : string.CompareOrdinal(a.Scope, b.Scope);
-    }
-
-    private static int ByTrouble(Entry a, Entry b)
-    {
-        HealthState worstA = a.Worst?.State ?? HealthState.Fine;
-        HealthState worstB = b.Worst?.State ?? HealthState.Fine;
-        int byState = worstB.CompareTo(worstA);
-
-        if (byState != 0)
-        {
-            return byState;
-        }
-
-        int bySeverity = (b.Worst?.Severity ?? 0).CompareTo(a.Worst?.Severity ?? 0);
-
-        return bySeverity != 0 ? bySeverity : string.CompareOrdinal(a.Label, b.Label);
+        return new HealthRecord(
+            entry.Label,
+            entry.Worst?.State ?? HealthState.Fine,
+            entry.Worst?.Severity ?? 0,
+            string.Empty,
+            default);
     }
 
     /// <summary>One scope in the tree and everything the tree knows about it.</summary>
@@ -353,6 +354,10 @@ public sealed class ScopeIndex
 
         public HealthRecord? Own { get; set; }
 
+        /// <summary>Where the runtime put each record of the publication in
+        /// its worst-first order.</summary>
+        public Dictionary<HealthRecord, int> Rank { get; set; } = [];
+
         public ulong?[] Sums { get; } = new ulong?[6];
 
         public bool IsLeaf => Children.Count == 0;
@@ -371,12 +376,7 @@ public sealed class ScopeIndex
 
         public IReadOnlyList<HealthRecord> Sorted()
         {
-            if (sorted is null)
-            {
-                HealthRecord[] copy = [.. Leaves];
-                Array.Sort(copy, Compare);
-                sorted = copy;
-            }
+            sorted ??= [.. Leaves.OrderBy(leaf => Rank[leaf])];
 
             return sorted;
         }

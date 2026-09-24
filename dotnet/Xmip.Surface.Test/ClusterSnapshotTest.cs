@@ -107,13 +107,14 @@ public sealed class ClusterSnapshotTest
     }
 
     /// <summary>
-    /// The surface reads a declaration by the rule the node crate holds
-    /// (<c>node::Stage::declared</c>): each word exact lowercase only (the
-    /// owner, 2026-09-24), and any other word refuses the whole declaration
-    /// in the same words, never dropped (open problem 25, row i).
+    /// The surface reads a declaration by the node crate's rule
+    /// (<c>node::Stage::declared</c>, called in the runtime and tested
+    /// there): what it takes out of a node's evidence or a <c>[run]</c> entry
+    /// is handed to that rule, and a refused declaration carries the rule's
+    /// own sentence, never the words that were known (open problem 25, row i).
     /// </summary>
     [Fact]
-    public void ADeclarationReadsByTheNodesRuleLowercaseOnlyAndAnUnknownWordRefused()
+    public void ADeclarationReadsByTheNodesRuleAndARefusalIsCarriedWhole()
     {
         NodeCapability lower = NodeCapability.Declared("n1", "declares send,receive; online; x");
         Assert.Equal(["receive", "send"], lower.Stages);
@@ -121,24 +122,28 @@ public sealed class ClusterSnapshotTest
 
         NodeCapability cased = NodeCapability.Declared("n1", "declares Send,RECEIVE; online; x");
         Assert.Empty(cased.Stages);
-        Assert.Equal(
-            "REFUSED: no capability is called Send, RECEIVE; a node declares "
-                + "receive, process, send, or nothing at all.",
-            cased.Refusal);
+        Assert.Equal(Refusal("Send,RECEIVE"), cased.Refusal);
+        Assert.StartsWith("REFUSED:", cased.Refusal, StringComparison.Ordinal);
         Assert.NotEmpty(NodeCapability.Started("n2=Process").Refusal);
 
-        const string Refused = "REFUSED: no capability is called relay, hold; a node declares "
-            + "receive, process, send, or nothing at all.";
+        string refused = Refusal("receive,relay+hold");
 
         NodeCapability published = NodeCapability.Declared(
             "n1", "declares receive,relay+hold; offline; x");
         Assert.Empty(published.Stages);
-        Assert.Equal(Refused, published.Refusal);
-        Assert.Equal(Refused, published.Line());
+        Assert.Equal(refused, published.Refusal);
+        Assert.Equal(refused, published.Line());
 
         NodeCapability started = NodeCapability.Started("n2=receive+relay+hold");
         Assert.Empty(started.Stages);
-        Assert.Equal(Refused, started.Refusal);
+        Assert.Equal(refused, started.Refusal);
+    }
+
+    private static string Refusal(string words)
+    {
+        RuntimeLibrary.Rules.Declared(words, out string refusal);
+
+        return refusal;
     }
 
     [Fact]

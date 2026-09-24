@@ -28,8 +28,8 @@ public sealed record NodeCapability(
     private const string NoStage = "no stage of the message path";
 
     /// <summary>Why the declaration was refused, or the empty string when it
-    /// was not: a word that is no stage refuses the whole declaration, in the
-    /// words <c>node::Stage::declared</c> uses, and is never read as the
+    /// was not: a word that is no stage refuses the whole declaration, in
+    /// <c>node::Stage::declared</c>'s own words, and is never read as the
     /// words that were known (ADR-0055).</summary>
     public string Refusal { get; init; } = string.Empty;
 
@@ -116,35 +116,17 @@ public sealed record NodeCapability(
 
     /// <summary>
     /// The stage words a value names, in message-path order and each at most
-    /// once, by the rule <c>node::Stage::declared</c> holds in Rust: words
+    /// once: <c>node::Stage::declared</c>, called in the runtime — words
     /// separated by commas or <c>+</c>, each exact lowercase only (the owner,
     /// 2026-09-24: <c>Send</c> is no stage). Any other word refuses the whole
-    /// value: no stages, and <paramref name="refusal"/> names every such word.
+    /// value: no stages, and <paramref name="refusal"/> is the REFUSED
+    /// sentence naming every such word (ADR-0055). The one parse every
+    /// surface and the estate's PowerShell module read a declaration by.
     /// </summary>
-    /// <remarks>
-    /// A copy of the Rust parse, and the one that remains: a surface reads a
-    /// snapshot with no runtime library loaded, and the operator boundary
-    /// (<c>xmip_operate.h</c>) carries no call for it. Estate test
-    /// <c>test/XmipTest.Test.ps1</c> holds the words and the refusal equal.
-    /// </remarks>
-    private static IReadOnlyList<string> Ordered(string said, out string refusal)
+    public static IReadOnlyList<string> Ordered(string said, out string refusal)
     {
         ArgumentNullException.ThrowIfNull(said);
 
-        string[] words = said.Split(
-            [',', '+'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        string[] strangers = [.. words.Where(
-            word => !ScopeTree.Stages.Contains(word, StringComparer.Ordinal))];
-
-        if (strangers.Length > 0)
-        {
-            refusal = $"REFUSED: no capability is called {string.Join(", ", strangers)}; " +
-                $"a node declares {string.Join(", ", ScopeTree.Stages)}, or nothing at all.";
-            return [];
-        }
-
-        refusal = string.Empty;
-        return [.. ScopeTree.Stages.Where(
-            stage => words.Contains(stage, StringComparer.Ordinal))];
+        return RuntimeLibrary.Rules.Declared(said, out refusal);
     }
 }

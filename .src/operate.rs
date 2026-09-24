@@ -140,6 +140,64 @@ pub type WaitChangeFn =
 /// Header section 5. The exported entrypoint's shape.
 pub type OperateFn = unsafe extern "C" fn(version: u32, out: *mut Operate) -> i32;
 
+/// Header section 7: the rules a surface calls instead of keeping its own.
+/// Each is a separate optional symbol the runtime exports, a thin forwarder
+/// into the crate that owns the rule; none reads the snapshot.
+pub mod rule {
+    use super::{HealthEntry, Scope};
+    use crate::ffi::Str;
+
+    /// `observe::Scope::contains`.
+    pub const SCOPE_CONTAINS_ENTRYPOINT: &str = "xmip_scope_contains_v1";
+    /// `observe::Scope::segments`.
+    pub const SCOPE_PARTS_ENTRYPOINT: &str = "xmip_scope_parts_v1";
+    /// `node::Stage::WORDS`.
+    pub const STAGE_WORDS_ENTRYPOINT: &str = "xmip_stage_words_v1";
+    /// `node::Stage::declared`.
+    pub const STAGE_DECLARED_ENTRYPOINT: &str = "xmip_stage_declared_v1";
+    /// `observe::Health::word`.
+    pub const HEALTH_WORD_ENTRYPOINT: &str = "xmip_health_word_v1";
+    /// `observe::Health::color`.
+    pub const HEALTH_COLOR_ENTRYPOINT: &str = "xmip_health_color_v1";
+    /// `observe::Health::named`.
+    pub const HEALTH_NAMED_ENTRYPOINT: &str = "xmip_health_named_v1";
+    /// `observe::Standing::worst_first`.
+    pub const HEALTH_ORDER_ENTRYPOINT: &str = "xmip_health_order_v1";
+
+    /// Whether `candidate` is `scope` or beneath it; `out_contains` 1 or 0.
+    pub type ScopeContainsFn =
+        unsafe extern "C" fn(scope: Scope, candidate: Scope, out_contains: *mut u8) -> i32;
+
+    /// A scope's segments, borrowed from `scope`, in the fill shape.
+    pub type ScopePartsFn =
+        unsafe extern "C" fn(scope: Scope, out: *mut Str, cap: usize, out_len: *mut usize) -> i32;
+
+    /// The stage words, static, in the fill shape.
+    pub type StageWordsFn =
+        unsafe extern "C" fn(out: *mut Str, cap: usize, out_len: *mut usize) -> i32;
+
+    /// A declaration's stages, or its refusal written as UTF-8.
+    pub type StageDeclaredFn = unsafe extern "C" fn(
+        declared: Str,
+        stages: *mut Str,
+        cap: usize,
+        out_len: *mut usize,
+        refusal: *mut u8,
+        refusal_cap: usize,
+        refusal_len: *mut usize,
+    ) -> i32;
+
+    /// A mood's word or color name, static.
+    pub type HealthTextFn = unsafe extern "C" fn(health: i32, out: *mut Str) -> i32;
+
+    /// The mood a word names.
+    pub type HealthNamedFn = unsafe extern "C" fn(word: Str, out: *mut i32) -> i32;
+
+    /// Many entries worst first, as their positions.
+    pub type HealthOrderFn =
+        unsafe extern "C" fn(entries: *const HealthEntry, len: usize, out_order: *mut usize) -> i32;
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -192,6 +250,42 @@ mod tests {
         assert!(HEADER.contains(&format!("\"{XMIP_OPERATE_ENTRYPOINT}\"")));
         assert!(HEADER.contains(&format!("\"{XMIP_WAIT_CHANGE_ENTRYPOINT}\"")));
         assert!(HEADER.contains("XmipWaitChangeFn"));
+    }
+
+    #[test]
+    fn every_rule_entrypoint_matches_the_header() {
+        for (define, name) in [
+            (
+                "XMIP_SCOPE_CONTAINS_ENTRYPOINT",
+                rule::SCOPE_CONTAINS_ENTRYPOINT,
+            ),
+            ("XMIP_SCOPE_PARTS_ENTRYPOINT", rule::SCOPE_PARTS_ENTRYPOINT),
+            ("XMIP_STAGE_WORDS_ENTRYPOINT", rule::STAGE_WORDS_ENTRYPOINT),
+            (
+                "XMIP_STAGE_DECLARED_ENTRYPOINT",
+                rule::STAGE_DECLARED_ENTRYPOINT,
+            ),
+            ("XMIP_HEALTH_WORD_ENTRYPOINT", rule::HEALTH_WORD_ENTRYPOINT),
+            (
+                "XMIP_HEALTH_COLOR_ENTRYPOINT",
+                rule::HEALTH_COLOR_ENTRYPOINT,
+            ),
+            (
+                "XMIP_HEALTH_NAMED_ENTRYPOINT",
+                rule::HEALTH_NAMED_ENTRYPOINT,
+            ),
+            (
+                "XMIP_HEALTH_ORDER_ENTRYPOINT",
+                rule::HEALTH_ORDER_ENTRYPOINT,
+            ),
+        ] {
+            let line = HEADER
+                .lines()
+                .find(|line| line.starts_with(&format!("#define {define} ")))
+                .unwrap_or_else(|| panic!("{define} is not in xmip_operate.h"));
+
+            assert!(line.ends_with(&format!("\"{name}\"")), "{line}");
+        }
     }
 
     #[test]
