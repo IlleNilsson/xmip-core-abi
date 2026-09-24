@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Configuration;
 using Xmip.Abi.Operate;
 
 namespace Xmip.Surface.Test;
@@ -21,73 +20,33 @@ public sealed class ScopeTreeTest
         new("xmip:///edge-02/send/billing", HealthState.Fine, 0, "", Now),
     ];
 
-    /// <summary>The containment cases in xmip-core-observe's
-    /// <c>src/scope-vector.toml</c>, the same file <c>observe::Scope</c>'s test
-    /// reads: the rule has two writers, and this holds them to one statement
-    /// (ADR-0052, amendment 2026-09-24).</summary>
-    [Fact]
-    public void EveryCaseTheRuntimeIsHeldToHoldsHereToo()
+    /// <summary>
+    /// The tree answers what the runtime's export answers, because it asks it:
+    /// containment and a scope's parts are <c>observe::Scope</c>'s, the stage
+    /// words <c>node::Stage</c>'s and the order <c>observe::Standing</c>'s,
+    /// tested once where they are written, and not written here again
+    /// (ADR-0052, amendment 2026-09-24). What is tested here is that the
+    /// surface returns the export's answer, whatever it is.
+    /// </summary>
+    [Theory]
+    [InlineData("xmip:///edge-01/receive/orders", "xmip:///edge-01")]
+    [InlineData("xmip:///edge-010/receive", "xmip:///edge-01")]
+    [InlineData("xmip:///edge-01", "xmip:///edge-01/receive")]
+    [InlineData("xmip://lab:9000/edge-01/receive/", ScopeTree.Root)]
+    [InlineData("XMIP:///C1", "xmip:///C1")]
+    [InlineData("", "")]
+    public void TheTreeAnswersWhatTheRuntimeExportAnswers(string candidate, string scope)
     {
-        string file = Path.Combine(AppContext.BaseDirectory, "Fixture", "scope-vector.toml");
-        Assert.True(
-            File.Exists(file),
-            "scope-vector.toml comes from xmip-core-observe in the estate checkout");
+        RuntimeRules rules = RuntimeLibrary.Rules;
 
-        IConfigurationSection[] cases =
-            [.. TomlDocument.Read(file).GetSection("case").GetChildren()];
-        Assert.NotEmpty(cases);
+        Assert.Equal(rules.Contains(scope, candidate), ScopeTree.Beneath(candidate, scope));
+        Assert.Equal(rules.Parts(scope), ScopeTree.Parts(scope));
+        Assert.Equal(rules.Parts(candidate), ScopeTree.Parts(candidate));
+        Assert.Equal(rules.StageWords, ScopeTree.Stages);
 
-        foreach (IConfigurationSection @case in cases)
-        {
-            string why = @case["why"] ?? string.Empty;
-            string scope = @case["scope"] ?? string.Empty;
-            bool contains = bool.Parse(@case["contains"]!);
-
-            Assert.True(
-                ScopeTree.Beneath(@case["candidate"] ?? string.Empty, scope) == contains, why);
-
-            if (@case["path"] is string path)
-            {
-                Assert.True(string.Join('/', ScopeTree.Parts(scope)) == path, why);
-            }
-
-            if (@case["is_root"] is string isRoot)
-            {
-                bool atRoot = ScopeTree.Parts(scope).Length == 0;
-                Assert.True(atRoot == bool.Parse(isRoot), why);
-            }
-        }
-    }
-
-    [Fact]
-    public void PartsDropTheSchemeAndAnEmptyAuthority()
-    {
         Assert.Equal(
-            ["edge-01", "receive", "orders"],
-            ScopeTree.Parts("xmip:///edge-01/receive/orders"));
-        Assert.Empty(ScopeTree.Parts(ScopeTree.Root));
-        Assert.Empty(ScopeTree.Parts("xmip://"));
-    }
-
-    [Fact]
-    public void PartsDropAHostToo()
-    {
-        Assert.Equal(["edge-01", "receive"], ScopeTree.Parts("xmip://lab:9000/edge-01/receive/"));
-    }
-
-    [Fact]
-    public void EverythingIsBeneathTheRoot()
-    {
-        Assert.All(Leaves, leaf => Assert.True(ScopeTree.Beneath(leaf.Scope, ScopeTree.Root)));
-    }
-
-    [Fact]
-    public void BeneathIsBySegmentNotByPrefix()
-    {
-        Assert.True(ScopeTree.Beneath("xmip:///edge-01/receive/orders", "xmip:///edge-01"));
-        Assert.True(ScopeTree.Beneath("xmip:///edge-01", "xmip:///edge-01/"));
-        Assert.False(ScopeTree.Beneath("xmip:///edge-010/receive", "xmip:///edge-01"));
-        Assert.False(ScopeTree.Beneath("xmip:///edge-01", "xmip:///edge-01/receive"));
+            rules.WorstFirst(Leaves).Select(at => Leaves[at]),
+            ScopeTree.WorstFirst(Leaves));
     }
 
     [Fact]
@@ -213,7 +172,6 @@ public sealed class ScopeTreeTest
     {
         // ADR-0027 clause 5: Streams at Receive, Journeys in Process, Messages
         // at Send — the three words kept apart, on every board.
-        Assert.Equal(["receive", "process", "send"], ScopeTree.Stages);
         Assert.Equal(Counted.Streams, ScopeTree.CountedAt("receive"));
         Assert.Equal(Counted.Journeys, ScopeTree.CountedAt("process"));
         Assert.Equal(Counted.Messages, ScopeTree.CountedAt("send"));

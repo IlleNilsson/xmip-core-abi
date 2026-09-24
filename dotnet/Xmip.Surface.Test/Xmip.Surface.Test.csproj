@@ -4,6 +4,9 @@
     The shared model's tests (ADR-0052 clause 6): the scope tree and its
     rollup, the worst leaf beneath a scope, runtime discovery, the English,
     the surface choice and the snapshot surface over a small TOML fixture.
+    The rules beneath them are the runtime's (xmip_operate.h section 7), in
+    the library Xmip.Abi's project copies beside this assembly; these prove
+    the surface returns what the runtime answers, and test no rule again.
     Every .NET surface is a thin face over what is tested here, so this is
     where the board's answer is proved, not on the board.
 
@@ -50,22 +53,6 @@
          test assembly. -->
     <None Include="Fixture\*.toml"
           Link="Fixture\%(Filename)%(Extension)"
-          CopyToOutputDirectory="PreserveNewest" />
-  </ItemGroup>
-
-  <PropertyGroup>
-    <!-- The scope containment cases, whose home is xmip-core-observe: the one
-         statement of the rule ScopeTree and observe::Scope both write
-         (ADR-0052, amendment 2026-09-24). Found in the estate checkout and
-         copied beside the test assembly, as the fixtures are; outside the
-         estate the file is absent and ScopeTreeTest says so and fails. -->
-    <Observe>$(MSBuildThisFileDirectory)..\..\..\..\core\operation\observe</Observe>
-    <ScopeVector>$(Observe)\src\scope-vector.toml</ScopeVector>
-  </PropertyGroup>
-
-  <ItemGroup>
-    <None Include="$(ScopeVector)" Condition="Exists('$(ScopeVector)')"
-          Link="Fixture\scope-vector.toml"
           CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 

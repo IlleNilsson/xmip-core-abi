@@ -70,6 +70,15 @@ public sealed class SnapshotOperatorTest
     }
 
     [Fact]
+    public void TheRootIsWhereThePublisherSaysItPublishes()
+    {
+        Assert.Equal("xmip:///lab", new SnapshotOperator(Fixture).Root());
+        Assert.Equal(
+            ScopeTree.Root,
+            new SnapshotOperator(Path.Combine(Path.GetTempPath(), "no-such-snapshot.toml")).Root());
+    }
+
+    [Fact]
     public void PausedIsAMoodNotAnEvidenceString()
     {
         SnapshotOperator surface = new(Fixture);

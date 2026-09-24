@@ -253,6 +253,98 @@ typedef XmipStatus (*XmipValidateFn)(XmipStr configuration,
 #define XMIP_START_ENTRYPOINT    "xmip_start_v1"
 #define XMIP_VALIDATE_ENTRYPOINT "xmip_validate_v1"
 
+/* ===================================================================== */
+/* 7. The rules a surface calls instead of keeping its own               */
+/* ===================================================================== */
+
+/*
+ * A rule, a word list or an order has one implementation, in the crate that
+ * owns it, and a surface calls it rather than writing it again - across a
+ * language boundary too (ADR-0052, amendment 2026-09-24; ADR-0027, amendment
+ * of the same date). Each symbol below is a thin forwarder into its owner:
+ *
+ *     containment, parts    observe::Scope        (xmip-core-observe)
+ *     stage words, a parse  node::Stage           (xmip-core-node)
+ *     mood word, color      observe::Health       (xmip-core-observe)
+ *     worst-first order     observe::Standing     (xmip-core-observe)
+ *
+ * None of them reads the snapshot or needs a table: they are pure, callable
+ * before, during and without a node, from any thread. Each is a separate
+ * optional symbol, like xmip_wait_change_v1, so XMIP_OPERATE_VERSION and the
+ * version-1 table are unchanged; a runtime that predates them simply lacks
+ * the symbol. Every function returns XMIP_OK, XMIP_E_MALFORMED for text that
+ * is not UTF-8, or the status named beside it.
+ *
+ * Strings handed back either borrow from the caller's own input (valid while
+ * that input is) or are static (valid for as long as the library is loaded).
+ * Nothing handed back is ever freed by the caller.
+ */
+
+/*
+ * Whether candidate is scope itself or sits beneath it in the one tree: the
+ * scheme and the authority go, a slash at either end is ignored, empty text is
+ * the root, and the unit is a segment, never a character. *out_contains is 1
+ * or 0.
+ */
+typedef XmipStatus (*XmipScopeContainsFn)(XmipScope scope, XmipScope candidate,
+                                          uint8_t *out_contains);
+
+/*
+ * The segments of a scope's path, top first, in the fill shape of section 5:
+ * up to cap entries into out, the true count in out_len. Each entry borrows
+ * from scope. The root has none.
+ */
+typedef XmipStatus (*XmipScopePartsFn)(XmipScope scope,
+                                       XmipStr *out, size_t cap, size_t *out_len);
+
+/* The words a node may declare, in message-path order. Static. */
+typedef XmipStatus (*XmipStageWordsFn)(XmipStr *out, size_t cap, size_t *out_len);
+
+/*
+ * The stages a declaration names - words separated by commas or +, each exact
+ * lower case - in path order, each at most once, into stages (static words,
+ * the fill shape of section 5). A declaration naming any other word is
+ * XMIP_E_INVALID with no stage, and the refusal sentence is written into
+ * refusal as UTF-8, its true byte length in refusal_len whether or not it fit
+ * (ADR-0055: refused by name, never dropped). refusal_len is 0 on XMIP_OK.
+ */
+typedef XmipStatus (*XmipStageDeclaredFn)(XmipStr declared,
+                                          XmipStr *stages, size_t cap, size_t *out_len,
+                                          uint8_t *refusal, size_t refusal_cap,
+                                          size_t *refusal_len);
+
+/*
+ * A mood as the word the estate uses, lower case, and the name of the color a
+ * surface paints it in (ADR-0041) - static. XMIP_E_INVALID for a value
+ * section 3 does not define.
+ */
+typedef XmipStatus (*XmipHealthWordFn)(XmipHealth health, XmipStr *out);
+typedef XmipStatus (*XmipHealthColorFn)(XmipHealth health, XmipStr *out);
+
+/* The mood a word names, exactly. XMIP_E_NOT_FOUND when it names none. */
+typedef XmipStatus (*XmipHealthNamedFn)(XmipStr word, XmipHealth *out);
+
+/*
+ * len entries in the worst-first order every reader returns health in - the
+ * worse mood, then the higher severity, then the scope in byte order - as
+ * their positions: out_order, room for len indices, receives the worst
+ * entry's position first, and equals keep the order they came in. Only scope,
+ * health and severity are read. One call orders a whole publication, and a
+ * surface orders a few things, a pair among them, the same way.
+ * XMIP_E_INVALID when a mood is not one section 3 defines.
+ */
+typedef XmipStatus (*XmipHealthOrderFn)(const XmipHealthEntry *entries, size_t len,
+                                        size_t *out_order);
+
+#define XMIP_SCOPE_CONTAINS_ENTRYPOINT "xmip_scope_contains_v1"
+#define XMIP_SCOPE_PARTS_ENTRYPOINT    "xmip_scope_parts_v1"
+#define XMIP_STAGE_WORDS_ENTRYPOINT    "xmip_stage_words_v1"
+#define XMIP_STAGE_DECLARED_ENTRYPOINT "xmip_stage_declared_v1"
+#define XMIP_HEALTH_WORD_ENTRYPOINT    "xmip_health_word_v1"
+#define XMIP_HEALTH_COLOR_ENTRYPOINT   "xmip_health_color_v1"
+#define XMIP_HEALTH_NAMED_ENTRYPOINT   "xmip_health_named_v1"
+#define XMIP_HEALTH_ORDER_ENTRYPOINT   "xmip_health_order_v1"
+
 #ifdef __cplusplus
 }
 #endif

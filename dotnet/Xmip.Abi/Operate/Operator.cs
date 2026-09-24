@@ -52,26 +52,8 @@ public sealed unsafe class Operator : IDisposable
     /// </summary>
     public static Operator? Load(string path, out string reason)
     {
-        if (!File.Exists(path))
+        if (!LibraryCopy.TryLoad(path, out nint library, out reason))
         {
-            reason = $"no runtime library at {path}";
-            return null;
-        }
-
-        // Load a copy, never the build output itself. A loaded library is
-        // locked for as long as this process lives, and the path configured in
-        // development is the runtime's own target/debug — so every GUI left
-        // running made the next `cargo build` fail with a locked .dll, and the
-        // fix was always "stop the GUI first". Copying costs one file write and
-        // removes the hazard for good.
-        string copy = Path.Combine(
-            Path.GetTempPath(),
-            $"xmip-abi-{Guid.NewGuid():n}-{Path.GetFileName(path)}");
-        File.Copy(path, copy);
-
-        if (!NativeLibrary.TryLoad(copy, out nint library))
-        {
-            reason = $"{path} could not be loaded";
             return null;
         }
 

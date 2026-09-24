@@ -7,9 +7,8 @@ runtime, operator surfaces, and loadable Modules.
 are normative. The Rust crate, whose source sits aside under `.src`
 (ADR-0049), is a convenience binding over that boundary and must not introduce
 Rust-specific types into the ABI: the descriptor, the manifest, the FFI
-shapes, the operate types, and the Rust side of runtime discovery
-(`runtime_library`) — the one rule `Xmip.Surface` keeps for .NET, so the
-language server declares no copy (ADR-0052 clause 1). `examples/conforming.rs`
+shapes and the operate types, section 7's rule exports among them
+(`operate::rule`). `examples/conforming.rs`
 builds as a cdylib and is the conforming artifact a loader probe is tested
 against.
 
@@ -18,8 +17,14 @@ both headers for every operator surface — the cli, the PowerShell module and
 the GUI reference it as a project and bind nothing themselves (ADR-0014,
 amendment of 2026-08-26). `Module/` carries the module boundary, its probe
 and the probe's judgement of whether a module conforms, and `StatusMeaning`,
-what a status code means; `Operate/` the operator boundary and its records;
-`AbiBoundaries` says both boundaries at once. `xmip-cli abi`, `status` and
+what a status code means; `Operate/` the operator boundary and its records,
+and `RuntimeRules`, section 7 bound once: scope containment and a scope's
+parts, the stage words and a declaration's parse, a mood's word and color
+name and the worst-first order, each written once in the crate that owns it
+(`observe`, `node`) and forwarded by the runtime's library, so no .NET
+surface writes a rule again (ADR-0052, amendment 2026-09-24). In a composed
+estate the project copies the runtime's built library beside everything that
+references it. `AbiBoundaries` says both boundaries at once. `xmip-cli abi`, `status` and
 `probe` render those and `Get-XmipAbi`, `ConvertFrom-XmipStatus` and
 `Get-XmipModuleDescriptor` emit them, so neither face judges a code or a
 module on its own (ADR-0052, amendment 2026-09-24). `dotnet/Xmip.Abi.Tests`
@@ -39,8 +44,9 @@ faces over it.
   cluster is published: one surface per cluster, and nothing added across them
   (ADR-0052, amendment 2026-09-20).
 - **The tree.** `ScopeTree` — the tree, its rollup and the worst leaf beneath
-  a scope; `ScopeIndex`, a publication read once as that tree with every
-  answer a lookup (ADR-0052, amendment 2026-09-15); `Branch` and `Crumb` for
+  a scope, over the runtime's containment, parts, stage words and order;
+  `ScopeIndex`, a publication read once as that tree with every answer a
+  lookup (ADR-0052, amendment 2026-09-15); `Branch` and `Crumb` for
   the drill-down, and `ScopeItem` for one row of it.
 - **Narrowing.** `ScopePattern`, the one wildcard every surface matches with
   (ADR-0059 clauses 7 and 8); `ScopeFilter`, that pattern applied to a
@@ -60,9 +66,12 @@ faces over it.
   in, so an exit code and a pipeline object agree; and
   `ConfigurationVerdict` for what came of handing the runtime a node
   configuration — a saved file, or the text an editor holds.
-- **Plumbing.** `RuntimeLibrary` (discovery by one rule: `Xmip:RuntimeLibrary`,
-  else `XMIP_RUNTIME_LIBRARY`, else beside the executable, with a library an
-  operator typed over all three), `SurfaceChoice` (the surface a host chose in
+- **Plumbing.** `RuntimeLibrary` (discovery by one rule, written here and
+  nowhere else in the estate: `Xmip:RuntimeLibrary`, else
+  `XMIP_RUNTIME_LIBRARY`, else beside the executable, with a library an
+  operator typed over all three; and `Rules`, the one library a process calls
+  the runtime's rules in — a snapshot or remote surface as much as a native
+  one), `SurfaceChoice` (the surface a host chose in
   its TOML, every snapshot it names, and — over a `SurfaceLine` — the one
   precedence the executable, the prompt and the cmdlets share: a remote host,
   a snapshot or a runtime stated for the invocation, then the document, then
@@ -70,8 +79,9 @@ faces over it.
   `TomlDocument` (the one TOML reader, and the syntax-tree editing an editor
   changes a document through, comments and layout kept), `ProcessDeclaration` (what a System
   Process Xmip owns says of itself, ADR-0053 clause 3), `English` (a status
-  said in words once) and `SurfaceChange` (one coalescing change stream that
-  wakes every surface when a published snapshot advances).
+  said in words once, a mood's word and color name asked of the runtime)
+  and `SurfaceChange` (one coalescing change stream that wakes every
+  surface when a published snapshot advances).
 
 `dotnet/Xmip.Surface.Relay` is the served half — `SurfaceHub`, answering what
 the host's surface answers, and `SurfaceRelay`, pushing the host's change feed
@@ -83,6 +93,9 @@ filter and the selection, the figures and their flow, runtime discovery and
 the surface precedence, the English, the
 configuration verdict, the process declaration, the snapshot surface and the
 cluster set over fixtures, and the remote surface against a hub on a loopback
-port. `dotnet test dotnet/Xmip.Surface.Test` runs them.
+port. It tests no rule the runtime owns: it proves the surface returns what
+the runtime's export returns, and those rules are tested once, where they are
+written. `dotnet test dotnet/Xmip.Surface.Test` runs them, after `cargo build`
+in xmip-core-runtime has left the library the test assemblies load.
 
 `architecture.toml` carries the maturity; this file does not repeat it.

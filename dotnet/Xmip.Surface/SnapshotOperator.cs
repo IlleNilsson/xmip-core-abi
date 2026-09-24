@@ -81,6 +81,14 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
         return Read().Run;
     }
 
+    /// <summary>The scope the publisher publishes at — the document's
+    /// <c>node</c>, <c>xmip:///A1</c> for a Playground roll named A1 — or the
+    /// root when it names none.</summary>
+    public string Root()
+    {
+        return Read().Root;
+    }
+
     /// <inheritdoc />
     public async IAsyncEnumerable<SurfaceChange> WatchAsync(
         [EnumeratorCancellation] CancellationToken stop = default)
@@ -177,12 +185,15 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
     }
 
     private sealed record Publication(
-        ScopeIndex Index, TopologySnapshot Topology, RunHeader Run)
+        ScopeIndex Index, TopologySnapshot Topology, RunHeader Run, string Root)
     {
         public static Publication Nothing(string source)
         {
             return new Publication(
-                ScopeIndex.Empty(source), TopologySnapshot.Empty(source), RunHeader.None);
+                ScopeIndex.Empty(source),
+                TopologySnapshot.Empty(source),
+                RunHeader.None,
+                ScopeTree.Root);
         }
     }
 
@@ -269,7 +280,7 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
             ScopeIndex index = ScopeIndex.Build(records, counts, ++revision, source);
 
             return new Publication(
-                index, ParseTopology(document, source), RunHeader.Read(document));
+                index, ParseTopology(document, source), RunHeader.Read(document), node);
         }
         catch (Exception exception)
             when (exception is IOException or UnauthorizedAccessException)

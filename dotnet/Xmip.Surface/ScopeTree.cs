@@ -4,42 +4,38 @@ namespace Xmip.Surface;
 
 /// <summary>
 /// The scope tree, once. A scope is an Xmip URI (ADR-0027 clause 3) and the
-/// tree beneath the cluster is <c>node / stage / name</c>; what is beneath
-/// what, how a parent rolls up, and which leaf beneath a scope is worst are
-/// decided here for every surface, so the board and the cmdlet cannot answer
-/// differently (ADR-0052 clause 1).
+/// tree beneath the cluster is <c>node / stage / name</c>; every surface asks
+/// here what is beneath what, how a parent rolls up, and which leaf beneath a
+/// scope is worst, so the board and the cmdlet cannot answer differently
+/// (ADR-0052 clause 1).
 /// </summary>
 /// <remarks>
-/// ADR-0041: a leaf's mood does not propagate. A parent is <c>Fine</c> when
-/// every leaf beneath it is, and <c>Holding</c> the moment one is not; the
-/// worst leaf carries the real mood and its evidence, and that is what a
-/// Holding scope shows beside the word (ADR-0052 clause 2).
+/// <para>The rules underneath are not written here. Containment and a scope's parts
+/// are <c>observe::Scope</c>'s, the stage words <c>node::Stage</c>'s and the
+/// worst-first order <c>observe::Standing</c>'s, and this calls each in the
+/// runtime's library (<see cref="RuntimeLibrary.Rules"/>, <c>xmip_operate.h</c>
+/// section 7) — one implementation, which the snapshot answers by too
+/// (ADR-0052, amendment 2026-09-24).</para>
+/// <para>ADR-0041: a leaf's mood does not propagate. A parent is <c>Fine</c>
+/// when every leaf beneath it is, and <c>Holding</c> the moment one is not;
+/// the worst leaf carries the real mood and its evidence, and that is what a
+/// Holding scope shows beside the word (ADR-0052 clause 2).</para>
 /// </remarks>
 public static class ScopeTree
 {
     /// <summary>The cluster: the root every scope is beneath.</summary>
     public const string Root = "xmip:///";
 
-    private const string Scheme = "xmip://";
-
     /// <summary>
     /// The path segments of a scope: <c>xmip:///edge-01/receive/orders</c> is
     /// <c>edge-01</c>, <c>receive</c>, <c>orders</c>. The scheme and the
     /// authority go; an omitted host means estate-wide and the tree is the
     /// path. The root has no segments, so everything is beneath it.
+    /// <c>observe::Scope::segments</c>, called in the runtime.
     /// </summary>
     public static string[] Parts(string scope)
     {
-        string path = scope;
-
-        if (path.StartsWith(Scheme, StringComparison.Ordinal))
-        {
-            path = path[Scheme.Length..];
-            int slash = path.IndexOf('/', StringComparison.Ordinal);
-            path = slash < 0 ? string.Empty : path[(slash + 1)..];
-        }
-
-        return path.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        return RuntimeLibrary.Rules.Parts(scope);
     }
 
     /// <summary>A scope built from segments, under the root.</summary>
@@ -50,41 +46,12 @@ public static class ScopeTree
 
     /// <summary>Whether <paramref name="candidate"/> is <paramref name="scope"/>
     /// itself or beneath it: the scope's segments are a prefix of the
-    /// candidate's.</summary>
-    /// <remarks>
-    /// The rule has two writers, on purpose: this one, and <c>observe::Scope</c>
-    /// in xmip-core-observe, which the runtime answers by; a surface loads no
-    /// Rust library (the owner, 2026-09-24; ADR-0052, amendment of that date).
-    /// Both are held to one set of cases, xmip-core-observe's
-    /// <c>src/scope-vector.toml</c>, which a test on each side reads. Change a
-    /// case there first, then both writers.
-    /// </remarks>
+    /// candidate's. <c>observe::Scope::contains</c>, called in the runtime —
+    /// the one rule the snapshot answers by (ADR-0052, amendment
+    /// 2026-09-24).</summary>
     public static bool Beneath(string candidate, string scope)
     {
-        // By segment, never by prefix — and without splitting either scope:
-        // a board compares eleven thousand records at a time (2026-09-15).
-        ReadOnlySpan<char> want = Trail(scope.AsSpan());
-        ReadOnlySpan<char> have = Trail(candidate.AsSpan());
-
-        return want.IsEmpty
-            || (have.StartsWith(want, StringComparison.Ordinal)
-                && (have.Length == want.Length || have[want.Length] == '/'));
-    }
-
-    /// <summary>The path of a scope after the scheme and the authority, with
-    /// no slash at either end — what <see cref="Parts"/> splits.</summary>
-    private static ReadOnlySpan<char> Trail(ReadOnlySpan<char> scope)
-    {
-        ReadOnlySpan<char> path = scope;
-
-        if (path.StartsWith(Scheme, StringComparison.Ordinal))
-        {
-            path = path[Scheme.Length..];
-            int slash = path.IndexOf('/');
-            path = slash < 0 ? [] : path[(slash + 1)..];
-        }
-
-        return path.Trim('/');
+        return RuntimeLibrary.Rules.Contains(scope, candidate);
     }
 
     /// <summary>The scope one level up; the root's parent is the root.</summary>
@@ -103,8 +70,8 @@ public static class ScopeTree
     }
 
     /// <summary>The three stages of the message path, in the order an operator
-    /// reads them: <c>receive</c>, <c>process</c>, <c>send</c>.</summary>
-    public static IReadOnlyList<string> Stages { get; } = ["receive", "process", "send"];
+    /// reads them: <c>node::Stage::WORDS</c>, called in the runtime.</summary>
+    public static IReadOnlyList<string> Stages => RuntimeLibrary.Rules.StageWords;
 
     /// <summary>The stage of the message path a scope sits in — <c>receive</c>,
     /// <c>process</c> or <c>send</c> — wherever that segment falls: directly
@@ -190,16 +157,26 @@ public static class ScopeTree
     }
 
     /// <summary>Leaves ordered worst first, the order every surface returns
-    /// health in.</summary>
+    /// health in: the worse mood, then the higher severity, then the scope —
+    /// <c>observe::Standing</c>, asked of the runtime once for the lot, so a
+    /// surface orders what it holds as the runtime orders what it
+    /// publishes.</summary>
     public static IReadOnlyList<HealthRecord> WorstFirst(IEnumerable<HealthRecord> records)
     {
-        return
-        [
-            .. records
-                .OrderByDescending(record => record.State)
-                .ThenByDescending(record => record.Severity)
-                .ThenBy(record => record.Scope, StringComparer.Ordinal),
-        ];
+        return WorstFirst([.. records], record => record);
+    }
+
+    /// <summary>Things in the worst-first order, each standing as the record
+    /// <paramref name="standsAs"/> gives it — a branch as its worst leaf's mood
+    /// and severity under its own label. One call to the runtime.</summary>
+    public static IReadOnlyList<T> WorstFirst<T>(
+        IReadOnlyList<T> items, Func<T, HealthRecord> standsAs)
+    {
+        ArgumentNullException.ThrowIfNull(items);
+
+        HealthRecord[] standing = [.. items.Select(standsAs)];
+
+        return [.. RuntimeLibrary.Rules.WorstFirst(standing).Select(at => items[at])];
     }
 
     /// <summary>The path from the cluster down to a scope, each step a place to
@@ -245,12 +222,18 @@ public static class ScopeTree
                     worst);
             });
 
-        return
-        [
-            .. branches
-                .OrderByDescending(branch => branch.Worst.State)
-                .ThenByDescending(branch => branch.Worst.Severity)
-                .ThenBy(branch => branch.Label, StringComparer.Ordinal),
-        ];
+        // The worst-first order over each branch's worst leaf, told apart by
+        // the branch's label where two stand together.
+        return WorstFirst([.. branches], Standing);
+    }
+
+    /// <summary>A branch as the record it stands as in the worst-first order:
+    /// its worst leaf's mood and severity, under its own label.</summary>
+    public static HealthRecord Standing(Branch branch)
+    {
+        ArgumentNullException.ThrowIfNull(branch);
+
+        return new HealthRecord(
+            branch.Label, branch.Worst.State, branch.Worst.Severity, string.Empty, default);
     }
 }

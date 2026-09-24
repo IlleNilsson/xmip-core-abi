@@ -11,41 +11,25 @@ public sealed class EnglishTest
 {
     private static readonly DateTimeOffset Now = new(2026, 9, 11, 12, 0, 0, TimeSpan.Zero);
 
+    /// <summary>A mood's word and color name are <c>observe::Health</c>'s,
+    /// tested there; the surface says what the runtime's export says, and
+    /// only a value the runtime does not define is its own to word.</summary>
     [Fact]
-    public void EveryMoodIsItsOwnLowerCaseWord()
+    public void EveryMoodIsSaidAndPaintedAsTheRuntimeSays()
     {
-        foreach (HealthState mood in Enum.GetValues<HealthState>())
-        {
-            Assert.Equal(mood.ToString().ToUpperInvariant(), English.Mood(mood).ToUpperInvariant());
-        }
-    }
+        RuntimeRules rules = RuntimeLibrary.Rules;
 
-    [Fact]
-    public void EveryWordReadsBackAsItsMoodAndAStrangerAsNone()
-    {
         foreach (HealthState mood in Enum.GetValues<HealthState>())
         {
+            Assert.Equal(rules.Word(mood), English.Mood(mood));
+            Assert.Equal(rules.Color(mood), English.Color(mood));
             Assert.Equal(mood, English.MoodOf(English.Mood(mood)));
         }
 
-        Assert.Null(English.MoodOf("green"));
-        Assert.Null(English.MoodOf("Fine"));
-        Assert.Null(English.MoodOf(null));
-    }
-
-    [Fact]
-    public void EveryMoodHasTheColorTheRecordGivesIt()
-    {
-        // ADR-0041: the moods and their colors, in one sentence; here in one
-        // table, so the stylesheet's classes and the prompt agree.
-        Assert.Equal("green", English.Color(HealthState.Fine));
-        Assert.Equal("slate", English.Color(HealthState.Paused));
-        Assert.Equal("blue", English.Color(HealthState.Working));
-        Assert.Equal("yellow", English.Color(HealthState.Stressed));
-        Assert.Equal("burnt", English.Color(HealthState.Exhausted));
-        Assert.Equal("red", English.Color(HealthState.Done));
-        Assert.Equal("orange", English.Color(HealthState.Holding));
+        Assert.Equal("unknown", English.Mood((HealthState)42));
         Assert.Equal("muted", English.Color((HealthState)42));
+        Assert.Null(English.MoodOf("green"));
+        Assert.Null(English.MoodOf(null));
     }
 
     [Fact]
