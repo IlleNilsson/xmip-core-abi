@@ -159,6 +159,93 @@ public static class SurfaceChoice
             : Open(configuration, basePath);
     }
 
+    /// <summary>
+    /// The one surface a command, a cmdlet or the prompt reads, the line over
+    /// the document: a web host <paramref name="line"/> names, else the
+    /// snapshot it names, else — where it names no runtime and the document
+    /// names a surface — the document's choice, the first cluster where it
+    /// names several; else the runtime library
+    /// <see cref="RuntimeLibrary.Stated"/> finds. Not yet asked to answer, so
+    /// the precedence is tested without a runtime or a network. Held here for
+    /// the executable and the PowerShell module alike (ADR-0052 clause 1);
+    /// until 2026-09-24 the executable wrote it and the prompt wrote it again.
+    /// </summary>
+    /// <param name="line">What the operator stated for this invocation.</param>
+    /// <param name="document">The host's document.</param>
+    /// <param name="basePath">The directory the document's paths, and a
+    /// snapshot named on the line, are written from.</param>
+    /// <param name="besideExecutable">Where the runtime library lies by
+    /// default: beside the executable, or beside a module pwsh loaded.</param>
+    /// <exception cref="InvalidOperationException">What <see cref="Open"/>
+    /// refuses.</exception>
+    public static IOperatorSurface Stated(
+        SurfaceLine line, IConfiguration document, string basePath, string besideExecutable)
+    {
+        ArgumentNullException.ThrowIfNull(line);
+        ArgumentNullException.ThrowIfNull(document);
+
+        return !string.IsNullOrWhiteSpace(line.Remote)
+            ? new RemoteOperator(new Uri(line.Remote, UriKind.Absolute))
+            : !string.IsNullOrWhiteSpace(line.Snapshot)
+                ? new SnapshotOperator(TomlDocument.Resolve(line.Snapshot, basePath))
+                : string.IsNullOrWhiteSpace(line.Runtime) && IsChosen(document)
+                    ? OpenFirst(document, basePath)
+                    : new NativeOperator(RuntimeLibrary.Stated(
+                        line.Runtime, document, basePath, besideExecutable));
+    }
+
+    /// <summary>
+    /// The surface <see cref="Stated"/> chooses from the document at
+    /// <paramref name="documentPath"/>, once it has answered: a remote host
+    /// connected, a runtime loaded, a snapshot file present. Null with the
+    /// reason otherwise — the document's refusal prefixed with its file name,
+    /// or the surface's own <see cref="IOperatorSurface.Source"/> — and the
+    /// surface released. The caller disposes what it gets.
+    /// </summary>
+    public static IOperatorSurface? Answering(
+        SurfaceLine line, string documentPath, string besideExecutable, out string reason)
+    {
+        ArgumentNullException.ThrowIfNull(documentPath);
+
+        string basePath = Path.GetDirectoryName(Path.GetFullPath(documentPath))
+            ?? besideExecutable;
+        IOperatorSurface surface;
+
+        try
+        {
+            surface = Stated(line, TomlDocument.Read(documentPath), basePath, besideExecutable);
+        }
+        catch (InvalidOperationException misconfigured)
+        {
+            reason = $"{Path.GetFileName(documentPath)}: {misconfigured.Message}";
+            return null;
+        }
+
+        if (Answers(surface))
+        {
+            reason = string.Empty;
+            return surface;
+        }
+
+        reason = surface.Source;
+        (surface as IDisposable)?.Dispose();
+        return null;
+    }
+
+    /// <summary>Whether a surface answers at all: a remote host connects, a
+    /// runtime library loads, a snapshot file is there. A surface of another
+    /// kind is taken at its word.</summary>
+    public static bool Answers(IOperatorSurface surface)
+    {
+        return surface switch
+        {
+            RemoteOperator remote => remote.Connect(),
+            NativeOperator native => native.IsLoaded,
+            SnapshotOperator snapshot => snapshot.Exists,
+            _ => true,
+        };
+    }
+
     // The snapshot paths, where a snapshot is what the document chose; none
     // otherwise, so that every other surface goes through Open as it did.
     private static IReadOnlyList<string> Listed(IConfiguration configuration)

@@ -23,6 +23,16 @@ public sealed record NodeCapability(
 {
     private const string Declares = "declares ";
 
+    /// <summary>What a node that declares no stage publishes in place of the
+    /// words.</summary>
+    private const string NoStage = "no stage of the message path";
+
+    /// <summary>Why the declaration was refused, or the empty string when it
+    /// was not: a word that is no stage refuses the whole declaration, in the
+    /// words <c>node::Stage::declared</c> uses, and is never read as the
+    /// words that were known (ADR-0055).</summary>
+    public string Refusal { get; init; } = string.Empty;
+
     /// <summary>A node that declared nothing a surface can read.</summary>
     public static NodeCapability None { get; } = new(string.Empty, [], false, false, string.Empty);
 
@@ -45,12 +55,15 @@ public sealed record NodeCapability(
 
     /// <summary>What every surface says of one node, in one phrase:
     /// <c>receive+process · online</c>. A node declaring no stage says so in
-    /// words, because declaring none is a choice and not an absence.</summary>
+    /// words, because declaring none is a choice and not an absence. A
+    /// refused declaration says its refusal instead.</summary>
     public string Line()
     {
-        return Said
-            ? $"{(Stages.Count > 0 ? Words : "no stage")} · {Route}"
-            : string.Empty;
+        return !Said
+            ? string.Empty
+            : Refusal.Length > 0
+                ? Refusal
+                : $"{(Stages.Count > 0 ? Words : "no stage")} · {Route}";
     }
 
     /// <summary>The capability a node published at
@@ -65,13 +78,18 @@ public sealed record NodeCapability(
             ? evidence[Declares.Length..]
             : string.Empty;
         int end = said.IndexOf(';', StringComparison.Ordinal);
+        string words = end < 0 ? said : said[..end];
+        IReadOnlyList<string> stages = Ordered(
+            string.Equals(words, NoStage, StringComparison.Ordinal) ? string.Empty : words,
+            out string refusal);
 
         return new NodeCapability(
             node,
-            Ordered(end < 0 ? said : said[..end]),
+            stages,
             evidence.Contains("; online;", StringComparison.Ordinal),
             true,
-            evidence);
+            evidence)
+        { Refusal = refusal };
     }
 
     /// <summary>One entry of <c>[run].capabilities</c> —
@@ -84,22 +102,49 @@ public sealed record NodeCapability(
         ArgumentNullException.ThrowIfNull(entry);
 
         int split = entry.IndexOf('=', StringComparison.Ordinal);
+        IReadOnlyList<string> stages = Ordered(
+            split < 0 ? string.Empty : entry[(split + 1)..], out string refusal);
 
         return new NodeCapability(
             (split < 0 ? entry : entry[..split]).Trim(),
-            split < 0 ? [] : Ordered(entry[(split + 1)..]),
+            stages,
             false,
             false,
-            string.Empty);
+            string.Empty)
+        { Refusal = refusal };
     }
 
-    /// <summary>The stage words a value names, in message-path order and each
-    /// at most once; a word that is no stage is not one.</summary>
-    private static IReadOnlyList<string> Ordered(string said)
+    /// <summary>
+    /// The stage words a value names, in message-path order and each at most
+    /// once, by the rule <c>node::Stage::declared</c> holds in Rust: words
+    /// separated by commas or <c>+</c>, each exact lowercase only (the owner,
+    /// 2026-09-24: <c>Send</c> is no stage). Any other word refuses the whole
+    /// value: no stages, and <paramref name="refusal"/> names every such word.
+    /// </summary>
+    /// <remarks>
+    /// A copy of the Rust parse, and the one that remains: a surface reads a
+    /// snapshot with no runtime library loaded, and the operator boundary
+    /// (<c>xmip_operate.h</c>) carries no call for it. Estate test
+    /// <c>test/XmipTest.Test.ps1</c> holds the words and the refusal equal.
+    /// </remarks>
+    private static IReadOnlyList<string> Ordered(string said, out string refusal)
     {
+        ArgumentNullException.ThrowIfNull(said);
+
         string[] words = said.Split(
             [',', '+'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        string[] strangers = [.. words.Where(
+            word => !ScopeTree.Stages.Contains(word, StringComparer.Ordinal))];
 
-        return [.. ScopeTree.Stages.Where(stage => words.Contains(stage, StringComparer.Ordinal))];
+        if (strangers.Length > 0)
+        {
+            refusal = $"REFUSED: no capability is called {string.Join(", ", strangers)}; " +
+                $"a node declares {string.Join(", ", ScopeTree.Stages)}, or nothing at all.";
+            return [];
+        }
+
+        refusal = string.Empty;
+        return [.. ScopeTree.Stages.Where(
+            stage => words.Contains(stage, StringComparer.Ordinal))];
     }
 }

@@ -105,10 +105,25 @@ public static class English
     {
         return measured switch
         {
-            null => "–",
             { Counted: Counted.Bytes } bytes => Bytes(bytes.Value),
-            { } count => count.Value.ToString("N0", CultureInfo.InvariantCulture),
+            _ => Figure(measured?.Value),
         };
+    }
+
+    /// <summary>A figure as a person reads it: thousands separated, and a
+    /// dash — never a zero — when the publisher has not published it
+    /// (ADR-0052, amendment 2026-09-14). The one spelling the board, the
+    /// topology inspector and <c>xmip-cli</c> give a count.</summary>
+    public static string Figure(ulong? value)
+    {
+        return value?.ToString("N0", CultureInfo.InvariantCulture) ?? "–";
+    }
+
+    /// <summary>What a surface says of a scope it holds nothing at, naming
+    /// where it looked: the command line and the cmdlet say the same.</summary>
+    public static string NothingAt(string scope, string source)
+    {
+        return $"Nothing at {scope} ({source}).";
     }
 
     /// <summary>How a count moved since the board last saw it change: the

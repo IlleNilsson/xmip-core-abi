@@ -53,4 +53,20 @@
           CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <PropertyGroup>
+    <!-- The scope containment cases, whose home is xmip-core-observe: the one
+         statement of the rule ScopeTree and observe::Scope both write
+         (ADR-0052, amendment 2026-09-24). Found in the estate checkout and
+         copied beside the test assembly, as the fixtures are; outside the
+         estate the file is absent and ScopeTreeTest says so and fails. -->
+    <Observe>$(MSBuildThisFileDirectory)..\..\..\..\core\operation\observe</Observe>
+    <ScopeVector>$(Observe)\src\scope-vector.toml</ScopeVector>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="$(ScopeVector)" Condition="Exists('$(ScopeVector)')"
+          Link="Fixture\scope-vector.toml"
+          CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

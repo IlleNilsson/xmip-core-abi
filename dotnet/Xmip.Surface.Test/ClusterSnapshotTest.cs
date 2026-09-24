@@ -106,6 +106,41 @@ public sealed class ClusterSnapshotTest
         Assert.Empty(NodeCapability.Declared("n1", "alive").Stages);
     }
 
+    /// <summary>
+    /// The surface reads a declaration by the rule the node crate holds
+    /// (<c>node::Stage::declared</c>): each word exact lowercase only (the
+    /// owner, 2026-09-24), and any other word refuses the whole declaration
+    /// in the same words, never dropped (open problem 25, row i).
+    /// </summary>
+    [Fact]
+    public void ADeclarationReadsByTheNodesRuleLowercaseOnlyAndAnUnknownWordRefused()
+    {
+        NodeCapability lower = NodeCapability.Declared("n1", "declares send,receive; online; x");
+        Assert.Equal(["receive", "send"], lower.Stages);
+        Assert.Empty(lower.Refusal);
+
+        NodeCapability cased = NodeCapability.Declared("n1", "declares Send,RECEIVE; online; x");
+        Assert.Empty(cased.Stages);
+        Assert.Equal(
+            "REFUSED: no capability is called Send, RECEIVE; a node declares "
+                + "receive, process, send, or nothing at all.",
+            cased.Refusal);
+        Assert.NotEmpty(NodeCapability.Started("n2=Process").Refusal);
+
+        const string Refused = "REFUSED: no capability is called relay, hold; a node declares "
+            + "receive, process, send, or nothing at all.";
+
+        NodeCapability published = NodeCapability.Declared(
+            "n1", "declares receive,relay+hold; offline; x");
+        Assert.Empty(published.Stages);
+        Assert.Equal(Refused, published.Refusal);
+        Assert.Equal(Refused, published.Line());
+
+        NodeCapability started = NodeCapability.Started("n2=receive+relay+hold");
+        Assert.Empty(started.Stages);
+        Assert.Equal(Refused, started.Refusal);
+    }
+
     [Fact]
     public void TheTopologyIsClusterNodesStagesAndEndpoints()
     {

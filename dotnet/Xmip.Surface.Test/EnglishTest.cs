@@ -80,6 +80,24 @@ public sealed class EnglishTest
     }
 
     [Fact]
+    public void AFigureIsGroupedAndAnUnpublishedOneIsADashNeverAZero()
+    {
+        // The one spelling the cli, the board and the topology inspector give
+        // a count; until 2026-09-24 each wrote its own.
+        Assert.Equal("–", English.Figure(null));
+        Assert.Equal("0", English.Figure(0));
+        Assert.Equal("1,234,567", English.Figure(1_234_567));
+    }
+
+    [Fact]
+    public void NothingAtAScopeNamesWhereItLooked()
+    {
+        Assert.Equal(
+            "Nothing at xmip:///C1 (SNAPSHOT — a file).",
+            English.NothingAt("xmip:///C1", "SNAPSHOT — a file"));
+    }
+
+    [Fact]
     public void StartingSaysWhatTheRuntimeAnswered()
     {
         Assert.Equal("started n.toml", English.Started("n.toml", XmipStatus.Ok));
