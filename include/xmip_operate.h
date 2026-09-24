@@ -265,8 +265,15 @@ typedef XmipStatus (*XmipValidateFn)(XmipStr configuration,
  *
  *     containment, parts    observe::Scope        (xmip-core-observe)
  *     stage words, a parse  node::Stage           (xmip-core-node)
- *     mood word, color      observe::Health       (xmip-core-observe)
+ *     pausable, location    node::Stage           (xmip-core-node)
+ *     a run's node entry    node::Capability      (xmip-core-node)
+ *     mood word, color,     observe::Health       (xmip-core-observe)
+ *       the rollup
  *     worst-first order     observe::Standing     (xmip-core-observe)
+ *     counted word, the     observe::Counted      (xmip-core-observe)
+ *       kind a stage counts
+ *     a published           observe::capability   (xmip-core-observe)
+ *       capability record
  *
  * None of them reads the snapshot or needs a table: they are pure, callable
  * before, during and without a node, from any thread. Each is a separate
@@ -336,6 +343,57 @@ typedef XmipStatus (*XmipHealthNamedFn)(XmipStr word, XmipHealth *out);
 typedef XmipStatus (*XmipHealthOrderFn)(const XmipHealthEntry *entries, size_t len,
                                         size_t *out_order);
 
+/*
+ * What a parent shows when health is the worst mood beneath it (ADR-0041):
+ * FINE over FINE, HOLDING over anything else. XMIP_E_INVALID for a mood
+ * section 3 does not define.
+ */
+typedef XmipStatus (*XmipHealthRolledFn)(XmipHealth health, XmipHealth *out);
+
+/*
+ * A counted kind as the word the estate uses, lower case - static.
+ * XMIP_E_INVALID for a value section 4 does not define.
+ */
+typedef XmipStatus (*XmipCountedWordFn)(XmipCounted counted, XmipStr *out);
+
+/*
+ * Facts of a stage, named by its word (exact lower case): the kind of count
+ * the stage takes (STREAMS at receive, JOURNEYS in process, MESSAGES at
+ * send), whether an operator may pause it (*out 1 or 0: a Receive or Send
+ * Location, never a Process), and what a thing configured at it is called
+ * (static). XMIP_E_NOT_FOUND for a word that is no stage.
+ */
+typedef XmipStatus (*XmipStageCountedFn)(XmipStr stage, XmipCounted *out);
+typedef XmipStatus (*XmipStagePausableFn)(XmipStr stage, uint8_t *out);
+typedef XmipStatus (*XmipStageLocationFn)(XmipStr stage, XmipStr *out);
+
+/*
+ * What a node declared of itself (ADR-0056), read from one health record it
+ * published: its name in *out_node (borrowed from scope), its stages in the
+ * fill shape (static words, path order), and *out_online 1 when it may
+ * assume the internet. XMIP_E_NOT_FOUND when the record is not a capability
+ * record at all; XMIP_E_INVALID, *out_node still written, when it names a
+ * word that is no stage, the refusal written as xmip_stage_declared_v1
+ * writes one.
+ */
+typedef XmipStatus (*XmipCapabilityPublishedFn)(XmipScope scope, XmipStr evidence,
+                                                XmipStr *out_node,
+                                                XmipStr *stages, size_t cap,
+                                                size_t *out_len, uint8_t *out_online,
+                                                uint8_t *refusal, size_t refusal_cap,
+                                                size_t *refusal_len);
+
+/*
+ * One entry of a run's node list - edge-01=receive+send, or a bare name for a
+ * node that declared no stage: the name in *out_node (borrowed from entry,
+ * trimmed) and the stages in the fill shape. XMIP_E_INVALID, *out_node still
+ * written, with the refusal, as above.
+ */
+typedef XmipStatus (*XmipCapabilityEntryFn)(XmipStr entry, XmipStr *out_node,
+                                            XmipStr *stages, size_t cap, size_t *out_len,
+                                            uint8_t *refusal, size_t refusal_cap,
+                                            size_t *refusal_len);
+
 #define XMIP_SCOPE_CONTAINS_ENTRYPOINT "xmip_scope_contains_v1"
 #define XMIP_SCOPE_PARTS_ENTRYPOINT    "xmip_scope_parts_v1"
 #define XMIP_STAGE_WORDS_ENTRYPOINT    "xmip_stage_words_v1"
@@ -344,6 +402,185 @@ typedef XmipStatus (*XmipHealthOrderFn)(const XmipHealthEntry *entries, size_t l
 #define XMIP_HEALTH_COLOR_ENTRYPOINT   "xmip_health_color_v1"
 #define XMIP_HEALTH_NAMED_ENTRYPOINT   "xmip_health_named_v1"
 #define XMIP_HEALTH_ORDER_ENTRYPOINT   "xmip_health_order_v1"
+#define XMIP_HEALTH_ROLLED_ENTRYPOINT  "xmip_health_rolled_v1"
+#define XMIP_COUNTED_WORD_ENTRYPOINT   "xmip_counted_word_v1"
+#define XMIP_STAGE_COUNTED_ENTRYPOINT  "xmip_stage_counted_v1"
+#define XMIP_STAGE_PAUSABLE_ENTRYPOINT "xmip_stage_pausable_v1"
+#define XMIP_STAGE_LOCATION_ENTRYPOINT "xmip_stage_location_v1"
+#define XMIP_CAPABILITY_PUBLISHED_ENTRYPOINT "xmip_capability_published_v1"
+#define XMIP_CAPABILITY_ENTRY_ENTRYPOINT     "xmip_capability_entry_v1"
+
+/* ===================================================================== */
+/* 8. A publication, read by the runtime                                 */
+/* ===================================================================== */
+
+/*
+ * A publisher writes a publication - a node's or a roll's snapshot - to a
+ * file, and a surface that reads the file reads it here: the runtime parses
+ * the text by the one reader there is (observe::Publication, xmip-core-
+ * observe) and hands back the header's values, so no surface writes the
+ * file's shape again (ADR-0052 and ADR-0027, amendments 2026-09-24).
+ *
+ * Unlike section 7 this holds something: xmip_publication_read_v1 returns a
+ * handle, everything the other calls hand back borrows from it, and
+ * xmip_publication_free_v1 releases it and all of that at once. A handle is
+ * read-only and may be read from any thread; nothing here touches a running
+ * node. Every list follows section 5's fill shape.
+ *
+ * What the reader does not know it decides once: a mood no one is called is
+ * XMIP_HEALTH_STRESSED, so it shows; a counted kind no one is called is
+ * skipped; a topology word falls back to COMPUTER, BOTH or SEND_RECEIVE.
+ */
+typedef struct XmipPublication XmipPublication;
+
+typedef enum {
+    XMIP_TOPOLOGY_COMPUTER        = 0,
+    XMIP_TOPOLOGY_SERVER          = 1,
+    XMIP_TOPOLOGY_VIRTUAL_MACHINE = 2,
+    XMIP_TOPOLOGY_GATEWAY         = 3,
+    XMIP_TOPOLOGY_APPLIANCE       = 4,
+    XMIP_TOPOLOGY_SERVICE         = 5,
+    XMIP_TOPOLOGY_PROCESS         = 6,
+    XMIP_TOPOLOGY_INTERFACE       = 7,
+    XMIP_TOPOLOGY_PORT            = 8,
+    XMIP_TOPOLOGY_PROTOCOL        = 9,
+    XMIP_TOPOLOGY_LOCATION        = 10,
+    XMIP_TOPOLOGY_CLUSTER         = 11,
+    XMIP_TOPOLOGY_NODE            = 12,
+    XMIP_TOPOLOGY_STAGE           = 13,
+    XMIP_TOPOLOGY_ENDPOINT        = 14
+} XmipTopologyKind;
+
+typedef enum {
+    XMIP_ORIGIN_CONFIGURED = 0,
+    XMIP_ORIGIN_OBSERVED   = 1,
+    XMIP_ORIGIN_BOTH       = 2
+} XmipTopologyOrigin;
+
+typedef enum {
+    XMIP_PATTERN_REQUEST_RESPONSE = 0,
+    XMIP_PATTERN_SEND_RECEIVE     = 1,
+    XMIP_PATTERN_PUBLISH_CONSUME  = 2,
+    XMIP_PATTERN_STREAMING        = 3,
+    XMIP_PATTERN_FIRE_AND_FORGET  = 4,
+    XMIP_PATTERN_SESSION          = 5,
+    XMIP_PATTERN_RETRY            = 6
+} XmipCommunicationPattern;
+
+typedef enum {
+    XMIP_RUN_TESTS        = 0,
+    XMIP_RUN_NODES        = 1,
+    XMIP_RUN_CAPABILITIES = 2,
+    XMIP_RUN_ONLINE       = 3
+} XmipRunList;
+
+/*
+ * Who published and at which scope, and the single values of the run and
+ * the topology: has_run and has_topology are 1 when the publication says
+ * either, and the fields beside them are empty when it does not.
+ */
+typedef struct {
+    XmipStr   source;
+    XmipScope node;
+    uint8_t   has_run;
+    XmipStr   cluster;
+    XmipStr   stress;
+    uint8_t   has_topology;
+    XmipStr   topology_source;
+    int64_t   topology_observed_unix_nanos;
+} XmipPublicationHead;
+
+/* One thing that communicates. parent is empty at the top. */
+typedef struct {
+    XmipStr     id;
+    XmipStr     parent;
+    XmipStr     label;
+    int32_t     kind;       /* XmipTopologyKind */
+    XmipScope   scope;
+    XmipHealth  health;
+    int32_t     origin;     /* XmipTopologyOrigin */
+    double      load;
+    double      activity;
+    XmipStr     evidence;
+} XmipTopologyNode;
+
+/* One communication relationship, from one node id to another. */
+typedef struct {
+    XmipStr     id;
+    XmipStr     from;
+    XmipStr     to;
+    int32_t     pattern;    /* XmipCommunicationPattern */
+    int32_t     origin;     /* XmipTopologyOrigin */
+    XmipStr     protocol;
+    XmipHealth  health;
+    uint64_t    volume;
+    double      rate;
+    double      latency_ms;
+    double      progress;
+    uint32_t    attempts;
+    XmipStr     evidence;
+} XmipTopologyLink;
+
+/*
+ * Read a publication's text. XMIP_OK and *out a handle; XMIP_E_INVALID, *out
+ * NULL, when the text is not a publication, with the reader's report written
+ * into report as xmip_validate_v1 writes one; XMIP_E_MALFORMED when the text
+ * is not UTF-8.
+ */
+typedef XmipStatus (*XmipPublicationReadFn)(XmipStr text, XmipPublication **out,
+                                            uint8_t *report, size_t cap, size_t *out_len);
+typedef void (*XmipPublicationFreeFn)(XmipPublication *publication);
+
+typedef XmipStatus (*XmipPublicationHeadFn)(const XmipPublication *publication,
+                                            XmipPublicationHead *out);
+/* The records beneath the publication's scope, worst first. */
+typedef XmipStatus (*XmipPublicationRecordsFn)(const XmipPublication *publication,
+                                               XmipHealthEntry *out, size_t cap,
+                                               size_t *out_len);
+/* The counts, each at the scope it was recorded at. */
+typedef XmipStatus (*XmipPublicationCountsFn)(const XmipPublication *publication,
+                                              XmipMeasurement *out, size_t cap,
+                                              size_t *out_len);
+typedef XmipStatus (*XmipPublicationNodesFn)(const XmipPublication *publication,
+                                             XmipTopologyNode *out, size_t cap,
+                                             size_t *out_len);
+typedef XmipStatus (*XmipPublicationLinksFn)(const XmipPublication *publication,
+                                             XmipTopologyLink *out, size_t cap,
+                                             size_t *out_len);
+/* One of the run's lists; XMIP_E_INVALID for a list XmipRunList does not name. */
+typedef XmipStatus (*XmipPublicationRunFn)(const XmipPublication *publication,
+                                           XmipRunList list,
+                                           XmipStr *out, size_t cap, size_t *out_len);
+
+#define XMIP_PUBLICATION_READ_ENTRYPOINT    "xmip_publication_read_v1"
+#define XMIP_PUBLICATION_FREE_ENTRYPOINT    "xmip_publication_free_v1"
+#define XMIP_PUBLICATION_HEAD_ENTRYPOINT    "xmip_publication_head_v1"
+#define XMIP_PUBLICATION_RECORDS_ENTRYPOINT "xmip_publication_records_v1"
+#define XMIP_PUBLICATION_COUNTS_ENTRYPOINT  "xmip_publication_counts_v1"
+#define XMIP_PUBLICATION_NODES_ENTRYPOINT   "xmip_publication_nodes_v1"
+#define XMIP_PUBLICATION_LINKS_ENTRYPOINT   "xmip_publication_links_v1"
+#define XMIP_PUBLICATION_RUN_ENTRYPOINT     "xmip_publication_run_v1"
+
+/*
+ * A curve: a node's throughput over time, as the file a publisher writes
+ * beside its publication (ADR-0029), read by the one reader there is
+ * (observe::Curve). The same handle rules as above: xmip_curve_read_v1 hands
+ * back a handle, or XMIP_E_INVALID with the reader's report; the points
+ * borrow from it, each an XmipMeasurement at the curve's node whose window is
+ * the instant it was observed, oldest first within a kind; a counted kind no
+ * one is called is skipped; xmip_curve_free_v1 releases it.
+ */
+typedef struct XmipCurve XmipCurve;
+
+typedef XmipStatus (*XmipCurveReadFn)(XmipStr text, XmipCurve **out,
+                                      uint8_t *report, size_t cap, size_t *out_len);
+typedef XmipStatus (*XmipCurvePointsFn)(const XmipCurve *curve,
+                                        XmipMeasurement *out, size_t cap, size_t *out_len);
+typedef void (*XmipCurveFreeFn)(XmipCurve *curve);
+
+#define XMIP_CURVE_READ_ENTRYPOINT   "xmip_curve_read_v1"
+#define XMIP_CURVE_POINTS_ENTRYPOINT "xmip_curve_points_v1"
+#define XMIP_CURVE_FREE_ENTRYPOINT   "xmip_curve_free_v1"
 
 #ifdef __cplusplus
 }

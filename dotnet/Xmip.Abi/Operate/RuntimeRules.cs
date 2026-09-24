@@ -8,11 +8,16 @@ namespace Xmip.Abi.Operate;
 /// <summary>
 /// Section 7 of <c>include/xmip_operate.h</c>, crossed by P/Invoke: the rules
 /// a surface calls instead of keeping its own. Scope containment and a
-/// scope's parts are <c>observe::Scope</c>'s, the stage words and their parse
-/// are <c>node::Stage</c>'s, and a mood's word, its color name and the
-/// worst-first order are <c>observe::Health</c>'s and <c>observe::Standing</c>'s;
-/// the runtime's library forwards each, and this binds each once for every
-/// .NET surface (ADR-0052 and ADR-0027, amendments 2026-09-24).
+/// scope's parts are <c>observe::Scope</c>'s; the stage words, their parse,
+/// whether a stage pauses and what a thing at it is called are
+/// <c>node::Stage</c>'s, and a run's node entry <c>node::Capability</c>'s; a
+/// mood's word, its color name, the rollup and the worst-first order are
+/// <c>observe::Health</c>'s and <c>observe::Standing</c>'s; a counted kind's
+/// word and what a stage counts are <c>observe::Counted</c>'s, and a
+/// published capability record <c>observe::capability</c>'s. The runtime's
+/// library forwards each, and this binds each once for every .NET surface
+/// (ADR-0052 and ADR-0027, amendments 2026-09-24). Section 8, a publication
+/// read by the runtime, is <see cref="Publications"/>.
 /// </summary>
 /// <remarks>
 /// Pure calls: none reads the snapshot or holds a table, so one instance
@@ -36,6 +41,16 @@ public sealed unsafe class RuntimeRules
     private readonly delegate* unmanaged[Cdecl]<int, XmipStr*, int> _color;
     private readonly delegate* unmanaged[Cdecl]<XmipStr, int*, int> _named;
     private readonly delegate* unmanaged[Cdecl]<XmipHealthEntry*, nuint, nuint*, int> _order;
+    private readonly delegate* unmanaged[Cdecl]<int, int*, int> _rolled;
+    private readonly delegate* unmanaged[Cdecl]<int, XmipStr*, int> _countedWord;
+    private readonly delegate* unmanaged[Cdecl]<XmipStr, int*, int> _stageCounted;
+    private readonly delegate* unmanaged[Cdecl]<XmipStr, byte*, int> _stagePausable;
+    private readonly delegate* unmanaged[Cdecl]<XmipStr, XmipStr*, int> _stageLocation;
+    private readonly delegate* unmanaged[Cdecl]<
+        XmipStr, XmipStr, XmipStr*, XmipStr*, nuint, nuint*, byte*, byte*, nuint, nuint*, int>
+        _published;
+    private readonly delegate* unmanaged[Cdecl]<
+        XmipStr, XmipStr*, XmipStr*, nuint, nuint*, byte*, nuint, nuint*, int> _entry;
 
     private RuntimeRules(nint library, string path)
     {
@@ -55,6 +70,23 @@ public sealed unsafe class RuntimeRules
             Export(library, OperateAbi.HealthNamedEntrypoint);
         _order = (delegate* unmanaged[Cdecl]<XmipHealthEntry*, nuint, nuint*, int>)
             Export(library, OperateAbi.HealthOrderEntrypoint);
+        _rolled = (delegate* unmanaged[Cdecl]<int, int*, int>)
+            Export(library, OperateAbi.HealthRolledEntrypoint);
+        _countedWord = (delegate* unmanaged[Cdecl]<int, XmipStr*, int>)
+            Export(library, OperateAbi.CountedWordEntrypoint);
+        _stageCounted = (delegate* unmanaged[Cdecl]<XmipStr, int*, int>)
+            Export(library, OperateAbi.StageCountedEntrypoint);
+        _stagePausable = (delegate* unmanaged[Cdecl]<XmipStr, byte*, int>)
+            Export(library, OperateAbi.StagePausableEntrypoint);
+        _stageLocation = (delegate* unmanaged[Cdecl]<XmipStr, XmipStr*, int>)
+            Export(library, OperateAbi.StageLocationEntrypoint);
+        _published = (delegate* unmanaged[Cdecl]<
+            XmipStr, XmipStr, XmipStr*, XmipStr*, nuint, nuint*, byte*, byte*, nuint, nuint*, int>)
+            Export(library, OperateAbi.CapabilityPublishedEntrypoint);
+        _entry = (delegate* unmanaged[Cdecl]<
+            XmipStr, XmipStr*, XmipStr*, nuint, nuint*, byte*, nuint, nuint*, int>)
+            Export(library, OperateAbi.CapabilityEntryEntrypoint);
+        Publications = new PublicationReader(library);
 
         delegate* unmanaged[Cdecl]<XmipStr*, nuint, nuint*, int> words =
             (delegate* unmanaged[Cdecl]<XmipStr*, nuint, nuint*, int>)
@@ -65,13 +97,26 @@ public sealed unsafe class RuntimeRules
     /// <summary>The library these rules were loaded from.</summary>
     public string Source { get; }
 
+    /// <summary>Section 8: a publication read by the runtime's one
+    /// reader.</summary>
+    public PublicationReader Publications { get; }
+
     /// <summary>The words a node may declare, in message-path order —
     /// <c>node::Stage::WORDS</c>, read once when the library loads.</summary>
     public IReadOnlyList<string> StageWords { get; }
 
-    /// <summary>Section 7's symbols, each of which a runtime must export.</summary>
+    /// <summary>Section 7's and section 8's symbols, each of which a runtime
+    /// must export.</summary>
     public static IReadOnlyList<string> Entrypoints { get; } =
     [
+        OperateAbi.HealthRolledEntrypoint,
+        OperateAbi.CountedWordEntrypoint,
+        OperateAbi.StageCountedEntrypoint,
+        OperateAbi.StagePausableEntrypoint,
+        OperateAbi.StageLocationEntrypoint,
+        OperateAbi.CapabilityPublishedEntrypoint,
+        OperateAbi.CapabilityEntryEntrypoint,
+        .. PublicationReader.Entrypoints,
         OperateAbi.ScopeContainsEntrypoint,
         OperateAbi.ScopePartsEntrypoint,
         OperateAbi.StageWordsEntrypoint,
@@ -309,6 +354,141 @@ public sealed unsafe class RuntimeRules
         }
 
         return [.. order.Select(position => checked((int)position))];
+    }
+
+    /// <summary>What a parent shows when <paramref name="worst"/> is the worst
+    /// mood beneath it — <c>observe::Health::rolled</c>: Fine or Holding
+    /// (ADR-0041).</summary>
+    public HealthState Rolled(HealthState worst)
+    {
+        int rolled = 0;
+
+        Check(_rolled((int)worst, &rolled));
+        return (HealthState)rolled;
+    }
+
+    /// <summary>A counted kind as the word the estate uses —
+    /// <c>observe::Counted::word</c>. Null for a value the runtime does not
+    /// define.</summary>
+    public string? CountedWord(Counted counted)
+    {
+        XmipStr text;
+
+        return _countedWord((int)counted, &text) == 0 ? text.Read() : null;
+    }
+
+    /// <summary>What a stage counts — <c>observe::Counted::at</c>: Streams at
+    /// receive, Journeys in process, Messages at send. Null for a word that is
+    /// no stage.</summary>
+    public Counted? StageCounted(string stage)
+    {
+        using PinnedStr word = XmipStr.Pin(stage);
+        int counted = 0;
+
+        return _stageCounted(word.Value, &counted) == 0 ? (Counted)counted : null;
+    }
+
+    /// <summary>Whether an operator may pause a stage —
+    /// <c>node::Stage::pausable</c>. Null for a word that is no stage.</summary>
+    public bool? Pausable(string stage)
+    {
+        using PinnedStr word = XmipStr.Pin(stage);
+        byte pausable = 0;
+
+        return _stagePausable(word.Value, &pausable) == 0 ? pausable != 0 : null;
+    }
+
+    /// <summary>What a thing configured at a stage is called —
+    /// <c>node::Stage::location</c>. Null for a word that is no stage.</summary>
+    public string? Location(string stage)
+    {
+        using PinnedStr word = XmipStr.Pin(stage);
+        XmipStr text;
+
+        return _stageLocation(word.Value, &text) == 0 ? text.Read() : null;
+    }
+
+    /// <summary>
+    /// What the node a health record sits beneath declared, when the record is
+    /// the capability record it publishes — <c>observe::capability::declared</c>.
+    /// Null for any other record. A refused declaration carries its refusal
+    /// and no stage (ADR-0055).
+    /// </summary>
+    public DeclaredCapability? Published(string scope, string evidence)
+    {
+        ArgumentNullException.ThrowIfNull(scope);
+        ArgumentNullException.ThrowIfNull(evidence);
+
+        using PinnedStr scopeText = XmipStr.Pin(scope);
+        using PinnedStr evidenceText = XmipStr.Pin(evidence);
+        XmipStr* stages = stackalloc XmipStr[StageWords.Count];
+        byte* said = stackalloc byte[Small];
+        XmipStr node;
+        nuint count = 0;
+        nuint saidLength = 0;
+        byte online = 0;
+        int status = _published(
+            scopeText.Value, evidenceText.Value, &node, stages, (nuint)StageWords.Count, &count,
+            &online, said, Small, &saidLength);
+
+        if (status == (int)XmipStatus.NotFound)
+        {
+            return null;
+        }
+
+        if (status == (int)XmipStatus.Invalid)
+        {
+            return new DeclaredCapability(node.Read(), [], false, Sentence(said, saidLength));
+        }
+
+        Check(status);
+        return new DeclaredCapability(node.Read(), Read(stages, count), online != 0, string.Empty);
+    }
+
+    /// <summary>
+    /// One entry of a run's node list — <c>edge-01=receive+send</c>, or a bare
+    /// name — as <c>node::Capability::from_entry</c> reads it. A refused entry
+    /// keeps its name and carries its refusal (ADR-0055).
+    /// </summary>
+    public DeclaredCapability Entry(string entry)
+    {
+        ArgumentNullException.ThrowIfNull(entry);
+
+        using PinnedStr text = XmipStr.Pin(entry);
+        XmipStr* stages = stackalloc XmipStr[StageWords.Count];
+        byte* said = stackalloc byte[Small];
+        XmipStr node;
+        nuint count = 0;
+        nuint saidLength = 0;
+        int status = _entry(
+            text.Value, &node, stages, (nuint)StageWords.Count, &count, said, Small, &saidLength);
+
+        if (status == (int)XmipStatus.Invalid)
+        {
+            return new DeclaredCapability(node.Read(), [], false, Sentence(said, saidLength));
+        }
+
+        Check(status);
+        return new DeclaredCapability(node.Read(), Read(stages, count), false, string.Empty);
+    }
+
+    private static string[] Read(XmipStr* stages, nuint count)
+    {
+        string[] read = new string[checked((int)count)];
+
+        for (int at = 0; at < read.Length; at++)
+        {
+            read[at] = stages[at].Read();
+        }
+
+        return read;
+    }
+
+    // A refusal longer than the buffer is cut at it: every refusal names a few
+    // words and the stage words, far short of it.
+    private static string Sentence(byte* said, nuint length)
+    {
+        return Encoding.UTF8.GetString(said, (int)Math.Min(length, (nuint)Small));
     }
 
     private static nint Export(nint library, string entrypoint)

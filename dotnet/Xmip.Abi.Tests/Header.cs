@@ -15,9 +15,11 @@ internal static class Header
         @"^#define\s+XMIP_(OK|E_[A-Z_]+)\s+\(?(-?\d+)\)?",
         RegexOptions.Multiline);
 
-    /// <summary><c>XMIP_HEALTH_FINE = 0,</c> and the like, inside an enum.</summary>
+    /// <summary><c>XMIP_HEALTH_FINE = 0,</c>, <c>XMIP_TOPOLOGY_VIRTUAL_MACHINE = 2,</c>
+    /// and the like, inside an enum: the family is the first word after the
+    /// prefix, the member everything after it.</summary>
     private static readonly Regex Enumerator = new(
-        @"^\s*XMIP_([A-Z]+)_([A-Z]+)\s*=\s*(\d+)",
+        @"^\s*XMIP_([A-Z]+)_([A-Z_]+)\s*=\s*(\d+)",
         RegexOptions.Multiline);
 
     /// <summary>The header's text, from beside the test assembly.</summary>

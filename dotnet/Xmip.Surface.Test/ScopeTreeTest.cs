@@ -179,6 +179,19 @@ public sealed class ScopeTreeTest
     }
 
     [Fact]
+    public void ALocationPausesAndAProcessDoesNotWhereverTheStageSits()
+    {
+        // node::Stage::pausable and ::location, called in the runtime.
+        Assert.True(ScopeTree.Pausable("xmip:///edge-01/receive/orders"));
+        Assert.True(ScopeTree.Pausable("xmip:///C1/node/S1/send/tcp/json"));
+        Assert.False(ScopeTree.Pausable("xmip:///edge-01/process/route"));
+        Assert.False(ScopeTree.Pausable("xmip:///edge-01/capability"));
+        Assert.Equal("receive location", ScopeTree.Location("receive"));
+        Assert.Equal("send location", ScopeTree.Location("send"));
+        Assert.Null(ScopeTree.Location(string.Empty));
+    }
+
+    [Fact]
     public void TheStageIsFoundWhereverItSits()
     {
         Assert.Equal("receive", ScopeTree.Stage("xmip:///edge-01/receive/orders"));

@@ -24,6 +24,15 @@ public static class English
         return RuntimeLibrary.Rules.Word(state) ?? "unknown";
     }
 
+    /// <summary>A counted kind as the word the estate uses, lower case —
+    /// <c>observe::Counted::word</c>, called in the runtime, so the word a
+    /// publication writes and the word a command names a figure by are one
+    /// word. <c>unknown</c> for a value the runtime does not define.</summary>
+    public static string Kind(Counted counted)
+    {
+        return RuntimeLibrary.Rules.CountedWord(counted) ?? "unknown";
+    }
+
     /// <summary>The mood a word names, or null when it names none —
     /// <c>observe::Health::named</c>, for a surface reading a published
     /// snapshot.</summary>

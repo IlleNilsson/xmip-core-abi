@@ -92,6 +92,172 @@ public sealed class RuntimeRulesTests
     }
 
     [Fact]
+    public void TheRollupCrossesAsFineOrHolding()
+    {
+        foreach (HealthState state in Enum.GetValues<HealthState>())
+        {
+            Assert.Equal(
+                state == HealthState.Fine ? HealthState.Fine : HealthState.Holding,
+                Rules.Rolled(state));
+        }
+
+        Assert.Throws<InvalidOperationException>(() => Rules.Rolled((HealthState)42));
+    }
+
+    [Fact]
+    public void EveryCountedKindAndEveryStageCrossWithWhatTheOwnersSay()
+    {
+        foreach (Counted counted in Enum.GetValues<Counted>())
+        {
+            Assert.Equal(counted.ToString().ToLowerInvariant(), Rules.CountedWord(counted));
+        }
+
+        Assert.Null(Rules.CountedWord((Counted)42));
+        Assert.Equal(Counted.Streams, Rules.StageCounted("receive"));
+        Assert.Equal(Counted.Journeys, Rules.StageCounted("process"));
+        Assert.Equal(Counted.Messages, Rules.StageCounted("send"));
+        Assert.Null(Rules.StageCounted("Receive"));
+        Assert.Equal([true, false, true], Rules.StageWords.Select(Rules.Pausable));
+        Assert.Null(Rules.Pausable("file"));
+        Assert.Equal("xmip process", Rules.Location("process"));
+        Assert.Null(Rules.Location("capability"));
+    }
+
+    [Fact]
+    public void ACapabilityRecordAndARunEntryCrossWithTheirNameAndARefusalKeepsIt()
+    {
+        DeclaredCapability? said = Rules.Published(
+            "xmip:///C1/node/edge-01/capability", "declares send,receive; online; x");
+
+        Assert.NotNull(said);
+        Assert.Equal(new DeclaredCapability("edge-01", said.Stages, true, string.Empty), said);
+        Assert.Equal(["receive", "send"], said.Stages);
+        Assert.Null(Rules.Published("xmip:///C1/node/edge-01/receive", "declares send"));
+
+        DeclaredCapability refused = Rules.Published(
+            "xmip:///C1/node/ö/capability", "declares relay; online;")!;
+        Assert.Equal("ö", refused.Node);
+        Assert.Empty(refused.Stages);
+        Assert.StartsWith("REFUSED:", refused.Refusal, StringComparison.Ordinal);
+
+        DeclaredCapability entry = Rules.Entry(" edge-02 =process+send");
+        Assert.Equal("edge-02", entry.Node);
+        Assert.Equal(["process", "send"], entry.Stages);
+        Assert.Empty(Rules.Entry("edge-03").Stages);
+        Assert.Equal("edge-04", Rules.Entry("edge-04=relay").Node);
+        Assert.NotEmpty(Rules.Entry("edge-04=relay").Refusal);
+    }
+
+    [Fact]
+    public void APublicationCrossesAsTheRuntimeReadsItAndAStrangerIsRefused()
+    {
+        const string Text = """
+            source = "a publisher"
+            node = "xmip:///C1"
+
+            [[records]]
+            scope = "xmip:///C1/node/R1/receive/tcp"
+            state = "done"
+            severity = 90
+            evidence = "refused"
+            observed_unix_nanos = 1000
+
+            [[records]]
+            scope = "xmip:///C1/node/R1/send/tcp"
+            state = "sulking"
+
+            [[counts]]
+            counted = "journeys"
+            value = 4
+
+            [[counts]]
+            counted = "throughput"
+            value = 1
+
+            [run]
+            cluster = "C1"
+            nodes = ["R1", "ö"]
+            capabilities = ["R1=receive"]
+            stress = "harsh"
+
+            [topology]
+            observed_unix_nanos = 5
+
+            [[topology.nodes]]
+            id = "cluster"
+            kind = "virtual-machine"
+            origin = "configured"
+            state = "fine"
+
+            [[topology.links]]
+            id = "l"
+            from = "cluster"
+            to = "cluster"
+            pattern = "fire-and-forget"
+            attempts = 3
+            """;
+
+        Publication read = Rules.Publications.Read(Text, out string refusal)!;
+
+        Assert.Empty(refusal);
+        Assert.Equal(("a publisher", "xmip:///C1"), (read.Source, read.Node));
+        Assert.Equal(
+            [HealthState.Done, HealthState.Stressed],
+            read.Records.Select(record => record.State));
+        Assert.Equal(90, read.Records[0].Severity);
+        MeasurementRecord journeys = Assert.Single(read.Counts);
+        Assert.Equal((Counted.Journeys, 4UL, "xmip:///C1"),
+            (journeys.Counted, journeys.Value, journeys.Scope));
+
+        Assert.NotNull(read.Run);
+        Assert.Equal(["R1", "ö"], read.Run.Nodes);
+        Assert.Empty(read.Run.Tests);
+        Assert.Equal("harsh", read.Run.Stress);
+
+        Assert.NotNull(read.Topology);
+        TopologyNode cluster = Assert.Single(read.Topology.Nodes);
+        Assert.Equal(TopologyNodeKind.VirtualMachine, cluster.Kind);
+        Assert.Equal(("cluster", (string?)null), (cluster.Label, cluster.ParentId));
+        Assert.Equal("a publisher", read.Topology.Source);
+        CommunicationLink link = Assert.Single(read.Topology.Links);
+        Assert.Equal(
+            (CommunicationPattern.FireAndForget, TopologyOrigin.Both, HealthState.Stressed, 3U),
+            (link.Pattern, link.Origin, link.State, link.Attempts));
+
+        Assert.Null(Rules.Publications.Read("not = [toml", out string said));
+        Assert.NotEmpty(said);
+        Publication bare = Rules.Publications.Read(string.Empty, out _)!;
+        Assert.Null(bare.Run);
+        Assert.Null(bare.Topology);
+    }
+
+    [Fact]
+    public void ACurveCrossesPointByPointAndAStrangerIsRefused()
+    {
+        const string Text = """
+            node = "xmip:///Y1"
+
+            [[points]]
+            counted = "bytes"
+            observed_unix_nanos = 1000000000
+            value = 1024
+
+            [[points]]
+            counted = "throughput"
+            value = 1
+            """;
+
+        MeasurementRecord point = Assert.Single(Rules.Publications.Curve(Text, out string none)!);
+
+        Assert.Empty(none);
+        Assert.Equal(("xmip:///Y1", Counted.Bytes, 1024UL), (point.Scope, point.Counted, point.Value));
+        Assert.Equal(DateTimeOffset.UnixEpoch.AddSeconds(1), point.Observed);
+        Assert.Null(Rules.Publications.Curve("points = 3", out string said));
+        Assert.NotEmpty(said);
+        Assert.Empty(Rules.Publications.Curve(string.Empty, out _)!);
+    }
+
+    [Fact]
     public void ManyCrossInOneCallAndComeBackAsPositionsWorstFirst()
     {
         DateTimeOffset seen = DateTimeOffset.UnixEpoch;

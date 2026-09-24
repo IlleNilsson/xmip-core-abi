@@ -100,7 +100,7 @@ public sealed class ScopeIndex
         {
             string[] parts = ScopeTree.Parts(record.Scope);
 
-            if (Declaration(record, parts) is { Said: true } said)
+            if (NodeCapability.Declared(record.Scope, record.Evidence) is { Said: true } said)
             {
                 declared[said.Node] = said;
             }
@@ -180,16 +180,6 @@ public sealed class ScopeIndex
     public IReadOnlyList<NodeCapability> Capabilities()
     {
         return [.. declared.Values.OrderBy(said => said.Node, StringComparer.Ordinal)];
-    }
-
-    /// <summary>A capability record read back as what it declares, or null
-    /// when the record is not one: the leaf is named <c>capability</c> and the
-    /// node is the segment above it.</summary>
-    private static NodeCapability? Declaration(HealthRecord record, string[] parts)
-    {
-        return parts.Length >= 2 && string.Equals(parts[^1], "capability", StringComparison.Ordinal)
-            ? NodeCapability.Declared(parts[^2], record.Evidence)
-            : null;
     }
 
     /// <summary>

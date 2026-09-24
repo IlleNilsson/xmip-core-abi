@@ -1,3 +1,5 @@
+using Xmip.Abi.Operate;
+
 namespace Xmip.Surface;
 
 /// <summary>
@@ -21,12 +23,6 @@ public sealed record NodeCapability(
     bool Published,
     string Evidence)
 {
-    private const string Declares = "declares ";
-
-    /// <summary>What a node that declares no stage publishes in place of the
-    /// words.</summary>
-    private const string NoStage = "no stage of the message path";
-
     /// <summary>Why the declaration was refused, or the empty string when it
     /// was not: a word that is no stage refuses the whole declaration, in
     /// <c>node::Stage::declared</c>'s own words, and is never read as the
@@ -66,52 +62,44 @@ public sealed record NodeCapability(
                 : $"{(Stages.Count > 0 ? Words : "no stage")} · {Route}";
     }
 
-    /// <summary>The capability a node published at
-    /// <c>&lt;node&gt;/capability</c>, read from the evidence it wrote there.
-    /// Evidence a surface does not recognise declares no stage and is still
-    /// carried whole, so an operator reads what the node actually said.</summary>
-    public static NodeCapability Declared(string node, string evidence)
+    /// <summary>What a node published of itself, when the record at
+    /// <paramref name="scope"/> is the capability record it publishes at
+    /// <c>&lt;node&gt;/capability</c>: the node beneath which it sits, the
+    /// stages and online capability its evidence declares, and the evidence
+    /// whole, so an operator reads what the node actually said. Null for any
+    /// other record. Where the record sits and how its evidence reads are
+    /// <c>observe::capability</c>'s and <c>node::Capability</c>'s, called in
+    /// the runtime; nothing here reads a leaf's name or the evidence's
+    /// words.</summary>
+    public static NodeCapability? Declared(string scope, string evidence)
     {
+        ArgumentNullException.ThrowIfNull(scope);
         ArgumentNullException.ThrowIfNull(evidence);
 
-        string said = evidence.StartsWith(Declares, StringComparison.Ordinal)
-            ? evidence[Declares.Length..]
-            : string.Empty;
-        int end = said.IndexOf(';', StringComparison.Ordinal);
-        string words = end < 0 ? said : said[..end];
-        IReadOnlyList<string> stages = Ordered(
-            string.Equals(words, NoStage, StringComparison.Ordinal) ? string.Empty : words,
-            out string refusal);
-
-        return new NodeCapability(
-            node,
-            stages,
-            evidence.Contains("; online;", StringComparison.Ordinal),
-            true,
-            evidence)
-        { Refusal = refusal };
+        return RuntimeLibrary.Rules.Published(scope, evidence) is { } said
+            ? new NodeCapability(said.Node, said.Stages, said.Online, true, evidence)
+            {
+                Refusal = said.Refusal,
+            }
+            : null;
     }
 
     /// <summary>One entry of <c>[run].capabilities</c> —
     /// <c>edge-01=receive+send</c>, or a bare <c>edge-02</c> for a node started
-    /// with no stage of its own. Whatever the node is called is read as a name
-    /// and nothing else. It says nothing of the online capability, which
+    /// with no stage of its own — as <c>node::Capability::from_entry</c> reads
+    /// it in the runtime. Whatever the node is called is read as a name and
+    /// nothing else. It says nothing of the online capability, which
     /// <c>[run]</c> lists apart.</summary>
     public static NodeCapability Started(string entry)
     {
         ArgumentNullException.ThrowIfNull(entry);
 
-        int split = entry.IndexOf('=', StringComparison.Ordinal);
-        IReadOnlyList<string> stages = Ordered(
-            split < 0 ? string.Empty : entry[(split + 1)..], out string refusal);
+        DeclaredCapability said = RuntimeLibrary.Rules.Entry(entry);
 
-        return new NodeCapability(
-            (split < 0 ? entry : entry[..split]).Trim(),
-            stages,
-            false,
-            false,
-            string.Empty)
-        { Refusal = refusal };
+        return new NodeCapability(said.Node, said.Stages, false, false, string.Empty)
+        {
+            Refusal = said.Refusal,
+        };
     }
 
     /// <summary>

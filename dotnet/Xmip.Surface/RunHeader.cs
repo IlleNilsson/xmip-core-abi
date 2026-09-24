@@ -1,5 +1,4 @@
-using System.Globalization;
-using Tomlyn.Model;
+using Xmip.Abi.Operate;
 
 namespace Xmip.Surface;
 
@@ -95,21 +94,15 @@ public sealed record RunHeader(
         return string.Join(" · ", parts);
     }
 
-    /// <summary>The header of a snapshot document, or <see cref="None"/> when
-    /// it carries no <c>[run]</c> table.</summary>
-    public static RunHeader Read(TomlTable document)
+    /// <summary>The run a publication says it was started with, as the
+    /// runtime read it (<c>observe::Run</c>), or <see cref="None"/> when it
+    /// says nothing of its run.</summary>
+    public static RunHeader From(PublishedRun? run)
     {
-        ArgumentNullException.ThrowIfNull(document);
-
-        return document.TryGetValue("run", out object? found) && found is TomlTable run
-            ? new RunHeader(
-                Word(run, "cluster"),
-                Words(run, "tests"),
-                Words(run, "nodes"),
-                Words(run, "capabilities"),
-                Words(run, "online"),
-                Word(run, "stress"))
-            : None;
+        return run is null
+            ? None
+            : new RunHeader(
+                run.Cluster, run.Tests, run.Nodes, run.Capabilities, run.Online, run.Stress);
     }
 
     /// <summary>A node as the run line names it: the publisher's own
@@ -128,17 +121,4 @@ public sealed record RunHeader(
         return node;
     }
 
-    private static string Word(TomlTable table, string key)
-    {
-        return table.TryGetValue(key, out object? found)
-            ? Convert.ToString(found, CultureInfo.InvariantCulture) ?? string.Empty
-            : string.Empty;
-    }
-
-    private static List<string> Words(TomlTable table, string key)
-    {
-        return table.TryGetValue(key, out object? found) && found is TomlArray words
-            ? [.. words.OfType<string>()]
-            : [];
-    }
 }

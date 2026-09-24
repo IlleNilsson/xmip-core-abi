@@ -7,8 +7,9 @@ runtime, operator surfaces, and loadable Modules.
 are normative. The Rust crate, whose source sits aside under `.src`
 (ADR-0049), is a convenience binding over that boundary and must not introduce
 Rust-specific types into the ABI: the descriptor, the manifest, the FFI
-shapes and the operate types, section 7's rule exports among them
-(`operate::rule`). `examples/conforming.rs`
+shapes and the operate types, section 6's start and validate shapes, section
+7's rule exports (`operate::rule`) and section 8's publication reader
+(`operate::publication`). `examples/conforming.rs`
 builds as a cdylib and is the conforming artifact a loader probe is tested
 against.
 
@@ -19,10 +20,15 @@ amendment of 2026-08-26). `Module/` carries the module boundary, its probe
 and the probe's judgement of whether a module conforms, and `StatusMeaning`,
 what a status code means; `Operate/` the operator boundary and its records,
 and `RuntimeRules`, section 7 bound once: scope containment and a scope's
-parts, the stage words and a declaration's parse, a mood's word and color
-name and the worst-first order, each written once in the crate that owns it
-(`observe`, `node`) and forwarded by the runtime's library, so no .NET
-surface writes a rule again (ADR-0052, amendment 2026-09-24). In a composed
+parts, the stage words, a declaration's parse and the facts of a stage, a
+node's published capability and a run's entry for it, a mood's word, color
+name and rollup, a counted kind's word and the worst-first order, each written
+once in the crate that owns it (`observe`, `node`) and forwarded by the
+runtime's library, so no .NET surface writes a rule again; and
+`PublicationReader`, section 8, which hands a publication's text to the
+runtime's one reader and brings back a `Publication` — its records, counts,
+topology (`Topology.cs`, the header's values) and run (ADR-0052, amendments
+2026-09-24). In a composed
 estate the project copies the runtime's built library beside everything that
 references it. `AbiBoundaries` says both boundaries at once. `xmip-cli abi`, `status` and
 `probe` render those and `Get-XmipAbi`, `ConvertFrom-XmipStatus` and

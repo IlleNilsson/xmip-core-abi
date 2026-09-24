@@ -1,70 +1,73 @@
-using Xmip.Abi.Operate;
+namespace Xmip.Abi.Operate;
 
-namespace Xmip.Surface;
-
-/// <summary>The kind of thing shown in the communication topology.</summary>
+/// <summary>The kind of thing shown in the communication topology. The values
+/// are the header's <c>XMIP_TOPOLOGY_*</c> (section 8); the words a
+/// publication writes are <c>observe::topology</c>'s, and no surface reads
+/// them (open problem 25).</summary>
 public enum TopologyNodeKind
 {
     /// <summary>A physical or logical computer.</summary>
-    Computer,
+    Computer = 0,
     /// <summary>A server.</summary>
-    Server,
+    Server = 1,
     /// <summary>A virtual machine.</summary>
-    VirtualMachine,
+    VirtualMachine = 2,
     /// <summary>A network or application gateway.</summary>
-    Gateway,
+    Gateway = 3,
     /// <summary>An infrastructure appliance.</summary>
-    Appliance,
+    Appliance = 4,
     /// <summary>A service hosted by an infrastructure endpoint.</summary>
-    Service,
+    Service = 5,
     /// <summary>An operating-system process.</summary>
-    Process,
+    Process = 6,
     /// <summary>A network interface.</summary>
-    Interface,
+    Interface = 7,
     /// <summary>A local or remote port.</summary>
-    Port,
+    Port = 8,
     /// <summary>A transport or application protocol endpoint.</summary>
-    Protocol,
+    Protocol = 9,
     /// <summary>A configured logical or physical location.</summary>
-    Location,
+    Location = 10,
     /// <summary>An Xmip cluster: the root its nodes hang under.</summary>
-    Cluster,
+    Cluster = 11,
     /// <summary>One Xmip node of a cluster.</summary>
-    Node,
+    Node = 12,
     /// <summary>A stage of the message path on a node: receive, process or send.</summary>
-    Stage,
+    Stage = 13,
     /// <summary>A receiving or sending endpoint of a stage, one per transport.</summary>
-    Endpoint,
+    Endpoint = 14,
 }
 
-/// <summary>Where a topology fact came from.</summary>
+/// <summary>Where a topology fact came from: the header's
+/// <c>XMIP_ORIGIN_*</c>.</summary>
 public enum TopologyOrigin
 {
     /// <summary>Declared by configuration but not observed in the current window.</summary>
-    Configured,
+    Configured = 0,
     /// <summary>Observed at runtime but not present in the loaded configuration.</summary>
-    Observed,
+    Observed = 1,
     /// <summary>Both configured and observed.</summary>
-    Both,
+    Both = 2,
 }
 
-/// <summary>The application meaning of communication, separate from wire traffic.</summary>
+/// <summary>The application meaning of communication, separate from wire traffic:
+/// the header's <c>XMIP_PATTERN_*</c>.</summary>
 public enum CommunicationPattern
 {
     /// <summary>A request followed by its correlated response.</summary>
-    RequestResponse,
+    RequestResponse = 0,
     /// <summary>One payload sent to a distinct receive or completion event.</summary>
-    SendReceive,
+    SendReceive = 1,
     /// <summary>A producer publishes to an intermediary and a consumer later takes it.</summary>
-    PublishConsume,
+    PublishConsume = 2,
     /// <summary>Sustained producer-to-consumer data flow.</summary>
-    Streaming,
+    Streaming = 3,
     /// <summary>A one-way application send with no expected application reply.</summary>
-    FireAndForget,
+    FireAndForget = 4,
     /// <summary>Independent application messages in either direction on a persistent connection.</summary>
-    Session,
+    Session = 5,
     /// <summary>An unsuccessful delivery followed by one or more attempts.</summary>
-    Retry,
+    Retry = 6,
 }
 
 /// <summary>

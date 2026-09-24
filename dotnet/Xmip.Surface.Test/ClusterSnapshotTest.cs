@@ -101,9 +101,8 @@ public sealed class ClusterSnapshotTest
         Assert.Equal("no stage · offline", whole.Line());
         Assert.Equal(
             "no stage · offline",
-            NodeCapability.Declared("n1", "declares no stage of the message path; offline; x")
-                .Line());
-        Assert.Empty(NodeCapability.Declared("n1", "alive").Stages);
+            Capability("declares no stage of the message path; offline; x").Line());
+        Assert.Empty(Capability("alive").Stages);
     }
 
     /// <summary>
@@ -116,11 +115,13 @@ public sealed class ClusterSnapshotTest
     [Fact]
     public void ADeclarationReadsByTheNodesRuleAndARefusalIsCarriedWhole()
     {
-        NodeCapability lower = NodeCapability.Declared("n1", "declares send,receive; online; x");
+        NodeCapability lower = Capability("declares send,receive; online; x");
+        Assert.Equal("n1", lower.Node);
         Assert.Equal(["receive", "send"], lower.Stages);
+        Assert.True(lower.Online);
         Assert.Empty(lower.Refusal);
 
-        NodeCapability cased = NodeCapability.Declared("n1", "declares Send,RECEIVE; online; x");
+        NodeCapability cased = Capability("declares Send,RECEIVE; online; x");
         Assert.Empty(cased.Stages);
         Assert.Equal(Refusal("Send,RECEIVE"), cased.Refusal);
         Assert.StartsWith("REFUSED:", cased.Refusal, StringComparison.Ordinal);
@@ -128,8 +129,7 @@ public sealed class ClusterSnapshotTest
 
         string refused = Refusal("receive,relay+hold");
 
-        NodeCapability published = NodeCapability.Declared(
-            "n1", "declares receive,relay+hold; offline; x");
+        NodeCapability published = Capability("declares receive,relay+hold; offline; x");
         Assert.Empty(published.Stages);
         Assert.Equal(refused, published.Refusal);
         Assert.Equal(refused, published.Line());
@@ -137,6 +137,27 @@ public sealed class ClusterSnapshotTest
         NodeCapability started = NodeCapability.Started("n2=receive+relay+hold");
         Assert.Empty(started.Stages);
         Assert.Equal(refused, started.Refusal);
+    }
+
+    /// <summary>
+    /// Only the record a node publishes at its own <c>capability</c> scope is
+    /// a declaration; where that is, is <c>observe::capability</c>'s, called in
+    /// the runtime, and a record anywhere else declares nothing.
+    /// </summary>
+    [Fact]
+    public void OnlyTheRecordAtANodesCapabilityScopeIsItsDeclaration()
+    {
+        Assert.Null(NodeCapability.Declared(
+            "xmip:///C1/node/n1/receive/tcp", "declares send; online; x"));
+        Assert.Null(NodeCapability.Declared("xmip:///capability", "declares send; online; x"));
+        Assert.Equal("n1", Capability("declares send; online; x").Node);
+    }
+
+    // The capability record node n1 publishes, with this evidence.
+    private static NodeCapability Capability(string evidence)
+    {
+        return NodeCapability.Declared("xmip:///C1/node/n1/capability", evidence)
+            ?? throw new InvalidOperationException("a capability record reads as one");
     }
 
     private static string Refusal(string words)
