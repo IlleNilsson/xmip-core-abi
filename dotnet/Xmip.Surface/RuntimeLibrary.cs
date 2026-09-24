@@ -36,6 +36,30 @@ public static class RuntimeLibrary
             AppContext.BaseDirectory);
     }
 
+    /// <summary>
+    /// The library an operator stated, over the rule: a path typed for this
+    /// one invocation — <c>xmip-cli --runtime</c>, <c>-Library</c> on a cmdlet
+    /// — wins and is taken from the current directory; a blank one is no
+    /// statement, and then <paramref name="configuration"/>, the environment
+    /// and <paramref name="besideExecutable"/> decide as <see cref="Choose"/>
+    /// says. One precedence for the command line and PowerShell (ADR-0052
+    /// clause 1); until 2026-09-24 the cli held it alone and every cmdlet
+    /// demanded a path.
+    /// </summary>
+    public static string Stated(
+        string? overridden, IConfiguration configuration, string basePath, string besideExecutable)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+
+        return string.IsNullOrWhiteSpace(overridden)
+            ? Choose(
+                configuration[ConfigurationKey],
+                Environment.GetEnvironmentVariable(EnvironmentVariable),
+                basePath,
+                besideExecutable)
+            : Path.GetFullPath(overridden);
+    }
+
     /// <summary>The rule itself, with every input in hand: configuration
     /// first, then the environment, then beside the executable.</summary>
     public static string Choose(

@@ -16,9 +16,14 @@ against.
 The .NET binding is here too: `dotnet/Xmip.Abi`, one class library declaring
 both headers for every operator surface — the cli, the PowerShell module and
 the GUI reference it as a project and bind nothing themselves (ADR-0014,
-amendment of 2026-08-26). `Module/` carries the module boundary and its probe,
-`Operate/` the operator boundary and its records. `dotnet/Xmip.Abi.Tests`
-compares both against the headers; `dotnet test dotnet/Xmip.Abi.Tests` runs
+amendment of 2026-08-26). `Module/` carries the module boundary, its probe
+and the probe's judgement of whether a module conforms, and `StatusMeaning`,
+what a status code means; `Operate/` the operator boundary and its records;
+`AbiBoundaries` says both boundaries at once. `xmip-cli abi`, `status` and
+`probe` render those and `Get-XmipAbi`, `ConvertFrom-XmipStatus` and
+`Get-XmipModuleDescriptor` emit them, so neither face judges a code or a
+module on its own (ADR-0052, amendment 2026-09-24). `dotnet/Xmip.Abi.Tests`
+compares both against the headers and holds those answers; `dotnet test dotnet/Xmip.Abi.Tests` runs
 them.
 
 ## What every .NET surface shares
@@ -38,24 +43,32 @@ faces over it.
   answer a lookup (ADR-0052, amendment 2026-09-15); `Branch` and `Crumb` for
   the drill-down, and `ScopeItem` for one row of it.
 - **Narrowing.** `ScopePattern`, the one wildcard every surface matches with
-  (ADR-0059 clauses 7 and 8), and `ScopeFilter`, that pattern applied to a
+  (ADR-0059 clauses 7 and 8); `ScopeFilter`, that pattern applied to a
   publication so the views narrow alike and none decides for itself what a
-  pattern means.
+  pattern means; and `ScopeSelection`, what a scope argument selects on the
+  command line and in a cmdlet — the scope itself, or the topmost scopes a
+  wildcard names — with the REFUSED sentence when it names nothing.
 - **Figures.** `Figures`, the six at a scope in the order every surface says
   them, and `FigureFlow`, the three stage figures as a rate per second.
 - **What a run says.** `RunHeader` for the `[run]` table a publisher writes,
   `NodeCapability` for what one node declared it can do — never inferred from
-  what the node is called (ADR-0056 clause 1) — and `Topology` for the
-  communication view.
+  what the node is called (ADR-0056 clause 1), read by the rule of
+  `node::Stage::declared` (lowercase exactly, any other word refused and the
+  refusal carried in `Refusal`) — and `Topology` for the communication view.
 - **Acts and verdicts.** `ScopeAction`, the two acts `xmip_operate.h` carries
   and no start, stop or restart; `ScopeOperation`, the one shape they answer
   in, so an exit code and a pipeline object agree; and
   `ConfigurationVerdict` for what came of handing the runtime a node
-  configuration.
+  configuration — a saved file, or the text an editor holds.
 - **Plumbing.** `RuntimeLibrary` (discovery by one rule: `Xmip:RuntimeLibrary`,
-  else `XMIP_RUNTIME_LIBRARY`, else beside the executable), `SurfaceChoice`
-  (the surface a host chose in its TOML, and every snapshot it names),
-  `TomlDocument` (the one TOML reader), `ProcessDeclaration` (what a System
+  else `XMIP_RUNTIME_LIBRARY`, else beside the executable, with a library an
+  operator typed over all three), `SurfaceChoice` (the surface a host chose in
+  its TOML, every snapshot it names, and — over a `SurfaceLine` — the one
+  precedence the executable, the prompt and the cmdlets share: a remote host,
+  a snapshot or a runtime stated for the invocation, then the document, then
+  the runtime rule),
+  `TomlDocument` (the one TOML reader, and the syntax-tree editing an editor
+  changes a document through, comments and layout kept), `ProcessDeclaration` (what a System
   Process Xmip owns says of itself, ADR-0053 clause 3), `English` (a status
   said in words once) and `SurfaceChange` (one coalescing change stream that
   wakes every surface when a published snapshot advances).
@@ -65,8 +78,9 @@ the host's surface answers, and `SurfaceRelay`, pushing the host's change feed
 to every remote surface, so a surface is told and never asks (ADR-0052,
 amendment 2026-09-15); only a web host references it.
 
-`dotnet/Xmip.Surface.Test` covers the tree and its index, the pattern and the
-filter, the figures and their flow, runtime discovery, the English, the
+`dotnet/Xmip.Surface.Test` covers the tree and its index, the pattern, the
+filter and the selection, the figures and their flow, runtime discovery and
+the surface precedence, the English, the
 configuration verdict, the process declaration, the snapshot surface and the
 cluster set over fixtures, and the remote surface against a hub on a loopback
 port. `dotnet test dotnet/Xmip.Surface.Test` runs them.

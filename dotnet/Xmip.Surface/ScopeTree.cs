@@ -51,6 +51,14 @@ public static class ScopeTree
     /// <summary>Whether <paramref name="candidate"/> is <paramref name="scope"/>
     /// itself or beneath it: the scope's segments are a prefix of the
     /// candidate's.</summary>
+    /// <remarks>
+    /// The rule has two writers, on purpose: this one, and <c>observe::Scope</c>
+    /// in xmip-core-observe, which the runtime answers by; a surface loads no
+    /// Rust library (the owner, 2026-09-24; ADR-0052, amendment of that date).
+    /// Both are held to one set of cases, xmip-core-observe's
+    /// <c>src/scope-vector.toml</c>, which a test on each side reads. Change a
+    /// case there first, then both writers.
+    /// </remarks>
     public static bool Beneath(string candidate, string scope)
     {
         // By segment, never by prefix — and without splitting either scope:

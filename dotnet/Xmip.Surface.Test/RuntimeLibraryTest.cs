@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Configuration;
+
 namespace Xmip.Surface.Test;
 
 /// <summary>
@@ -44,6 +46,31 @@ public sealed class RuntimeLibraryTest
     }
 
     [Fact]
+    public void ALibraryStatedForTheInvocationWinsOverEverything()
+    {
+        // xmip-cli --runtime and a cmdlet's -Library: the one precedence,
+        // taken from the current directory, over the document.
+        IConfiguration document = Configured("configured.dll");
+
+        Assert.Equal(
+            Path.GetFullPath("override.dll"),
+            RuntimeLibrary.Stated("override.dll", document, Base, Beside));
+    }
+
+    [Fact]
+    public void ABlankStatementIsNoStatementAndTheDocumentDecides()
+    {
+        IConfiguration document = Configured("configured.dll");
+
+        Assert.Equal(
+            Path.GetFullPath(Path.Combine(Base, "configured.dll")),
+            RuntimeLibrary.Stated(" ", document, Base, Beside));
+        Assert.Equal(
+            Path.GetFullPath(Path.Combine(Base, "configured.dll")),
+            RuntimeLibrary.Stated(null, document, Base, Beside));
+    }
+
+    [Fact]
     public void TheFileNameIsThePlatformsOwn()
     {
         string name = RuntimeLibrary.FileName;
@@ -52,5 +79,13 @@ public sealed class RuntimeLibraryTest
         Assert.True(name.EndsWith(".dll", StringComparison.Ordinal)
             || name.EndsWith(".so", StringComparison.Ordinal)
             || name.EndsWith(".dylib", StringComparison.Ordinal));
+    }
+
+    private static IConfiguration Configured(string library)
+    {
+        return new ConfigurationBuilder()
+            .AddInMemoryCollection(
+                [new KeyValuePair<string, string?>(RuntimeLibrary.ConfigurationKey, library)])
+            .Build();
     }
 }

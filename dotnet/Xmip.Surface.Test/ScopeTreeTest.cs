@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Configuration;
 using Xmip.Abi.Operate;
 
 namespace Xmip.Surface.Test;
@@ -19,6 +20,44 @@ public sealed class ScopeTreeTest
         new("xmip:///edge-02/send/warehouse", HealthState.Paused, 30, "paused by ilian", Now),
         new("xmip:///edge-02/send/billing", HealthState.Fine, 0, "", Now),
     ];
+
+    /// <summary>The containment cases in xmip-core-observe's
+    /// <c>src/scope-vector.toml</c>, the same file <c>observe::Scope</c>'s test
+    /// reads: the rule has two writers, and this holds them to one statement
+    /// (ADR-0052, amendment 2026-09-24).</summary>
+    [Fact]
+    public void EveryCaseTheRuntimeIsHeldToHoldsHereToo()
+    {
+        string file = Path.Combine(AppContext.BaseDirectory, "Fixture", "scope-vector.toml");
+        Assert.True(
+            File.Exists(file),
+            "scope-vector.toml comes from xmip-core-observe in the estate checkout");
+
+        IConfigurationSection[] cases =
+            [.. TomlDocument.Read(file).GetSection("case").GetChildren()];
+        Assert.NotEmpty(cases);
+
+        foreach (IConfigurationSection @case in cases)
+        {
+            string why = @case["why"] ?? string.Empty;
+            string scope = @case["scope"] ?? string.Empty;
+            bool contains = bool.Parse(@case["contains"]!);
+
+            Assert.True(
+                ScopeTree.Beneath(@case["candidate"] ?? string.Empty, scope) == contains, why);
+
+            if (@case["path"] is string path)
+            {
+                Assert.True(string.Join('/', ScopeTree.Parts(scope)) == path, why);
+            }
+
+            if (@case["is_root"] is string isRoot)
+            {
+                bool atRoot = ScopeTree.Parts(scope).Length == 0;
+                Assert.True(atRoot == bool.Parse(isRoot), why);
+            }
+        }
+    }
 
     [Fact]
     public void PartsDropTheSchemeAndAnEmptyAuthority()

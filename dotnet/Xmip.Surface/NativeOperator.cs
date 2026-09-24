@@ -68,12 +68,24 @@ public sealed class NativeOperator : IOperatorSurface, IDisposable
     /// </summary>
     public ConfigurationVerdict Validate(string configurationPath)
     {
-        return Runtime() is not { } runtime
+        return Runtime() is null
             ? ConfigurationVerdict.NotLoaded(configurationPath, _reason)
             : !File.Exists(configurationPath)
                 ? ConfigurationVerdict.NoFile(configurationPath)
-                : ConfigurationVerdict.Validated(
-                    configurationPath, runtime.Validate(File.ReadAllText(configurationPath)));
+                : Validate(configurationPath, File.ReadAllText(configurationPath));
+    }
+
+    /// <summary>
+    /// Validate the text of a configuration document that is not saved, or
+    /// not saved yet — what an editor is holding (ADR-0027, amendment
+    /// 2026-09-05). <paramref name="configurationPath"/> names the document
+    /// the text is for, in the verdict; nothing is read from it.
+    /// </summary>
+    public ConfigurationVerdict Validate(string configurationPath, string configuration)
+    {
+        return Runtime() is { } runtime
+            ? ConfigurationVerdict.Validated(configurationPath, runtime.Validate(configuration))
+            : ConfigurationVerdict.NotLoaded(configurationPath, _reason);
     }
 
     /// <inheritdoc />

@@ -32,7 +32,33 @@ public static unsafe class ModuleProbe
         uint AbiVersion,
         string TraitVersion,
         string ModuleVersion,
-        string LastError);
+        string LastError)
+    {
+        /// <summary>
+        /// What a module that loaded got wrong, in one sentence; empty when it
+        /// conforms, or when it did not load and <see cref="Status"/> says why.
+        /// Judged here once for every surface: until 2026-09-24 the cli judged
+        /// it and the cmdlet did not, so one module conformed in PowerShell
+        /// and failed on the command line.
+        /// </summary>
+        /// <remarks>Section 4 of the header: standard is empty only when
+        /// provider is <c>core</c>.</remarks>
+        public string Complaint => this switch
+        {
+            { Status: not XmipStatus.Ok } => string.Empty,
+            { AbiVersion: not ModuleAbi.AbiVersion } =>
+                $"Loaded, and disagrees: the module says {AbiVersion}, " +
+                $"this build speaks {ModuleAbi.AbiVersion}.",
+            { Provider: "core", Standard.Length: > 0 } =>
+                $"A core module named a standard ('{Standard}'). " +
+                "ADR-0011 leaves that slot empty for core.",
+            _ => string.Empty,
+        };
+
+        /// <summary>The module loaded, said what it is, and got nothing
+        /// wrong.</summary>
+        public bool Conforms => Status == XmipStatus.Ok && Complaint.Length == 0;
+    }
 
     /// <summary>
     /// Where log lines go during the one probe in flight.
