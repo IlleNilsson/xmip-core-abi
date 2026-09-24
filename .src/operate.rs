@@ -140,6 +140,24 @@ pub type WaitChangeFn =
 /// Header section 5. The exported entrypoint's shape.
 pub type OperateFn = unsafe extern "C" fn(version: u32, out: *mut Operate) -> i32;
 
+/// Header section 6. Start a node from a saved configuration file.
+pub const XMIP_START_ENTRYPOINT: &str = "xmip_start_v1";
+
+/// Header section 6. Validate configuration text without applying it.
+pub const XMIP_VALIDATE_ENTRYPOINT: &str = "xmip_validate_v1";
+
+/// Header section 6. `xmip_start_v1`: a path to a saved configuration.
+pub type StartFn = unsafe extern "C" fn(path: Str) -> i32;
+
+/// Header section 6. `xmip_validate_v1`: configuration text in, the report
+/// written into `report` as UTF-8, its true length in `out_len`.
+pub type ValidateFn = unsafe extern "C" fn(
+    configuration: Str,
+    report: *mut u8,
+    cap: usize,
+    out_len: *mut usize,
+) -> i32;
+
 /// Header section 7: the rules a surface calls instead of keeping its own.
 /// Each is a separate optional symbol the runtime exports, a thin forwarder
 /// into the crate that owns the rule; none reads the snapshot.
@@ -163,6 +181,20 @@ pub mod rule {
     pub const HEALTH_NAMED_ENTRYPOINT: &str = "xmip_health_named_v1";
     /// `observe::Standing::worst_first`.
     pub const HEALTH_ORDER_ENTRYPOINT: &str = "xmip_health_order_v1";
+    /// `observe::Health::rolled`.
+    pub const HEALTH_ROLLED_ENTRYPOINT: &str = "xmip_health_rolled_v1";
+    /// `observe::Counted::word`.
+    pub const COUNTED_WORD_ENTRYPOINT: &str = "xmip_counted_word_v1";
+    /// `observe::Counted::at`.
+    pub const STAGE_COUNTED_ENTRYPOINT: &str = "xmip_stage_counted_v1";
+    /// `node::Stage::pausable`.
+    pub const STAGE_PAUSABLE_ENTRYPOINT: &str = "xmip_stage_pausable_v1";
+    /// `node::Stage::location`.
+    pub const STAGE_LOCATION_ENTRYPOINT: &str = "xmip_stage_location_v1";
+    /// `observe::capability::declared`.
+    pub const CAPABILITY_PUBLISHED_ENTRYPOINT: &str = "xmip_capability_published_v1";
+    /// `node::Capability::from_entry`.
+    pub const CAPABILITY_ENTRY_ENTRYPOINT: &str = "xmip_capability_entry_v1";
 
     /// Whether `candidate` is `scope` or beneath it; `out_contains` 1 or 0.
     pub type ScopeContainsFn =
@@ -196,7 +228,52 @@ pub mod rule {
     /// Many entries worst first, as their positions.
     pub type HealthOrderFn =
         unsafe extern "C" fn(entries: *const HealthEntry, len: usize, out_order: *mut usize) -> i32;
+
+    /// What a parent shows over a mood: Fine or Holding.
+    pub type HealthRolledFn = unsafe extern "C" fn(health: i32, out: *mut i32) -> i32;
+
+    /// A counted kind's word, static.
+    pub type CountedWordFn = unsafe extern "C" fn(counted: i32, out: *mut Str) -> i32;
+
+    /// The kind a stage counts.
+    pub type StageCountedFn = unsafe extern "C" fn(stage: Str, out: *mut i32) -> i32;
+
+    /// Whether a stage may be paused; `out` 1 or 0.
+    pub type StagePausableFn = unsafe extern "C" fn(stage: Str, out: *mut u8) -> i32;
+
+    /// What a thing at a stage is called, static.
+    pub type StageLocationFn = unsafe extern "C" fn(stage: Str, out: *mut Str) -> i32;
+
+    /// The capability a node published: its name (borrowed from `scope`),
+    /// its stages, its online capability, or its refusal.
+    pub type CapabilityPublishedFn = unsafe extern "C" fn(
+        scope: Scope,
+        evidence: Str,
+        out_node: *mut Str,
+        stages: *mut Str,
+        cap: usize,
+        out_len: *mut usize,
+        out_online: *mut u8,
+        refusal: *mut u8,
+        refusal_cap: usize,
+        refusal_len: *mut usize,
+    ) -> i32;
+
+    /// A run's entry for a node: its name (borrowed from `entry`), its
+    /// stages, or its refusal.
+    pub type CapabilityEntryFn = unsafe extern "C" fn(
+        entry: Str,
+        out_node: *mut Str,
+        stages: *mut Str,
+        cap: usize,
+        out_len: *mut usize,
+        refusal: *mut u8,
+        refusal_cap: usize,
+        refusal_len: *mut usize,
+    ) -> i32;
 }
+
+pub mod publication;
 
 #[cfg(test)]
 mod tests {
@@ -278,6 +355,36 @@ mod tests {
                 "XMIP_HEALTH_ORDER_ENTRYPOINT",
                 rule::HEALTH_ORDER_ENTRYPOINT,
             ),
+            (
+                "XMIP_HEALTH_ROLLED_ENTRYPOINT",
+                rule::HEALTH_ROLLED_ENTRYPOINT,
+            ),
+            (
+                "XMIP_COUNTED_WORD_ENTRYPOINT",
+                rule::COUNTED_WORD_ENTRYPOINT,
+            ),
+            (
+                "XMIP_STAGE_COUNTED_ENTRYPOINT",
+                rule::STAGE_COUNTED_ENTRYPOINT,
+            ),
+            (
+                "XMIP_STAGE_PAUSABLE_ENTRYPOINT",
+                rule::STAGE_PAUSABLE_ENTRYPOINT,
+            ),
+            (
+                "XMIP_STAGE_LOCATION_ENTRYPOINT",
+                rule::STAGE_LOCATION_ENTRYPOINT,
+            ),
+            (
+                "XMIP_CAPABILITY_PUBLISHED_ENTRYPOINT",
+                rule::CAPABILITY_PUBLISHED_ENTRYPOINT,
+            ),
+            (
+                "XMIP_CAPABILITY_ENTRY_ENTRYPOINT",
+                rule::CAPABILITY_ENTRY_ENTRYPOINT,
+            ),
+            ("XMIP_START_ENTRYPOINT", XMIP_START_ENTRYPOINT),
+            ("XMIP_VALIDATE_ENTRYPOINT", XMIP_VALIDATE_ENTRYPOINT),
         ] {
             let line = HEADER
                 .lines()

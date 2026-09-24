@@ -11,9 +11,10 @@ namespace Xmip.Surface;
 /// </summary>
 /// <remarks>
 /// <para>The rules underneath are not written here. Containment and a scope's parts
-/// are <c>observe::Scope</c>'s, the stage words <c>node::Stage</c>'s and the
-/// worst-first order <c>observe::Standing</c>'s, and this calls each in the
-/// runtime's library (<see cref="RuntimeLibrary.Rules"/>, <c>xmip_operate.h</c>
+/// are <c>observe::Scope</c>'s, the stage words and whether a stage pauses
+/// <c>node::Stage</c>'s, what a stage counts <c>observe::Counted</c>'s, and
+/// the rollup and the worst-first order <c>observe::Health</c>'s and
+/// <c>observe::Standing</c>'s, and this calls each in the runtime's library (<see cref="RuntimeLibrary.Rules"/>, <c>xmip_operate.h</c>
 /// section 7) — one implementation, which the snapshot answers by too
 /// (ADR-0052, amendment 2026-09-24).</para>
 /// <para>ADR-0041: a leaf's mood does not propagate. A parent is <c>Fine</c>
@@ -84,20 +85,34 @@ public static class ScopeTree
     }
 
     /// <summary>What a stage counts (ADR-0027 clause 5, the three words kept
-    /// apart): Streams at Receive, Journeys in Process, Messages at Send. The
-    /// board's tiles and the figures say the same thing because this is the
-    /// one place the stage and its count meet.</summary>
+    /// apart): Streams at Receive, Journeys in Process, Messages at Send —
+    /// <c>observe::Counted::at</c>, called in the runtime, so the board's tiles,
+    /// the figures and the prompt say what the runtime counts.</summary>
     /// <exception cref="ArgumentOutOfRangeException">Not a stage.</exception>
     public static Counted CountedAt(string stage)
     {
-        return stage switch
-        {
-            "receive" => Counted.Streams,
-            "process" => Counted.Journeys,
-            "send" => Counted.Messages,
-            _ => throw new ArgumentOutOfRangeException(
-                nameof(stage), stage, "not a stage of the message path"),
-        };
+        return RuntimeLibrary.Rules.StageCounted(stage)
+            ?? throw new ArgumentOutOfRangeException(
+                nameof(stage), stage, "not a stage of the message path");
+    }
+
+    /// <summary>Whether an operator may pause what sits at a scope: it is on a
+    /// stage, and the stage is one a Location is paused at —
+    /// <c>node::Stage::pausable</c>, called in the runtime. A Process runs off
+    /// a subscription; an operator pauses the Location that feeds it.</summary>
+    public static bool Pausable(string scope)
+    {
+        string stage = Stage(scope);
+
+        return stage.Length > 0 && RuntimeLibrary.Rules.Pausable(stage) == true;
+    }
+
+    /// <summary>What a thing configured at a stage is called — a receive
+    /// location, an xmip process, a send location: <c>node::Stage::location</c>,
+    /// called in the runtime. Null for a word that is no stage.</summary>
+    public static string? Location(string stage)
+    {
+        return RuntimeLibrary.Rules.Location(stage);
     }
 
     /// <summary>One segment by position, or empty when the scope is not that
@@ -123,10 +138,12 @@ public static class ScopeTree
     }
 
     /// <summary>The rollup (ADR-0041): a parent above anything not Fine is
-    /// Holding, and only Fine when everything beneath is.</summary>
+    /// Holding, and only Fine when everything beneath is —
+    /// <c>observe::Health::rolled</c>, called in the runtime, the rule the
+    /// snapshot rolls up by.</summary>
     public static HealthState Rolled(HealthState worst)
     {
-        return worst == HealthState.Fine ? HealthState.Fine : HealthState.Holding;
+        return RuntimeLibrary.Rules.Rolled(worst);
     }
 
     /// <summary>The rollup over a set of leaves, or null when there are none —

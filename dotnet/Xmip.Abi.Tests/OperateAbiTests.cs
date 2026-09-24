@@ -30,6 +30,25 @@ public sealed class OperateAbiTests
     [InlineData("XMIP_HEALTH_COLOR_ENTRYPOINT", OperateAbi.HealthColorEntrypoint)]
     [InlineData("XMIP_HEALTH_NAMED_ENTRYPOINT", OperateAbi.HealthNamedEntrypoint)]
     [InlineData("XMIP_HEALTH_ORDER_ENTRYPOINT", OperateAbi.HealthOrderEntrypoint)]
+    [InlineData("XMIP_HEALTH_ROLLED_ENTRYPOINT", OperateAbi.HealthRolledEntrypoint)]
+    [InlineData("XMIP_COUNTED_WORD_ENTRYPOINT", OperateAbi.CountedWordEntrypoint)]
+    [InlineData("XMIP_STAGE_COUNTED_ENTRYPOINT", OperateAbi.StageCountedEntrypoint)]
+    [InlineData("XMIP_STAGE_PAUSABLE_ENTRYPOINT", OperateAbi.StagePausableEntrypoint)]
+    [InlineData("XMIP_STAGE_LOCATION_ENTRYPOINT", OperateAbi.StageLocationEntrypoint)]
+    [InlineData(
+        "XMIP_CAPABILITY_PUBLISHED_ENTRYPOINT", OperateAbi.CapabilityPublishedEntrypoint)]
+    [InlineData("XMIP_CAPABILITY_ENTRY_ENTRYPOINT", OperateAbi.CapabilityEntryEntrypoint)]
+    [InlineData("XMIP_PUBLICATION_READ_ENTRYPOINT", OperateAbi.PublicationReadEntrypoint)]
+    [InlineData("XMIP_PUBLICATION_FREE_ENTRYPOINT", OperateAbi.PublicationFreeEntrypoint)]
+    [InlineData("XMIP_PUBLICATION_HEAD_ENTRYPOINT", OperateAbi.PublicationHeadEntrypoint)]
+    [InlineData("XMIP_PUBLICATION_RECORDS_ENTRYPOINT", OperateAbi.PublicationRecordsEntrypoint)]
+    [InlineData("XMIP_PUBLICATION_COUNTS_ENTRYPOINT", OperateAbi.PublicationCountsEntrypoint)]
+    [InlineData("XMIP_PUBLICATION_NODES_ENTRYPOINT", OperateAbi.PublicationNodesEntrypoint)]
+    [InlineData("XMIP_PUBLICATION_LINKS_ENTRYPOINT", OperateAbi.PublicationLinksEntrypoint)]
+    [InlineData("XMIP_PUBLICATION_RUN_ENTRYPOINT", OperateAbi.PublicationRunEntrypoint)]
+    [InlineData("XMIP_CURVE_READ_ENTRYPOINT", OperateAbi.CurveReadEntrypoint)]
+    [InlineData("XMIP_CURVE_POINTS_ENTRYPOINT", OperateAbi.CurvePointsEntrypoint)]
+    [InlineData("XMIP_CURVE_FREE_ENTRYPOINT", OperateAbi.CurveFreeEntrypoint)]
     public void NamesEachSymbolTheHeaderDeclares(string define, string symbol)
     {
         Assert.Equal(Header.Define("xmip_operate.h", define), symbol);
@@ -63,5 +82,24 @@ public sealed class OperateAbiTests
         }
 
         Assert.Equal(header.Count, Enum.GetValues<Counted>().Length);
+    }
+
+    [Theory]
+    [InlineData("TOPOLOGY", typeof(TopologyNodeKind))]
+    [InlineData("ORIGIN", typeof(TopologyOrigin))]
+    [InlineData("PATTERN", typeof(CommunicationPattern))]
+    [InlineData("RUN", typeof(RunList))]
+    public void KnowsEverySectionEightValueTheHeaderDefinesAndNoOther(string family, Type values)
+    {
+        IReadOnlyDictionary<string, int> header = Header.Enumerators(family);
+
+        Assert.NotEmpty(header);
+
+        foreach ((string constant, int value) in header)
+        {
+            Assert.Equal(Header.MemberName(constant), Enum.GetName(values, value));
+        }
+
+        Assert.Equal(header.Count, Enum.GetValues(values).Length);
     }
 }

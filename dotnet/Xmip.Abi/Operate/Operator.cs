@@ -265,7 +265,9 @@ public sealed unsafe class Operator : IDisposable
         return (XmipStatus)_table.Resume(_table.Ctx, text.Value);
     }
 
-    private static DateTimeOffset FromNanos(long nanos)
+    /// <summary>A header timestamp — nanoseconds since the Unix epoch — as a
+    /// .NET time; the one conversion every binding reads a time by.</summary>
+    internal static DateTimeOffset FromNanos(long nanos)
     {
         return DateTimeOffset.UnixEpoch.AddTicks(nanos / 100);
     }
