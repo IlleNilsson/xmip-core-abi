@@ -283,4 +283,28 @@ public sealed class RuntimeRulesTests
         Assert.Null(RuntimeRules.Load(missing, out string reason));
         Assert.Contains(missing, reason, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void AnAuditRecordCrossesToTheCapabilityAndLandsInTheDirectoryItWasTold()
+    {
+        string directory = Path.Combine(
+            Path.GetTempPath(), $"xmip-abi-audit-{Guid.NewGuid():n}");
+
+        AuditOutcome outcome = Rules.Audit.Record(
+            "Xmip.Abi.Tests",
+            directory,
+            "probe",
+            AuditPhase.Begin,
+            AuditSeverity.Information,
+            "written by the binding's own test",
+            new Dictionary<string, string> { ["url"] = "http://127.0.0.1:5087", ["ö"] = "å" });
+
+        Assert.Equal(AuditKept.Persisted, outcome.Kept);
+        Assert.Equal(string.Empty, outcome.Said);
+        string text = File.ReadAllText(Path.Combine(directory, "audit.toml"));
+        Assert.Contains("program = \"Xmip.Abi.Tests\"", text, StringComparison.Ordinal);
+        Assert.Contains("\"url\" = \"http://127.0.0.1:5087\"", text, StringComparison.Ordinal);
+        Assert.Contains("\"ö\" = \"å\"", text, StringComparison.Ordinal);
+        Directory.Delete(directory, recursive: true);
+    }
 }

@@ -22,6 +22,12 @@
           "Microsoft.Extensions.Primitives": "10.0.6"
         }
       },
+      "System.Diagnostics.EventLog": {
+        "type": "Direct",
+        "requested": "[10.0.0, )",
+        "resolved": "10.0.0",
+        "contentHash": "uaFRda9NjtbJRkdx311eXlAA3n2em7223c1A8d1VWyl+4FL9vkG7y2lpPfBU9HYdj/9KgdRNdn1vFK8ZYCYT/A=="
+      },
       "Tomlyn.Extensions.Configuration": {
         "type": "Direct",
         "requested": "[2.0.0, )",
