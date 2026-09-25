@@ -156,14 +156,14 @@ public sealed class RuntimeRulesTests
             node = "xmip:///C1"
 
             [[records]]
-            scope = "xmip:///C1/node/R1/receive/tcp"
+            scope = "xmip:///C1/node/alpha/receive/tcp"
             state = "done"
             severity = 90
             evidence = "refused"
             observed_unix_nanos = 1000
 
             [[records]]
-            scope = "xmip:///C1/node/R1/send/tcp"
+            scope = "xmip:///C1/node/alpha/send/tcp"
             state = "sulking"
 
             [[counts]]
@@ -176,8 +176,8 @@ public sealed class RuntimeRulesTests
 
             [run]
             cluster = "C1"
-            nodes = ["R1", "ö"]
-            capabilities = ["R1=receive"]
+            nodes = ["alpha", "ö"]
+            capabilities = ["alpha=receive"]
             stress = "harsh"
 
             [topology]
@@ -210,7 +210,7 @@ public sealed class RuntimeRulesTests
             (journeys.Counted, journeys.Value, journeys.Scope));
 
         Assert.NotNull(read.Run);
-        Assert.Equal(["R1", "ö"], read.Run.Nodes);
+        Assert.Equal(["alpha", "ö"], read.Run.Nodes);
         Assert.Empty(read.Run.Tests);
         Assert.Equal("harsh", read.Run.Stress);
 
@@ -229,6 +229,34 @@ public sealed class RuntimeRulesTests
         Publication bare = Rules.Publications.Read(string.Empty, out _)!;
         Assert.Null(bare.Run);
         Assert.Null(bare.Topology);
+    }
+
+    /// <summary>What each topology value is called crosses whole — every
+    /// value its enum defines has a word and a name — and a value the runtime
+    /// does not define has neither.</summary>
+    [Fact]
+    public void EveryTopologyValueCrossesWithItsWordAndName()
+    {
+        PublicationReader reader = Rules.Publications;
+
+        Assert.All(Enum.GetValues<TopologyNodeKind>(), kind => Assert.NotNull(reader.Words(kind)));
+        Assert.All(Enum.GetValues<TopologyOrigin>(), origin => Assert.NotNull(reader.Words(origin)));
+        Assert.All(
+            Enum.GetValues<CommunicationPattern>(),
+            pattern => Assert.NotNull(reader.Words(pattern)));
+
+        Assert.Equal(
+            new TopologyWord("virtual-machine", "virtual machine"),
+            reader.Words(TopologyNodeKind.VirtualMachine));
+        Assert.Equal(
+            new TopologyWord("both", "configured and observed"),
+            reader.Words(TopologyOrigin.Both));
+        Assert.Equal(
+            new TopologyWord("publish-consume", "Publish → consume"),
+            reader.Words(CommunicationPattern.PublishConsume));
+        Assert.Null(reader.Words((TopologyNodeKind)99));
+        Assert.Null(reader.Words((TopologyOrigin)(-1)));
+        Assert.Null(reader.Words((CommunicationPattern)7));
     }
 
     [Fact]

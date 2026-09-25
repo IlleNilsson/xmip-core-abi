@@ -129,4 +129,66 @@ public sealed class EnglishTest
         Assert.Equal("+3 last round · 0.5/s", English.Flow(3, TimeSpan.FromSeconds(6)));
         Assert.Equal("waiting for the next round", English.Flow(0, TimeSpan.Zero));
     }
+
+    [Fact]
+    public void ALinkSaysItsVolumeAndRateOrThatNothingHasPassed()
+    {
+        // The owner, 2026-09-25: the topology did not show configured traffic
+        // or its usage. A link says both on its line.
+        Assert.Equal("1,877 · 3.1/s", English.Traffic(Link(TopologyOrigin.Both, 1_877, 3.14)));
+        Assert.Equal("40 · 12/s", English.Traffic(Link(TopologyOrigin.Observed, 40, 12.4)));
+        Assert.Equal(
+            "configured · no traffic observed",
+            English.Traffic(Link(TopologyOrigin.Configured, 0, 0)));
+        Assert.Equal("0.0/s", English.Rate(0));
+    }
+
+    /// <summary>What a topology value is called is <c>observe::topology</c>'s,
+    /// tested there; the surface says what the runtime's export says. Until
+    /// 2026-09-25 the web GUI kept its own list of both.</summary>
+    [Fact]
+    public void EveryTopologyValueIsCalledWhatTheRuntimeCallsIt()
+    {
+        PublicationReader reader = RuntimeLibrary.Rules.Publications;
+
+        foreach (TopologyNodeKind kind in Enum.GetValues<TopologyNodeKind>())
+        {
+            Assert.Equal(reader.Words(kind), new TopologyWord(English.Word(kind), English.Name(kind)));
+        }
+
+        foreach (TopologyOrigin origin in Enum.GetValues<TopologyOrigin>())
+        {
+            Assert.Equal(
+                reader.Words(origin), new TopologyWord(English.Word(origin), English.Name(origin)));
+        }
+
+        foreach (CommunicationPattern pattern in Enum.GetValues<CommunicationPattern>())
+        {
+            Assert.Equal(
+                reader.Words(pattern),
+                new TopologyWord(English.Word(pattern), English.Name(pattern)));
+        }
+
+        Assert.Equal("virtual machine", English.Name(TopologyNodeKind.VirtualMachine));
+        Assert.Equal("unknown", English.Name((TopologyNodeKind)99));
+        Assert.Equal("unknown", English.Word((CommunicationPattern)99));
+    }
+
+    [Fact]
+    public void AValueOrAPercentageIsSaidAsAPersonReadsIt()
+    {
+        Assert.Equal("—", English.Value(null));
+        Assert.Equal("—", English.Value(" "));
+        Assert.Equal("handoff", English.Value("handoff"));
+        Assert.Equal(English.Percent(1), English.Percent(3));
+        Assert.Equal(English.Percent(0), English.Percent(-1));
+        Assert.StartsWith("50", English.Percent(0.5), StringComparison.Ordinal);
+    }
+
+    private static CommunicationLink Link(TopologyOrigin origin, ulong volume, double rate)
+    {
+        return new CommunicationLink(
+            "l", "a", "b", CommunicationPattern.SendReceive, origin, "handoff",
+            HealthState.Fine, volume, rate, 0, 0, 0, string.Empty);
+    }
 }

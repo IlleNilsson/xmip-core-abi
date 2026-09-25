@@ -29,7 +29,9 @@ runtime's library, so no .NET surface writes a rule again; and
 `PublicationReader`, section 8, which hands a publication's text to the
 runtime's one reader and brings back a `Publication` — its records, counts,
 topology (`Topology.cs`, the header's values) and run (ADR-0052, amendments
-2026-09-24); and `RuntimeAudit`, section 9, a program's audit record handed
+2026-09-24), and what each topology kind, origin and pattern is called
+(`Words`, a `TopologyWord` of the word a publication writes and the name a
+person reads, `observe::topology`'s; ADR-0052, amendment 2026-09-25); and `RuntimeAudit`, section 9, a program's audit record handed
 to `xmip-core-audit` through the runtime's library, with `AuditPhase`,
 `AuditSeverity` and `AuditKept` as the header defines them (ADR-0062). In a
 composed

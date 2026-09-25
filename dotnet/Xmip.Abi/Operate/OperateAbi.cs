@@ -113,6 +113,18 @@ public static class OperateAbi
     /// <summary>One of a read publication's run lists: section 8.</summary>
     public const string PublicationRunEntrypoint = "xmip_publication_run_v1";
 
+    /// <summary>What a topology kind is called, its word and its name:
+    /// section 8, <c>observe::NodeKind</c>.</summary>
+    public const string TopologyKindWordsEntrypoint = "xmip_topology_kind_words_v1";
+
+    /// <summary>What a topology origin is called: section 8,
+    /// <c>observe::Origin</c>.</summary>
+    public const string TopologyOriginWordsEntrypoint = "xmip_topology_origin_words_v1";
+
+    /// <summary>What a communication pattern is called: section 8,
+    /// <c>observe::Pattern</c>.</summary>
+    public const string TopologyPatternWordsEntrypoint = "xmip_topology_pattern_words_v1";
+
     /// <summary>Read a curve, a node's throughput over time: section 8,
     /// <c>observe::Curve::read</c>.</summary>
     public const string CurveReadEntrypoint = "xmip_curve_read_v1";

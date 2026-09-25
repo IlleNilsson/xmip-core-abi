@@ -12,15 +12,15 @@ public sealed class ScopePatternTest
     [Fact]
     public void APatternWithNoWildcardIsTheScopeItself()
     {
-        Assert.False(ScopePattern.HasWildcard("xmip:///C1/node/R1"));
-        Assert.True(ScopePattern.Matches("xmip:///C1/node/R1", "xmip:///C1/node/R1"));
+        Assert.False(ScopePattern.HasWildcard("xmip:///C1/node/alpha"));
+        Assert.True(ScopePattern.Matches("xmip:///C1/node/alpha", "xmip:///C1/node/alpha"));
 
         // Not a substring, either way about: exactness is the whole point of a
         // parameter that takes no wildcard.
-        Assert.False(ScopePattern.Matches("xmip:///C1/node/R1", "node"));
-        Assert.False(ScopePattern.Matches("xmip:///C1/node/R1", "xmip:///C1/node"));
-        Assert.False(ScopePattern.Matches("xmip:///C1/node/R1", "xmip:///C1/node/R"));
-        Assert.False(ScopePattern.Matches("xmip:///C1/node/R10", "xmip:///C1/node/R1"));
+        Assert.False(ScopePattern.Matches("xmip:///C1/node/alpha", "node"));
+        Assert.False(ScopePattern.Matches("xmip:///C1/node/alpha", "xmip:///C1/node"));
+        Assert.False(ScopePattern.Matches("xmip:///C1/node/alpha", "xmip:///C1/node/al"));
+        Assert.False(ScopePattern.Matches("xmip:///C1/node/alphabet", "xmip:///C1/node/alpha"));
     }
 
     /// <summary>
@@ -31,24 +31,24 @@ public sealed class ScopePatternTest
     [Fact]
     public void ADotIsADotAndNotAnyCharacter()
     {
-        const string scope = "xmip:///C1/node/R1/test/Rust.Style";
+        const string scope = "xmip:///C1/node/alpha/test/Rust.Style";
 
-        Assert.True(ScopePattern.Matches(scope, "xmip:///C1/node/R1/test/Rust.Style"));
+        Assert.True(ScopePattern.Matches(scope, "xmip:///C1/node/alpha/test/Rust.Style"));
         Assert.False(
-            ScopePattern.Matches("xmip:///C1/node/R1/test/RustXStyle",
-                "xmip:///C1/node/R1/test/Rust.Style"));
+            ScopePattern.Matches("xmip:///C1/node/alpha/test/RustXStyle",
+                "xmip:///C1/node/alpha/test/Rust.Style"));
         Assert.True(ScopePattern.Matches(scope, "*/Rust.*"));
-        Assert.False(ScopePattern.Matches("xmip:///C1/node/R1/test/RustXStyle", "*/Rust.*"));
+        Assert.False(ScopePattern.Matches("xmip:///C1/node/alpha/test/RustXStyle", "*/Rust.*"));
     }
 
     [Fact]
     public void AStarIsAnyRunAndAQuestionMarkIsExactlyOne()
     {
-        Assert.True(ScopePattern.HasWildcard("xmip:///C1/node/R*"));
-        Assert.True(ScopePattern.Matches("xmip:///C1/node/R1", "xmip:///C1/node/R*"));
-        Assert.True(ScopePattern.Matches("xmip:///C1/node/R1", "xmip:///C1/node/R?"));
-        Assert.False(ScopePattern.Matches("xmip:///C1/node/R12", "xmip:///C1/node/R?"));
-        Assert.True(ScopePattern.Matches("xmip:///C1/node/R1", "*"));
+        Assert.True(ScopePattern.HasWildcard("xmip:///C1/node/al*"));
+        Assert.True(ScopePattern.Matches("xmip:///C1/node/alpha", "xmip:///C1/node/al*"));
+        Assert.True(ScopePattern.Matches("xmip:///C1/node/alpha", "xmip:///C1/node/alph?"));
+        Assert.False(ScopePattern.Matches("xmip:///C1/node/alphas", "xmip:///C1/node/alph?"));
+        Assert.True(ScopePattern.Matches("xmip:///C1/node/alpha", "*"));
         Assert.True(ScopePattern.Matches(ScopeTree.Root, "*"));
 
         // A star matches nothing at all, as it does in -like.
@@ -59,21 +59,21 @@ public sealed class ScopePatternTest
     public void AStarCrossesASlashAsItDoesInLike()
     {
         Assert.True(
-            ScopePattern.Matches("xmip:///C1/node/R1/receive", "xmip:///C1/*/receive"));
-        Assert.True(ScopePattern.Matches("xmip:///C1/node/R1/receive/tcp", "xmip:///C1/*"));
+            ScopePattern.Matches("xmip:///C1/node/alpha/receive", "xmip:///C1/*/receive"));
+        Assert.True(ScopePattern.Matches("xmip:///C1/node/alpha/receive/tcp", "xmip:///C1/*"));
         Assert.False(
-            ScopePattern.Matches("xmip:///C1/node/R1/receive/tcp", "xmip:///C1/*/receive"));
+            ScopePattern.Matches("xmip:///C1/node/alpha/receive/tcp", "xmip:///C1/*/receive"));
     }
 
     [Fact]
     public void MatchingIsCaseInsensitiveAndInvariant()
     {
-        Assert.True(ScopePattern.Matches("xmip:///C1/node/R1", "xmip:///c1/NODE/r*"));
-        Assert.True(ScopePattern.Matches("xmip:///C1/node/R1", "C1/NODE/R1"));
+        Assert.True(ScopePattern.Matches("xmip:///C1/node/alpha", "xmip:///c1/NODE/AL*"));
+        Assert.True(ScopePattern.Matches("xmip:///C1/node/alpha", "C1/NODE/alpha"));
 
         // The segments are case-insensitive; the scheme is read the one way
         // ScopeTree reads it, lower case, as every publisher writes it.
-        Assert.False(ScopePattern.Matches("xmip:///C1/node/R1", "XMIP:///C1/node/R1"));
+        Assert.False(ScopePattern.Matches("xmip:///C1/node/alpha", "XMIP:///C1/node/alpha"));
     }
 
     /// <summary>
@@ -85,10 +85,11 @@ public sealed class ScopePatternTest
     [Fact]
     public void BothSidesAreReadAsScopesFirst()
     {
-        Assert.True(ScopePattern.Matches("xmip:///C1/node/R1", "C1/node/R*"));
-        Assert.True(ScopePattern.Matches("xmip://host:9000/C1/node/R1", "xmip:///C1/node/R1"));
-        Assert.True(ScopePattern.Matches("xmip:///C1/node/R1/", "xmip:///C1/node/R1"));
-        Assert.Equal("xmip:///C1/node/R1", ScopePattern.Normal("xmip:///C1/node/R1/"));
+        Assert.True(ScopePattern.Matches("xmip:///C1/node/alpha", "C1/node/al*"));
+        Assert.True(
+            ScopePattern.Matches("xmip://host:9000/C1/node/alpha", "xmip:///C1/node/alpha"));
+        Assert.True(ScopePattern.Matches("xmip:///C1/node/alpha/", "xmip:///C1/node/alpha"));
+        Assert.Equal("xmip:///C1/node/alpha", ScopePattern.Normal("xmip:///C1/node/alpha/"));
     }
 
     /// <summary>
@@ -99,15 +100,18 @@ public sealed class ScopePatternTest
     [Fact]
     public void ACharacterSetIsLiteralAndIsNotASet()
     {
-        Assert.False(ScopePattern.Matches("xmip:///C1/node/R1", "xmip:///C1/node/[RP]1"));
-        Assert.True(ScopePattern.Matches("xmip:///C1/node/[RP]1", "xmip:///C1/node/[RP]1"));
+        Assert.False(ScopePattern.Matches("xmip:///C1/node/alpha", "xmip:///C1/node/[ab]lpha"));
+        Assert.True(ScopePattern.Matches("xmip:///C1/node/[ab]lpha", "xmip:///C1/node/[ab]lpha"));
     }
 
     [Fact]
     public void APatternThatMatchesNothingMatchesNothing()
     {
         string[] scopes =
-            ["xmip:///C1", "xmip:///C1/node/R1", "xmip:///C1/node/P1", "xmip:///C1/node/S1"];
+        [
+            "xmip:///C1", "xmip:///C1/node/alpha", "xmip:///C1/node/beta",
+            "xmip:///C1/node/gamma",
+        ];
 
         Assert.DoesNotContain(scopes, scope => ScopePattern.Matches(scope, "xmip:///C1/node/Q*"));
         Assert.DoesNotContain(scopes, scope => ScopePattern.Matches(scope, "xmip:///C2*"));
@@ -118,19 +122,19 @@ public sealed class ScopePatternTest
     {
         string[] matched =
         [
-            "xmip:///C1/node/R1/receive",
-            "xmip:///C1/node/R1",
-            "xmip:///C1/node/R1/receive/tcp",
-            "xmip:///C1/node/P1",
+            "xmip:///C1/node/alpha/receive",
+            "xmip:///C1/node/alpha",
+            "xmip:///C1/node/alpha/receive/tcp",
+            "xmip:///C1/node/beta",
         ];
 
         Assert.Equal(
-            ["xmip:///C1/node/P1", "xmip:///C1/node/R1"],
+            ["xmip:///C1/node/alpha", "xmip:///C1/node/beta"],
             ScopePattern.Topmost(matched));
     }
 
     /// <summary>
-    /// Ordinal order puts <c>R1-spare</c> between <c>R1</c> and <c>R1/receive</c>,
+    /// Ordinal order puts <c>alpha-spare</c> between <c>alpha</c> and <c>alpha/receive</c>,
     /// so the topmost cannot be decided against the last one kept alone. This is
     /// the case that would have gone unnoticed.
     /// </summary>
@@ -138,9 +142,9 @@ public sealed class ScopePatternTest
     public void TheTopmostAreDecidedAgainstEveryOneKept()
     {
         string[] matched =
-            ["xmip:///C1/R1", "xmip:///C1/R1-spare", "xmip:///C1/R1/receive"];
+            ["xmip:///C1/alpha", "xmip:///C1/alpha-spare", "xmip:///C1/alpha/receive"];
 
-        Assert.Equal(["xmip:///C1/R1", "xmip:///C1/R1-spare"], ScopePattern.Topmost(matched));
+        Assert.Equal(["xmip:///C1/alpha", "xmip:///C1/alpha-spare"], ScopePattern.Topmost(matched));
     }
 
     [Fact]
@@ -148,6 +152,6 @@ public sealed class ScopePatternTest
     {
         Assert.Equal(
             [ScopeTree.Root],
-            ScopePattern.Topmost([ScopeTree.Root, "xmip:///C1", "xmip:///C1/node/R1"]));
+            ScopePattern.Topmost([ScopeTree.Root, "xmip:///C1", "xmip:///C1/node/alpha"]));
     }
 }

@@ -17,24 +17,24 @@ public sealed class ScopeSelectionTest
     private static Published Cluster()
     {
         return new Published(
-            new("xmip:///C1/node/R1/receive/tcp", HealthState.Fine, 0, "", Now),
-            new("xmip:///C1/node/R1/receive/file", HealthState.Stressed, 55, "slow", Now),
-            new("xmip:///C1/node/R2/receive/tcp", HealthState.Fine, 0, "", Now),
-            new("xmip:///C1/node/P1/process/json", HealthState.Done, 90, "refused", Now),
-            new("xmip:///C1/node/S1/send/tcp", HealthState.Fine, 0, "", Now));
+            new("xmip:///C1/node/alpha/receive/tcp", HealthState.Fine, 0, "", Now),
+            new("xmip:///C1/node/alpha/receive/file", HealthState.Stressed, 55, "slow", Now),
+            new("xmip:///C1/node/alpha2/receive/tcp", HealthState.Fine, 0, "", Now),
+            new("xmip:///C1/node/beta/process/json", HealthState.Done, 90, "refused", Now),
+            new("xmip:///C1/node/gamma/send/tcp", HealthState.Fine, 0, "", Now));
     }
 
     [Fact]
     public void AnArgumentWithNoWildcardIsTheScopeItself()
     {
         ScopeSelection? chosen = ScopeSelection.Of(
-            Cluster(), "xmip:///C1/node/R1", out string refusal);
+            Cluster(), "xmip:///C1/node/alpha", out string refusal);
 
         Assert.NotNull(chosen);
         Assert.False(chosen.Patterned);
-        Assert.Equal(["xmip:///C1/node/R1"], chosen.Scopes);
+        Assert.Equal(["xmip:///C1/node/alpha"], chosen.Scopes);
         Assert.Equal(string.Empty, refusal);
-        Assert.Equal(ScopeSelection.Exactly("xmip:///C1/node/R1").Scopes, chosen.Scopes);
+        Assert.Equal(ScopeSelection.Exactly("xmip:///C1/node/alpha").Scopes, chosen.Scopes);
     }
 
     [Fact]
@@ -49,14 +49,14 @@ public sealed class ScopeSelectionTest
     [Fact]
     public void AWildcardNamesTheTopmostScopesItMatches()
     {
-        ScopeSelection? chosen = ScopeSelection.Of(Cluster(), "xmip:///C1/node/R*", out _);
+        ScopeSelection? chosen = ScopeSelection.Of(Cluster(), "xmip:///C1/node/alpha*", out _);
 
         Assert.NotNull(chosen);
         Assert.True(chosen.Patterned);
 
-        // R1 and R2 themselves, not everything beneath them as well: a command
+        // alpha and alpha2 themselves, not everything beneath them as well: a command
         // reads a scope and what is under it, so a child would be said twice.
-        Assert.Equal(["xmip:///C1/node/R1", "xmip:///C1/node/R2"], chosen.Scopes);
+        Assert.Equal(["xmip:///C1/node/alpha", "xmip:///C1/node/alpha2"], chosen.Scopes);
     }
 
     [Fact]
@@ -69,7 +69,7 @@ public sealed class ScopeSelectionTest
         Assert.StartsWith("REFUSED", refusal, StringComparison.Ordinal);
         Assert.Contains("xmip:///C1/node/Q*", refusal, StringComparison.Ordinal);
         Assert.Contains(
-            "beneath xmip:///C1/node there is: P1, R1, R2, S1",
+            "beneath xmip:///C1/node there is: alpha, alpha2, beta, gamma",
             refusal,
             StringComparison.Ordinal);
         Assert.Contains("source PUBLISHED", refusal, StringComparison.Ordinal);

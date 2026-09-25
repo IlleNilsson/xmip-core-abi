@@ -150,8 +150,8 @@ public sealed class ClusterSurfacesTest
 
         DateTimeOffset seen = DateTimeOffset.UtcNow;
         Assert.Equal("Z8", ClusterSurfaces.NameOf(new OneTree(
-            new HealthRecord("xmip:///Z8/node/R1/receive/a", HealthState.Fine, 0, "", seen),
-            new HealthRecord("xmip:///Z8/node/S1/send/b", HealthState.Fine, 0, "", seen))));
+            new HealthRecord("xmip:///Z8/node/alpha/receive/a", HealthState.Fine, 0, "", seen),
+            new HealthRecord("xmip:///Z8/node/gamma/send/b", HealthState.Fine, 0, "", seen))));
     }
 
     [Fact]

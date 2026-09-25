@@ -33,6 +33,69 @@ public static class English
         return RuntimeLibrary.Rules.CountedWord(counted) ?? "unknown";
     }
 
+    /// <summary>What a person reads a topology kind as — <c>virtual
+    /// machine</c> — <c>observe::NodeKind::name</c>, called in the runtime
+    /// (ADR-0052, amendment 2026-09-25: the web GUI kept its own until then).
+    /// <c>unknown</c> for a value the runtime does not define.</summary>
+    public static string Name(TopologyNodeKind kind)
+    {
+        return RuntimeLibrary.Rules.Publications.Words(kind)?.Name ?? "unknown";
+    }
+
+    /// <summary>What a person reads an origin as — <c>configured and
+    /// observed</c> — <c>observe::Origin::name</c>, called in the
+    /// runtime.</summary>
+    public static string Name(TopologyOrigin origin)
+    {
+        return RuntimeLibrary.Rules.Publications.Words(origin)?.Name ?? "unknown";
+    }
+
+    /// <summary>What a person reads a communication pattern as — <c>Publish →
+    /// consume</c> — <c>observe::Pattern::name</c>, called in the
+    /// runtime.</summary>
+    public static string Name(CommunicationPattern pattern)
+    {
+        return RuntimeLibrary.Rules.Publications.Words(pattern)?.Name ?? "unknown";
+    }
+
+    /// <summary>The word a publication writes a topology kind as —
+    /// <c>virtual-machine</c> — <c>observe::NodeKind::word</c>, for a surface
+    /// that styles by it. <c>unknown</c> for a value the runtime does not
+    /// define.</summary>
+    public static string Word(TopologyNodeKind kind)
+    {
+        return RuntimeLibrary.Rules.Publications.Words(kind)?.Word ?? "unknown";
+    }
+
+    /// <summary>The word a publication writes an origin as —
+    /// <c>observe::Origin::word</c>.</summary>
+    public static string Word(TopologyOrigin origin)
+    {
+        return RuntimeLibrary.Rules.Publications.Words(origin)?.Word ?? "unknown";
+    }
+
+    /// <summary>The word a publication writes a communication pattern as —
+    /// <c>publish-consume</c> — <c>observe::Pattern::word</c>.</summary>
+    public static string Word(CommunicationPattern pattern)
+    {
+        return RuntimeLibrary.Rules.Publications.Words(pattern)?.Word ?? "unknown";
+    }
+
+    /// <summary>A value as a person reads it, or an em dash where the
+    /// publisher said none.</summary>
+    public static string Value(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? "—" : value;
+    }
+
+    /// <summary>A fraction of one as a whole percentage, clamped to its
+    /// range.</summary>
+    public static string Percent(double value)
+    {
+        return string.Create(
+            CultureInfo.InvariantCulture, $"{Math.Clamp(value, 0D, 1D):P0}");
+    }
+
     /// <summary>The mood a word names, or null when it names none —
     /// <c>observe::Health::named</c>, for a surface reading a published
     /// snapshot.</summary>
@@ -118,17 +181,35 @@ public static class English
     /// when the board has seen only one value.</summary>
     public static string Flow(ulong delta, TimeSpan over)
     {
-        if (over <= TimeSpan.Zero)
-        {
-            return "waiting for the next round";
-        }
+        return over <= TimeSpan.Zero
+            ? "waiting for the next round"
+            : $"+{delta.ToString("N0", CultureInfo.InvariantCulture)} last round · " +
+                Rate(delta / over.TotalSeconds);
+    }
 
-        double perSecond = delta / over.TotalSeconds;
+    /// <summary>A rate per second as a person reads it: whole from ten up,
+    /// one decimal below, so a trickle is never rounded to a stall.</summary>
+    public static string Rate(double perSecond)
+    {
         string rate = perSecond >= 10
             ? perSecond.ToString("N0", CultureInfo.InvariantCulture)
             : perSecond.ToString("N1", CultureInfo.InvariantCulture);
 
-        return $"+{delta.ToString("N0", CultureInfo.InvariantCulture)} last round · {rate}/s";
+        return $"{rate}/s";
+    }
+
+    /// <summary>What passes over a communication link, as the topology says
+    /// it on the line itself (ADR-0052, amendment 2026-09-25): the volume the
+    /// publisher counted and the rate it stated, or — for a link configured
+    /// and never used — that nothing has passed, so a path with no traffic is
+    /// seen as such rather than as a zero.</summary>
+    public static string Traffic(CommunicationLink link)
+    {
+        ArgumentNullException.ThrowIfNull(link);
+
+        return link.Origin == TopologyOrigin.Configured && link.Volume == 0
+            ? "configured · no traffic observed"
+            : $"{Figure(link.Volume)} · {Rate(link.Rate)}";
     }
 
     /// <summary>A byte count scaled to the unit a person reads.</summary>

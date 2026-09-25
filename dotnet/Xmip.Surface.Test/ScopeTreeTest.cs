@@ -183,7 +183,7 @@ public sealed class ScopeTreeTest
     {
         // node::Stage::pausable and ::location, called in the runtime.
         Assert.True(ScopeTree.Pausable("xmip:///edge-01/receive/orders"));
-        Assert.True(ScopeTree.Pausable("xmip:///C1/node/S1/send/tcp/json"));
+        Assert.True(ScopeTree.Pausable("xmip:///C1/node/gamma/send/tcp/json"));
         Assert.False(ScopeTree.Pausable("xmip:///edge-01/process/route"));
         Assert.False(ScopeTree.Pausable("xmip:///edge-01/capability"));
         Assert.Equal("receive location", ScopeTree.Location("receive"));
