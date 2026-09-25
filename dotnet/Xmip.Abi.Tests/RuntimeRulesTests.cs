@@ -55,6 +55,15 @@ public sealed class RuntimeRulesTests
     }
 
     [Fact]
+    public void TheNodeComesBackBorrowedAndTheStageStatic()
+    {
+        Assert.Equal(("ö", "send"), Rules.Node("xmip://lab/C1/node/ö/send/x"));
+        Assert.Equal(("alpha", string.Empty), Rules.Node("xmip:///C1/node/alpha"));
+        Assert.Equal((string.Empty, "receive"), Rules.Node("xmip:///C1/t/receive"));
+        Assert.Equal((string.Empty, string.Empty), Rules.Node(string.Empty));
+    }
+
+    [Fact]
     public void TheStageWordsAndADeclarationCrossAndARefusalComesBackWhole()
     {
         Assert.Equal(["receive", "process", "send"], Rules.StageWords);

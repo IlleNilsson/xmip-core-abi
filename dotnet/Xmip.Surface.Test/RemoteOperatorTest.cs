@@ -10,7 +10,10 @@ namespace Xmip.Surface.Test;
 /// The surface over a web host on another machine, proved against a real hub
 /// on a loopback port hosted the way the web host hosts it: it answers what
 /// the host's surface answers, it is told when that surface changes, and a
-/// host that is not there is said so (ADR-0052, amendment 2026-09-15).
+/// host that is not there is said so (ADR-0052, amendment 2026-09-15). Over
+/// TLS both ends present a certificate and check the other's, and a
+/// certificate the other end's anchors do not reach is refused (ADR-0063
+/// clause 1).
 /// </summary>
 public sealed class RemoteOperatorTest
 {
@@ -111,18 +114,118 @@ public sealed class RemoteOperatorTest
         Assert.Equal(RemoteOperator.HubPath, SurfaceHub.Path);
     }
 
+    [Fact]
+    public async Task AnswersOverMutualTlsWithCertificatesBothEndsTrust()
+    {
+        using TestAuthority authority = new("mutual");
+        SnapshotOperator local = Fixture();
+        List<string> refused = [];
+        await using WebApplication host =
+            await Serve(local, Tls(authority, authority.Server()), refused.Add)
+                .ConfigureAwait(true);
+        using RemoteOperator remote = new(
+            new Uri(host.Urls.First()), Tls(authority, authority.Client()));
+
+        Assert.StartsWith("https://127.0.0.1:", host.Urls.First(), StringComparison.Ordinal);
+        Assert.True(remote.Connect(), remote.Reason);
+        Assert.Equal(local.Health(ScopeTree.Root), ((IOperatorSurface)remote).Health(ScopeTree.Root));
+        Assert.Empty(refused);
+    }
+
+    [Fact]
+    public async Task AClientCertificateTheHostDoesNotTrustIsRefused()
+    {
+        using TestAuthority authority = new("host");
+        using TestAuthority stranger = new("stranger");
+        SnapshotOperator local = Fixture();
+        List<string> refused = [];
+        await using WebApplication host =
+            await Serve(local, Tls(authority, authority.Server()), refused.Add)
+                .ConfigureAwait(true);
+
+        // Trusts the host, and presents a certificate another authority issued.
+        (string certificate, string privateKey) = stranger.Client();
+        SurfaceTls wrong = SurfaceTls.Load(certificate, privateKey, authority.Anchor);
+        using RemoteOperator remote = new(new Uri(host.Urls.First()), wrong);
+
+        Assert.False(remote.Connect());
+        Assert.Contains(refused, why => why.Contains("xmip-client", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task AHostCertificateTheSurfaceDoesNotTrustIsRefused()
+    {
+        using TestAuthority authority = new("served");
+        using TestAuthority stranger = new("expected");
+        SnapshotOperator local = Fixture();
+        await using WebApplication host =
+            await Serve(local, Tls(authority, authority.Server())).ConfigureAwait(true);
+        (string certificate, string privateKey) = authority.Client();
+        using RemoteOperator remote = new(
+            new Uri(host.Urls.First()),
+            SurfaceTls.Load(certificate, privateKey, stranger.Anchor));
+
+        Assert.False(remote.Connect());
+        Assert.StartsWith("REFUSED. CN=xmip-server is not trusted", remote.Reason,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task NoCertificateOverTlsIsRefusedAtTheHub()
+    {
+        using TestAuthority authority = new("bare");
+        SnapshotOperator local = Fixture();
+        List<string> refused = [];
+        await using WebApplication host =
+            await Serve(local, Tls(authority, authority.Server()), refused.Add)
+                .ConfigureAwait(true);
+        using RemoteOperator remote = new(
+            new Uri(host.Urls.First()), SurfaceTls.Load(null, null, authority.Anchor));
+
+        Assert.False(remote.Connect());
+        Assert.Contains(refused, why => why.Contains("without a certificate", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void PlainHttpBeyondThisMachineIsRefusedBeforeAnyConnection()
+    {
+        using RemoteOperator remote = new(new Uri("http://192.0.2.1:5087"));
+
+        Assert.False(remote.Connect());
+        Assert.StartsWith("REFUSED. 192.0.2.1 is plain http beyond this machine", remote.Reason,
+            StringComparison.Ordinal);
+    }
+
+    /// <summary>The snapshot fixture, as the surface a host serves.</summary>
+    private static SnapshotOperator Fixture()
+    {
+        return new SnapshotOperator(
+            Path.Combine(AppContext.BaseDirectory, "Fixture", "snapshot.toml"));
+    }
+
+    /// <summary>What a host or a surface presents and trusts: a pair the
+    /// authority issued, and its anchor.</summary>
+    private static SurfaceTls Tls(TestAuthority authority, (string Certificate, string Key) pair)
+    {
+        return SurfaceTls.Load(pair.Certificate, pair.Key, authority.Anchor);
+    }
+
     /// <summary>A web host over <paramref name="surface"/>, serving the hub
-    /// on a loopback port of the system's choosing.</summary>
-    private static async Task<WebApplication> Serve(IOperatorSurface surface)
+    /// on a loopback port of the system's choosing: plain where
+    /// <paramref name="tls"/> is not given — loopback, the one exception —
+    /// and HTTPS with it, as the web host binds it.</summary>
+    private static async Task<WebApplication> Serve(
+        IOperatorSurface surface, SurfaceTls? tls = null, Action<string>? refused = null)
     {
         WebApplicationBuilder builder = WebApplication.CreateBuilder();
-        builder.WebHost.UseUrls("http://127.0.0.1:0");
+        builder.WebHost.UseUrls(tls is null ? "http://127.0.0.1:0" : "https://127.0.0.1:0");
+        builder.WebHost.UseXmipTls(tls ?? SurfaceTls.None, refused);
         builder.Logging.ClearProviders();
         builder.Services.AddSingleton(surface);
         builder.Services.AddXmipSurfaceRelay();
 
         WebApplication host = builder.Build();
-        host.MapXmipSurfaceHub();
+        host.MapXmipSurfaceHub(refused);
         await host.StartAsync().ConfigureAwait(false);
 
         return host;

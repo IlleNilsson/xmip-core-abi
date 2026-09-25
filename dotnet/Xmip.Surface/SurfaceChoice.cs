@@ -8,7 +8,8 @@ namespace Xmip.Surface;
 /// <c>"native"</c> — a runtime library found by <see cref="RuntimeLibrary"/>'s
 /// rule — <c>"snapshot"</c> — a file at <c>Snapshot</c> — or <c>"remote"</c> —
 /// a web host at <c>Url</c>, followed over its surface hub (ADR-0052,
-/// amendment 2026-09-15). Nothing is chosen by finding a file in a temp
+/// amendment 2026-09-15), presenting and trusting what <see cref="SurfaceTls"/>
+/// reads from the same table (ADR-0063 clause 1). Nothing is chosen by finding a file in a temp
 /// directory, and a configuration that names none is refused rather than
 /// defaulted.
 /// </summary>
@@ -78,7 +79,8 @@ public static class SurfaceChoice
             string? url = configuration[UrlKey];
 
             return RemoteOperator.IsWebHost(url)
-                ? new RemoteOperator(new Uri(url, UriKind.Absolute))
+                ? new RemoteOperator(
+                    new Uri(url, UriKind.Absolute), SurfaceTls.From(configuration, basePath))
                 : throw new InvalidOperationException(
                     $"{SurfaceKey} is \"{Remote}\" and {UrlKey} names no web host");
         }
@@ -193,7 +195,8 @@ public static class SurfaceChoice
             line.Runtime, document, basePath, besideExecutable);
 
         return !string.IsNullOrWhiteSpace(line.Remote)
-            ? new RemoteOperator(new Uri(line.Remote, UriKind.Absolute))
+            ? new RemoteOperator(
+                new Uri(line.Remote, UriKind.Absolute), SurfaceTls.From(document, basePath))
             : !string.IsNullOrWhiteSpace(line.Snapshot)
                 ? new SnapshotOperator(TomlDocument.Resolve(line.Snapshot, basePath))
                 : string.IsNullOrWhiteSpace(line.Runtime) && IsChosen(document)

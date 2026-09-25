@@ -169,6 +169,8 @@ pub mod rule {
     pub const SCOPE_CONTAINS_ENTRYPOINT: &str = "xmip_scope_contains_v1";
     /// `observe::Scope::segments`.
     pub const SCOPE_PARTS_ENTRYPOINT: &str = "xmip_scope_parts_v1";
+    /// `observe::Scope::node` and `observe::Scope::stage`.
+    pub const SCOPE_NODE_ENTRYPOINT: &str = "xmip_scope_node_v1";
     /// `node::Stage::WORDS`.
     pub const STAGE_WORDS_ENTRYPOINT: &str = "xmip_stage_words_v1";
     /// `node::Stage::declared`.
@@ -203,6 +205,11 @@ pub mod rule {
     /// A scope's segments, borrowed from `scope`, in the fill shape.
     pub type ScopePartsFn =
         unsafe extern "C" fn(scope: Scope, out: *mut Str, cap: usize, out_len: *mut usize) -> i32;
+
+    /// The node a scope is on (borrowed from `scope`) and its stage there
+    /// (static), each empty where there is none.
+    pub type ScopeNodeFn =
+        unsafe extern "C" fn(scope: Scope, out_node: *mut Str, out_stage: *mut Str) -> i32;
 
     /// The stage words, static, in the fill shape.
     pub type StageWordsFn =
@@ -338,6 +345,7 @@ mod tests {
                 rule::SCOPE_CONTAINS_ENTRYPOINT,
             ),
             ("XMIP_SCOPE_PARTS_ENTRYPOINT", rule::SCOPE_PARTS_ENTRYPOINT),
+            ("XMIP_SCOPE_NODE_ENTRYPOINT", rule::SCOPE_NODE_ENTRYPOINT),
             ("XMIP_STAGE_WORDS_ENTRYPOINT", rule::STAGE_WORDS_ENTRYPOINT),
             (
                 "XMIP_STAGE_DECLARED_ENTRYPOINT",

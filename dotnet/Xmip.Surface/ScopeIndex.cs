@@ -114,12 +114,16 @@ public sealed class ScopeIndex
                 entry = Reach(entries, scope, entry.Scope, label);
                 entry.Leaves.Add(record);
                 entry.Worst = Worse(entry.Worst, record);
+            }
 
-                if (ScopeTree.Stages.Contains(label))
-                {
-                    stages[label] = Worse(
-                        stages.TryGetValue(label, out HealthRecord? held) ? held : null, record)!;
-                }
+            // The stage a record is on is observe's reading, so a node called
+            // send is no stage (ScopeTree.Stage, open problem 25, row q).
+            string stage = ScopeTree.Stage(record.Scope);
+
+            if (stage.Length > 0)
+            {
+                stages[stage] = Worse(
+                    stages.TryGetValue(stage, out HealthRecord? held) ? held : null, record)!;
             }
 
             entry.Own = record;

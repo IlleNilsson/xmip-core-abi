@@ -304,6 +304,17 @@ typedef XmipStatus (*XmipScopeContainsFn)(XmipScope scope, XmipScope candidate,
 typedef XmipStatus (*XmipScopePartsFn)(XmipScope scope,
                                        XmipStr *out, size_t cap, size_t *out_len);
 
+/*
+ * Where a scope sits: the node it is on in *out_node, the segment after the
+ * node marker beneath the cluster (xmip:///<cluster>/node/<name>, ADR-0053),
+ * borrowed from scope; and the stage of the message path it is on in
+ * *out_stage, the first stage word beneath its node or, on no node, beneath
+ * its cluster, static. Each is empty where there is none: the cluster is
+ * never a node, and a cluster's or a node's name is never a stage.
+ */
+typedef XmipStatus (*XmipScopeNodeFn)(XmipScope scope, XmipStr *out_node,
+                                      XmipStr *out_stage);
+
 /* The words a node may declare, in message-path order. Static. */
 typedef XmipStatus (*XmipStageWordsFn)(XmipStr *out, size_t cap, size_t *out_len);
 
@@ -396,6 +407,7 @@ typedef XmipStatus (*XmipCapabilityEntryFn)(XmipStr entry, XmipStr *out_node,
 
 #define XMIP_SCOPE_CONTAINS_ENTRYPOINT "xmip_scope_contains_v1"
 #define XMIP_SCOPE_PARTS_ENTRYPOINT    "xmip_scope_parts_v1"
+#define XMIP_SCOPE_NODE_ENTRYPOINT     "xmip_scope_node_v1"
 #define XMIP_STAGE_WORDS_ENTRYPOINT    "xmip_stage_words_v1"
 #define XMIP_STAGE_DECLARED_ENTRYPOINT "xmip_stage_declared_v1"
 #define XMIP_HEALTH_WORD_ENTRYPOINT    "xmip_health_word_v1"

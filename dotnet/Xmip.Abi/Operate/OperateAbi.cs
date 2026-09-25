@@ -41,6 +41,10 @@ public static class OperateAbi
     /// <summary>A scope's segments: section 7, <c>observe::Scope::segments</c>.</summary>
     public const string ScopePartsEntrypoint = "xmip_scope_parts_v1";
 
+    /// <summary>The node a scope is on and its stage there: section 7,
+    /// <c>observe::Scope::node</c> and <c>observe::Scope::stage</c>.</summary>
+    public const string ScopeNodeEntrypoint = "xmip_scope_node_v1";
+
     /// <summary>The stage words: section 7, <c>node::Stage::WORDS</c>.</summary>
     public const string StageWordsEntrypoint = "xmip_stage_words_v1";
 

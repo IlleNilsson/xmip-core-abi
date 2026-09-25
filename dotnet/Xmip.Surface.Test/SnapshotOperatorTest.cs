@@ -107,7 +107,7 @@ public sealed class SnapshotOperatorTest
         IReadOnlyList<HealthRecord> edge02 = surface.Health("xmip:///edge-02");
 
         Assert.Equal(2, edge02.Count);
-        Assert.All(edge02, record => Assert.Equal("edge-02", ScopeTree.Node(record.Scope)));
+        Assert.All(edge02, record => Assert.Equal("edge-02", ScopeTree.Parts(record.Scope)[0]));
     }
 
     [Fact]

@@ -10,8 +10,8 @@ namespace Xmip.Surface;
 /// (ADR-0052 clause 1).
 /// </summary>
 /// <remarks>
-/// <para>The rules underneath are not written here. Containment and a scope's parts
-/// are <c>observe::Scope</c>'s, the stage words and whether a stage pauses
+/// <para>The rules underneath are not written here. Containment, a scope's parts
+/// and the node and stage it is on are <c>observe::Scope</c>'s, the stage words and whether a stage pauses
 /// <c>node::Stage</c>'s, what a stage counts <c>observe::Counted</c>'s, and
 /// the rollup and the worst-first order <c>observe::Health</c>'s and
 /// <c>observe::Standing</c>'s, and this calls each in the runtime's library (<see cref="RuntimeLibrary.Rules"/>, <c>xmip_operate.h</c>
@@ -63,11 +63,14 @@ public static class ScopeTree
         return parts.Length <= 1 ? Root : Join(parts.Take(parts.Length - 1));
     }
 
-    /// <summary>The first segment: the node a thing runs on, or empty at the
-    /// root.</summary>
+    /// <summary>The node a thing runs on: the segment after the node marker
+    /// beneath the cluster, <c>alpha</c> in
+    /// <c>xmip:///C1/node/alpha/receive/tcp</c>, or empty for a scope on no
+    /// node — the cluster is never one. <c>observe::Scope::node</c>, called in
+    /// the runtime.</summary>
     public static string Node(string scope)
     {
-        return Segment(scope, 0);
+        return RuntimeLibrary.Rules.Node(scope).Node;
     }
 
     /// <summary>The three stages of the message path, in the order an operator
@@ -75,13 +78,15 @@ public static class ScopeTree
     public static IReadOnlyList<string> Stages => RuntimeLibrary.Rules.StageWords;
 
     /// <summary>The stage of the message path a scope sits in — <c>receive</c>,
-    /// <c>process</c> or <c>send</c> — wherever that segment falls: directly
-    /// under a node (<c>edge-01/receive/orders</c>) or under a test the
-    /// Playground nests between (<c>playground/round-trip/receive/tcp/json</c>).
-    /// Empty for a scope on no stage.</summary>
+    /// <c>process</c> or <c>send</c> — beneath its node
+    /// (<c>C1/node/alpha/receive/orders</c>) or, on no node, beneath its
+    /// cluster, where the Playground nests a test between
+    /// (<c>C1/round-trip/receive/tcp/json</c>); a cluster's or a node's name
+    /// is never one. Empty for a scope on no stage.
+    /// <c>observe::Scope::stage</c>, called in the runtime.</summary>
     public static string Stage(string scope)
     {
-        return Parts(scope).FirstOrDefault(part => Stages.Contains(part)) ?? string.Empty;
+        return RuntimeLibrary.Rules.Node(scope).Stage;
     }
 
     /// <summary>What a stage counts (ADR-0027 clause 5, the three words kept
