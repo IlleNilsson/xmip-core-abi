@@ -44,12 +44,18 @@ pub unsafe extern "C" fn xmip_create_module_v1(host: *const Host, out: *mut Modu
     // Section 7: a module that cannot support the host's abi_version returns
     // XMIP_E_UNSUPPORTED here, leaving *out untouched, rather than failing
     // later.
+    // SAFETY: `host` is non-null (checked above) and points at the host's
+    // table, which the host owns and keeps alive for the call; it is read
+    // once and nothing is freed.
     let spoken = unsafe { (*host).abi_version };
 
     if spoken != XMIP_ABI_VERSION {
         return status::UNSUPPORTED;
     }
 
+    // SAFETY: `out` is non-null (checked above) and points at the host's
+    // Module slot, which the host owns; every string written is 'static, so
+    // nothing written here is ever freed by anyone.
     unsafe {
         *out = Module {
             descriptor: WireDescriptor {

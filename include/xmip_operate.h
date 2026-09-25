@@ -582,6 +582,79 @@ typedef void (*XmipCurveFreeFn)(XmipCurve *curve);
 #define XMIP_CURVE_POINTS_ENTRYPOINT "xmip_curve_points_v1"
 #define XMIP_CURVE_FREE_ENTRYPOINT   "xmip_curve_free_v1"
 
+/* ===================================================================== */
+/* 9. A program's audit record                                           */
+/* ===================================================================== */
+
+/*
+ * Every Xmip program audits through the audit capability, xmip-core-audit
+ * (ADR-0062): what it started and stopped, every act an operator took through
+ * it, and every failure. A program that is not Rust records here, and this is
+ * a thin forwarder into audit::program_audit::ProgramAudit - the record, its
+ * policy, its sink and the fallback are the capability's, never the caller's.
+ *
+ * program names the program (Xmip.Gui.Web, xmip-cli); directory is where its
+ * records go when the caller was told one (empty: the capability decides -
+ * XMIP_AUDIT_DIRECTORY, else the operating system's log). action is what it
+ * did, message what it says about it, empty for none. properties holds
+ * properties_len strings, key then value, so properties_len is even.
+ *
+ * *out_kept says what became of it. XMIP_KEPT_OPERATING_SYSTEM means the
+ * sink could not keep it and the operating system's log does (ADR-0062
+ * clause 3); said then holds where and why, as UTF-8, its true byte length in
+ * said_len whether or not it fit, and said_len is 0 when it went to the sink.
+ * A failure - XMIP_PHASE_FAILURE, or XMIP_SEVERITY_ERROR at any phase - is
+ * always recorded; that is not policy.
+ *
+ * XMIP_E_INVALID for a phase or severity not defined here or an odd
+ * properties_len; XMIP_E_IO, with the reasons in said, when neither the sink
+ * nor the operating system's log kept it. Pure in clause 6's sense: it reads
+ * no snapshot, may be called from any thread, before, during and without a
+ * node, and holds nothing afterwards. A separate optional symbol, as section
+ * 7's are; XMIP_OPERATE_VERSION is unchanged.
+ */
+typedef enum {
+    XMIP_PHASE_BEGIN    = 0,
+    XMIP_PHASE_EXECUTE  = 1,
+    XMIP_PHASE_FINISHED = 2,
+    XMIP_PHASE_FAILURE  = 3
+} XmipPhase;
+
+typedef enum {
+    XMIP_SEVERITY_INFORMATION = 0,
+    XMIP_SEVERITY_WARNING     = 1,
+    XMIP_SEVERITY_ERROR       = 2
+} XmipSeverity;
+
+typedef enum {
+    XMIP_KEPT_SUPPRESSED       = 0,
+    XMIP_KEPT_PERSISTED        = 1,
+    XMIP_KEPT_OPERATING_SYSTEM = 2
+} XmipKept;
+
+typedef XmipStatus (*XmipAuditFn)(XmipStr program, XmipStr directory, XmipStr action,
+                                  XmipPhase phase, XmipSeverity severity, XmipStr message,
+                                  const XmipStr *properties, size_t properties_len,
+                                  XmipKept *out_kept,
+                                  uint8_t *said, size_t said_cap, size_t *said_len);
+
+#define XMIP_AUDIT_ENTRYPOINT "xmip_audit_v1"
+
+/*
+ * The event source every Xmip entry in the Windows Event Log is written under
+ * when audit cannot persist a record (ADR-0062 clause 3): the audit
+ * capability's writer, a program's own entry when it cannot reach audit, and
+ * the prerequisite installer that registers the source all read it here.
+ */
+#define XMIP_EVENT_SOURCE "Xmip"
+
+/*
+ * The sentence an entry opens with when XMIP_EVENT_SOURCE is not registered
+ * and the entry is written under the Application log's .NET Runtime source
+ * instead. One line, so every reader of this header takes it whole.
+ */
+#define XMIP_EVENT_SOURCE_UNREGISTERED "The Xmip event source is not registered and registering it needs elevation once (Install-XmipPrerequisite does it), so this is written under the .NET Runtime source."
+
 #ifdef __cplusplus
 }
 #endif

@@ -49,6 +49,9 @@ public sealed class OperateAbiTests
     [InlineData("XMIP_CURVE_READ_ENTRYPOINT", OperateAbi.CurveReadEntrypoint)]
     [InlineData("XMIP_CURVE_POINTS_ENTRYPOINT", OperateAbi.CurvePointsEntrypoint)]
     [InlineData("XMIP_CURVE_FREE_ENTRYPOINT", OperateAbi.CurveFreeEntrypoint)]
+    [InlineData("XMIP_AUDIT_ENTRYPOINT", OperateAbi.AuditEntrypoint)]
+    [InlineData("XMIP_EVENT_SOURCE", OperateAbi.EventSource)]
+    [InlineData("XMIP_EVENT_SOURCE_UNREGISTERED", OperateAbi.EventSourceUnregistered)]
     public void NamesEachSymbolTheHeaderDeclares(string define, string symbol)
     {
         Assert.Equal(Header.Define("xmip_operate.h", define), symbol);
@@ -90,6 +93,24 @@ public sealed class OperateAbiTests
     [InlineData("PATTERN", typeof(CommunicationPattern))]
     [InlineData("RUN", typeof(RunList))]
     public void KnowsEverySectionEightValueTheHeaderDefinesAndNoOther(string family, Type values)
+    {
+        IReadOnlyDictionary<string, int> header = Header.Enumerators(family);
+
+        Assert.NotEmpty(header);
+
+        foreach ((string constant, int value) in header)
+        {
+            Assert.Equal(Header.MemberName(constant), Enum.GetName(values, value));
+        }
+
+        Assert.Equal(header.Count, Enum.GetValues(values).Length);
+    }
+
+    [Theory]
+    [InlineData("PHASE", typeof(AuditPhase))]
+    [InlineData("SEVERITY", typeof(AuditSeverity))]
+    [InlineData("KEPT", typeof(AuditKept))]
+    public void KnowsEverySectionNineValueTheHeaderDefinesAndNoOther(string family, Type values)
     {
         IReadOnlyDictionary<string, int> header = Header.Enumerators(family);
 

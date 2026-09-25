@@ -66,7 +66,7 @@ internal static class Header
     {
         Match match = Regex.Match(
             Text(header),
-            @"^#define\s+" + Regex.Escape(name) + @"\s+(\S+)",
+            @"^#define\s+" + Regex.Escape(name) + @"\s+(""[^""]*""|\S+)",
             RegexOptions.Multiline);
 
         Assert.True(match.Success, $"{name} is not in {header}");

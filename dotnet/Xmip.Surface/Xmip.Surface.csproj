@@ -25,6 +25,12 @@
     <ProjectReference Include="..\Xmip.Abi\Xmip.Abi.csproj" />
   </ItemGroup>
 
+  <!-- The one .NET writer to the operating system's log is internal: only
+       ProgramAudit calls it, and its test proves it writes. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="Xmip.Surface.Test" />
+  </ItemGroup>
+
   <ItemGroup>
     <!-- On disk the estate is TOML; JSON is reserved for memory and the wire.
          One reader, here, for a host's configuration and for a published
@@ -38,6 +44,12 @@
          client only; the hub is Xmip.Surface.Relay, which only a web host
          references, so nothing of ASP.NET Core reaches pwsh or the desktop. -->
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.12" />
+
+    <!-- A program that cannot reach the audit capability at all writes to
+         the Windows Event Log itself (ADR-0062 clause 3; OperatingSystemLog).
+         10.0.0, the floor, because pwsh 7.6.5 carries its own copy and a
+         module asking for a newer one than its host holds does not load. -->
+    <PackageReference Include="System.Diagnostics.EventLog" Version="10.0.0" />
   </ItemGroup>
 
 </Project>

@@ -17,7 +17,8 @@ namespace Xmip.Abi.Operate;
 /// published capability record <c>observe::capability</c>'s. The runtime's
 /// library forwards each, and this binds each once for every .NET surface
 /// (ADR-0052 and ADR-0027, amendments 2026-09-24). Section 8, a publication
-/// read by the runtime, is <see cref="Publications"/>.
+/// read by the runtime, is <see cref="Publications"/>; section 9, a
+/// program's audit record, is <see cref="Audit"/>.
 /// </summary>
 /// <remarks>
 /// Pure calls: none reads the snapshot or holds a table, so one instance
@@ -87,6 +88,7 @@ public sealed unsafe class RuntimeRules
             XmipStr, XmipStr*, XmipStr*, nuint, nuint*, byte*, nuint, nuint*, int>)
             Export(library, OperateAbi.CapabilityEntryEntrypoint);
         Publications = new PublicationReader(library);
+        Audit = new RuntimeAudit(library);
 
         delegate* unmanaged[Cdecl]<XmipStr*, nuint, nuint*, int> words =
             (delegate* unmanaged[Cdecl]<XmipStr*, nuint, nuint*, int>)
@@ -101,12 +103,16 @@ public sealed unsafe class RuntimeRules
     /// reader.</summary>
     public PublicationReader Publications { get; }
 
+    /// <summary>Section 9: a program's audit record, recorded by the audit
+    /// capability (ADR-0062).</summary>
+    public RuntimeAudit Audit { get; }
+
     /// <summary>The words a node may declare, in message-path order —
     /// <c>node::Stage::WORDS</c>, read once when the library loads.</summary>
     public IReadOnlyList<string> StageWords { get; }
 
-    /// <summary>Section 7's and section 8's symbols, each of which a runtime
-    /// must export.</summary>
+    /// <summary>Section 7's, section 8's and section 9's symbols, each of
+    /// which a runtime must export.</summary>
     public static IReadOnlyList<string> Entrypoints { get; } =
     [
         OperateAbi.HealthRolledEntrypoint,
@@ -117,6 +123,7 @@ public sealed unsafe class RuntimeRules
         OperateAbi.CapabilityPublishedEntrypoint,
         OperateAbi.CapabilityEntryEntrypoint,
         .. PublicationReader.Entrypoints,
+        .. RuntimeAudit.Entrypoints,
         OperateAbi.ScopeContainsEntrypoint,
         OperateAbi.ScopePartsEntrypoint,
         OperateAbi.StageWordsEntrypoint,

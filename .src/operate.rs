@@ -273,6 +273,7 @@ pub mod rule {
     ) -> i32;
 }
 
+pub mod audit;
 pub mod publication;
 
 #[cfg(test)]
@@ -383,6 +384,12 @@ mod tests {
                 "XMIP_CAPABILITY_ENTRY_ENTRYPOINT",
                 rule::CAPABILITY_ENTRY_ENTRYPOINT,
             ),
+            ("XMIP_AUDIT_ENTRYPOINT", audit::AUDIT_ENTRYPOINT),
+            ("XMIP_EVENT_SOURCE", audit::EVENT_SOURCE),
+            (
+                "XMIP_EVENT_SOURCE_UNREGISTERED",
+                audit::EVENT_SOURCE_UNREGISTERED,
+            ),
             ("XMIP_START_ENTRYPOINT", XMIP_START_ENTRYPOINT),
             ("XMIP_VALIDATE_ENTRYPOINT", XMIP_VALIDATE_ENTRYPOINT),
         ] {
@@ -447,6 +454,24 @@ mod tests {
             i64::from(counted::FAILED),
             header_value("XMIP_COUNTED_FAILED")
         );
+    }
+
+    #[test]
+    fn every_audit_value_matches_the_header() {
+        for (name, value) in [
+            ("XMIP_PHASE_BEGIN", audit::phase::BEGIN),
+            ("XMIP_PHASE_EXECUTE", audit::phase::EXECUTE),
+            ("XMIP_PHASE_FINISHED", audit::phase::FINISHED),
+            ("XMIP_PHASE_FAILURE", audit::phase::FAILURE),
+            ("XMIP_SEVERITY_INFORMATION", audit::severity::INFORMATION),
+            ("XMIP_SEVERITY_WARNING", audit::severity::WARNING),
+            ("XMIP_SEVERITY_ERROR", audit::severity::ERROR),
+            ("XMIP_KEPT_SUPPRESSED", audit::kept::SUPPRESSED),
+            ("XMIP_KEPT_PERSISTED", audit::kept::PERSISTED),
+            ("XMIP_KEPT_OPERATING_SYSTEM", audit::kept::OPERATING_SYSTEM),
+        ] {
+            assert_eq!(i64::from(value), header_value(name), "{name}");
+        }
     }
 
     #[test]

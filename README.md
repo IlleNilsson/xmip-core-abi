@@ -8,8 +8,9 @@ are normative. The Rust crate, whose source sits aside under `.src`
 (ADR-0049), is a convenience binding over that boundary and must not introduce
 Rust-specific types into the ABI: the descriptor, the manifest, the FFI
 shapes and the operate types, section 6's start and validate shapes, section
-7's rule exports (`operate::rule`) and section 8's publication reader
-(`operate::publication`). `examples/conforming.rs`
+7's rule exports (`operate::rule`), section 8's publication reader
+(`operate::publication`) and section 9's audit record (`operate::audit`,
+with `XMIP_EVENT_SOURCE`, the Windows Event Log source, ADR-0062). `examples/conforming.rs`
 builds as a cdylib and is the conforming artifact a loader probe is tested
 against.
 
@@ -28,7 +29,10 @@ runtime's library, so no .NET surface writes a rule again; and
 `PublicationReader`, section 8, which hands a publication's text to the
 runtime's one reader and brings back a `Publication` — its records, counts,
 topology (`Topology.cs`, the header's values) and run (ADR-0052, amendments
-2026-09-24). In a composed
+2026-09-24); and `RuntimeAudit`, section 9, a program's audit record handed
+to `xmip-core-audit` through the runtime's library, with `AuditPhase`,
+`AuditSeverity` and `AuditKept` as the header defines them (ADR-0062). In a
+composed
 estate the project copies the runtime's built library beside everything that
 references it. `AbiBoundaries` says both boundaries at once. `xmip-cli abi`, `status` and
 `probe` render those and `Get-XmipAbi`, `ConvertFrom-XmipStatus` and
@@ -88,6 +92,13 @@ faces over it.
   said in words once, a mood's word and color name asked of the runtime)
   and `SurfaceChange` (one coalescing change stream that wakes every
   surface when a published snapshot advances).
+- **Audit.** `ProgramAudit`, how every .NET program audits (ADR-0062): its
+  name, the directory its configuration names (`Xmip:AuditDirectory`),
+  `Record`, `Failed` — one exception, one record — and `WatchUnhandled`, each
+  a call into `xmip_audit_v1` and never a record of its own; and
+  `OperatingSystemLog`, the one .NET writer to the Windows Event Log or the
+  local syslog, used only when the runtime's library cannot be loaded at all
+  and saying why.
 
 `dotnet/Xmip.Surface.Relay` is the served half — `SurfaceHub`, answering what
 the host's surface answers, and `SurfaceRelay`, pushing the host's change feed
@@ -96,7 +107,9 @@ amendment 2026-09-15); only a web host references it.
 
 `dotnet/Xmip.Surface.Test` covers the tree and its index, the pattern, the
 filter and the selection, the figures and their flow, runtime discovery and
-the surface precedence, the English, the
+the surface precedence, the English, a program's audit — into a directory,
+to the operating system's log when the sink fails, and one entry of its own
+when audit cannot be reached — the
 configuration verdict, the process declaration, the snapshot surface and the
 cluster set over fixtures, and the remote surface against a hub on a loopback
 port. It tests no rule the runtime owns: it proves the surface returns what

@@ -122,4 +122,20 @@ public static class OperateAbi
 
     /// <summary>Release a read curve: section 8.</summary>
     public const string CurveFreeEntrypoint = "xmip_curve_free_v1";
+
+    /// <summary>Record one act of a program: section 9, forwarded to
+    /// <c>xmip-core-audit</c>'s <c>ProgramAudit::record</c> (ADR-0062).</summary>
+    public const string AuditEntrypoint = "xmip_audit_v1";
+
+    /// <summary>The Windows Event Log source every Xmip entry is written under
+    /// when audit cannot persist a record: section 9's
+    /// <c>XMIP_EVENT_SOURCE</c> (ADR-0062 clause 3).</summary>
+    public const string EventSource = "Xmip";
+
+    /// <summary>The sentence an entry opens with when <see cref="EventSource"/>
+    /// is not registered and the entry goes under <c>.NET Runtime</c>: section
+    /// 9's <c>XMIP_EVENT_SOURCE_UNREGISTERED</c>.</summary>
+    public const string EventSourceUnregistered =
+        "The Xmip event source is not registered and registering it needs elevation once " +
+        "(Install-XmipPrerequisite does it), so this is written under the .NET Runtime source.";
 }
