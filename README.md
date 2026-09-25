@@ -20,8 +20,8 @@ the GUI reference it as a project and bind nothing themselves (ADR-0014,
 amendment of 2026-08-26). `Module/` carries the module boundary, its probe
 and the probe's judgement of whether a module conforms, and `StatusMeaning`,
 what a status code means; `Operate/` the operator boundary and its records,
-and `RuntimeRules`, section 7 bound once: scope containment and a scope's
-parts, the stage words, a declaration's parse and the facts of a stage, a
+and `RuntimeRules`, section 7 bound once: scope containment, a scope's
+parts and the node and stage it is on, the stage words, a declaration's parse and the facts of a stage, a
 node's published capability and a run's entry for it, a mood's word, color
 name and rollup, a counted kind's word and the worst-first order, each written
 once in the crate that owns it (`observe`, `node`) and forwarded by the
@@ -94,6 +94,15 @@ faces over it.
   said in words once, a mood's word and color name asked of the runtime)
   and `SurfaceChange` (one coalescing change stream that wakes every
   surface when a published snapshot advances).
+- **TLS.** `SurfaceTls`, what a surface presents and trusts when it
+  crosses a network (ADR-0063 clause 1): a PEM chain and key and the anchors
+  a peer's chain must reach — `Xmip:Certificate`, `Xmip:PrivateKey` and
+  `Xmip:TrustAnchor`, else `XMIP_CERTIFICATE`, `XMIP_PRIVATE_KEY` and
+  `XMIP_TRUST_ANCHOR`, else nothing presented and the operating system's
+  trust store — the check of a peer's certificate for server or client use,
+  and `Permits`, the one rule for connecting and binding alike: HTTPS always,
+  plain HTTP to this machine only. `RemoteOperator` presents and checks
+  through it, and says a refused certificate in its reason.
 - **Audit.** `ProgramAudit`, how every .NET program audits (ADR-0062): its
   name, the directory its configuration names (`Xmip:AuditDirectory`),
   `Record`, `Failed` — one exception, one record — and `WatchUnhandled`, each
@@ -105,7 +114,12 @@ faces over it.
 `dotnet/Xmip.Surface.Relay` is the served half — `SurfaceHub`, answering what
 the host's surface answers, and `SurfaceRelay`, pushing the host's change feed
 to every remote surface, so a surface is told and never asks (ADR-0052,
-amendment 2026-09-15); only a web host references it.
+amendment 2026-09-15); only a web host references it. `SurfaceBinding` is
+where such a host listens: plain HTTP beyond loopback and HTTPS with no
+certificate refused before anything listens, the plain loopback addresses
+answered for the host to say it binds them, and `UseXmipTls`, every HTTPS
+address presenting the host's certificate and checking a caller's; the hub
+takes no caller over TLS without one (ADR-0063 clause 1).
 
 `dotnet/Xmip.Surface.Test` covers the tree and its index, the pattern, the
 filter and the selection, the figures and their flow, runtime discovery and
@@ -113,8 +127,11 @@ the surface precedence, the English, a program's audit — into a directory,
 to the operating system's log when the sink fails, and one entry of its own
 when audit cannot be reached — the
 configuration verdict, the process declaration, the snapshot surface and the
-cluster set over fixtures, and the remote surface against a hub on a loopback
-port. It tests no rule the runtime owns: it proves the surface returns what
+cluster set over fixtures, the remote surface against a hub on a loopback
+port — plain, and over mutual TLS with certificates a test authority issued,
+where a client certificate the host does not trust, a host certificate the
+surface does not trust and no certificate at all are each refused — and
+where a host may bind. It tests no rule the runtime owns: it proves the surface returns what
 the runtime's export returns, and those rules are tested once, where they are
 written. `dotnet test dotnet/Xmip.Surface.Test` runs them, after `cargo build`
 in xmip-core-runtime has left the library the test assemblies load.

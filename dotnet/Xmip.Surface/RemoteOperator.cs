@@ -1,6 +1,9 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Net.Security;
 using System.Runtime.CompilerServices;
+using System.Security.Cryptography.X509Certificates;
 using System.Threading.Channels;
+using Microsoft.AspNetCore.Http.Connections.Client;
 using Microsoft.AspNetCore.SignalR.Client;
 using Xmip.Abi.Operate;
 
@@ -14,6 +17,13 @@ namespace Xmip.Surface;
 /// side rereads what it needs, as every consumer of the feed does. The address
 /// is given by whoever chose this surface (ADR-0052 clause 3).
 /// </summary>
+/// <remarks>
+/// The connection is TLS: this side presents the certificate its
+/// <see cref="SurfaceTls"/> holds and takes the host only when the host's
+/// certificate reaches its anchors (ADR-0063 clause 1). Plain HTTP is
+/// refused unless the host is this machine, the one exception, and the
+/// refusal is the <see cref="Reason"/>.
+/// </remarks>
 /// <remarks>
 /// The wire is JSON, which the estate reserves for memory and the wire; the
 /// records are the binding's, so a remote answer has the shape a local one
@@ -43,6 +53,8 @@ public sealed class RemoteOperator : IOperatorSurface, IDisposable
 
     private ulong told;
 
+    private string? refusal;
+
     /// <summary>Whether <paramref name="url"/> names a web host: an absolute
     /// http or https address, which is what a hub is reached at.</summary>
     public static bool IsWebHost([NotNullWhen(true)] string? url)
@@ -51,12 +63,20 @@ public sealed class RemoteOperator : IOperatorSurface, IDisposable
             && host.Scheme is "http" or "https";
     }
 
-    /// <summary>A surface over the web host at <paramref name="host"/>.</summary>
-    public RemoteOperator(Uri host)
+    /// <summary>A surface over the web host at <paramref name="host"/>,
+    /// presenting and trusting what <paramref name="tls"/> holds — nothing
+    /// and the operating system's anchors where it is not given.</summary>
+    public RemoteOperator(Uri host, SurfaceTls? tls = null)
     {
+        ArgumentNullException.ThrowIfNull(host);
+
         Host = host;
         Hub = new Uri(host, HubPath);
-        connection = new HubConnectionBuilder().WithUrl(Hub).WithAutomaticReconnect().Build();
+        Tls = tls ?? SurfaceTls.None;
+        connection = new HubConnectionBuilder()
+            .WithUrl(Hub, Guard)
+            .WithAutomaticReconnect()
+            .Build();
         connection.On<SurfaceChange>(ChangedMessage, Announce);
         connection.Reconnected += _ =>
         {
@@ -70,6 +90,9 @@ public sealed class RemoteOperator : IOperatorSurface, IDisposable
 
     /// <summary>The hub on that host.</summary>
     public Uri Hub { get; }
+
+    /// <summary>What this side presents and trusts.</summary>
+    public SurfaceTls Tls { get; }
 
     /// <summary>Whether the host answers right now.</summary>
     public bool IsConnected => connection.State == HubConnectionState.Connected;
@@ -101,6 +124,12 @@ public sealed class RemoteOperator : IOperatorSurface, IDisposable
                 return true;
             }
 
+            if (!SurfaceTls.Permits(Host, out string plain))
+            {
+                Reason = plain;
+                return false;
+            }
+
             if (connection.State != HubConnectionState.Disconnected)
             {
                 Reason = connection.State.ToString().ToLowerInvariant();
@@ -109,6 +138,7 @@ public sealed class RemoteOperator : IOperatorSurface, IDisposable
 
             try
             {
+                refusal = null;
                 using CancellationTokenSource patience = new(Patience);
                 connection.StartAsync(patience.Token).GetAwaiter().GetResult();
                 Reason = string.Empty;
@@ -116,7 +146,9 @@ public sealed class RemoteOperator : IOperatorSurface, IDisposable
             }
             catch (Exception failure)
             {
-                Reason = failure.Message;
+                // A certificate this side refused says which and why, not the
+                // platform's "the SSL connection could not be established".
+                Reason = refusal is { } refused ? $"REFUSED. {refused}" : failure.Message;
                 return false;
             }
         }
@@ -249,6 +281,47 @@ public sealed class RemoteOperator : IOperatorSurface, IDisposable
         }
 
         connection.DisposeAsync().AsTask().GetAwaiter().GetResult();
+    }
+
+    /// <summary>
+    /// Both of the connection's paths, the HTTP negotiation and the web
+    /// socket, present this side's certificate and check the host's by
+    /// <see cref="SurfaceTls.Accepts"/>.
+    /// </summary>
+    private void Guard(HttpConnectionOptions options)
+    {
+        if (Tls.Certificate is { } presented)
+        {
+            options.ClientCertificates = [presented];
+        }
+
+        options.HttpMessageHandlerFactory = handler =>
+        {
+            if (handler is HttpClientHandler http)
+            {
+                http.ServerCertificateCustomValidationCallback =
+                    (_, certificate, chain, errors) => Checked(certificate, chain, errors);
+            }
+
+            return handler;
+        };
+        options.WebSocketConfiguration = socket => socket.RemoteCertificateValidationCallback =
+            (_, certificate, chain, errors) => Checked(certificate, chain, errors);
+    }
+
+    private bool Checked(
+        X509Certificate? certificate,
+        X509Chain? chain,
+        SslPolicyErrors errors)
+    {
+        if (Tls.Accepts(
+            certificate, chain, errors, SurfaceTls.ServerAuthentication, out string reason))
+        {
+            return true;
+        }
+
+        refusal = reason;
+        return false;
     }
 
     private void Announce(SurfaceChange change)

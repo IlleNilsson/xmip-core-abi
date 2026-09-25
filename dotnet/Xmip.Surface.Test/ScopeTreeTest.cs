@@ -58,15 +58,35 @@ public sealed class ScopeTreeTest
     }
 
     [Fact]
-    public void NodeSegmentAndNameReadTheThreeLevels()
+    public void SegmentAndNameReadTheThreeLevels()
     {
         const string scope = "xmip:///edge-01/receive/orders/in";
 
-        Assert.Equal("edge-01", ScopeTree.Node(scope));
         Assert.Equal("receive", ScopeTree.Segment(scope, 1));
         Assert.Equal("orders/in", ScopeTree.Name(scope));
         Assert.Equal("receive", ScopeTree.Name("xmip:///edge-01/receive"));
-        Assert.Equal("", ScopeTree.Node(ScopeTree.Root));
+    }
+
+    /// <summary>
+    /// The node a scope is on and its stage are <c>observe::Scope</c>'s, asked
+    /// of the runtime: the surface returns what the export returns (open
+    /// problem 25, row q). Segment 0 is the cluster and never the node.
+    /// </summary>
+    [Theory]
+    [InlineData("xmip:///C1/node/alpha/receive/tcp", "alpha", "receive")]
+    [InlineData("xmip:///C1/node/send/process/x", "send", "process")]
+    [InlineData("xmip:///C1/round-trip/send/tcp/json", "", "send")]
+    [InlineData("xmip:///C1/node", "", "")]
+    [InlineData("xmip:///C1", "", "")]
+    [InlineData(ScopeTree.Root, "", "")]
+    public void TheNodeAndStageAreWhatTheRuntimeExportAnswers(
+        string scope, string node, string stage)
+    {
+        (string Node, string Stage) exported = RuntimeLibrary.Rules.Node(scope);
+
+        Assert.Equal(exported.Node, ScopeTree.Node(scope));
+        Assert.Equal(exported.Stage, ScopeTree.Stage(scope));
+        Assert.Equal((node, stage), (ScopeTree.Node(scope), ScopeTree.Stage(scope)));
     }
 
     [Fact]

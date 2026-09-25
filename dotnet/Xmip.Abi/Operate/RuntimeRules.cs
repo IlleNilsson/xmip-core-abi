@@ -7,8 +7,9 @@ namespace Xmip.Abi.Operate;
 
 /// <summary>
 /// Section 7 of <c>include/xmip_operate.h</c>, crossed by P/Invoke: the rules
-/// a surface calls instead of keeping its own. Scope containment and a
-/// scope's parts are <c>observe::Scope</c>'s; the stage words, their parse,
+/// a surface calls instead of keeping its own. Scope containment, a scope's
+/// parts, and the node and stage it is on are <c>observe::Scope</c>'s; the
+/// stage words, their parse,
 /// whether a stage pauses and what a thing at it is called are
 /// <c>node::Stage</c>'s, and a run's node entry <c>node::Capability</c>'s; a
 /// mood's word, its color name, the rollup and the worst-first order are
@@ -36,6 +37,7 @@ public sealed unsafe class RuntimeRules
 
     private readonly delegate* unmanaged[Cdecl]<XmipStr, XmipStr, byte*, int> _contains;
     private readonly delegate* unmanaged[Cdecl]<XmipStr, XmipStr*, nuint, nuint*, int> _parts;
+    private readonly delegate* unmanaged[Cdecl]<XmipStr, XmipStr*, XmipStr*, int> _node;
     private readonly delegate* unmanaged[Cdecl]<
         XmipStr, XmipStr*, nuint, nuint*, byte*, nuint, nuint*, int> _declared;
     private readonly delegate* unmanaged[Cdecl]<int, XmipStr*, int> _word;
@@ -60,6 +62,8 @@ public sealed unsafe class RuntimeRules
             Export(library, OperateAbi.ScopeContainsEntrypoint);
         _parts = (delegate* unmanaged[Cdecl]<XmipStr, XmipStr*, nuint, nuint*, int>)
             Export(library, OperateAbi.ScopePartsEntrypoint);
+        _node = (delegate* unmanaged[Cdecl]<XmipStr, XmipStr*, XmipStr*, int>)
+            Export(library, OperateAbi.ScopeNodeEntrypoint);
         _declared = (delegate* unmanaged[Cdecl]<
             XmipStr, XmipStr*, nuint, nuint*, byte*, nuint, nuint*, int>)
             Export(library, OperateAbi.StageDeclaredEntrypoint);
@@ -126,6 +130,7 @@ public sealed unsafe class RuntimeRules
         .. RuntimeAudit.Entrypoints,
         OperateAbi.ScopeContainsEntrypoint,
         OperateAbi.ScopePartsEntrypoint,
+        OperateAbi.ScopeNodeEntrypoint,
         OperateAbi.StageWordsEntrypoint,
         OperateAbi.StageDeclaredEntrypoint,
         OperateAbi.HealthWordEntrypoint,
@@ -227,6 +232,24 @@ public sealed unsafe class RuntimeRules
 
             return [.. found.Select(part => part.Read())];
         }
+    }
+
+    /// <summary>
+    /// Where a scope sits — <c>observe::Scope::node</c> and
+    /// <c>observe::Scope::stage</c>: the node it is on, the segment after the
+    /// node marker beneath the cluster, and the stage of the message path it is
+    /// on beneath that node or, on no node, beneath the cluster. Each is empty
+    /// where there is none; the cluster is never a node.
+    /// </summary>
+    public (string Node, string Stage) Node(string scope)
+    {
+        using PinnedStr text = XmipStr.Pin(scope);
+        XmipStr node;
+        XmipStr stage;
+
+        // The node borrows from `text`, still pinned here; the stage is static.
+        Check(_node(text.Value, &node, &stage));
+        return (node.Read(), stage.Read());
     }
 
     /// <summary>
