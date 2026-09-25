@@ -46,6 +46,11 @@ public sealed class OperateAbiTests
     [InlineData("XMIP_PUBLICATION_NODES_ENTRYPOINT", OperateAbi.PublicationNodesEntrypoint)]
     [InlineData("XMIP_PUBLICATION_LINKS_ENTRYPOINT", OperateAbi.PublicationLinksEntrypoint)]
     [InlineData("XMIP_PUBLICATION_RUN_ENTRYPOINT", OperateAbi.PublicationRunEntrypoint)]
+    [InlineData("XMIP_TOPOLOGY_KIND_WORDS_ENTRYPOINT", OperateAbi.TopologyKindWordsEntrypoint)]
+    [InlineData(
+        "XMIP_TOPOLOGY_ORIGIN_WORDS_ENTRYPOINT", OperateAbi.TopologyOriginWordsEntrypoint)]
+    [InlineData(
+        "XMIP_TOPOLOGY_PATTERN_WORDS_ENTRYPOINT", OperateAbi.TopologyPatternWordsEntrypoint)]
     [InlineData("XMIP_CURVE_READ_ENTRYPOINT", OperateAbi.CurveReadEntrypoint)]
     [InlineData("XMIP_CURVE_POINTS_ENTRYPOINT", OperateAbi.CurvePointsEntrypoint)]
     [InlineData("XMIP_CURVE_FREE_ENTRYPOINT", OperateAbi.CurveFreeEntrypoint)]

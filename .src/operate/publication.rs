@@ -26,6 +26,14 @@ pub const LINKS_ENTRYPOINT: &str = "xmip_publication_links_v1";
 /// One of its run's lists.
 pub const RUN_ENTRYPOINT: &str = "xmip_publication_run_v1";
 
+/// What a topology kind is called: `observe::NodeKind::word` and `name`.
+pub const KIND_WORDS_ENTRYPOINT: &str = "xmip_topology_kind_words_v1";
+/// What a topology origin is called: `observe::Origin::word` and `name`.
+pub const ORIGIN_WORDS_ENTRYPOINT: &str = "xmip_topology_origin_words_v1";
+/// What a communication pattern is called: `observe::Pattern::word` and
+/// `name`.
+pub const PATTERN_WORDS_ENTRYPOINT: &str = "xmip_topology_pattern_words_v1";
+
 /// A curve (a node's throughput over time), `observe::Curve::read`, into a
 /// handle.
 pub const CURVE_READ_ENTRYPOINT: &str = "xmip_curve_read_v1";
@@ -219,6 +227,11 @@ pub type CurvePointsFn = unsafe extern "C" fn(
 /// Release a curve's handle.
 pub type CurveFreeFn = unsafe extern "C" fn(curve: *mut Curve);
 
+/// What a topology value is called: the word a publication writes and the
+/// name a person reads, both static.
+pub type TopologyWordsFn =
+    unsafe extern "C" fn(value: i32, out_word: *mut Str, out_name: *mut Str) -> i32;
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -248,6 +261,15 @@ mod tests {
             ("XMIP_PUBLICATION_NODES_ENTRYPOINT", NODES_ENTRYPOINT),
             ("XMIP_PUBLICATION_LINKS_ENTRYPOINT", LINKS_ENTRYPOINT),
             ("XMIP_PUBLICATION_RUN_ENTRYPOINT", RUN_ENTRYPOINT),
+            ("XMIP_TOPOLOGY_KIND_WORDS_ENTRYPOINT", KIND_WORDS_ENTRYPOINT),
+            (
+                "XMIP_TOPOLOGY_ORIGIN_WORDS_ENTRYPOINT",
+                ORIGIN_WORDS_ENTRYPOINT,
+            ),
+            (
+                "XMIP_TOPOLOGY_PATTERN_WORDS_ENTRYPOINT",
+                PATTERN_WORDS_ENTRYPOINT,
+            ),
             ("XMIP_CURVE_READ_ENTRYPOINT", CURVE_READ_ENTRYPOINT),
             ("XMIP_CURVE_POINTS_ENTRYPOINT", CURVE_POINTS_ENTRYPOINT),
             ("XMIP_CURVE_FREE_ENTRYPOINT", CURVE_FREE_ENTRYPOINT),

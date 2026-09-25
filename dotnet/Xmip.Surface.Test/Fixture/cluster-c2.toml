@@ -8,21 +8,21 @@ source = "playground — xmip:///C2"
 node = "xmip:///C2"
 
 [[records]]
-scope = "xmip:///C2/node/R2/capability"
+scope = "xmip:///C2/node/delta/capability"
 state = "fine"
 severity = 0
 evidence = "declares receive; online"
 observed_unix_nanos = 1789111688000000000
 
 [[records]]
-scope = "xmip:///C2/node/R2/receive/tcp/json"
+scope = "xmip:///C2/node/delta/receive/tcp/json"
 state = "fine"
 severity = 0
 evidence = "3/3 rounds passed"
 observed_unix_nanos = 1789111688000000000
 
 [[records]]
-scope = "xmip:///C2/node/S2/send/tcp/json"
+scope = "xmip:///C2/node/zeta/send/tcp/json"
 state = "done"
 severity = 95
 evidence = "connection refused by billing-x (10.0.9.7:5671)"
@@ -43,9 +43,9 @@ value = 1
 [run]
 cluster = "C2"
 tests = ["RoundTrip"]
-nodes = ["R2", "S2"]
-capabilities = ["R2=receive", "S2=send"]
-online = ["R2"]
+nodes = ["delta", "zeta"]
+capabilities = ["delta=receive", "zeta=send"]
+online = ["delta"]
 stress = "harsh"
 
 [topology]
@@ -65,11 +65,11 @@ activity = 1.0
 evidence = "2 nodes, 1 of 2 leaves fine"
 
 [[topology.nodes]]
-id = "node/R2"
+id = "node/delta"
 parent = "cluster"
-label = "R2"
+label = "delta"
 kind = "node"
-scope = "xmip:///C2/node/R2"
+scope = "xmip:///C2/node/delta"
 state = "fine"
 origin = "both"
 load = 0.0
@@ -77,11 +77,11 @@ activity = 1.0
 evidence = "3/3 rounds passed"
 
 [[topology.nodes]]
-id = "node/S2"
+id = "node/zeta"
 parent = "cluster"
-label = "S2"
+label = "zeta"
 kind = "node"
-scope = "xmip:///C2/node/S2"
+scope = "xmip:///C2/node/zeta"
 state = "done"
 origin = "both"
 load = 0.0
@@ -89,9 +89,9 @@ activity = 1.0
 evidence = "connection refused by billing-x (10.0.9.7:5671)"
 
 [[topology.links]]
-id = "R2->S2"
-from = "node/R2"
-to = "node/S2"
+id = "delta->zeta"
+from = "node/delta"
+to = "node/zeta"
 pattern = "send-receive"
 origin = "observed"
 protocol = "handoff"

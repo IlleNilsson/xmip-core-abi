@@ -36,6 +36,9 @@ public sealed unsafe class PublicationReader
     private readonly delegate* unmanaged[Cdecl]<XmipStr, nint*, byte*, nuint, nuint*, int> _curve;
     private readonly delegate* unmanaged[Cdecl]<nint, XmipMeasurement*, nuint, nuint*, int> _points;
     private readonly delegate* unmanaged[Cdecl]<nint, void> _curveFree;
+    private readonly delegate* unmanaged[Cdecl]<int, XmipStr*, XmipStr*, int> _kindWords;
+    private readonly delegate* unmanaged[Cdecl]<int, XmipStr*, XmipStr*, int> _originWords;
+    private readonly delegate* unmanaged[Cdecl]<int, XmipStr*, XmipStr*, int> _patternWords;
 
     internal PublicationReader(nint library)
     {
@@ -61,6 +64,12 @@ public sealed unsafe class PublicationReader
             NativeLibrary.GetExport(library, OperateAbi.CurvePointsEntrypoint);
         _curveFree = (delegate* unmanaged[Cdecl]<nint, void>)
             NativeLibrary.GetExport(library, OperateAbi.CurveFreeEntrypoint);
+        _kindWords = (delegate* unmanaged[Cdecl]<int, XmipStr*, XmipStr*, int>)
+            NativeLibrary.GetExport(library, OperateAbi.TopologyKindWordsEntrypoint);
+        _originWords = (delegate* unmanaged[Cdecl]<int, XmipStr*, XmipStr*, int>)
+            NativeLibrary.GetExport(library, OperateAbi.TopologyOriginWordsEntrypoint);
+        _patternWords = (delegate* unmanaged[Cdecl]<int, XmipStr*, XmipStr*, int>)
+            NativeLibrary.GetExport(library, OperateAbi.TopologyPatternWordsEntrypoint);
     }
 
     /// <summary>Section 8's symbols, each of which a runtime must export.</summary>
@@ -77,6 +86,9 @@ public sealed unsafe class PublicationReader
         OperateAbi.CurveReadEntrypoint,
         OperateAbi.CurvePointsEntrypoint,
         OperateAbi.CurveFreeEntrypoint,
+        OperateAbi.TopologyKindWordsEntrypoint,
+        OperateAbi.TopologyOriginWordsEntrypoint,
+        OperateAbi.TopologyPatternWordsEntrypoint,
     ];
 
     /// <summary>
@@ -127,6 +139,39 @@ public sealed unsafe class PublicationReader
         {
             _curveFree(handle);
         }
+    }
+
+    /// <summary>What a topology kind is called — <c>observe::NodeKind</c>'s
+    /// word and name. Null for a value the runtime does not define.</summary>
+    public TopologyWord? Words(TopologyNodeKind kind)
+    {
+        return Said(_kindWords, (int)kind);
+    }
+
+    /// <summary>What a topology origin is called — <c>observe::Origin</c>'s
+    /// word and name. Null for a value the runtime does not define.</summary>
+    public TopologyWord? Words(TopologyOrigin origin)
+    {
+        return Said(_originWords, (int)origin);
+    }
+
+    /// <summary>What a communication pattern is called —
+    /// <c>observe::Pattern</c>'s word and name. Null for a value the runtime
+    /// does not define.</summary>
+    public TopologyWord? Words(CommunicationPattern pattern)
+    {
+        return Said(_patternWords, (int)pattern);
+    }
+
+    private static TopologyWord? Said(
+        delegate* unmanaged[Cdecl]<int, XmipStr*, XmipStr*, int> words, int value)
+    {
+        XmipStr word;
+        XmipStr name;
+
+        return words(value, &word, &name) == 0
+            ? new TopologyWord(word.Read(), name.Read())
+            : null;
     }
 
     // A handle from one of section 8's readers, or 0 with the refusal.

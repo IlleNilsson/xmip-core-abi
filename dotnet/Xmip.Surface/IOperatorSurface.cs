@@ -71,6 +71,30 @@ public interface IOperatorSurface
     }
 
     /// <summary>
+    /// The scopes of the nodes this surface reads, in ordinal order: each thing
+    /// the publisher's topology draws as a node (<c>observe::topology</c>'s node
+    /// kind), where a topology is published; with none to say, each scope
+    /// directly beneath the root, which is where a node's own publication puts
+    /// itself. Until 2026-09-25 the Monitor counted the scopes beneath the root
+    /// alone, and a Playground cluster — its nodes beneath
+    /// <c>xmip:///&lt;cluster&gt;/node</c> — came out as one node, the cluster
+    /// (ADR-0052, amendment 2026-09-25).
+    /// </summary>
+    public IReadOnlyList<string> NodeScopes()
+    {
+        string[] drawn =
+        [
+            .. Topology().Nodes
+                .Where(node => node.Kind == TopologyNodeKind.Node)
+                .Select(node => node.Scope)
+                .Distinct(StringComparer.Ordinal)
+                .Order(StringComparer.Ordinal),
+        ];
+
+        return drawn.Length > 0 ? drawn : [.. Index().Nodes().Select(node => ScopeTree.Root + node)];
+    }
+
+    /// <summary>
     /// What the run behind this surface was started with — the tests, the
     /// nodes, which of them are online, how hard — when its publisher says;
     /// <see cref="RunHeader.None"/> when it does not, which every surface

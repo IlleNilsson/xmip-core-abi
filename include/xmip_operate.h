@@ -562,6 +562,23 @@ typedef XmipStatus (*XmipPublicationRunFn)(const XmipPublication *publication,
 #define XMIP_PUBLICATION_RUN_ENTRYPOINT     "xmip_publication_run_v1"
 
 /*
+ * What a topology value is called (observe::topology): the word a
+ * publication writes it as in *out_word, and the name a person reads it by -
+ * under a node, in a legend, in an inspector's row - in *out_name. Both
+ * static, and pure like section 7: no handle, any thread, before any node.
+ * The kind takes an XmipTopologyKind, the origin an XmipTopologyOrigin, the
+ * pattern an XmipCommunicationPattern; XMIP_E_INVALID for a value its enum
+ * does not define. A surface asks here rather than keeping a word list of its
+ * own (ADR-0052, amendment 2026-09-25).
+ */
+typedef XmipStatus (*XmipTopologyWordsFn)(int32_t value, XmipStr *out_word,
+                                          XmipStr *out_name);
+
+#define XMIP_TOPOLOGY_KIND_WORDS_ENTRYPOINT   "xmip_topology_kind_words_v1"
+#define XMIP_TOPOLOGY_ORIGIN_WORDS_ENTRYPOINT "xmip_topology_origin_words_v1"
+#define XMIP_TOPOLOGY_PATTERN_WORDS_ENTRYPOINT "xmip_topology_pattern_words_v1"
+
+/*
  * A curve: a node's throughput over time, as the file a publisher writes
  * beside its publication (ADR-0029), read by the one reader there is
  * (observe::Curve). The same handle rules as above: xmip_curve_read_v1 hands
