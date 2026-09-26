@@ -35,3 +35,6 @@ crate-type = ["cdylib"]
 # vtable over include/xmip_module.h, and forbid cannot be lifted at the one call
 # site that legitimately needs it. Every use is expected to justify itself.
 unsafe_code = "deny"
+
+[profile.dev.package."*"]
+opt-level = 3

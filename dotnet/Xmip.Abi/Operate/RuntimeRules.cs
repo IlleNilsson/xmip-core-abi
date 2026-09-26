@@ -19,7 +19,9 @@ namespace Xmip.Abi.Operate;
 /// library forwards each, and this binds each once for every .NET surface
 /// (ADR-0052 and ADR-0027, amendments 2026-09-24). Section 8, a publication
 /// read by the runtime, is <see cref="Publications"/>; section 9, a
-/// program's audit record, is <see cref="Audit"/>.
+/// program's audit record, is <see cref="Audit"/>; section 11, Events
+/// subscribed, is <see cref="Events"/>; section 12, the technologies the
+/// runtime carries, is <see cref="Catalogue"/>.
 /// </summary>
 /// <remarks>
 /// Pure calls: none reads the snapshot or holds a table, so one instance
@@ -93,6 +95,8 @@ public sealed unsafe class RuntimeRules
             Export(library, OperateAbi.CapabilityEntryEntrypoint);
         Publications = new PublicationReader(library);
         Audit = new RuntimeAudit(library);
+        Events = new RuntimeEvents(library);
+        Catalogue = new RuntimeCatalogue(library);
 
         delegate* unmanaged[Cdecl]<XmipStr*, nuint, nuint*, int> words =
             (delegate* unmanaged[Cdecl]<XmipStr*, nuint, nuint*, int>)
@@ -111,12 +115,20 @@ public sealed unsafe class RuntimeRules
     /// capability (ADR-0062).</summary>
     public RuntimeAudit Audit { get; }
 
+    /// <summary>Section 11: Events, subscribed from .NET and published into
+    /// this process (ADR-0065).</summary>
+    public RuntimeEvents Events { get; }
+
+    /// <summary>Section 12: the technologies the runtime carries and the
+    /// settings each declares (ADR-0064, amendment 2026-09-26).</summary>
+    public RuntimeCatalogue Catalogue { get; }
+
     /// <summary>The words a node may declare, in message-path order —
     /// <c>node::Stage::WORDS</c>, read once when the library loads.</summary>
     public IReadOnlyList<string> StageWords { get; }
 
-    /// <summary>Section 7's, section 8's and section 9's symbols, each of
-    /// which a runtime must export.</summary>
+    /// <summary>Section 7's, section 8's, section 9's, section 11's and
+    /// section 12's symbols, each of which a runtime must export.</summary>
     public static IReadOnlyList<string> Entrypoints { get; } =
     [
         OperateAbi.HealthRolledEntrypoint,
@@ -128,6 +140,8 @@ public sealed unsafe class RuntimeRules
         OperateAbi.CapabilityEntryEntrypoint,
         .. PublicationReader.Entrypoints,
         .. RuntimeAudit.Entrypoints,
+        .. RuntimeEvents.Entrypoints,
+        .. RuntimeCatalogue.Entrypoints,
         OperateAbi.ScopeContainsEntrypoint,
         OperateAbi.ScopePartsEntrypoint,
         OperateAbi.ScopeNodeEntrypoint,

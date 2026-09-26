@@ -66,14 +66,7 @@ public sealed unsafe class RuntimeAudit
             texts.Add(value);
         }
 
-        int[] starts = new int[texts.Count + 1];
-        byte[] bytes = new byte[texts.Sum(Encoding.UTF8.GetByteCount)];
-
-        for (int i = 0; i < texts.Count; i++)
-        {
-            starts[i + 1] = starts[i] + Encoding.UTF8.GetBytes(texts[i], 0, texts[i].Length,
-                bytes, starts[i]);
-        }
+        Utf8Pack pack = new(texts);
 
         // The first four are program, directory, action and message; the rest
         // are the properties, key then value, as the header lays them out.
@@ -83,13 +76,13 @@ public sealed unsafe class RuntimeAudit
         int kept = -1;
         int status;
 
-        fixed (byte* data = bytes)
+        fixed (byte* data = pack.Bytes)
         fixed (XmipStr* each = strings)
         fixed (byte* sentence = said)
         {
             for (int i = 0; i < texts.Count; i++)
             {
-                each[i] = new XmipStr(data + starts[i], (nuint)(starts[i + 1] - starts[i]));
+                each[i] = pack.Borrow(data, i);
             }
 
             status = _audit(each[0], each[1], each[2], (int)phase, (int)severity, each[3],

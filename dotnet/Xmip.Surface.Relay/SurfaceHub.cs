@@ -49,6 +49,13 @@ public sealed class SurfaceHub(IOperatorSurface surface) : Hub
         return surface.Run();
     }
 
+    /// <summary>The scope the host's publisher publishes at, where a drill
+    /// starts.</summary>
+    public string Root()
+    {
+        return surface.Root();
+    }
+
     /// <summary>Pause everything at and beneath a scope.</summary>
     public string Pause(string scope, string who)
     {

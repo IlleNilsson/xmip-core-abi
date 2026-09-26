@@ -52,6 +52,38 @@ public sealed record Figures(
             observed);
     }
 
+    /// <summary>
+    /// Several scopes' figures as one, under <paramref name="scope"/>: each
+    /// figure the sum of the ones published, and absent where none of them
+    /// published it — a figure nobody published does not become a zero by
+    /// being added up.
+    /// </summary>
+    public static Figures Sum(string scope, IEnumerable<Figures> parts)
+    {
+        ArgumentNullException.ThrowIfNull(parts);
+
+        Figures[] all = [.. parts];
+
+        ulong? Total(Func<Figures, ulong?> figure)
+        {
+            ulong[] published = [.. all.Select(figure).OfType<ulong>()];
+
+            return published.Length == 0
+                ? null
+                : published.Aggregate(0UL, (sum, value) => sum + value);
+        }
+
+        return new Figures(
+            scope,
+            Total(part => part.Streams),
+            Total(part => part.Messages),
+            Total(part => part.Journeys),
+            Total(part => part.Bytes),
+            Total(part => part.Retrying),
+            Total(part => part.Failed),
+            all.Select(part => part.Observed).Max());
+    }
+
     /// <summary>Whether the publisher supplied at least one figure.</summary>
     public bool HasValues =>
         Streams.HasValue || Messages.HasValue || Journeys.HasValue

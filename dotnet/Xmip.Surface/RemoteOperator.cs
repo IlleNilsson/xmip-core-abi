@@ -207,6 +207,12 @@ public sealed class RemoteOperator : IOperatorSurface, IDisposable
     }
 
     /// <inheritdoc />
+    public string Root()
+    {
+        return Ask<string>("Root") ?? ScopeTree.Root;
+    }
+
+    /// <inheritdoc />
     public string PauseScope(string scope, string who)
     {
         return Ask<string>("Pause", scope, who) ?? Source;

@@ -38,6 +38,82 @@ public interface IOperatorSurface
     }
 
     /// <summary>
+    /// The scope the publisher publishes at, where every drill starts: a
+    /// Playground roll's cluster, <c>xmip:///C1</c>, where the publication
+    /// says so; the root otherwise. Until 2026-09-26 every drill started at
+    /// the root, above the cluster, so the first level of every surface was
+    /// one row — the cluster — and <c>xmip-cli list</c> with no scope listed
+    /// that one row.
+    /// </summary>
+    public string Root()
+    {
+        return ScopeTree.Root;
+    }
+
+    /// <summary>
+    /// The six figures on one stage of the message path, summed over every
+    /// scope where that stage begins (<see cref="ScopeIndex.StageScopes"/>):
+    /// what a Receive, Process or Send card counts. A count not on the stage —
+    /// a scenario's, a backlog's — is no figure of it.
+    /// </summary>
+    public Figures Stage(string stage)
+    {
+        return Surface.Figures.Sum(stage, Index().StageScopes(stage).Select(Figures));
+    }
+
+    /// <summary>
+    /// What is configured at a stage across the cluster — each Receive
+    /// Location, Xmip Process or Send Location, one scope each: what is
+    /// directly beneath every scope where the stage begins. Until 2026-09-26 a
+    /// stage card called every leaf beneath its stage, each contract and
+    /// identity step, a thing configured.
+    /// </summary>
+    public IReadOnlyList<string> Locations(string stage)
+    {
+        ScopeIndex index = Index();
+
+        return
+        [
+            .. index.StageScopes(stage)
+                .SelectMany(index.Branches)
+                .Select(branch => branch.Scope)
+                .Order(StringComparer.Ordinal),
+        ];
+    }
+
+    /// <summary>
+    /// The message path's figures, as the prompt's letters and the Monitor's
+    /// cards say them: the Streams received at Receive, the Journeys through
+    /// Process and the Messages and Bytes out at Send — each from its own
+    /// stage — and what is retrying or has failed anywhere at or beneath
+    /// <see cref="Root"/>.
+    /// </summary>
+    public Figures MessagePath()
+    {
+        // Each stage gives the figure it counts (observe::Counted::at, asked of
+        // the runtime), so no stage word is written here.
+        Dictionary<Counted, Figures> counting = ScopeTree.Stages.ToDictionary(
+            ScopeTree.CountedAt, Stage);
+        Figures stages = Surface.Figures.Sum(Root(), counting.Values);
+        Figures all = Figures(Root());
+
+        ulong? Counting(Counted counted, Func<Figures, ulong?> figure)
+        {
+            return counting.TryGetValue(counted, out Figures? at) ? figure(at) : null;
+        }
+
+        return new Figures(
+            Root(),
+            Counting(Counted.Streams, at => at.Streams),
+            Counting(Counted.Messages, at => at.Messages),
+            Counting(Counted.Journeys, at => at.Journeys),
+            stages.Bytes,
+            all.Retrying,
+            all.Failed,
+            all.Observed);
+    }
+
+    /// <summary>
     /// The publication as the scope tree it is, built once and answered from
     /// by lookup (ADR-0052, amendment 2026-09-15: the index). A surface that
     /// keeps one per publication returns it; this default builds one from

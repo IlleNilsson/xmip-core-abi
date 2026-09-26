@@ -82,17 +82,22 @@ severity = 0
 evidence = "3/3 rounds passed"
 observed_unix_nanos = 1789111688000000000
 
+# Each count at the stage that took it, as a roll publishes since 2026-09-26:
+# a reader sums what is beneath any scope it is asked about.
 [[counts]]
 counted = "streams"
 value = 6
+scope = "xmip:///C1/node/alpha/receive"
 
 [[counts]]
 counted = "journeys"
 value = 6
+scope = "xmip:///C1/node/beta/process"
 
 [[counts]]
 counted = "messages"
 value = 5
+scope = "xmip:///C1/node/gamma/send"
 
 [run]
 cluster = "C1"

@@ -149,17 +149,6 @@ public static class English
                 : $"{(int)age.TotalHours}h ago";
     }
 
-    /// <summary>A measurement as a figure: bytes scaled, everything else with
-    /// thousands separated, a dash when there is none.</summary>
-    public static string Count(MeasurementRecord? measured)
-    {
-        return measured switch
-        {
-            { Counted: Counted.Bytes } bytes => Bytes(bytes.Value),
-            _ => Figure(measured?.Value),
-        };
-    }
-
     /// <summary>A figure as a person reads it: thousands separated, and a
     /// dash — never a zero — when the publisher has not published it
     /// (ADR-0052, amendment 2026-09-14). The one spelling the board, the
@@ -167,6 +156,21 @@ public static class English
     public static string Figure(ulong? value)
     {
         return value?.ToString("N0", CultureInfo.InvariantCulture) ?? "–";
+    }
+
+    /// <summary>The six figures on one line, in the order every surface says
+    /// them, an unpublished one a dash: what <c>xmip-cli</c> prints beside a
+    /// row and the web's drill beside a branch.</summary>
+    public static string Figures(Figures figures)
+    {
+        ArgumentNullException.ThrowIfNull(figures);
+
+        return $"Streams {Figure(figures.Streams)}  " +
+            $"Messages {Figure(figures.Messages)}  " +
+            $"Journeys {Figure(figures.Journeys)}  " +
+            $"Bytes {Figure(figures.Bytes)}  " +
+            $"Retrying {Figure(figures.Retrying)}  " +
+            $"Failed {Figure(figures.Failed)}";
     }
 
     /// <summary>What a surface says of a scope it holds nothing at, naming

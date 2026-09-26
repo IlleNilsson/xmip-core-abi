@@ -214,6 +214,12 @@ public sealed class ScopeIndex
         return entries.TryGetValue(Normal(scope), out Entry? entry) ? entry.Sorted() : [];
     }
 
+    /// <summary>The record at exactly this scope: a Location's own verdict.</summary>
+    public HealthRecord? Own(string scope)
+    {
+        return entries.TryGetValue(Normal(scope), out Entry? entry) ? entry.Own : null;
+    }
+
     /// <summary>The worst leaf at or beneath a scope.</summary>
     public HealthRecord? Worst(string scope)
     {
@@ -265,6 +271,14 @@ public sealed class ScopeIndex
             : [];
     }
 
+    /// <summary>Every scope where a stage begins, ordinal: each node's
+    /// <c>receive</c> for <c>receive</c>, what a stage card sums.</summary>
+    public IReadOnlyList<string> StageScopes(string stage)
+    {
+        return [.. entries.Values.Where(entry => entry.BeginsStage && entry.Stage == stage)
+            .Select(entry => entry.Scope).Order(StringComparer.Ordinal)];
+    }
+
     /// <summary>The worst leaf on a stage of the message path — receive, process
     /// or send — wherever that stage sits in the tree. Null when no leaf is
     /// on it.</summary>
@@ -300,6 +314,10 @@ public sealed class ScopeIndex
         if (scope != ScopeTree.Root && entries.TryGetValue(parent, out Entry? above))
         {
             above.Children.Add(entry);
+
+            // Where a stage begins: on one, beneath one on none (ScopeTree.Stage).
+            entry.Stage = ScopeTree.Stage(scope);
+            entry.BeginsStage = entry.Stage.Length > 0 && above.Stage.Length == 0;
         }
 
         return entry;
@@ -339,6 +357,9 @@ public sealed class ScopeIndex
         public string Scope { get; } = scope;
 
         public string Label { get; } = label;
+
+        public string Stage { get; set; } = string.Empty;
+        public bool BeginsStage { get; set; }
 
         public List<HealthRecord> Leaves { get; } = [];
 

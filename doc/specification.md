@@ -53,8 +53,11 @@ process during a migration.
 **Trait version** is per trait, and each trait moves on its own clock. The
 transport trait gaining a function does not renumber the path trait. Rules:
 
-- Same `trait_major` is compatible. The host may call any function the module
-  declares, and a module may be newer in `trait_minor` than the host.
+- Same `trait_major` is compatible when the module's `trait_minor` is less
+  than or equal to the host's: a module never asks for more than the host
+  offers, and a host refuses a module newer in `trait_minor` than itself
+  (ADR-0012, *Compatibility*; the owner, 2026-09-26, settling the two
+  readings this section and ADR-0012 once gave).
 - A minor bump may only append. Fields are added at the end of the table, never
   inserted, never reordered, never repurposed.
 - A major bump may do anything. It is a different trait for compatibility
@@ -455,3 +458,20 @@ What it carries in version 1: health per scope with its evidence, and
 measurements — a scope, what was counted, the value, its window, and when it
 was taken. Scope is an Xmip URI over the execution tree. The Rust mirror is
 `.src/operate.rs`, and its tests read the header and check every constant.
+
+Section 11 is Events, subscribed from any language (ADR-0065): a program
+subscribes with a filter and holds a handle, drains it — a batch whose Events
+borrow from it until it is freed — or is called back on a thread the runtime
+starts, and unsubscribes; it may publish an Event of its own. The matching,
+the authorization of the subscriber and the audit are `xmip-core-event`'s,
+forwarded by the runtime's library. Its bindings beside this one — C and C++
+over the header, .NET in `dotnet/Xmip.Abi`, Java and Python — decide nothing.
+The Rust mirror is `.src/operate/event.rs`.
+
+Section 12 is the technologies a runtime carries (ADR-0064, amendment
+2026-09-26): `xmip_technology_catalogue_v1` answers, as JSON in memory, each
+technology's capability, module name and settings — every setting's name,
+kind, presence and default, meaning and the side that reads it — as the
+technology itself declares them in `xmip-core`'s `settings` shape. A
+Location's form is built from it, never written in a surface. The Rust
+mirror is `.src/operate/catalogue.rs`; .NET binds it as `RuntimeCatalogue`.

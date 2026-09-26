@@ -63,8 +63,23 @@ public sealed class ScopeTreeTest
         const string scope = "xmip:///edge-01/receive/orders/in";
 
         Assert.Equal("receive", ScopeTree.Segment(scope, 1));
-        Assert.Equal("orders/in", ScopeTree.Name(scope));
+        Assert.Equal("receive/orders/in", ScopeTree.Name(scope));
         Assert.Equal("receive", ScopeTree.Name("xmip:///edge-01/receive"));
+    }
+
+    /// <summary>
+    /// A name is the exact scope within its cluster. Until 2026-09-26 the
+    /// first two segments were dropped: the Monitor said a skipped cabinet
+    /// was <c>s3/xml</c>, which test it was nowhere, and a node's leaf lost
+    /// the node marker.
+    /// </summary>
+    [Theory]
+    [InlineData("xmip:///C1/filing/s3/xml", "filing/s3/xml")]
+    [InlineData("xmip:///C1/node/alpha/receive/http/json", "node/alpha/receive/http/json")]
+    [InlineData("xmip:///C1", "xmip:///C1")]
+    public void ANameIsTheScopeWithinItsCluster(string scope, string name)
+    {
+        Assert.Equal(name, ScopeTree.Name(scope));
     }
 
     /// <summary>
@@ -82,10 +97,10 @@ public sealed class ScopeTreeTest
     public void TheNodeAndStageAreWhatTheRuntimeExportAnswers(
         string scope, string node, string stage)
     {
-        (string Node, string Stage) exported = RuntimeLibrary.Rules.Node(scope);
+        (string exportedNode, string exportedStage) = RuntimeLibrary.Rules.Node(scope);
 
-        Assert.Equal(exported.Node, ScopeTree.Node(scope));
-        Assert.Equal(exported.Stage, ScopeTree.Stage(scope));
+        Assert.Equal(exportedNode, ScopeTree.Node(scope));
+        Assert.Equal(exportedStage, ScopeTree.Stage(scope));
         Assert.Equal((node, stage), (ScopeTree.Node(scope), ScopeTree.Stage(scope)));
     }
 
@@ -178,13 +193,32 @@ public sealed class ScopeTreeTest
     [Fact]
     public void TheTrailIsEveryStepBackToTheCluster()
     {
-        IReadOnlyList<Crumb> trail = ScopeTree.Trail("xmip:///edge-01/receive");
+        IReadOnlyList<Crumb> trail = ScopeTree.Trail("xmip:///edge-01/receive", ScopeTree.Root);
 
         Assert.Equal(
             [new Crumb("cluster", ScopeTree.Root),
              new Crumb("edge-01", "xmip:///edge-01"),
              new Crumb("receive", "xmip:///edge-01/receive")],
             trail);
+    }
+
+    /// <summary>
+    /// A trail starts where the drill does, the cluster by its own name.
+    /// Until 2026-09-26 it began at the root, so a Playground cluster read
+    /// <c>cluster / C1 / …</c> — one cluster, two crumbs, and a level that
+    /// held one row.
+    /// </summary>
+    [Fact]
+    public void TheTrailStartsAtTheClusterByItsNameAndNeverTwice()
+    {
+        Assert.Equal(
+            [new Crumb("C1", "xmip:///C1"),
+             new Crumb("node", "xmip:///C1/node"),
+             new Crumb("alpha", "xmip:///C1/node/alpha")],
+            ScopeTree.Trail("xmip:///C1/node/alpha", "xmip:///C1"));
+        Assert.Equal(
+            [new Crumb("cluster", ScopeTree.Root), new Crumb("C2", "xmip:///C2")],
+            ScopeTree.Trail("xmip:///C2", "xmip:///C1"));
     }
 
     [Fact]
