@@ -26,7 +26,9 @@ public sealed class RuntimeRulesTests
             ?? throw new InvalidOperationException(reason);
     });
 
-    private static RuntimeRules Rules => Loaded.Value;
+    /// <summary>The runtime this estate built, loaded once for every test
+    /// that crosses to it.</summary>
+    internal static RuntimeRules Rules => Loaded.Value;
 
     [Theory]
     [InlineData("xmip:///n", "xmip:///n/receive/a", true)]

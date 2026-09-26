@@ -58,6 +58,12 @@ public sealed class OperateAbiTests
     [InlineData("XMIP_AUDIT_ENTRYPOINT", OperateAbi.AuditEntrypoint)]
     [InlineData("XMIP_EVENT_SOURCE", OperateAbi.EventSource)]
     [InlineData("XMIP_EVENT_SOURCE_UNREGISTERED", OperateAbi.EventSourceUnregistered)]
+    [InlineData("XMIP_EVENT_SUBSCRIBE_ENTRYPOINT", OperateAbi.EventSubscribeEntrypoint)]
+    [InlineData("XMIP_EVENT_NEXT_ENTRYPOINT", OperateAbi.EventNextEntrypoint)]
+    [InlineData("XMIP_EVENT_BATCH_FREE_ENTRYPOINT", OperateAbi.EventBatchFreeEntrypoint)]
+    [InlineData("XMIP_EVENT_LISTEN_ENTRYPOINT", OperateAbi.EventListenEntrypoint)]
+    [InlineData("XMIP_EVENT_UNSUBSCRIBE_ENTRYPOINT", OperateAbi.EventUnsubscribeEntrypoint)]
+    [InlineData("XMIP_EVENT_PUBLISH_ENTRYPOINT", OperateAbi.EventPublishEntrypoint)]
     public void NamesEachSymbolTheHeaderDeclares(string define, string symbol)
     {
         Assert.Equal(Header.Define("xmip_operate.h", define), symbol);
@@ -117,6 +123,24 @@ public sealed class OperateAbiTests
     [InlineData("SEVERITY", typeof(AuditSeverity))]
     [InlineData("KEPT", typeof(AuditKept))]
     public void KnowsEverySectionNineValueTheHeaderDefinesAndNoOther(string family, Type values)
+    {
+        IReadOnlyDictionary<string, int> header = Header.Enumerators(family);
+
+        Assert.NotEmpty(header);
+
+        foreach ((string constant, int value) in header)
+        {
+            Assert.Equal(Header.MemberName(constant), Enum.GetName(values, value));
+        }
+
+        Assert.Equal(header.Count, Enum.GetValues(values).Length);
+    }
+
+    [Theory]
+    [InlineData("ACTION", typeof(EventAction))]
+    [InlineData("OUTCOME", typeof(EventOutcome))]
+    public void KnowsEverySectionElevenValueTheHeaderDefinesAndNoOther(
+        string family, Type values)
     {
         IReadOnlyDictionary<string, int> header = Header.Enumerators(family);
 

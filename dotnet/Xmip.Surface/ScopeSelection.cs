@@ -33,7 +33,8 @@ public sealed record ScopeSelection(
     /// <paramref name="refusal"/> when a pattern names nothing at all. A
     /// pattern that matches nothing is never success and never silence:
     /// silence reads as <em>all clear</em>, and this is the opposite of that.
-    /// An empty argument is the cluster's root.
+    /// An empty argument is where the publisher publishes, the cluster
+    /// (<see cref="IOperatorSurface.Root"/>).
     /// </summary>
     public static ScopeSelection? Of(
         IOperatorSurface surface, string argument, out string refusal)
@@ -41,7 +42,7 @@ public sealed record ScopeSelection(
         ArgumentNullException.ThrowIfNull(surface);
 
         refusal = string.Empty;
-        string pattern = string.IsNullOrEmpty(argument) ? ScopeTree.Root : argument;
+        string pattern = string.IsNullOrEmpty(argument) ? surface.Root() : argument;
 
         if (!ScopePattern.HasWildcard(pattern))
         {

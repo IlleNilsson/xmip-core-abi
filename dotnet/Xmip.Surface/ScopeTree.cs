@@ -127,19 +127,19 @@ public static class ScopeTree
         return Parts(scope).ElementAtOrDefault(index) ?? string.Empty;
     }
 
-    /// <summary>What a thing is called beneath its node and stage — the leaf's
-    /// own name, or the stage when there is nothing beneath it, or the scope
-    /// itself when it is shallower than that.</summary>
+    /// <summary>What a thing is called within its cluster: every segment
+    /// beneath the first, which is the cluster (<c>observe::Scope</c>: segment
+    /// 0 is the cluster and never the node) — <c>node/alpha/receive/http/json</c>,
+    /// <c>filing/s3/xml</c> — or the scope itself when it is the cluster or
+    /// the root. Until 2026-09-26 the first two segments were dropped, which
+    /// read a scope as node, stage, name: a Playground scope lost its test
+    /// (<c>filing/s3/xml</c> said <c>s3/xml</c>) and a node's leaf its node
+    /// marker, so no view named the exact scope.</summary>
     public static string Name(string scope)
     {
         string[] parts = Parts(scope);
 
-        return parts.Length switch
-        {
-            >= 3 => string.Join('/', parts.Skip(2)),
-            2 => parts[1],
-            _ => scope,
-        };
+        return parts.Length >= 2 ? string.Join('/', parts.Skip(1)) : scope;
     }
 
     /// <summary>The rollup (ADR-0041): a parent above anything not Fine is
@@ -201,14 +201,24 @@ public static class ScopeTree
         return [.. RuntimeLibrary.Rules.WorstFirst(standing).Select(at => items[at])];
     }
 
-    /// <summary>The path from the cluster down to a scope, each step a place to
-    /// climb back to.</summary>
-    public static IReadOnlyList<Crumb> Trail(string scope)
+    /// <summary>
+    /// The path from <paramref name="top"/> — where the drill starts,
+    /// <see cref="IOperatorSurface.Root"/> — down to a scope, each step a place
+    /// to climb back to. The first step is the top by its own name, and
+    /// <c>cluster</c> only where the top is the root itself. Until 2026-09-26
+    /// every trail began at the root, so a Playground cluster's read
+    /// <c>cluster / C1 / …</c>: one cluster named twice, and a level to click
+    /// through that held one row. A scope not beneath the top is trailed from
+    /// the root.
+    /// </summary>
+    public static IReadOnlyList<Crumb> Trail(string scope, string top)
     {
-        List<Crumb> trail = [new Crumb("cluster", Root)];
-        List<string> accumulated = [];
+        string from = Beneath(scope, top) ? top : Root;
+        string[] above = Parts(from);
+        List<string> accumulated = [.. above];
+        List<Crumb> trail = [new Crumb(above.Length == 0 ? "cluster" : above[^1], from)];
 
-        foreach (string segment in Parts(scope))
+        foreach (string segment in Parts(scope).Skip(above.Length))
         {
             accumulated.Add(segment);
             trail.Add(new Crumb(segment, Join(accumulated)));

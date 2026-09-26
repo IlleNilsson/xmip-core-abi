@@ -53,11 +53,10 @@ public sealed class EnglishTest
     }
 
     [Fact]
-    public void CountsAreFiguresAndBytesAreScaled()
+    public void FiguresAreSeparatedAndBytesAreScaled()
     {
-        Assert.Equal("–", English.Count(null));
-        Assert.Equal("1,284", English.Count(new("s", Counted.Streams, 1_284, Now, Now, Now)));
-        Assert.Equal("91.3 MB", English.Count(new("s", Counted.Bytes, 91_337_412, Now, Now, Now)));
+        Assert.Equal("–", English.Figure(null));
+        Assert.Equal("1,284", English.Figure(1_284));
         Assert.Equal("512 B", English.Bytes(512));
         Assert.Equal("1.5 kB", English.Bytes(1_500));
         Assert.Equal("2.0 GB", English.Bytes(2_000_000_000));

@@ -154,4 +154,29 @@ public static class OperateAbi
     public const string EventSourceUnregistered =
         "The Xmip event source is not registered and registering it needs elevation once " +
         "(Install-XmipPrerequisite does it), so this is written under the .NET Runtime source.";
+
+    /// <summary>Subscribe to the process's Events with a filter: section 11,
+    /// forwarded to <c>xmip-core-event</c>'s <c>Hub::subscribe</c>
+    /// (ADR-0065).</summary>
+    public const string EventSubscribeEntrypoint = "xmip_event_subscribe_v1";
+
+    /// <summary>Drain a subscription's queue as a batch: section 11.</summary>
+    public const string EventNextEntrypoint = "xmip_event_next_v1";
+
+    /// <summary>Release a drained batch: section 11.</summary>
+    public const string EventBatchFreeEntrypoint = "xmip_event_batch_free_v1";
+
+    /// <summary>Subscribe and be called back for each Event: section 11.</summary>
+    public const string EventListenEntrypoint = "xmip_event_listen_v1";
+
+    /// <summary>Release either kind of subscription: section 11.</summary>
+    public const string EventUnsubscribeEntrypoint = "xmip_event_unsubscribe_v1";
+
+    /// <summary>Publish an Event of the caller's: section 11,
+    /// <c>Hub::publish</c>.</summary>
+    public const string EventPublishEntrypoint = "xmip_event_publish_v1";
+
+    /// <summary>The technologies the runtime carries and the settings each
+    /// declares: section 12 (ADR-0064, amendment 2026-09-26).</summary>
+    public const string TechnologyCatalogueEntrypoint = "xmip_technology_catalogue_v1";
 }

@@ -11,6 +11,21 @@ namespace Xmip.Surface.Test;
 public sealed class FiguresTest
 {
     [Fact]
+    public void ASumAddsWhatWasPublishedAndKeepsWhatNobodyPublishedAbsent()
+    {
+        Figures sum = Figures.Sum(
+            "receive",
+            [
+                new Figures("a", 3, null, null, null, null, 0, null),
+                new Figures("b", 4, null, null, null, null, null, null),
+            ]);
+
+        Assert.Equal(("receive", 7UL, 0UL), (sum.Scope, sum.Streams!.Value, sum.Failed!.Value));
+        Assert.Null(sum.Messages);
+        Assert.False(Figures.Sum("send", []).HasValues);
+    }
+
+    [Fact]
     public void ReadsTheSixCountedThingsAndKeepsUnpublishedOnesAbsent()
     {
         IOperatorSurface surface = new FakeSurface(new Dictionary<Counted, ulong>
@@ -51,7 +66,7 @@ public sealed class FiguresTest
 
         ScopeItem row = surface.Describe("xmip:///edge-01/receive/orders");
 
-        Assert.Equal("orders", row.Name);
+        Assert.Equal("receive/orders", row.Name);
         Assert.False(row.IsContainer);
         Assert.Null(row.Health);
         Assert.Equal(3UL, row.Figures.Streams);

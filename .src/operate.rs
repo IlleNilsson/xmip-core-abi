@@ -281,6 +281,9 @@ pub mod rule {
 }
 
 pub mod audit;
+pub mod catalogue;
+pub mod design;
+pub mod event;
 pub mod publication;
 
 #[cfg(test)]
@@ -400,6 +403,22 @@ mod tests {
             ),
             ("XMIP_START_ENTRYPOINT", XMIP_START_ENTRYPOINT),
             ("XMIP_VALIDATE_ENTRYPOINT", XMIP_VALIDATE_ENTRYPOINT),
+            (
+                "XMIP_APPLICATION_ROUTES_ENTRYPOINT",
+                design::APPLICATION_ROUTES_ENTRYPOINT,
+            ),
+            (
+                "XMIP_FILTER_STRUCTURE_ENTRYPOINT",
+                design::FILTER_STRUCTURE_ENTRYPOINT,
+            ),
+            (
+                "XMIP_FILTER_TEXT_ENTRYPOINT",
+                design::FILTER_TEXT_ENTRYPOINT,
+            ),
+            (
+                "XMIP_APPLICATION_EDIT_ENTRYPOINT",
+                design::APPLICATION_EDIT_ENTRYPOINT,
+            ),
         ] {
             let line = HEADER
                 .lines()

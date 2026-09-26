@@ -4,10 +4,24 @@ namespace Xmip.Surface;
 
 /// <summary>
 /// One row of the scope tree as every surface shows it: the name, the mood,
-/// the worst leaf's severity and evidence (ADR-0052 clause 2), and the six
-/// figures. The <c>xmip</c> executable, the PowerShell module and the GUI
-/// read this one shape; only the rendering differs.
+/// the worst leaf beneath it — its scope, severity and evidence, so a Holding
+/// row says why and where (ADR-0052 clause 2) — and the six figures. The
+/// <c>xmip</c> executable, the PowerShell module and the GUI read this one
+/// shape; only the rendering differs.
 /// </summary>
+/// <param name="Name">What the row is called within its cluster
+/// (<see cref="ScopeTree.Name"/>).</param>
+/// <param name="Scope">The row's own scope.</param>
+/// <param name="IsContainer">Whether anything is beneath it.</param>
+/// <param name="Health">Its mood: a leaf's own, a container's rollup.</param>
+/// <param name="Severity">The worst leaf's severity.</param>
+/// <param name="Evidence">The worst leaf's evidence.</param>
+/// <param name="Worst">The worst leaf's scope — the next place to drill to
+/// the cause, the row itself for a leaf; null where nothing is recorded.
+/// Until 2026-09-26 a row said the evidence and never whose it was, so an
+/// operator read why and could not reach it.</param>
+/// <param name="Figures">The six figures at the row, summed beneath it.</param>
+/// <param name="Observed">When the newest of them was observed.</param>
 public sealed record ScopeItem(
     string Name,
     string Scope,
@@ -15,6 +29,7 @@ public sealed record ScopeItem(
     HealthState? Health,
     byte? Severity,
     string Evidence,
+    string? Worst,
     Figures Figures,
     DateTimeOffset? Observed)
 {
@@ -34,6 +49,7 @@ public sealed record ScopeItem(
             health,
             worst?.Severity,
             worst?.Evidence ?? string.Empty,
+            worst?.Scope,
             figures,
             figures.Observed ?? worst?.Observed);
     }
@@ -44,7 +60,8 @@ public sealed record ScopeItem(
         return From(scope, surface.Health(scope), surface.Figures(scope));
     }
 
-    /// <summary>Read the direct children of a scope, one row each.</summary>
+    /// <summary>Read the direct children of a scope, one row each, worst
+    /// first.</summary>
     public static IReadOnlyList<ScopeItem> Children(IOperatorSurface surface, string scope)
     {
         ScopeIndex index = surface.Index();
@@ -55,4 +72,7 @@ public sealed record ScopeItem(
                 branch.Scope, index.Health(branch.Scope), surface.Figures(branch.Scope))),
         ];
     }
+
+    /// <summary>Whether the row needs the operator: its mood is not Fine.</summary>
+    public bool Troubled => Health is { } mood && mood != HealthState.Fine;
 }

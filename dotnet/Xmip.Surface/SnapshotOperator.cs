@@ -80,12 +80,16 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
         return Read().Run;
     }
 
-    /// <summary>The scope the publisher publishes at — the document's
-    /// <c>node</c>, <c>xmip:///A1</c> for a Playground roll named A1 — or the
-    /// root when it names none.</summary>
+    /// <inheritdoc cref="IOperatorSurface.Root" />
+    /// <remarks>The document's <c>node</c>, <c>xmip:///A1</c> for a Playground
+    /// roll named A1, where a record is published beneath it; the root when
+    /// it names none, or names a scope nothing is published at — a drill
+    /// cannot start where there is nothing to drill.</remarks>
     public string Root()
     {
-        return Read().Root;
+        Reading read = Read();
+
+        return read.Index.Health(read.Root).Count > 0 ? read.Root : ScopeTree.Root;
     }
 
     /// <inheritdoc />
@@ -264,10 +268,14 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
         }
 
         string source = read.Source.Length > 0 ? read.Source : Source;
+        // Each count keeps when it was observed, so a figure is as old as its
+        // publication says: until 2026-09-26 it was dropped here, and every
+        // figure a snapshot answered was dated now, however long the
+        // publisher had been silent (ADR-0027 clause 6).
         ScopeIndex index = ScopeIndex.Build(
             read.Records,
             read.Counts.Select(count => new ScopeIndex.Count(
-                count.Scope, count.Counted, count.Value, null)),
+                count.Scope, count.Counted, count.Value, count.Observed)),
             ++revision,
             source);
 

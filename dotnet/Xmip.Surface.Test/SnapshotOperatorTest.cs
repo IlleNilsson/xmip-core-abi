@@ -70,9 +70,15 @@ public sealed class SnapshotOperatorTest
     }
 
     [Fact]
-    public void TheRootIsWhereThePublisherSaysItPublishes()
+    public void TheRootIsWhereThePublisherSaysItPublishesWhereAnythingIsBeneathIt()
     {
-        Assert.Equal("xmip:///lab", new SnapshotOperator(Fixture).Root());
+        // This fixture names xmip:///lab and publishes beneath edge-01 and
+        // edge-02: a drill that started at lab would start on nothing.
+        Assert.Equal(ScopeTree.Root, new SnapshotOperator(Fixture).Root());
+        Assert.Equal(
+            "xmip:///C1",
+            new SnapshotOperator(Path.Combine(AppContext.BaseDirectory, "Fixture", "cluster.toml"))
+                .Root());
         Assert.Equal(
             ScopeTree.Root,
             new SnapshotOperator(Path.Combine(Path.GetTempPath(), "no-such-snapshot.toml")).Root());

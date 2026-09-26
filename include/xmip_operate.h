@@ -684,6 +684,226 @@ typedef XmipStatus (*XmipAuditFn)(XmipStr program, XmipStr directory, XmipStr ac
  */
 #define XMIP_EVENT_SOURCE_UNREGISTERED "The Xmip event source is not registered and registering it needs elevation once (Install-XmipPrerequisite does it), so this is written under the .NET Runtime source."
 
+/* ===================================================================== */
+/* 10. An Xmip Application, read and edited for a designer               */
+/* ===================================================================== */
+
+/*
+ * A developer draws an Xmip Application's routes in VS Code (ADR-0064), and
+ * the designer holds no rule: its language server asks here, and each export
+ * is a thin forwarder into xmip-core-configure, where the Application, its
+ * filters and its edits are read. Pure like section 7: no handle, any
+ * thread, before any node. Validating an Application is xmip_validate_v1's,
+ * which reads either document.
+ *
+ * One shape for the four. input is the text the export reads; argument is
+ * the edit xmip_application_edit_v1 makes and empty for the others. The
+ * answer is written into out as UTF-8, its true byte length in out_len
+ * whether or not it fit, as xmip_validate_v1 writes its report. XMIP_OK with
+ * the answer; XMIP_E_INVALID with the refusal, one sentence, in out;
+ * XMIP_E_MALFORMED when input or argument is not UTF-8.
+ *
+ * What crosses is JSON, in memory only (ADR-0031 clause 2):
+ *   xmip_application_routes_v1  an Application in; its routes as a graph
+ *                               out: nodes (id, kind, name, column, target,
+ *                               a Subscription's filter and summary),
+ *                               edges (from, to, kind), problems, and the
+ *                               operators and kinds a filter row offers.
+ *   xmip_filter_structure_v1    a filter's text in; its rows and groups out.
+ *   xmip_filter_text_v1         rows and groups in; the filter's canonical
+ *                               text out, which reads back byte for byte.
+ *   xmip_application_edit_v1    an Application in, an edit as argument; the
+ *                               edited Application's text out, everything
+ *                               the edit does not touch as it was.
+ */
+typedef XmipStatus (*XmipDesignFn)(XmipStr input, XmipStr argument,
+                                   uint8_t *out, size_t cap, size_t *out_len);
+
+#define XMIP_APPLICATION_ROUTES_ENTRYPOINT "xmip_application_routes_v1"
+#define XMIP_FILTER_STRUCTURE_ENTRYPOINT   "xmip_filter_structure_v1"
+#define XMIP_FILTER_TEXT_ENTRYPOINT        "xmip_filter_text_v1"
+#define XMIP_APPLICATION_EDIT_ENTRYPOINT   "xmip_application_edit_v1"
+
+/* ===================================================================== */
+/* 11. Events, subscribed                                                */
+/* ===================================================================== */
+
+/*
+ * Every completed Receive, Process and Send action produces an Event for
+ * every outcome (runtime-model.md section 17), and a program in any language
+ * subscribes to them here (ADR-0065). Each export is a thin forwarder into
+ * xmip-core-event: which Events a filter matches, whether the subscriber may
+ * see them, the queue and the audit are written there once, and no binding
+ * decides any of it again.
+ *
+ * A subscriber is a Party: subscriber is the Party's UUID, and the program
+ * that loaded this library is its identity - the operating system vouches
+ * for a caller in this process, and the authorization gate decides what it
+ * may see. program and directory say where its subscription, its deliveries
+ * and its refusals are audited, as section 9's do (empty directory: the
+ * capability decides). A refused subscription is XMIP_E_AUTH, *out NULL,
+ * with the gate's sentence in said as xmip_validate_v1 writes its report;
+ * an empty subscriber or an outcome not defined here is XMIP_E_INVALID, a
+ * subscriber or filter Party that is not a UUID, or text that is not UTF-8,
+ * XMIP_E_MALFORMED.
+ *
+ * A filter's lists and strings, each empty for any: the Event types, the
+ * outcomes, the scope the Event must have happened at or beneath (an Xmip
+ * URI, section 2), and the Party's UUID it must be about. capacity bounds the
+ * subscription's queue, 0 for the default; publishing never waits for a
+ * subscriber, and an Event a full queue refused is counted, handed over as
+ * *out_refused at the next drain, and audited.
+ *
+ * Draining, section 8's handle pattern: xmip_event_next_v1 waits up to
+ * timeout_ms for the first Event, waking the moment one arrives, and hands
+ * over up to max of them (at least one; max 0 is one) as a batch -
+ * *out_events points at *out_len XmipEvents whose every string
+ * borrows from *out_batch - and xmip_event_batch_free_v1 releases the batch
+ * and all of it. XMIP_OK with a batch when anything arrived or was refused;
+ * XMIP_E_TIMEOUT, *out_batch NULL, when nothing did; XMIP_E_STATE on a
+ * listening subscription, which is never drained. A handle is drained from
+ * one thread at a time, and never unsubscribed while a next on it has not
+ * returned.
+ *
+ * Called back instead: xmip_event_listen_v1 subscribes as subscribe does and
+ * calls callback with context for each Event, on a thread the runtime starts
+ * for this subscription and never on the publisher's; the Event and its
+ * strings are valid for that call only. One callback at a time per
+ * subscription. XMIP_E_CAPACITY when the thread could not be started.
+ *
+ * xmip_event_unsubscribe_v1 releases either kind of handle. For a listening
+ * one it returns once the callback in progress has returned - except when it
+ * is called from inside that callback, where it returns at once and the
+ * thread ends after the callback does. It returns once the audit records
+ * of the subscription are kept, so a program that unsubscribed and exits
+ * has lost none. Nothing borrowed from a handle is valid afterwards; a batch
+ * drained before stays valid until it is freed.
+ *
+ * xmip_event_publish_v1 hands an Event of the caller's to every matching
+ * subscription and says in *out_delivered how many queues took it. An empty
+ * id is minted, a time of 0 is now; the type and scope must not be empty
+ * and diagnostics_len, a count of strings, must be even (XMIP_E_INVALID, as
+ * for an action or outcome not defined here), and an identifier that is not
+ * a UUID, or text that is not UTF-8, is XMIP_E_MALFORMED.
+ *
+ * Every call may be made from any thread, before, during and without a
+ * node; it touches no snapshot (ADR-0027 clause 6). Separate optional
+ * symbols, as section 7's are; XMIP_OPERATE_VERSION is unchanged.
+ */
+typedef enum {
+    XMIP_ACTION_RECEIVE = 0,
+    XMIP_ACTION_PROCESS = 1,
+    XMIP_ACTION_SEND    = 2
+} XmipAction;
+
+typedef enum {
+    XMIP_OUTCOME_SUCCESS           = 0,
+    XMIP_OUTCOME_FAILURE           = 1,
+    XMIP_OUTCOME_REJECTION         = 2,
+    XMIP_OUTCOME_WAITING           = 3,
+    XMIP_OUTCOME_PAUSE             = 4,
+    XMIP_OUTCOME_TIMEOUT           = 5,
+    XMIP_OUTCOME_EXHAUSTED_RETRIES = 6,
+    XMIP_OUTCOME_DISMISSAL         = 7
+} XmipOutcome;
+
+/*
+ * One Event: references, never a payload. Identifiers are UUIDs in
+ * 8-4-4-4-12 form, and every optional string is empty where there is none.
+ */
+typedef struct {
+    XmipStr        id;
+    XmipStr        type;
+    int64_t        time_unix_nanos;
+    int32_t        action;          /* XmipAction */
+    int32_t        outcome;         /* XmipOutcome */
+    XmipScope      scope;           /* where it happened */
+    XmipStr        journey;
+    XmipStr        message;
+    XmipStr        stream;
+    XmipStr        endpoint;
+    XmipStr        module;
+    XmipStr        artifact;
+    XmipStr        party;           /* the Party it is about */
+    const XmipStr *diagnostics;     /* name then value, safe to hand outside */
+    size_t         diagnostics_len;
+} XmipEvent;
+
+typedef struct {
+    const XmipStr *types;
+    size_t         types_len;
+    const int32_t *outcomes;        /* XmipOutcome */
+    size_t         outcomes_len;
+    XmipScope      scope;
+    XmipStr        party;
+} XmipEventFilter;
+
+typedef struct XmipEventSubscription XmipEventSubscription;
+typedef struct XmipEventBatch XmipEventBatch;
+
+typedef void (*XmipEventCallback)(void *context, const XmipEvent *event);
+
+typedef XmipStatus (*XmipEventSubscribeFn)(XmipStr program, XmipStr directory,
+                                           XmipStr subscriber, const XmipEventFilter *filter,
+                                           size_t capacity, XmipEventSubscription **out,
+                                           uint8_t *said, size_t said_cap, size_t *said_len);
+typedef XmipStatus (*XmipEventNextFn)(XmipEventSubscription *subscription, uint32_t timeout_ms,
+                                      size_t max, XmipEventBatch **out_batch,
+                                      const XmipEvent **out_events, size_t *out_len,
+                                      uint64_t *out_refused);
+typedef void (*XmipEventBatchFreeFn)(XmipEventBatch *batch);
+typedef XmipStatus (*XmipEventListenFn)(XmipStr program, XmipStr directory,
+                                        XmipStr subscriber, const XmipEventFilter *filter,
+                                        size_t capacity, XmipEventCallback callback,
+                                        void *context, XmipEventSubscription **out,
+                                        uint8_t *said, size_t said_cap, size_t *said_len);
+typedef void (*XmipEventUnsubscribeFn)(XmipEventSubscription *subscription);
+typedef XmipStatus (*XmipEventPublishFn)(const XmipEvent *event, size_t *out_delivered);
+
+#define XMIP_EVENT_SUBSCRIBE_ENTRYPOINT   "xmip_event_subscribe_v1"
+#define XMIP_EVENT_NEXT_ENTRYPOINT        "xmip_event_next_v1"
+#define XMIP_EVENT_BATCH_FREE_ENTRYPOINT  "xmip_event_batch_free_v1"
+#define XMIP_EVENT_LISTEN_ENTRYPOINT      "xmip_event_listen_v1"
+#define XMIP_EVENT_UNSUBSCRIBE_ENTRYPOINT "xmip_event_unsubscribe_v1"
+#define XMIP_EVENT_PUBLISH_ENTRYPOINT     "xmip_event_publish_v1"
+
+/* ===================================================================== */
+/* 12. The technologies a runtime carries, and what each declares        */
+/* ===================================================================== */
+
+/*
+ * A Receive or Send Location's form is never written in a surface: every
+ * technology declares its own settings in its own crate - each setting's
+ * name, kind, default, whether it is required, what it means and which side
+ * reads it - and that one declaration is what the technology reads its
+ * settings through and what xmip_validate_v1 and xmip_start_v1 hold a
+ * Location to (ADR-0064, amendment 2026-09-26). The language server and the
+ * desktop editor read it here. A thin forwarder, pure like section 7: no
+ * handle, any thread, before any node.
+ *
+ * technology empty for every technology the runtime carries, or a module
+ * name (xmip-core-transport-kafka) for that one alone. The answer is JSON,
+ * in memory only (ADR-0031 clause 2), written into out as UTF-8, its true
+ * byte length in out_len whether or not it fit:
+ *
+ *   {"technologies":[{"capability":"transport"|"contract",
+ *     "technology":"<module name>",
+ *     "settings":[{"name","kind","presence","default"?,"meaning","applies",
+ *                  "minimum"?,"maximum"?,"choices"?}]}]}
+ *
+ * kind is text, integer (minimum, maximum), boolean, duration (a whole
+ * number and ms, s, m or h), address, secret (the name of a secret, never
+ * the secret) or choice (choices); presence is required, optional or
+ * default (default); applies is receive, send or both. XMIP_OK with the
+ * answer; XMIP_E_INVALID with the refusal, one sentence, when the runtime
+ * carries no technology of that name; XMIP_E_MALFORMED when it is not UTF-8.
+ * Optional symbol, as section 7's are; XMIP_OPERATE_VERSION is unchanged.
+ */
+typedef XmipStatus (*XmipCatalogueFn)(XmipStr technology, uint8_t *out,
+                                      size_t cap, size_t *out_len);
+
+#define XMIP_TECHNOLOGY_CATALOGUE_ENTRYPOINT "xmip_technology_catalogue_v1"
+
 #ifdef __cplusplus
 }
 #endif
