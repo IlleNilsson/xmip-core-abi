@@ -1,3 +1,5 @@
+using Xmip.Abi.Operate;
+
 namespace Xmip.Surface;
 
 /// <summary>
@@ -50,6 +52,21 @@ public sealed record FigureFlow(
         || Messages is not null
         || Retrying is not null
         || Failed is not null;
+
+    /// <summary>The rate of one counted kind, as <see cref="Figures.Of"/>
+    /// answers the figure. Bytes have no rate here, and are null.</summary>
+    public double? Of(Counted counted)
+    {
+        return counted switch
+        {
+            Counted.Streams => Streams,
+            Counted.Journeys => Journeys,
+            Counted.Messages => Messages,
+            Counted.Retrying => Retrying,
+            Counted.Failed => Failed,
+            _ => null,
+        };
+    }
 
     /// <summary>
     /// The rate between two publications, over the time between them.

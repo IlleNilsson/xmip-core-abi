@@ -1,6 +1,6 @@
 using Xmip.Abi.Module;
 
-namespace Xmip.Abi.Tests;
+namespace Xmip.Abi.Test;
 
 /// <summary>
 /// The binding agrees with section 3 of <c>xmip_module.h</c>. A status the
@@ -8,7 +8,7 @@ namespace Xmip.Abi.Tests;
 /// "not a status this build knows" — the exact failure ADR-0012 clause 1
 /// says is a defect in the binding.
 /// </summary>
-public sealed class XmipStatusTests
+public sealed class XmipStatusTest
 {
     private const string Unknown = "not a status this build knows";
 

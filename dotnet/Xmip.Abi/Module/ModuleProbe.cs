@@ -23,8 +23,27 @@ namespace Xmip.Abi.Module;
 /// </remarks>
 public static unsafe class ModuleProbe
 {
-    /// <summary>What a module said when asked.</summary>
+    /// <summary>
+    /// What a module said when asked, or why it could not be asked: the one
+    /// object <c>xmip-cli probe</c> renders and <c>Get-XmipModuleDescriptor</c>
+    /// emits.
+    /// </summary>
+    /// <param name="Library">The library probed, as given.</param>
+    /// <param name="Status">What the entrypoint returned; <c>NotFound</c>
+    /// where the library could not be loaded at all.</param>
+    /// <param name="Provider">The descriptor's provider.</param>
+    /// <param name="Module">The descriptor's module name.</param>
+    /// <param name="Standard">The descriptor's standard, empty for core.</param>
+    /// <param name="AbiVersion">The abi_version the module says it speaks.</param>
+    /// <param name="TraitVersion">The trait's major.minor.</param>
+    /// <param name="ModuleVersion">The module's major.minor.patch.</param>
+    /// <param name="LastError">The module's last error, or the status's
+    /// meaning where it refused.</param>
+    /// <param name="Unloadable">Why the library could not be loaded — it is
+    /// not there, not a library for this platform, or exports no
+    /// entrypoint; empty when it loaded.</param>
     public sealed record Result(
+        string Library,
         XmipStatus Status,
         string Provider,
         string Module,
@@ -32,8 +51,16 @@ public static unsafe class ModuleProbe
         uint AbiVersion,
         string TraitVersion,
         string ModuleVersion,
-        string LastError)
+        string LastError,
+        string Unloadable = "")
     {
+        /// <summary>Whether the library loaded and its entrypoint was
+        /// asked.</summary>
+        public bool Loaded => Unloadable.Length == 0;
+
+        /// <summary>The status as one line an operator reads.</summary>
+        public string Meaning => Status.Explain();
+
         /// <summary>
         /// What a module that loaded got wrong, in one sentence; empty when it
         /// conforms, or when it did not load and <see cref="Status"/> says why.
@@ -45,7 +72,7 @@ public static unsafe class ModuleProbe
         /// provider is <c>core</c>.</remarks>
         public string Complaint => this switch
         {
-            { Status: not XmipStatus.Ok } => string.Empty,
+            { Loaded: false } or { Status: not XmipStatus.Ok } => string.Empty,
             { AbiVersion: not ModuleAbi.AbiVersion } =>
                 $"Loaded, and disagrees: the module says {AbiVersion}, " +
                 $"this build speaks {ModuleAbi.AbiVersion}.",
@@ -75,14 +102,26 @@ public static unsafe class ModuleProbe
     /// <summary>
     /// Load <paramref name="libraryPath"/>, create the module, read its
     /// descriptor and destroy it. Log lines the module emits on the way go to
-    /// <paramref name="log"/>, or nowhere when it is null.
+    /// <paramref name="log"/>, or nowhere when it is null. A library that
+    /// cannot be loaded — not there, not for this platform, no
+    /// <see cref="ModuleAbi.Entrypoint"/> — is an answer, not an exception:
+    /// <see cref="Result.Unloadable"/> says which, judged here once for every
+    /// surface.
     /// </summary>
-    /// <exception cref="DllNotFoundException">The library could not be loaded.</exception>
-    /// <exception cref="BadImageFormatException">It is not a library for this
-    /// platform.</exception>
-    /// <exception cref="EntryPointNotFoundException">It exports no
-    /// <see cref="ModuleAbi.Entrypoint"/>.</exception>
     public static Result Probe(string libraryPath, Action<string>? log)
+    {
+        try
+        {
+            return Loaded(libraryPath, log);
+        }
+        catch (Exception failure) when (failure
+            is DllNotFoundException or EntryPointNotFoundException or BadImageFormatException)
+        {
+            return Failed(libraryPath, XmipStatus.NotFound) with { Unloadable = failure.Message };
+        }
+    }
+
+    private static Result Loaded(string libraryPath, Action<string>? log)
     {
         nint handle = NativeLibrary.Load(libraryPath);
         _log = log;
@@ -115,12 +154,12 @@ public static unsafe class ModuleProbe
             {
                 // The module returned a status and left *out untouched, so
                 // there is nothing to read and nothing to destroy.
-                return Failed(status);
+                return Failed(libraryPath, status);
             }
 
             try
             {
-                return Describe(module);
+                return Describe(libraryPath, module);
             }
             finally
             {
@@ -139,7 +178,7 @@ public static unsafe class ModuleProbe
         }
     }
 
-    private static Result Describe(XmipModule module)
+    private static Result Describe(string libraryPath, XmipModule module)
     {
         XmipModuleDescriptor descriptor = module.Descriptor;
 
@@ -148,6 +187,7 @@ public static unsafe class ModuleProbe
             : module.LastError(module.State).Read();
 
         return new Result(
+            libraryPath,
             XmipStatus.Ok,
             descriptor.Provider.Read(),
             descriptor.Module.Read(),
@@ -158,9 +198,10 @@ public static unsafe class ModuleProbe
             lastError);
     }
 
-    private static Result Failed(XmipStatus status)
+    private static Result Failed(string libraryPath, XmipStatus status)
     {
         return new Result(
+            libraryPath,
             status,
             string.Empty,
             string.Empty,

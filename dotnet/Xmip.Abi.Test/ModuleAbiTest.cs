@@ -1,10 +1,10 @@
 using Xmip.Abi.Module;
 
-namespace Xmip.Abi.Tests;
+namespace Xmip.Abi.Test;
 
 /// <summary>Section 1 of <c>xmip_module.h</c>: the version, the entrypoint
 /// and the file name a host looks for.</summary>
-public sealed class ModuleAbiTests
+public sealed class ModuleAbiTest
 {
     [Fact]
     public void SpeaksTheAbiVersionTheHeaderDeclares()

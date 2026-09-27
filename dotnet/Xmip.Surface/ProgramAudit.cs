@@ -1,3 +1,4 @@
+using System.Collections;
 using Microsoft.Extensions.Configuration;
 using Xmip.Abi.Operate;
 
@@ -22,7 +23,12 @@ namespace Xmip.Surface;
 /// <param name="directory">Where its records go when it was told one (its
 /// configuration's <see cref="ConfigurationKey"/>); null lets the capability
 /// decide — <c>XMIP_AUDIT_DIRECTORY</c>, else the operating system's log.</param>
-public sealed class ProgramAudit(string program, string? directory = null)
+/// <param name="library">The runtime library the program was told to load
+/// (<see cref="RuntimeLibrary.Stated"/>) and so the one its records go
+/// through, where no rule of the runtime was called before; null lets the
+/// rule with nothing configured decide.</param>
+public sealed class ProgramAudit(
+    string program, string? directory = null, string? library = null)
 {
     /// <summary>The configuration key, in a host's <c>[Xmip]</c> table, that
     /// names the audit directory.</summary>
@@ -33,6 +39,11 @@ public sealed class ProgramAudit(string program, string? directory = null)
 
     /// <summary>The directory it was told, or null.</summary>
     public string? Directory { get; } = directory;
+
+    /// <summary>The runtime library it was told to record through, or
+    /// null.</summary>
+    public string? Library { get; } =
+        string.IsNullOrWhiteSpace(library) ? null : RuntimeLibrary.Prefer(library);
 
     /// <summary>The audit directory a configuration names, resolved against
     /// <paramref name="basePath"/>; null when it names none.</summary>
@@ -45,6 +56,47 @@ public sealed class ProgramAudit(string program, string? directory = null)
         return string.IsNullOrWhiteSpace(configured)
             ? null
             : TomlDocument.Resolve(configured, basePath);
+    }
+
+    /// <summary>
+    /// What a program's values say as a record's properties, name to text, by
+    /// <see cref="Said"/>. The one flattening every .NET program and the
+    /// estate's script module call: until 2026-09-27 the cmdlets wrote a
+    /// table as its type's name and the script module as its pairs.
+    /// </summary>
+    public static Dictionary<string, string> Properties(IDictionary? values)
+    {
+        Dictionary<string, string> said = new(StringComparer.Ordinal);
+
+        if (values is null)
+        {
+            return said;
+        }
+
+        foreach (DictionaryEntry entry in values)
+        {
+            said[$"{entry.Key}"] = Said(entry.Value);
+        }
+
+        return said;
+    }
+
+    /// <summary>One value as a record says it: nothing as empty, a flag as
+    /// <c>yes</c> or <c>no</c>, a table as its <c>name=value</c> pairs, a list
+    /// joined, anything else as its text — each part said the same way.</summary>
+    public static string Said(object? value)
+    {
+        return value switch
+        {
+            null => string.Empty,
+            string text => text,
+            bool flag => flag ? "yes" : "no",
+            IDictionary table => string.Join(
+                ", ",
+                table.Cast<DictionaryEntry>().Select(entry => $"{entry.Key}={Said(entry.Value)}")),
+            IEnumerable many => string.Join(", ", many.Cast<object?>().Select(Said)),
+            _ => value.ToString() ?? string.Empty,
+        };
     }
 
     /// <summary>Record one act. Never throws: what the capability could not

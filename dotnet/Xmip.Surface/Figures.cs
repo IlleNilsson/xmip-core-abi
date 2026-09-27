@@ -84,6 +84,24 @@ public sealed record Figures(
             all.Select(part => part.Observed).Max());
     }
 
+    /// <summary>The figure of one counted kind — what a stage counts is
+    /// <see cref="ScopeTree.CountedAt"/>'s to say, and this answers it without
+    /// a surface keeping its own kind-to-figure table. Null where it was not
+    /// published, or for a value the runtime does not define.</summary>
+    public ulong? Of(Counted counted)
+    {
+        return counted switch
+        {
+            Counted.Streams => Streams,
+            Counted.Messages => Messages,
+            Counted.Journeys => Journeys,
+            Counted.Bytes => Bytes,
+            Counted.Retrying => Retrying,
+            Counted.Failed => Failed,
+            _ => null,
+        };
+    }
+
     /// <summary>Whether the publisher supplied at least one figure.</summary>
     public bool HasValues =>
         Streams.HasValue || Messages.HasValue || Journeys.HasValue

@@ -63,6 +63,19 @@ public sealed class RemoteOperator : IOperatorSurface, IDisposable
             && host.Scheme is "http" or "https";
     }
 
+    /// <summary>What every surface says when a remote it was told to follow
+    /// is no web host, <paramref name="url"/> included where one was given;
+    /// null when it is one. <c>--remote</c> and <c>-Remote</c> both say
+    /// this.</summary>
+    public static string? Refusal(string? url)
+    {
+        const string Needs = "A remote needs a web host, like https://host:5443";
+
+        return IsWebHost(url)
+            ? null
+            : string.IsNullOrWhiteSpace(url) ? $"{Needs}." : $"{Needs}; not {url}.";
+    }
+
     /// <summary>A surface over the web host at <paramref name="host"/>,
     /// presenting and trusting what <paramref name="tls"/> holds — nothing
     /// and the operating system's anchors where it is not given.</summary>

@@ -117,13 +117,19 @@ public static class English
         return RuntimeLibrary.Rules.Color(state) ?? "muted";
     }
 
+    /// <summary>A mood that may be absent as a word: <see cref="Mood(HealthState)"/>,
+    /// or <c>nothing recorded</c> where no health was recorded — a row that
+    /// has figures and no health, a rollup over no leaves.</summary>
+    public static string Mood(HealthState? state)
+    {
+        return state is { } recorded ? Mood(recorded) : "nothing recorded";
+    }
+
     /// <summary>The rollup over a set of leaves as a word: <c>fine</c>,
     /// <c>holding</c>, or <c>nothing recorded</c> when there are none.</summary>
     public static string Rollup(IEnumerable<HealthRecord> records)
     {
-        HealthState? rolled = ScopeTree.Rollup(records);
-
-        return rolled is null ? "nothing recorded" : Mood(rolled.Value);
+        return Mood(ScopeTree.Rollup(records));
     }
 
     /// <summary>How long ago something was observed, as a person reads it.</summary>
@@ -180,26 +186,71 @@ public static class English
         return $"Nothing at {scope} ({source}).";
     }
 
-    /// <summary>How a count moved since the board last saw it change: the
-    /// increase, and the rate it implies over the time it took. Nothing yet
-    /// when the board has seen only one value.</summary>
-    public static string Flow(ulong delta, TimeSpan over)
+    /// <summary>What a surface says of a scope with nothing directly beneath
+    /// it, naming where it looked.</summary>
+    public static string NothingBeneath(string scope, string source)
     {
-        return over <= TimeSpan.Zero
-            ? "waiting for the next round"
-            : $"+{delta.ToString("N0", CultureInfo.InvariantCulture)} last round · " +
-                Rate(delta / over.TotalSeconds);
+        return $"Nothing beneath {scope} ({source}).";
     }
 
-    /// <summary>A rate per second as a person reads it: whole from ten up,
-    /// one decimal below, so a trickle is never rounded to a stall.</summary>
+    /// <summary>What a surface says of a scope with no figure published at
+    /// it, naming where it looked.</summary>
+    public static string NothingMeasured(string scope, string source)
+    {
+        return $"Nothing measured at {scope} ({source}).";
+    }
+
+    /// <summary>What a figure is moving, as a reader's <see cref="FigureWatch"/>
+    /// gave it: the rate, or — where the reader has seen one publication and so
+    /// has no interval — that it is waiting, which is not a stall.</summary>
+    public static string Flow(double? perSecond)
+    {
+        return perSecond is { } rate ? Rate(rate) : "waiting for the next round";
+    }
+
+    /// <summary>A rate per second as a person reads it: <see cref="Moving"/>
+    /// and its unit.</summary>
     public static string Rate(double perSecond)
     {
-        string rate = perSecond >= 10
-            ? perSecond.ToString("N0", CultureInfo.InvariantCulture)
-            : perSecond.ToString("N1", CultureInfo.InvariantCulture);
+        return $"{Moving(perSecond)}/s";
+    }
 
-        return $"{rate}/s";
+    /// <summary>
+    /// The number of a rate, without its unit, as every surface writes it:
+    /// the K, M and G ladder, with one decimal below ten of a unit carried down
+    /// to the unit itself — 0.3, 9.9, 240, 1.2K. A trickle is written 0.3 and
+    /// never 0, because <c>0</c> means stalled and nothing else may. The
+    /// prompt writes this bare, since a prompt's units are learned once (the
+    /// owner, 2026-09-20: *the Xmip Prompt does not need /s spelled out*);
+    /// everything else writes <see cref="Rate"/>.
+    /// </summary>
+    public static string Moving(double perSecond)
+    {
+        string[] units = ["K", "M", "G"];
+        double value = perSecond;
+        int unit = -1;
+
+        while (unit < units.Length - 1 && value >= 999.5)
+        {
+            value /= 1000;
+            unit++;
+        }
+
+        string format = value < 9.95 ? "0.#" : "0";
+
+        return value.ToString(format, CultureInfo.InvariantCulture)
+            + (unit < 0 ? string.Empty : units[unit]);
+    }
+
+    /// <summary>A stage of the message path as its name — <c>Receive</c>,
+    /// <c>Process</c>, <c>Send</c> — from the runtime's stage word
+    /// (<see cref="ScopeTree.Stages"/>). The prompt's stage letter is the
+    /// name's first.</summary>
+    public static string Stage(string stage)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(stage);
+
+        return string.Concat(stage[..1].ToUpperInvariant(), stage[1..]);
     }
 
     /// <summary>What passes over a communication link, as the topology says

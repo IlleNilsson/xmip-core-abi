@@ -179,4 +179,12 @@ public static class OperateAbi
     /// <summary>The technologies the runtime carries and the settings each
     /// declares: section 12 (ADR-0064, amendment 2026-09-26).</summary>
     public const string TechnologyCatalogueEntrypoint = "xmip_technology_catalogue_v1";
+
+    /// <summary>Declare the calling System Process: section 13, forwarded to
+    /// <c>xmip-core-node</c>'s <c>Declaration::declare</c> (ADR-0053).</summary>
+    public const string ProcessDeclareEntrypoint = "xmip_process_declare_v1";
+
+    /// <summary>The System Process declarations standing in a directory:
+    /// section 13, forwarded to <c>xmip-core-node</c>'s <c>standing</c>.</summary>
+    public const string ProcessDeclarationsEntrypoint = "xmip_process_declarations_v1";
 }

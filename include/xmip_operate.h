@@ -904,6 +904,53 @@ typedef XmipStatus (*XmipCatalogueFn)(XmipStr technology, uint8_t *out,
 
 #define XMIP_TECHNOLOGY_CATALOGUE_ENTRYPOINT "xmip_technology_catalogue_v1"
 
+/* ===================================================================== */
+/* 13. A System Process, declared                                        */
+/* ===================================================================== */
+
+/*
+ * Every System Process Xmip owns says of itself its name, its location and
+ * its purpose, test or runtime, to one file named for it and its pid in the
+ * directory XMIP_PROCESS_DIRECTORY names, else xmip/process under the
+ * system's temporary directory (ADR-0053 clause 3). The file, its directory
+ * and its words are xmip-core-node's; a .NET program declares itself and the
+ * estate's tooling lists the declarations through these two thin forwarders,
+ * and writes or reads no file of its own. Pure like section 7: no handle,
+ * any thread, before any node.
+ *
+ * xmip_process_declare_v1 declares the calling process: name (xmip-<what>),
+ * location, purpose ("test" or "runtime", exact), and properties_len strings
+ * in properties, key then value, for what else it says. The file it wrote
+ * is written into out as UTF-8, its true byte length in out_len whether or
+ * not it fit; the declaration stands until the caller removes that file.
+ * XMIP_OK with the file; XMIP_E_INVALID with the refusal, one sentence, in
+ * out when the purpose is no purpose word or a key is not a bare word or is
+ * one of the six every declaration writes; XMIP_E_IO with the reason when
+ * the file could not be written; XMIP_E_MALFORMED when a string is not UTF-8.
+ *
+ * xmip_process_declarations_v1 reads every declaration standing in
+ * directory, empty for the directory the rule above names, whether or not
+ * its process still runs: that is the reader's to judge. The answer is JSON,
+ * in memory only (ADR-0031 clause 2), written into out as UTF-8, its true
+ * byte length in out_len whether or not it fit:
+ *
+ *   {"directory":"<the directory read>",
+ *    "processes":[{"file","name","location","purpose","pid","started_unix",
+ *                  "path","said":{"<key>":"<value>",...}}]}
+ *
+ * XMIP_OK with the answer; XMIP_E_MALFORMED when directory is not UTF-8.
+ * Optional symbols, as section 7's are; XMIP_OPERATE_VERSION is unchanged.
+ */
+typedef XmipStatus (*XmipProcessDeclareFn)(XmipStr name, XmipStr location, XmipStr purpose,
+                                           const XmipStr *properties, size_t properties_len,
+                                           uint8_t *out, size_t cap, size_t *out_len);
+
+typedef XmipStatus (*XmipProcessDeclarationsFn)(XmipStr directory, uint8_t *out,
+                                                size_t cap, size_t *out_len);
+
+#define XMIP_PROCESS_DECLARE_ENTRYPOINT      "xmip_process_declare_v1"
+#define XMIP_PROCESS_DECLARATIONS_ENTRYPOINT "xmip_process_declarations_v1"
+
 #ifdef __cplusplus
 }
 #endif

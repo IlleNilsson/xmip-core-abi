@@ -122,11 +122,32 @@ public sealed class EnglishTest
     }
 
     [Fact]
-    public void FlowSaysTheIncreaseAndTheRate()
+    public void FlowSaysTheRateOrThatThereIsNoIntervalYet()
     {
-        Assert.Equal("+2,310 last round · 38/s", English.Flow(2_310, TimeSpan.FromSeconds(60)));
-        Assert.Equal("+3 last round · 0.5/s", English.Flow(3, TimeSpan.FromSeconds(6)));
-        Assert.Equal("waiting for the next round", English.Flow(0, TimeSpan.Zero));
+        Assert.Equal("38/s", English.Flow(38.4));
+        Assert.Equal("0.5/s", English.Flow(0.5));
+        Assert.Equal("0/s", English.Flow(0));
+        Assert.Equal("waiting for the next round", English.Flow(null));
+    }
+
+    [Fact]
+    public void ARateIsOnOneLadderAndATrickleIsNeverZero()
+    {
+        // One ladder for every surface: the prompt writes it bare, the rest
+        // with its unit. Until 2026-09-27 the prompt kept a second formatter.
+        Assert.Equal("0", English.Moving(0));
+        Assert.Equal("0.3", English.Moving(0.3));
+        Assert.Equal("9.9", English.Moving(9.94));
+        Assert.Equal("240", English.Moving(240));
+        Assert.Equal("1.2K", English.Moving(1234));
+        Assert.Equal("1.2M", English.Moving(1_234_567));
+        Assert.Equal("1.2K/s", English.Rate(1234));
+    }
+
+    [Fact]
+    public void AStageIsNamedFromItsWord()
+    {
+        Assert.Equal(["Receive", "Process", "Send"], ScopeTree.Stages.Select(English.Stage));
     }
 
     [Fact]
@@ -139,7 +160,7 @@ public sealed class EnglishTest
         Assert.Equal(
             "configured · no traffic observed",
             English.Traffic(Link(TopologyOrigin.Configured, 0, 0)));
-        Assert.Equal("0.0/s", English.Rate(0));
+        Assert.Equal("0/s", English.Rate(0));
     }
 
     /// <summary>What a topology value is called is <c>observe::topology</c>'s,

@@ -284,6 +284,7 @@ pub mod audit;
 pub mod catalogue;
 pub mod design;
 pub mod event;
+pub mod process;
 pub mod publication;
 
 #[cfg(test)]
@@ -418,6 +419,14 @@ mod tests {
             (
                 "XMIP_APPLICATION_EDIT_ENTRYPOINT",
                 design::APPLICATION_EDIT_ENTRYPOINT,
+            ),
+            (
+                "XMIP_PROCESS_DECLARE_ENTRYPOINT",
+                process::PROCESS_DECLARE_ENTRYPOINT,
+            ),
+            (
+                "XMIP_PROCESS_DECLARATIONS_ENTRYPOINT",
+                process::PROCESS_DECLARATIONS_ENTRYPOINT,
             ),
         ] {
             let line = HEADER
