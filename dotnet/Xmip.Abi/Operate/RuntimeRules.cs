@@ -21,7 +21,8 @@ namespace Xmip.Abi.Operate;
 /// read by the runtime, is <see cref="Publications"/>; section 9, a
 /// program's audit record, is <see cref="Audit"/>; section 11, Events
 /// subscribed, is <see cref="Events"/>; section 12, the technologies the
-/// runtime carries, is <see cref="Catalogue"/>.
+/// runtime carries, is <see cref="Catalogue"/>; section 13, a System
+/// Process declared, is <see cref="Processes"/>.
 /// </summary>
 /// <remarks>
 /// Pure calls: none reads the snapshot or holds a table, so one instance
@@ -97,6 +98,7 @@ public sealed unsafe class RuntimeRules
         Audit = new RuntimeAudit(library);
         Events = new RuntimeEvents(library);
         Catalogue = new RuntimeCatalogue(library);
+        Processes = new RuntimeProcesses(library);
 
         delegate* unmanaged[Cdecl]<XmipStr*, nuint, nuint*, int> words =
             (delegate* unmanaged[Cdecl]<XmipStr*, nuint, nuint*, int>)
@@ -123,12 +125,17 @@ public sealed unsafe class RuntimeRules
     /// settings each declares (ADR-0064, amendment 2026-09-26).</summary>
     public RuntimeCatalogue Catalogue { get; }
 
+    /// <summary>Section 13: a System Process declared, and the declarations
+    /// that stand (ADR-0053 clause 3).</summary>
+    public RuntimeProcesses Processes { get; }
+
     /// <summary>The words a node may declare, in message-path order —
     /// <c>node::Stage::WORDS</c>, read once when the library loads.</summary>
     public IReadOnlyList<string> StageWords { get; }
 
-    /// <summary>Section 7's, section 8's, section 9's, section 11's and
-    /// section 12's symbols, each of which a runtime must export.</summary>
+    /// <summary>Section 7's, section 8's, section 9's, section 11's, section
+    /// 12's and section 13's symbols, each of which a runtime must
+    /// export.</summary>
     public static IReadOnlyList<string> Entrypoints { get; } =
     [
         OperateAbi.HealthRolledEntrypoint,
@@ -142,6 +149,7 @@ public sealed unsafe class RuntimeRules
         .. RuntimeAudit.Entrypoints,
         .. RuntimeEvents.Entrypoints,
         .. RuntimeCatalogue.Entrypoints,
+        .. RuntimeProcesses.Entrypoints,
         OperateAbi.ScopeContainsEntrypoint,
         OperateAbi.ScopePartsEntrypoint,
         OperateAbi.ScopeNodeEntrypoint,

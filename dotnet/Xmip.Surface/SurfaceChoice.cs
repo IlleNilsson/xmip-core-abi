@@ -96,7 +96,7 @@ public static class SurfaceChoice
     /// <summary>
     /// Every snapshot path the document names, in the order it names them:
     /// one where <c>Snapshot</c> is a path, several where it is a list —
-    /// <c>Snapshot = ["…/orders-snapshot.toml", "…/partner-snapshot.toml"]</c> in a
+    /// <c>Snapshot = ["…/C1-snapshot.toml", "…/C2-snapshot.toml"]</c> in a
     /// document, <c>--Xmip:Snapshot:0=… --Xmip:Snapshot:1=…</c> on a line.
     /// Empty where it names none. A list wins over a path: the two sit at the
     /// same key from different sources, and a line naming two clusters must
@@ -183,12 +183,17 @@ public static class SurfaceChoice
     /// <param name="besideExecutable">Where the runtime library lies by
     /// default: beside the executable, or beside a module pwsh loaded.</param>
     /// <exception cref="InvalidOperationException">What <see cref="Open"/>
-    /// refuses.</exception>
+    /// refuses, or the line's own <see cref="SurfaceLine.Refusal"/>.</exception>
     public static IOperatorSurface Stated(
         SurfaceLine line, IConfiguration document, string basePath, string besideExecutable)
     {
         ArgumentNullException.ThrowIfNull(line);
         ArgumentNullException.ThrowIfNull(document);
+
+        if (line.Refusal is { } refusal)
+        {
+            throw new InvalidOperationException(refusal);
+        }
 
         // Found whatever the surface: every one calls the runtime's rules in it.
         string library = RuntimeLibrary.Stated(
@@ -208,14 +213,23 @@ public static class SurfaceChoice
     /// The surface <see cref="Stated"/> chooses from the document at
     /// <paramref name="documentPath"/>, once it has answered: a remote host
     /// connected, a runtime loaded, a snapshot file present. Null with the
-    /// reason otherwise — the document's refusal prefixed with its file name,
-    /// or the surface's own <see cref="IOperatorSurface.Source"/> — and the
-    /// surface released. The caller disposes what it gets.
+    /// reason otherwise — the line's own <see cref="SurfaceLine.Refusal"/>,
+    /// the document's refusal prefixed with its file name, or the surface's
+    /// own <see cref="IOperatorSurface.Source"/> — and the surface released.
+    /// The caller disposes what it gets.
     /// </summary>
     public static IOperatorSurface? Answering(
         SurfaceLine line, string documentPath, string besideExecutable, out string reason)
     {
+        ArgumentNullException.ThrowIfNull(line);
         ArgumentNullException.ThrowIfNull(documentPath);
+
+        // The line's own refusal is the line's, not the document's.
+        if (line.Refusal is { } refusal)
+        {
+            reason = refusal;
+            return null;
+        }
 
         string basePath = Path.GetDirectoryName(Path.GetFullPath(documentPath))
             ?? besideExecutable;

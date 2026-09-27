@@ -1,7 +1,7 @@
 using Xmip.Abi.Module;
 using Xmip.Abi.Operate;
 
-namespace Xmip.Abi.Tests;
+namespace Xmip.Abi.Test;
 
 /// <summary>
 /// What a probe judges of a module that answered, once for <c>xmip-cli
@@ -9,7 +9,7 @@ namespace Xmip.Abi.Tests;
 /// report. Probing a real library is the conformance fixture's; these hold
 /// the judgement over what a module said.
 /// </summary>
-public sealed class ModuleProbeTests
+public sealed class ModuleProbeTest
 {
     private static ModuleProbe.Result Said(
         XmipStatus status = XmipStatus.Ok,
@@ -18,7 +18,22 @@ public sealed class ModuleProbeTests
         uint abiVersion = ModuleAbi.AbiVersion)
     {
         return new ModuleProbe.Result(
-            status, provider, "file", standard, abiVersion, "1.0", "0.1.0", string.Empty);
+            "module.dll", status, provider, "file", standard, abiVersion, "1.0", "0.1.0",
+            string.Empty);
+    }
+
+    [Fact]
+    public void ALibraryThatIsNotThereIsAnAnswerAndNotAnException()
+    {
+        string missing = Path.Combine(Path.GetTempPath(), "no-such-xmip-module.dll");
+
+        ModuleProbe.Result result = ModuleProbe.Probe(missing, log: null);
+
+        Assert.False(result.Loaded);
+        Assert.NotEqual(string.Empty, result.Unloadable);
+        Assert.Equal(missing, result.Library);
+        Assert.False(result.Conforms);
+        Assert.Equal(string.Empty, result.Complaint);
     }
 
     [Fact]

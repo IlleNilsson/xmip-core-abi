@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Text.RegularExpressions;
 
-namespace Xmip.Abi.Tests;
+namespace Xmip.Abi.Test;
 
 /// <summary>
 /// Reading the normative headers, for the tests that compare against them.

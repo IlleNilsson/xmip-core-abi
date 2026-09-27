@@ -1,9 +1,9 @@
 using Xmip.Abi.Module;
 
-namespace Xmip.Abi.Tests;
+namespace Xmip.Abi.Test;
 
 /// <summary>A .NET string crosses as UTF-8 and comes back the same.</summary>
-public sealed class XmipStrTests
+public sealed class XmipStrTest
 {
     [Fact]
     public void PinnedTextReadsBackTheSame()

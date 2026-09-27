@@ -16,6 +16,28 @@ public sealed class ProgramAuditTest
     }
 
     [Fact]
+    public void AValueIsSaidOneWayWhicheverProgramRecordsIt()
+    {
+        // Until 2026-09-27 the cmdlets said a table as its type's name and the
+        // script module as its pairs.
+        System.Collections.Hashtable values = new()
+        {
+            ["table"] = new System.Collections.Specialized.OrderedDictionary { ["a"] = 1 },
+            ["list"] = new[] { "x", "y" },
+            ["flag"] = true,
+            ["none"] = null,
+        };
+
+        Dictionary<string, string> said = ProgramAudit.Properties(values);
+
+        Assert.Equal("a=1", said["table"]);
+        Assert.Equal("x, y", said["list"]);
+        Assert.Equal("yes", said["flag"]);
+        Assert.Equal(string.Empty, said["none"]);
+        Assert.Empty(ProgramAudit.Properties(null));
+    }
+
+    [Fact]
     public void AnActLandsInTheDirectoryTheProgramWasTold()
     {
         string directory = Scratch();

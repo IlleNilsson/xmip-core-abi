@@ -1,6 +1,6 @@
 using Xmip.Abi.Operate;
 
-namespace Xmip.Abi.Tests;
+namespace Xmip.Abi.Test;
 
 /// <summary>
 /// <see cref="RuntimeRules"/> crosses section 7 of <c>xmip_operate.h</c> to
@@ -11,7 +11,7 @@ namespace Xmip.Abi.Tests;
 /// <c>stage.rs</c>); these prove the crossing: strings in and out, the fill
 /// shape, a refusal carried whole and every mood.
 /// </summary>
-public sealed class RuntimeRulesTests
+public sealed class RuntimeRulesTest
 {
     private static readonly Lazy<RuntimeRules> Loaded = new(() =>
     {
@@ -330,7 +330,7 @@ public sealed class RuntimeRulesTests
             Path.GetTempPath(), $"xmip-abi-audit-{Guid.NewGuid():n}");
 
         AuditOutcome outcome = Rules.Audit.Record(
-            "Xmip.Abi.Tests",
+            "Xmip.Abi.Test",
             directory,
             "probe",
             AuditPhase.Begin,
@@ -341,7 +341,7 @@ public sealed class RuntimeRulesTests
         Assert.Equal(AuditKept.Persisted, outcome.Kept);
         Assert.Equal(string.Empty, outcome.Said);
         string text = File.ReadAllText(Path.Combine(directory, "audit.toml"));
-        Assert.Contains("program = \"Xmip.Abi.Tests\"", text, StringComparison.Ordinal);
+        Assert.Contains("program = \"Xmip.Abi.Test\"", text, StringComparison.Ordinal);
         Assert.Contains("\"url\" = \"http://127.0.0.1:5087\"", text, StringComparison.Ordinal);
         Assert.Contains("\"ö\" = \"å\"", text, StringComparison.Ordinal);
         Directory.Delete(directory, recursive: true);

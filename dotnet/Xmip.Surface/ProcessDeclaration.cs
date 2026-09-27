@@ -1,6 +1,6 @@
-using System.Globalization;
-using System.Text;
 using Microsoft.Extensions.Configuration;
+using Xmip.Abi.Module;
+using Xmip.Abi.Operate;
 
 namespace Xmip.Surface;
 
@@ -8,27 +8,25 @@ namespace Xmip.Surface;
 /// What a System Process Xmip owns says of itself: its name, its location and
 /// its purpose, test or runtime (ADR-0053 clause 3). The name finds a process
 /// — every one is <c>xmip-&lt;what&gt;</c> — and the declaration says what it
-/// is for. A process writes it where it starts, to one file named for it and
-/// its pid, and takes it away where it ends; one that is killed leaves its
-/// file behind, and whoever lists the declarations drops those whose process
-/// is gone. The same file, in the same place, that <c>xmip-core-node</c>
-/// writes for a Rust process.
+/// is for. A process declares itself where it starts and takes the
+/// declaration away where it ends; one that is killed leaves its file behind,
+/// and whoever lists the declarations drops those whose process is gone.
 /// </summary>
+/// <remarks>
+/// The file, its directory, its words and its reading are
+/// <c>xmip-core-node</c>'s, reached through the runtime's library
+/// (<c>xmip_operate.h</c> section 13, <see cref="RuntimeProcesses"/>): this
+/// writes and reads no file of its own. Until 2026-09-27 it wrote the file
+/// again, took any purpose but <c>test</c> for runtime, and the estate's
+/// PowerShell module read the files with a TOML reader of its own.
+/// </remarks>
 public sealed class ProcessDeclaration : IDisposable
 {
-    /// <summary>The environment variable naming the directory declarations
-    /// are written to. Unset, it is <c>xmip/process</c> under the system's
-    /// temporary directory, the same for every process on the machine.</summary>
-    public const string DirectoryVariable = "XMIP_PROCESS_DIRECTORY";
-
-    /// <summary>The configuration key that says test; anything else, or
-    /// nothing, is runtime.</summary>
+    /// <summary>The configuration key that states the purpose.</summary>
     public const string PurposeKey = "Xmip:Purpose";
 
-    /// <summary>The word for a process a test started.</summary>
-    public const string Test = "test";
-
-    /// <summary>The word for the product doing its work.</summary>
+    /// <summary>The word for the product doing its work, which a process is
+    /// unless what started it states otherwise.</summary>
     public const string Runtime = "runtime";
 
     private ProcessDeclaration(string file)
@@ -36,68 +34,77 @@ public sealed class ProcessDeclaration : IDisposable
         File = file;
     }
 
-    /// <summary>The file the declaration was written to.</summary>
+    /// <summary>The file the declaration stands in.</summary>
     public string File { get; }
 
-    /// <summary>Where declarations are written.</summary>
-    public static string Directory()
-    {
-        string? named = Environment.GetEnvironmentVariable(DirectoryVariable);
-
-        return string.IsNullOrWhiteSpace(named)
-            ? Path.Combine(Path.GetTempPath(), "xmip", "process")
-            : named;
-    }
-
-    /// <summary>The purpose a configuration states: test where it says so,
-    /// runtime otherwise, because a process is runtime unless what started it
-    /// says test.</summary>
+    /// <summary>The purpose a configuration states, as it states it; runtime
+    /// where it states none. Whether the word is a purpose is the node's to
+    /// judge, and <see cref="Declare"/> is refused when it is not.</summary>
     public static string PurposeOf(IConfiguration configuration)
     {
+        ArgumentNullException.ThrowIfNull(configuration);
+
         string? word = configuration[PurposeKey];
 
-        return string.Equals(word?.Trim(), Test, StringComparison.OrdinalIgnoreCase)
-            ? Test
-            : Runtime;
+        return string.IsNullOrWhiteSpace(word) ? Runtime : word;
     }
 
-    /// <summary>Declare this process where the node says, and take the
-    /// declaration away when the process exits. A process that cannot
-    /// declare itself still runs: null, and nothing thrown.</summary>
-    public static ProcessDeclaration? Declare(string name, string location, string purpose)
+    /// <summary>
+    /// Declare this process where the node says, and take the declaration
+    /// away when the process exits. A process whose declaration could not be
+    /// written, or that has no runtime library to declare through, still
+    /// runs: null, and nothing thrown. <paramref name="library"/> is the
+    /// runtime library the program was told to load, as
+    /// <see cref="ProgramAudit"/> takes it.
+    /// </summary>
+    /// <exception cref="ArgumentException">The node refused what was declared
+    /// — a purpose that is no purpose word — in its own sentence.</exception>
+    public static ProcessDeclaration? Declare(
+        string name, string location, string purpose, string? library = null)
     {
+        if (!string.IsNullOrWhiteSpace(library))
+        {
+            RuntimeLibrary.Prefer(library);
+        }
+
+        RuntimeProcesses processes;
+
         try
         {
-            ProcessDeclaration declared = DeclareIn(Directory(), name, location, purpose);
-            AppDomain.CurrentDomain.ProcessExit += (_, _) => declared.Dispose();
-
-            return declared;
+            processes = RuntimeLibrary.Rules.Processes;
         }
-        catch (Exception failure) when (failure is IOException or UnauthorizedAccessException)
+        catch (InvalidOperationException)
         {
             return null;
         }
+
+        XmipStatus status = processes.Declare(name, location, purpose, null, out string answer);
+
+        if (status == XmipStatus.Invalid)
+        {
+            throw new ArgumentException(answer, nameof(purpose));
+        }
+
+        if (status != XmipStatus.Ok)
+        {
+            return null;
+        }
+
+        ProcessDeclaration declared = new(answer);
+        AppDomain.CurrentDomain.ProcessExit += (_, _) => declared.Dispose();
+
+        return declared;
     }
 
-    /// <summary>Declare this process in a given directory.</summary>
-    public static ProcessDeclaration DeclareIn(
-        string directory, string name, string location, string purpose)
+    /// <summary>Every declaration standing in <paramref name="directory"/>,
+    /// null or empty for the directory the node names, whether or not its
+    /// process still runs — which the caller, who can see the operating
+    /// system's processes, judges.</summary>
+    /// <exception cref="InvalidOperationException">No runtime library could be
+    /// loaded to read them through.</exception>
+    public static ProcessDeclarations Standing(string? directory = null)
     {
-        System.IO.Directory.CreateDirectory(directory);
-
-        int pid = Environment.ProcessId;
-        string file = Path.Combine(directory, $"{name}-{pid}.toml");
-        long started = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-        string text = string.Create(
-            CultureInfo.InvariantCulture,
-            $"name = {Quoted(name)}\nlocation = {Quoted(location)}\n" +
-            $"purpose = {Quoted(purpose)}\npid = {pid}\nstarted_unix = {started}\n" +
-            $"path = {Quoted(Environment.ProcessPath ?? string.Empty)}\n");
-
-        System.IO.File.WriteAllText(
-            file, text, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
-
-        return new ProcessDeclaration(file);
+        return RuntimeLibrary.Rules.Processes.Read(directory);
     }
 
     /// <inheritdoc />
@@ -111,14 +118,5 @@ public sealed class ProcessDeclaration : IDisposable
         {
             // Gone already, or held by a reader: whoever lists drops it.
         }
-    }
-
-    // A TOML basic string: a Windows path carries backslashes, which it escapes.
-    private static string Quoted(string text)
-    {
-        return "\"" + text
-            .Replace("\\", "\\\\", StringComparison.Ordinal)
-            .Replace("\"", "\\\"", StringComparison.Ordinal)
-            .Replace("\n", "\\n", StringComparison.Ordinal) + "\"";
     }
 }

@@ -1,13 +1,13 @@
 using Xmip.Abi.Operate;
 
-namespace Xmip.Abi.Tests;
+namespace Xmip.Abi.Test;
 
 /// <summary>
 /// <see cref="Operator.Load"/> answers null with a reason rather than throwing.
 /// A surface that cannot reach a node shows that reason; an exception would
 /// show a stack.
 /// </summary>
-public sealed class OperatorTests
+public sealed class OperatorTest
 {
     [Fact]
     public void LoadingAMissingPathAnswersNullWithTheReason()

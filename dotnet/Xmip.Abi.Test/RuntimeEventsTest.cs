@@ -1,7 +1,7 @@
 using System.Runtime.InteropServices;
 using Xmip.Abi.Operate;
 
-namespace Xmip.Abi.Tests;
+namespace Xmip.Abi.Test;
 
 /// <summary>
 /// <see cref="RuntimeEvents"/> crosses section 11 of <c>xmip_operate.h</c> to
@@ -11,12 +11,12 @@ namespace Xmip.Abi.Tests;
 /// these prove the crossing. Every subscription audits into a temporary
 /// directory of the test's own, never the operating system's log.
 /// </summary>
-public sealed class RuntimeEventsTests
+public sealed class RuntimeEventsTest
 {
     /// <summary>A Party's UUID, as a subscriber in this process is.</summary>
     internal const string Party = "0198a3c4-0000-7000-8000-000000000042";
 
-    private static RuntimeEvents Events => RuntimeRulesTests.Rules.Events;
+    private static RuntimeEvents Events => RuntimeRulesTest.Rules.Events;
 
     [Fact]
     public void TheShapesAreTheHeadersOnASixtyFourBitProcess()
@@ -33,7 +33,7 @@ public sealed class RuntimeEventsTests
     {
         using Audited audited = new();
         using EventSubscription subscription = Events.Subscribe(
-            "Xmip.Abi.Tests", audited.Directory, Party,
+            "Xmip.Abi.Test", audited.Directory, Party,
             new EventFilter { Scope = audited.Scope, Outcomes = [EventOutcome.Failure] });
 
         int delivered = Events.Publish(new EventRecord
@@ -74,7 +74,7 @@ public sealed class RuntimeEventsTests
     {
         using Audited audited = new();
         using EventSubscription subscription = Events.Subscribe(
-            "Xmip.Abi.Tests", audited.Directory, Party,
+            "Xmip.Abi.Test", audited.Directory, Party,
             new EventFilter { Scope = audited.Scope, Outcomes = [EventOutcome.Failure] });
 
         Assert.Equal(0, Events.Publish(audited.Raised(EventOutcome.Success)));
@@ -88,7 +88,7 @@ public sealed class RuntimeEventsTests
         TaskCompletionSource<EventRecord> heard =
             new(TaskCreationOptions.RunContinuationsAsynchronously);
         using EventSubscription subscription = Events.Listen(
-            "Xmip.Abi.Tests", audited.Directory, Party, raised => heard.TrySetResult(raised),
+            "Xmip.Abi.Test", audited.Directory, Party, raised => heard.TrySetResult(raised),
             new EventFilter { Scope = audited.Scope });
 
         Assert.True(subscription.IsListening);
@@ -108,7 +108,7 @@ public sealed class RuntimeEventsTests
         using Audited audited = new();
         TaskCompletionSource called = new(TaskCreationOptions.RunContinuationsAsynchronously);
         using EventSubscription subscription = Events.Listen(
-            "Xmip.Abi.Tests", audited.Directory, Party,
+            "Xmip.Abi.Test", audited.Directory, Party,
             _ =>
             {
                 called.TrySetResult();
@@ -134,9 +134,9 @@ public sealed class RuntimeEventsTests
         using Audited audited = new();
 
         Assert.Throws<ArgumentException>(
-            () => Events.Subscribe("Xmip.Abi.Tests", audited.Directory, string.Empty));
+            () => Events.Subscribe("Xmip.Abi.Test", audited.Directory, string.Empty));
         Assert.Throws<ArgumentException>(
-            () => Events.Subscribe("Xmip.Abi.Tests", audited.Directory, "not a uuid"));
+            () => Events.Subscribe("Xmip.Abi.Test", audited.Directory, "not a uuid"));
         Assert.Throws<ArgumentException>(
             () => Events.Publish(new EventRecord { Type = "t", Scope = string.Empty }));
         Assert.Throws<ArgumentException>(() => Events.Publish(
@@ -150,7 +150,7 @@ public sealed class RuntimeEventsTests
     {
         using Audited audited = new();
         EventSubscription subscription = Events.Subscribe(
-            "Xmip.Abi.Tests", audited.Directory, Party, new EventFilter { Scope = audited.Scope });
+            "Xmip.Abi.Test", audited.Directory, Party, new EventFilter { Scope = audited.Scope });
 
         subscription.Dispose();
 

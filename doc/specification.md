@@ -475,3 +475,15 @@ kind, presence and default, meaning and the side that reads it — as the
 technology itself declares them in `xmip-core`'s `settings` shape. A
 Location's form is built from it, never written in a surface. The Rust
 mirror is `.src/operate/catalogue.rs`; .NET binds it as `RuntimeCatalogue`.
+
+Section 13 is a System Process declared (ADR-0053 clause 3):
+`xmip_process_declare_v1` has `xmip-core-node` write the calling process's
+declaration — its name, location and purpose (`test` or `runtime`, exact),
+and what else it says, key then value — and answers the file, which the
+caller removes where its process ends, or the node's refusal of a purpose
+that is no word or a key that is not a bare word; and
+`xmip_process_declarations_v1` answers, as JSON in memory, the declarations
+standing in a directory, the node's own when none is named, whether or not
+their processes still run. The file, its directory, its words and its
+reading are the node's alone. The Rust mirror is `.src/operate/process.rs`;
+.NET binds it as `RuntimeProcesses`.

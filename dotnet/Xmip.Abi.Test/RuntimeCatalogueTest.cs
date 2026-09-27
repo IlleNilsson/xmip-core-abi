@@ -1,7 +1,7 @@
 using System.Text.Json;
 using Xmip.Abi.Operate;
 
-namespace Xmip.Abi.Tests;
+namespace Xmip.Abi.Test;
 
 /// <summary>
 /// <see cref="RuntimeCatalogue"/> crosses section 12 of <c>xmip_operate.h</c>
@@ -11,12 +11,12 @@ namespace Xmip.Abi.Tests;
 /// crossing: the answer whole and in the header's shape, and a refusal
 /// carried as the runtime's sentence.
 /// </summary>
-public sealed class RuntimeCatalogueTests
+public sealed class RuntimeCatalogueTest
 {
     [Fact]
     public void TheCatalogueComesBackAsTheHeadersJson()
     {
-        Assert.True(RuntimeRulesTests.Rules.Catalogue.TryRead(null, out string answer), answer);
+        Assert.True(RuntimeRulesTest.Rules.Catalogue.TryRead(null, out string answer), answer);
 
         using JsonDocument document = JsonDocument.Parse(answer);
 
@@ -30,7 +30,7 @@ public sealed class RuntimeCatalogueTests
     {
         const string nowhere = "xmip-core-transport-nowhere";
 
-        Assert.False(RuntimeRulesTests.Rules.Catalogue.TryRead(nowhere, out string refusal));
+        Assert.False(RuntimeRulesTest.Rules.Catalogue.TryRead(nowhere, out string refusal));
         Assert.Contains(nowhere, refusal, StringComparison.Ordinal);
     }
 }

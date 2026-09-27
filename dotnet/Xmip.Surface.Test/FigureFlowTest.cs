@@ -111,6 +111,50 @@ public sealed class FigureFlowTest
         Assert.Null(flow.Failed);
     }
 
+    [Fact]
+    public void AFigureAndItsRateAreAnsweredByTheKindCounted()
+    {
+        Figures now = Troubled(9, 3);
+        FigureFlow flow = FigureFlow.Between(now, Troubled(1, 1), TimeSpan.FromSeconds(4));
+
+        Assert.Equal(9UL, now.Of(Xmip.Abi.Operate.Counted.Retrying));
+        Assert.Equal(1UL, now.Of(Xmip.Abi.Operate.Counted.Journeys));
+        Assert.Null(now.Of(Xmip.Abi.Operate.Counted.Bytes));
+        Assert.Equal(2, flow.Of(Xmip.Abi.Operate.Counted.Retrying));
+        Assert.Null(flow.Of(Xmip.Abi.Operate.Counted.Bytes));
+    }
+
+    [Fact]
+    public void AWatchSaysNothingUntilItHasAnIntervalAndKeepsTheRateBefore()
+    {
+        FigureWatch watch = new();
+        DateTimeOffset start = DateTimeOffset.UnixEpoch;
+
+        Assert.Equal(FigureFlow.Unknown, watch.See(At(5_000, 640, 660), start, 1));
+
+        FigureFlow first = watch.See(At(5_600, 700, 720), start.AddSeconds(5), 2);
+        Assert.Equal(120, first.Streams);
+        Assert.Null(watch.Before);
+
+        // The same publication read again — a redraw — is no interval.
+        Assert.Same(first, watch.See(At(5_600, 700, 720), start.AddSeconds(9), 2));
+
+        FigureFlow stalled = watch.See(At(5_600, 700, 720), start.AddSeconds(7), 3);
+        Assert.Equal(0, stalled.Streams);
+        Assert.Same(first, watch.Before);
+    }
+
+    [Fact]
+    public void AWatchWithNoFeedTakesEveryReadAsAPublication()
+    {
+        FigureWatch watch = new();
+        DateTimeOffset start = DateTimeOffset.UnixEpoch;
+
+        watch.See(At(10, 0, 0), start);
+
+        Assert.Equal(5, watch.See(At(20, 0, 0), start.AddSeconds(2)).Streams);
+    }
+
     // A publication that carries a retry total and a failure total as well as
     // the three stages.
     private static Figures Troubled(ulong retrying, ulong failed)

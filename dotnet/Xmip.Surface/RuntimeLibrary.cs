@@ -148,8 +148,9 @@ public static class RuntimeLibrary
 
     // The library a surface's own configuration found is the one its rules
     // are called in, until they are: the first found wins, and a path that
-    // does not load falls back to the rule with nothing configured.
-    private static string Prefer(string path)
+    // does not load falls back to the rule with nothing configured. A
+    // program's audit (ProgramAudit) states its library through here too.
+    internal static string Prefer(string path)
     {
         lock (Gate)
         {

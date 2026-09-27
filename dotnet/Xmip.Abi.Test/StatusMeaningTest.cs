@@ -1,13 +1,13 @@
 using Xmip.Abi.Module;
 
-namespace Xmip.Abi.Tests;
+namespace Xmip.Abi.Test;
 
 /// <summary>
 /// What a status code means, said once for <c>xmip-cli status</c> and
 /// <c>ConvertFrom-XmipStatus</c> alike. The surfaces render it; the rule is
 /// held here.
 /// </summary>
-public sealed class StatusMeaningTests
+public sealed class StatusMeaningTest
 {
     [Fact]
     public void AKnownCodeCarriesTheHeadersNameAndTheBindingsEnglish()

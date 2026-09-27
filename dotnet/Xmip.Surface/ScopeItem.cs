@@ -73,6 +73,52 @@ public sealed record ScopeItem(
         ];
     }
 
+    /// <summary>
+    /// The rows a selection names, as every surface answers <c>show</c>:
+    /// one per scope that <see cref="Exists"/>, and — where a wildcard named
+    /// several — worst first, each standing as its worst leaf's mood and
+    /// severity under its own scope, as a level of the tree reads. A literal
+    /// scope is its one row, or none. Until 2026-09-27 the cmdlet filtered and
+    /// ordered its rows and the command line did neither.
+    /// </summary>
+    public static IReadOnlyList<ScopeItem> Selected(
+        IOperatorSurface surface, ScopeSelection chosen)
+    {
+        ArgumentNullException.ThrowIfNull(surface);
+        ArgumentNullException.ThrowIfNull(chosen);
+
+        ScopeItem[] rows = [.. chosen.Scopes.Select(surface.Describe).Where(row => row.Exists)];
+
+        if (!chosen.Patterned || rows.Length < 2)
+        {
+            return rows;
+        }
+
+        ScopeIndex index = surface.Index();
+
+        return ScopeTree.WorstFirst(rows, row => Standing(index, row));
+    }
+
     /// <summary>Whether the row needs the operator: its mood is not Fine.</summary>
     public bool Troubled => Health is { } mood && mood != HealthState.Fine;
+
+    /// <summary>Whether the scope is there at all: something recorded health
+    /// at or beneath it, or it has a figure. A scope with neither is nothing
+    /// the surface holds, and every surface says so the same way
+    /// (<see cref="English.NothingAt"/>).</summary>
+    public bool Exists => Health is not null || Figures.HasValues;
+
+    // A row as it stands in the worst-first order: its worst leaf's mood and
+    // severity under its own scope, as a branch of the tree stands.
+    private static HealthRecord Standing(ScopeIndex index, ScopeItem row)
+    {
+        HealthRecord? worst = index.Worst(row.Scope);
+
+        return new HealthRecord(
+            row.Scope,
+            worst?.State ?? HealthState.Fine,
+            worst?.Severity ?? 0,
+            string.Empty,
+            default);
+    }
 }

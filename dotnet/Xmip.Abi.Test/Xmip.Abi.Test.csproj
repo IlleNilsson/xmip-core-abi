@@ -12,7 +12,7 @@
   -->
 
   <PropertyGroup>
-    <RootNamespace>Xmip.Abi.Tests</RootNamespace>
+    <RootNamespace>Xmip.Abi.Test</RootNamespace>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
 

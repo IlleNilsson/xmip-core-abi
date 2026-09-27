@@ -37,7 +37,7 @@ jobs:
         run: dotnet build dotnet/Xmip.Surface/Xmip.Surface.csproj --configuration Release -p:RestoreLockedMode=true
 
       - name: Test the binding
-        run: dotnet test dotnet/Xmip.Abi.Tests/Xmip.Abi.Tests.csproj --configuration Release -p:RestoreLockedMode=true
+        run: dotnet test dotnet/Xmip.Abi.Test/Xmip.Abi.Test.csproj --configuration Release -p:RestoreLockedMode=true
 
       - name: Test the surface
         run: dotnet test dotnet/Xmip.Surface.Test/Xmip.Surface.Test.csproj --configuration Release -p:RestoreLockedMode=true

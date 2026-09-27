@@ -3,55 +3,58 @@ using Microsoft.Extensions.Configuration;
 namespace Xmip.Surface.Test;
 
 /// <summary>
-/// A System Process says its name, its location and its purpose to one file
-/// named for it and its pid, and takes the file away where it ends
-/// (ADR-0053 clause 3). The same file the Rust processes write.
+/// A System Process declares its name, its location and its purpose through
+/// the node, and takes the declaration away where it ends (ADR-0053 clause 3).
+/// The file itself is <c>xmip-core-node</c>'s and tested there; these prove
+/// that a .NET process declares through it and reads it back through it.
 /// </summary>
 public sealed class ProcessDeclarationTest
 {
     [Fact]
     public void ADeclarationStandsWhileHeldAndIsGoneWhenDisposed()
     {
-        string directory = Path.Combine(
-            Path.GetTempPath(), $"xmip-declaration-{Guid.NewGuid():n}");
+        ProcessDeclaration? declared = ProcessDeclaration.Declare(
+            "xmip-surface-test", @"D:\a ""b""\C1-snapshot.toml", "test");
+
+        Assert.NotNull(declared);
 
         try
         {
-            ProcessDeclaration declared = ProcessDeclaration.DeclareIn(
-                directory,
-                "xmip-gui-web",
-                @"D:\a ""b""\C1-snapshot.toml",
-                ProcessDeclaration.Test);
-            string text = File.ReadAllText(declared.File);
+            Abi.Operate.ProcessStanding standing = Assert.Single(
+                ProcessDeclaration.Standing(Path.GetDirectoryName(declared.File)).Processes,
+                process => process.File == declared.File);
 
-            Assert.EndsWith(
-                $"xmip-gui-web-{Environment.ProcessId}.toml",
-                declared.File,
-                StringComparison.Ordinal);
-            Assert.Contains("name = \"xmip-gui-web\"", text, StringComparison.Ordinal);
-            Assert.Contains(
-                "location = \"D:\\\\a \\\"b\\\"\\\\C1-snapshot.toml\"",
-                text,
-                StringComparison.Ordinal);
-            Assert.Contains("purpose = \"test\"", text, StringComparison.Ordinal);
-            Assert.Contains($"pid = {Environment.ProcessId}", text, StringComparison.Ordinal);
-
-            declared.Dispose();
-            Assert.False(File.Exists(declared.File), "taken away where the process ends");
+            Assert.Equal("xmip-surface-test", standing.Name);
+            Assert.Equal(@"D:\a ""b""\C1-snapshot.toml", standing.Location);
+            Assert.Equal("test", standing.Purpose);
+            Assert.Equal(Environment.ProcessId, standing.Pid);
         }
         finally
         {
-            Directory.Delete(directory, recursive: true);
+            declared.Dispose();
         }
+
+        Assert.False(File.Exists(declared.File), "taken away where the process ends");
+    }
+
+    [Fact]
+    public void APurposeThatIsNoWordIsRefusedByTheNode()
+    {
+        // Until 2026-09-27 anything but test was taken for runtime.
+        ArgumentException refused = Assert.Throws<ArgumentException>(
+            () => ProcessDeclaration.Declare("xmip-surface-test", string.Empty, "production"));
+
+        Assert.StartsWith("REFUSED", refused.Message, StringComparison.Ordinal);
     }
 
     [Theory]
     [InlineData("test", "test")]
-    [InlineData(" TEST ", "test")]
     [InlineData("runtime", "runtime")]
-    [InlineData("production", "runtime")]
+    [InlineData("production", "production")]
     [InlineData(null, "runtime")]
-    public void AProcessIsRuntimeUnlessTheConfigurationSaysTest(string? stated, string purpose)
+    [InlineData("", "runtime")]
+    public void TheConfigurationStatesThePurposeAndNothingStatedIsRuntime(
+        string? stated, string purpose)
     {
         IConfiguration configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(

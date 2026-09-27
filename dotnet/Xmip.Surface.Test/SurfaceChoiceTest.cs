@@ -10,6 +10,34 @@ namespace Xmip.Surface.Test;
 public sealed class SurfaceChoiceTest
 {
     [Fact]
+    public void ARemoteThatIsNoWebHostIsRefusedInOneSentence()
+    {
+        // --remote and -Remote say the same thing, and the precedence refuses
+        // the line itself rather than blaming the document.
+        SurfaceLine line = new(Remote: "host:5443");
+
+        Assert.Equal(RemoteOperator.Refusal("host:5443"), line.Refusal);
+        Assert.Contains("https://host:5443", line.Refusal, StringComparison.Ordinal);
+        Assert.Null(new SurfaceLine(Remote: "https://host:5443").Refusal);
+        Assert.Null(SurfaceLine.None.Refusal);
+
+        IOperatorSurface? surface = SurfaceChoice.Answering(
+            line, Path.Combine(AppContext.BaseDirectory, "absent.toml"),
+            AppContext.BaseDirectory, out string reason);
+
+        Assert.Null(surface);
+        Assert.Equal(line.Refusal, reason);
+    }
+
+    [Fact]
+    public void WhoPausedIsTheNameStatedElseThisUser()
+    {
+        Assert.Equal("ilian", ScopeOperation.Who(" ilian "));
+        Assert.Equal(Environment.UserName, ScopeOperation.Who(null));
+        Assert.Equal(Environment.UserName, ScopeOperation.Who(" "));
+    }
+
+    [Fact]
     public void ASnapshotSurfaceReadsTheFileTheDocumentNames()
     {
         using Document document = new("""

@@ -16,7 +16,10 @@ a filter's structure and text, an edit — ADR-0064), which the VS Code
 extension's language server calls and no .NET surface binds yet, and section
 12's technology catalogue (`operate::catalogue`: the technologies a runtime
 carries and the settings each declares, ADR-0064 amendment 2026-09-26),
-which the language server calls and `RuntimeRules.Catalogue` binds. `examples/conforming.rs`
+which the language server calls and `RuntimeRules.Catalogue` binds, and section
+13's System Process declaration (`operate::process`: a process declares itself
+and the declarations standing in a directory are read, both `xmip-core-node`'s,
+ADR-0053), which `RuntimeRules.Processes` binds. `examples/conforming.rs`
 builds as a cdylib and is the conforming artifact a loader probe is tested
 against.
 
@@ -42,7 +45,8 @@ The .NET binding is here too: `dotnet/Xmip.Abi`, one class library declaring
 both headers for every operator surface — the cli, the PowerShell module and
 the GUI reference it as a project and bind nothing themselves (ADR-0014,
 amendment of 2026-08-26). `Module/` carries the module boundary, its probe
-and the probe's judgement of whether a module conforms, and `StatusMeaning`,
+and the probe's judgement of whether a library loaded at all
+(`ModuleProbe.Result.Unloadable`) and whether a module conforms, and `StatusMeaning`,
 what a status code means; `Operate/` the operator boundary and its records,
 and `RuntimeRules`, section 7 bound once: scope containment, a scope's
 parts and the node and stage it is on, the stage words, a declaration's parse and the facts of a stage, a
@@ -66,14 +70,18 @@ every matching subscription in the process; `EventRecord`, `EventFilter`,
 technologies the runtime carries and what each declares a Location may set —
 is `RuntimeRules.Catalogue` (`RuntimeCatalogue`): `TryRead` brings back the
 header's JSON, every technology or the one named, for the desktop editor's
-Location form. In a
+Location form. Section 13 — a System Process declared (ADR-0053) — is
+`RuntimeRules.Processes` (`RuntimeProcesses`): `Declare` has the node write
+the calling process's declaration and answers the file, or the node's
+refusal of a purpose that is no word; `Read` brings back the declarations
+standing in a directory as `ProcessDeclarations` of `ProcessStanding`. In a
 composed
 estate the project copies the runtime's built library beside everything that
 references it. `AbiBoundaries` says both boundaries at once. `xmip-cli abi`, `status` and
 `probe` render those and `Get-XmipAbi`, `ConvertFrom-XmipStatus` and
 `Get-XmipModuleDescriptor` emit them, so neither face judges a code or a
-module on its own (ADR-0052, amendment 2026-09-24). `dotnet/Xmip.Abi.Tests`
-compares both against the headers and holds those answers; `dotnet test dotnet/Xmip.Abi.Tests` runs
+module on its own (ADR-0052, amendment 2026-09-24). `dotnet/Xmip.Abi.Test`
+compares both against the headers and holds those answers; `dotnet test dotnet/Xmip.Abi.Test` runs
 them.
 
 ## What every .NET surface shares
@@ -94,7 +102,9 @@ faces over it.
   lookup (ADR-0052, amendment 2026-09-15); `Branch` and `Crumb` for
   the drill-down, and `ScopeItem` for one row of it — its mood, its figures
   and the leaf that explains it (`Worst`), the next scope on the way to the
-  cause. Every drill starts at `IOperatorSurface.Root`, the scope the
+  cause — whether it `Exists`, and `Selected`, the rows a selection names,
+  worst first under a wildcard, which `xmip-cli show` and `Get-XmipScope`
+  both answer with. Every drill starts at `IOperatorSurface.Root`, the scope the
   publisher publishes at (a Playground cluster, never the root above it); a
   stage card counts `IOperatorSurface.Stage` and lists `Locations`, and the
   prompt's letters are `MessagePath`, each stage its own figure (the owner,
@@ -106,7 +116,14 @@ faces over it.
   command line and in a cmdlet — the scope itself, or the topmost scopes a
   wildcard names — with the REFUSED sentence when it names nothing.
 - **Figures.** `Figures`, the six at a scope in the order every surface says
-  them, and `FigureFlow`, the three stage figures as a rate per second.
+  them, each also by the kind counted (`Of`); `FigureFlow`, the five as a rate
+  per second between two publications; and `FigureWatch`, the one place a
+  face remembers figures between two reads — the prompt's letters and the
+  board's stage cards alike — so the rate is computed once.
+- **Following.** `SurfaceFollow`, the one follow: the answer now, then a new
+  one whenever the publication advances and the answer changed, a wildcard
+  matched again at every notice, until cancelled — `xmip-cli --follow` and
+  `Get-XmipHealth -Follow` / `Get-XmipScope -Follow` run it.
 - **What a run says.** `RunHeader` for the `[run]` table a publisher writes,
   `NodeCapability` for what one node declared it can do — never inferred from
   what the node is called (ADR-0056 clause 1), read by the rule of
@@ -114,7 +131,8 @@ faces over it.
   refusal carried in `Refusal`) — and `Topology` for the communication view.
 - **Acts and verdicts.** `ScopeAction`, the two acts `xmip_operate.h` carries
   and no start, stop or restart; `ScopeOperation`, the one shape they answer
-  in, so an exit code and a pipeline object agree; and
+  in, so an exit code and a pipeline object agree, and `ScopeOperation.Who`,
+  who paused — the name stated, else the user the process runs as; and
   `ConfigurationVerdict` for what came of handing the runtime a node
   configuration — a saved file, or the text an editor holds.
 - **Plumbing.** `RuntimeLibrary` (discovery by one rule, written here and
@@ -126,11 +144,16 @@ faces over it.
   its TOML, every snapshot it names, and — over a `SurfaceLine` — the one
   precedence the executable, the prompt and the cmdlets share: a remote host,
   a snapshot or a runtime stated for the invocation, then the document, then
-  the runtime rule),
+  the runtime rule; a line whose remote is no web host is refused in
+  `RemoteOperator.Refusal`'s one sentence, `SurfaceLine.Refusal`),
   `TomlDocument` (the one TOML reader, and the syntax-tree editing an editor
   changes a document through, comments and layout kept), `ProcessDeclaration` (what a System
-  Process Xmip owns says of itself, ADR-0053 clause 3), `English` (a status
-  said in words once, a mood's word and color name asked of the runtime)
+  Process Xmip owns says of itself, ADR-0053 clause 3, declared and listed
+  through the node — section 13 — and never written here), `English` (a status
+  said in words once, a mood's word and color name asked of the runtime,
+  a stage's name, a rate on its one K, M and G ladder — `Moving` bare for the
+  prompt, `Rate` with its unit, `Flow` for a rate not known yet —
+  and what a surface says of a scope it holds nothing at, beneath or measured)
   and `SurfaceChange` (one coalescing change stream that wakes every
   surface when a published snapshot advances).
 - **TLS.** `SurfaceTls`, what a surface presents and trusts when it
@@ -150,8 +173,11 @@ faces over it.
   node it started, or its own `Publish`); a node elsewhere sends its Events
   over the wire (`xmip-core-event`'s `wire`).
 - **Audit.** `ProgramAudit`, how every .NET program audits (ADR-0062): its
-  name, the directory its configuration names (`Xmip:AuditDirectory`),
-  `Record`, `Failed` — one exception, one record — and `WatchUnhandled`, each
+  name, the directory its configuration names (`Xmip:AuditDirectory`), the
+  runtime library the program was told to load (`Library`, so `--runtime`
+  reaches the audit), `Record`, `Failed` — one exception, one record — `WatchUnhandled`,
+  and `Properties`, the one way a value becomes a record's text for every
+  .NET program and the estate's script module — each
   a call into `xmip_audit_v1` and never a record of its own; and
   `OperatingSystemLog`, the one .NET writer to the Windows Event Log or the
   local syslog, used only when the runtime's library cannot be loaded at all

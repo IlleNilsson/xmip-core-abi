@@ -3,7 +3,7 @@ using System.Globalization;
 using Xmip.Abi.Operate;
 using Xunit.Abstractions;
 
-namespace Xmip.Abi.Tests;
+namespace Xmip.Abi.Test;
 
 /// <summary>The latency tests run alone: a measurement shared with the rest
 /// of the suite measures the suite.</summary>
@@ -33,21 +33,21 @@ public sealed class EventLatency;
 /// the median. The worst is printed, never asserted.
 /// </remarks>
 [Collection(nameof(EventLatency))]
-public sealed class EventLatencyTests(ITestOutputHelper output)
+public sealed class EventLatencyTest(ITestOutputHelper output)
 {
     private const int Warm = 50;
     private const int Measured = 500;
     private const double Bound = 1.0;
     private const double Tail = 5.0;
 
-    private static RuntimeEvents Events => RuntimeRulesTests.Rules.Events;
+    private static RuntimeEvents Events => RuntimeRulesTest.Rules.Events;
 
     [Fact]
     public void ADrainingSubscriberWakesWithinAMillisecondOfPublish()
     {
         using Audited audited = new();
         using EventSubscription subscription = Events.Subscribe(
-            "Xmip.Abi.Tests", audited.Directory, RuntimeEventsTests.Party,
+            "Xmip.Abi.Test", audited.Directory, RuntimeEventsTest.Party,
             new EventFilter { Scope = audited.Scope });
         List<double> took = [];
         using AutoResetEvent received = new(false);
@@ -89,7 +89,7 @@ public sealed class EventLatencyTests(ITestOutputHelper output)
         List<double> took = [];
         using AutoResetEvent received = new(false);
         using EventSubscription subscription = Events.Listen(
-            "Xmip.Abi.Tests", audited.Directory, RuntimeEventsTests.Party,
+            "Xmip.Abi.Test", audited.Directory, RuntimeEventsTest.Party,
             heard =>
             {
                 took.Add(Since(heard));

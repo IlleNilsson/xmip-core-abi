@@ -19,4 +19,10 @@ public sealed record SurfaceLine(
 {
     /// <summary>Nothing stated: the document decides.</summary>
     public static SurfaceLine None { get; } = new();
+
+    /// <summary>Why the line cannot be obeyed — a remote that names no web
+    /// host (<see cref="RemoteOperator.Refusal"/>) — or null when it
+    /// can.</summary>
+    public string? Refusal =>
+        string.IsNullOrWhiteSpace(Remote) ? null : RemoteOperator.Refusal(Remote);
 }
