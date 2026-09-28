@@ -1,4 +1,4 @@
-//! What a Module declares about itself, and how it is called.
+//! What a Module declares about itself.
 //!
 //! Arrived from the platform repository's `src/contracts.rs` on 2026-08-26.
 //! `ModuleKind` did not come with it: ADR-0012 clause 5 removes it, and the
@@ -6,7 +6,6 @@
 //! describe seventeen traits, which is the whole reason that clause exists.
 
 use serde::{Deserialize, Serialize};
-use xcore::{JourneyId, MessageId};
 
 /// Name and version. The kind is deliberately absent — see the module note.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -71,42 +70,6 @@ pub struct ExtensionEntrypoint {
     pub symbol_or_command: Option<String>,
 }
 
-/// One call across the boundary.
-///
-/// The payload crosses as a reference, never as bytes in this struct. A Stream
-/// may be larger than memory, and the boundary rules in ADR-0012 make the host
-/// responsible for handing out a reader rather than a buffer.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct HandlerInvocation {
-    pub invocation_id: MessageId,
-    pub journey_id: JourneyId,
-    pub message_id: MessageId,
-    pub artifact_name: String,
-    pub location_name: Option<String>,
-    pub payload_ref: String,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct HandlerResult {
-    pub invocation_id: MessageId,
-    pub status: HandlerStatus,
-    pub output_payload_ref: Option<String>,
-    pub promoted_properties: Vec<(String, String)>,
-    pub diagnostic: Option<String>,
-}
-
-/// Whether the host may try again.
-///
-/// The Module decides this, not the host. Only the implementation knows whether
-/// a refused connection is a restart away from working or a permanent answer.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum HandlerStatus {
-    Completed,
-    RetryableFailure,
-    NonRetryableFailure,
-}
-
 /// The one thing every Module is.
 ///
 /// Nothing else is declared here. ADR-0012 clause 6 gives each core module its
@@ -165,10 +128,5 @@ mod tests {
         });
 
         assert_eq!(manifest.capabilities.len(), 2);
-    }
-
-    #[test]
-    fn a_retryable_failure_is_not_a_completion() {
-        assert_ne!(HandlerStatus::RetryableFailure, HandlerStatus::Completed);
     }
 }
