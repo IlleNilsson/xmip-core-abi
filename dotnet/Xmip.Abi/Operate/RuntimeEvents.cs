@@ -344,7 +344,7 @@ public sealed unsafe class RuntimeEvents
     // One Event out of the runtime's borrow, whole.
     private static EventRecord Copy(XmipEvent* raised)
     {
-        Dictionary<string, string> diagnostics = new(StringComparer.Ordinal);
+        Dictionary<string, string> diagnostics = [with(StringComparer.Ordinal)];
 
         for (nuint at = 0; at + 1 < raised->DiagnosticsLen; at += 2)
         {

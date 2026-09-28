@@ -72,16 +72,16 @@ public sealed class ScopeIndex
     public static ScopeIndex Build(
         IEnumerable<HealthRecord> records, IEnumerable<Count> counts, ulong revision, string source)
     {
-        Dictionary<string, Entry> entries = new(StringComparer.Ordinal);
-        Dictionary<string, HealthRecord> stages = new(StringComparer.Ordinal);
-        Dictionary<string, NodeCapability> declared = new(StringComparer.Ordinal);
+        Dictionary<string, Entry> entries = [with(StringComparer.Ordinal)];
+        Dictionary<string, HealthRecord> stages = [with(StringComparer.Ordinal)];
+        Dictionary<string, NodeCapability> declared = [with(StringComparer.Ordinal)];
         DateTimeOffset? observed = null;
 
         // The whole publication in the runtime's worst-first order, asked once:
         // every "which is worse" below is a lookup of where the runtime put a
         // record, never an order written here (observe::Standing).
         HealthRecord[] published = [.. records];
-        Dictionary<HealthRecord, int> rank = new(ReferenceEqualityComparer.Instance);
+        Dictionary<HealthRecord, int> rank = [with(ReferenceEqualityComparer.Instance)];
         int[] order = RuntimeLibrary.Rules.WorstFirst(published);
 
         for (int at = 0; at < order.Length; at++)
