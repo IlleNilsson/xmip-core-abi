@@ -6,8 +6,11 @@ runtime, operator surfaces, and loadable Modules.
 `include/xmip_module.h`, `include/xmip_operate.h` and `doc/specification.md`
 are normative. The Rust crate, whose source sits aside under `.src`
 (ADR-0049), is a convenience binding over that boundary and must not introduce
-Rust-specific types into the ABI: the descriptor, the manifest, the FFI
-shapes and the operate types, section 6's start and validate shapes, section
+Rust-specific types into the ABI: the descriptor and the two judgements a
+load makes of it — `validate_module_abi`, whether it is well formed, and
+`accepts`, ADR-0012's compatibility rule against the capability loading it,
+which the runtime's loader calls — the manifest, the FFI shapes and the
+operate types, section 6's start and validate shapes, section
 7's rule exports (`operate::rule`), section 8's publication reader
 (`operate::publication`), section 9's audit record (`operate::audit`,
 with `XMIP_EVENT_SOURCE`, the Windows Event Log source, ADR-0062) and section

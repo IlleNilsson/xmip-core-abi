@@ -14,10 +14,12 @@ pub mod ffi;
 pub mod manifest;
 pub mod operate;
 
-pub use descriptor::{ModuleDescriptor, XMIP_ABI_VERSION, XMIP_ENTRYPOINT, validate_module_abi};
+pub use descriptor::{
+    Expectation, ModuleDescriptor, XMIP_ABI_VERSION, XMIP_ENTRYPOINT, accepts, validate_module_abi,
+};
 pub use manifest::{
-    ExecutionHostKind, ExtensionEntrypoint, ExtensionManifest, HandlerInvocation, HandlerResult,
-    HandlerStatus, Module, ModuleCapability, ModuleEntrypoint, ModuleIdentity, ModuleManifest,
+    ExecutionHostKind, ExtensionEntrypoint, ExtensionManifest, Module, ModuleCapability,
+    ModuleEntrypoint, ModuleIdentity, ModuleManifest,
 };
 pub use operate::{
     HealthEntry, Measurement, Operate, OperateFn, Scope, XMIP_OPERATE_ENTRYPOINT,
