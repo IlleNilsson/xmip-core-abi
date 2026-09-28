@@ -66,7 +66,7 @@ public sealed class ProgramAudit(
     /// </summary>
     public static Dictionary<string, string> Properties(IDictionary? values)
     {
-        Dictionary<string, string> said = new(StringComparer.Ordinal);
+        Dictionary<string, string> said = [with(StringComparer.Ordinal)];
 
         if (values is null)
         {

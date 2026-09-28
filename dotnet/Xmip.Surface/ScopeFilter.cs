@@ -31,7 +31,7 @@ public sealed class ScopeFilter
         Pattern = pattern;
         Published = published;
         this.matched = new HashSet<string>(matched, StringComparer.Ordinal);
-        onTheWay = new HashSet<string>(StringComparer.Ordinal);
+        onTheWay = [with(StringComparer.Ordinal)];
 
         foreach (string scope in matched)
         {
