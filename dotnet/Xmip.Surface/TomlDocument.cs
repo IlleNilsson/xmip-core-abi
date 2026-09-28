@@ -51,6 +51,28 @@ public static class TomlDocument
             : Path.GetFullPath(Path.Combine(basePath, path));
     }
 
+    /// <summary>
+    /// The directory a GUI host's document writes its paths from: the estate
+    /// root, the directory holding <c>architecture.toml</c>, when the host
+    /// runs from inside the estate, else <paramref name="here"/>, the host's
+    /// own directory once published. One rule for the desktop and the web:
+    /// until 2026-09-28 the web resolved against its content root, which is
+    /// the project under <c>dotnet run</c> and its bin folder when started
+    /// built, and the same path found no runtime library.
+    /// </summary>
+    public static string BasePath(string here)
+    {
+        for (DirectoryInfo? directory = new(here); directory is not null; directory = directory.Parent)
+        {
+            if (File.Exists(Path.Combine(directory.FullName, "architecture.toml")))
+            {
+                return directory.FullName;
+            }
+        }
+
+        return here;
+    }
+
     /// <summary>A document's syntax tree, to edit in place; its
     /// <c>ToString()</c> is the document again, trivia and all.</summary>
     /// <exception cref="FormatException">The text is not TOML; the message
