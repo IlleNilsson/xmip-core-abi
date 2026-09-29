@@ -42,6 +42,16 @@ public sealed class RuntimeRulesTest
         Assert.Equal(contains, Rules.Contains(scope, candidate));
     }
 
+    [Theory]
+    [InlineData("xmip:///C1/node/alpha", "c1/NODE/al*", true)]
+    [InlineData("xmip:///C1/node/alpha", "xmip:///C1/node", false)]
+    [InlineData("xmip:///ö/å", "xmip:///Ö/?", true)]
+    [InlineData("", "*", true)]
+    public void TheWildcardCrossesAsTheOneRule(string candidate, string pattern, bool matches)
+    {
+        Assert.Equal(matches, Rules.Matches(candidate, pattern));
+    }
+
     [Fact]
     public void PartsComeBackAsTheSegmentsTopFirst()
     {

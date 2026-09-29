@@ -264,6 +264,7 @@ typedef XmipStatus (*XmipValidateFn)(XmipStr configuration,
  * of the same date). Each symbol below is a thin forwarder into its owner:
  *
  *     containment, parts    observe::Scope        (xmip-core-observe)
+ *     the wildcard          observe::wildcard     (xmip-core-observe)
  *     stage words, a parse  node::Stage           (xmip-core-node)
  *     pausable, location    node::Stage           (xmip-core-node)
  *     a run's node entry    node::Capability      (xmip-core-node)
@@ -295,6 +296,16 @@ typedef XmipStatus (*XmipValidateFn)(XmipStr configuration,
  */
 typedef XmipStatus (*XmipScopeContainsFn)(XmipScope scope, XmipScope candidate,
                                           uint8_t *out_contains);
+
+/*
+ * Whether candidate is what pattern names, by the one wildcard (ADR-0052,
+ * amendment 2026-09-19): * for any run of characters, ? for exactly one,
+ * everything else literal, case-insensitive, * crossing a slash, both sides
+ * read as scopes first. A pattern with no wildcard names that one scope, never
+ * what is beneath it. *out_matches is 1 or 0.
+ */
+typedef XmipStatus (*XmipScopeMatchesFn)(XmipScope candidate, XmipStr pattern,
+                                         uint8_t *out_matches);
 
 /*
  * The segments of a scope's path, top first, in the fill shape of section 5:
@@ -406,6 +417,7 @@ typedef XmipStatus (*XmipCapabilityEntryFn)(XmipStr entry, XmipStr *out_node,
                                             size_t *refusal_len);
 
 #define XMIP_SCOPE_CONTAINS_ENTRYPOINT "xmip_scope_contains_v1"
+#define XMIP_SCOPE_MATCHES_ENTRYPOINT  "xmip_scope_matches_v1"
 #define XMIP_SCOPE_PARTS_ENTRYPOINT    "xmip_scope_parts_v1"
 #define XMIP_SCOPE_NODE_ENTRYPOINT     "xmip_scope_node_v1"
 #define XMIP_STAGE_WORDS_ENTRYPOINT    "xmip_stage_words_v1"
@@ -669,6 +681,53 @@ typedef XmipStatus (*XmipAuditFn)(XmipStr program, XmipStr directory, XmipStr ac
                                   uint8_t *said, size_t said_cap, size_t *said_len);
 
 #define XMIP_AUDIT_ENTRYPOINT "xmip_audit_v1"
+
+/*
+ * The audit read back (ADR-0062, amendment 2026-09-29): what every surface
+ * asks of the records programs audited, answered by the audit capability's
+ * one reader and one query (audit::audit_query::AuditQuery). A thin
+ * forwarder, pure like section 7: no handle, any thread, before any node.
+ *
+ * directory is the audit directory to read, by the rule xmip_audit_v1 writes
+ * by (empty: XMIP_AUDIT_DIRECTORY, else there is none to read). query holds
+ * query_len strings, key then value: pattern (the wildcard of section 7 over
+ * each record's location; a record with none is at the root, which only *
+ * names), location (at and beneath this scope), host (records that declared
+ * no location, on this host), program, record (one audit_id; every other
+ * filter set aside), severity, action, from and to (RFC 3339; a date, or a
+ * date and time with no zone, is UTC), sort (at, location, node, program,
+ * host, action, phase, severity, summary), order (ascending, descending; the
+ * default is descending), offset and limit (at most 1000; 100 when unstated).
+ * An empty value is no filter. The answer is JSON, in memory only (ADR-0031
+ * clause 2), written into out as UTF-8, its true byte length in out_len
+ * whether or not it fit:
+ *
+ *   {"file":"<the file read, empty for none>","read":<records it holds>,
+ *    "matched":<records the query matched>,"offset":<n>,"limit":<n>,
+ *    "records":[{"audit_id","at","program","host","process","location"?,
+ *                "node"?,"cluster"?,"action","phase","severity","message"?,
+ *                "summary","scope":{...},"properties":{...}}],
+ *    "groups":[{"kind":"cluster"|"node"|"scope"|"program"|"host","who",
+ *               "count","warnings","errors","latest"}],
+ *    "actions":["<every action where the query stands>"],
+ *    "columns":["at",...],"severities":["information","warning","error"]}
+ *
+ * groups are one step down from where the query stands - clusters and hosts
+ * at the top, a cluster's nodes and its own programs, a node's programs -
+ * and none once a program is asked; columns are the sort words in the
+ * order a reader shows them and severities least first, so no surface
+ * keeps a list of its own. XMIP_OK with the answer;
+ * XMIP_E_INVALID with the refusal, one sentence opening REFUSED, in out for
+ * a key or value the query does not take or an odd query_len; XMIP_E_IO
+ * with the reason when the file is there and cannot be read;
+ * XMIP_E_MALFORMED when a string is not UTF-8. Optional symbol, as section
+ * 7's are; XMIP_OPERATE_VERSION is unchanged.
+ */
+typedef XmipStatus (*XmipAuditReadFn)(XmipStr directory,
+                                      const XmipStr *query, size_t query_len,
+                                      uint8_t *out, size_t cap, size_t *out_len);
+
+#define XMIP_AUDIT_READ_ENTRYPOINT "xmip_audit_read_v1"
 
 /*
  * The event source every Xmip entry in the Windows Event Log is written under

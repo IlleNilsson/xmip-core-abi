@@ -167,6 +167,8 @@ pub mod rule {
 
     /// `observe::Scope::contains`.
     pub const SCOPE_CONTAINS_ENTRYPOINT: &str = "xmip_scope_contains_v1";
+    /// `observe::wildcard::matches`.
+    pub const SCOPE_MATCHES_ENTRYPOINT: &str = "xmip_scope_matches_v1";
     /// `observe::Scope::segments`.
     pub const SCOPE_PARTS_ENTRYPOINT: &str = "xmip_scope_parts_v1";
     /// `observe::Scope::node` and `observe::Scope::stage`.
@@ -201,6 +203,11 @@ pub mod rule {
     /// Whether `candidate` is `scope` or beneath it; `out_contains` 1 or 0.
     pub type ScopeContainsFn =
         unsafe extern "C" fn(scope: Scope, candidate: Scope, out_contains: *mut u8) -> i32;
+
+    /// Whether `candidate` is what `pattern` names by the one wildcard;
+    /// `out_matches` 1 or 0.
+    pub type ScopeMatchesFn =
+        unsafe extern "C" fn(candidate: Scope, pattern: Str, out_matches: *mut u8) -> i32;
 
     /// A scope's segments, borrowed from `scope`, in the fill shape.
     pub type ScopePartsFn =
@@ -348,6 +355,10 @@ mod tests {
                 "XMIP_SCOPE_CONTAINS_ENTRYPOINT",
                 rule::SCOPE_CONTAINS_ENTRYPOINT,
             ),
+            (
+                "XMIP_SCOPE_MATCHES_ENTRYPOINT",
+                rule::SCOPE_MATCHES_ENTRYPOINT,
+            ),
             ("XMIP_SCOPE_PARTS_ENTRYPOINT", rule::SCOPE_PARTS_ENTRYPOINT),
             ("XMIP_SCOPE_NODE_ENTRYPOINT", rule::SCOPE_NODE_ENTRYPOINT),
             ("XMIP_STAGE_WORDS_ENTRYPOINT", rule::STAGE_WORDS_ENTRYPOINT),
@@ -397,6 +408,7 @@ mod tests {
                 rule::CAPABILITY_ENTRY_ENTRYPOINT,
             ),
             ("XMIP_AUDIT_ENTRYPOINT", audit::AUDIT_ENTRYPOINT),
+            ("XMIP_AUDIT_READ_ENTRYPOINT", audit::AUDIT_READ_ENTRYPOINT),
             ("XMIP_EVENT_SOURCE", audit::EVENT_SOURCE),
             (
                 "XMIP_EVENT_SOURCE_UNREGISTERED",

@@ -8,7 +8,8 @@ namespace Xmip.Abi.Operate;
 /// <summary>
 /// Section 7 of <c>include/xmip_operate.h</c>, crossed by P/Invoke: the rules
 /// a surface calls instead of keeping its own. Scope containment, a scope's
-/// parts, and the node and stage it is on are <c>observe::Scope</c>'s; the
+/// parts, and the node and stage it is on are <c>observe::Scope</c>'s, and
+/// the one wildcard over scopes <c>observe::wildcard</c>'s; the
 /// stage words, their parse,
 /// whether a stage pauses and what a thing at it is called are
 /// <c>node::Stage</c>'s, and a run's node entry <c>node::Capability</c>'s; a
@@ -39,6 +40,7 @@ public sealed unsafe class RuntimeRules
     private const int Small = 512;
 
     private readonly delegate* unmanaged[Cdecl]<XmipStr, XmipStr, byte*, int> _contains;
+    private readonly delegate* unmanaged[Cdecl]<XmipStr, XmipStr, byte*, int> _matches;
     private readonly delegate* unmanaged[Cdecl]<XmipStr, XmipStr*, nuint, nuint*, int> _parts;
     private readonly delegate* unmanaged[Cdecl]<XmipStr, XmipStr*, XmipStr*, int> _node;
     private readonly delegate* unmanaged[Cdecl]<
@@ -63,6 +65,8 @@ public sealed unsafe class RuntimeRules
         Source = path;
         _contains = (delegate* unmanaged[Cdecl]<XmipStr, XmipStr, byte*, int>)
             Export(library, OperateAbi.ScopeContainsEntrypoint);
+        _matches = (delegate* unmanaged[Cdecl]<XmipStr, XmipStr, byte*, int>)
+            Export(library, OperateAbi.ScopeMatchesEntrypoint);
         _parts = (delegate* unmanaged[Cdecl]<XmipStr, XmipStr*, nuint, nuint*, int>)
             Export(library, OperateAbi.ScopePartsEntrypoint);
         _node = (delegate* unmanaged[Cdecl]<XmipStr, XmipStr*, XmipStr*, int>)
@@ -151,6 +155,7 @@ public sealed unsafe class RuntimeRules
         .. RuntimeCatalogue.Entrypoints,
         .. RuntimeProcesses.Entrypoints,
         OperateAbi.ScopeContainsEntrypoint,
+        OperateAbi.ScopeMatchesEntrypoint,
         OperateAbi.ScopePartsEntrypoint,
         OperateAbi.ScopeNodeEntrypoint,
         OperateAbi.StageWordsEntrypoint,
@@ -191,6 +196,28 @@ public sealed unsafe class RuntimeRules
         ArgumentNullException.ThrowIfNull(scope);
         ArgumentNullException.ThrowIfNull(candidate);
 
+        return Pair(_contains, scope, candidate);
+    }
+
+    /// <summary>Whether <paramref name="candidate"/> is what
+    /// <paramref name="pattern"/> names by the one wildcard —
+    /// <c>observe::wildcard::matches</c>.</summary>
+    public bool Matches(string candidate, string pattern)
+    {
+        ArgumentNullException.ThrowIfNull(candidate);
+        ArgumentNullException.ThrowIfNull(pattern);
+
+        return Pair(_matches, candidate, pattern);
+    }
+
+    // Two strings in, a yes or a no out: the shape containment and the
+    // wildcard share.
+    private static bool Pair(
+        delegate* unmanaged[Cdecl]<XmipStr, XmipStr, byte*, int> call,
+        string scope,
+        string candidate)
+    {
+
         int scopeMax = Encoding.UTF8.GetMaxByteCount(scope.Length);
         int candidateMax = Encoding.UTF8.GetMaxByteCount(candidate.Length);
         Span<byte> scopeBytes = scopeMax <= Small ? stackalloc byte[Small] : new byte[scopeMax];
@@ -204,7 +231,7 @@ public sealed unsafe class RuntimeRules
         fixed (byte* scopeData = scopeBytes)
         fixed (byte* candidateData = candidateBytes)
         {
-            Check(_contains(
+            Check(call(
                 new XmipStr(scopeData, (nuint)scopeLength),
                 new XmipStr(candidateData, (nuint)candidateLength),
                 &contains));

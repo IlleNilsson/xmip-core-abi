@@ -123,6 +123,24 @@ public sealed class ProgramAudit(
     }
 
     /// <summary>
+    /// The records where this program's records go — <see cref="Directory"/>,
+    /// else the directory <c>XMIP_AUDIT_DIRECTORY</c> names — that
+    /// <paramref name="query"/> asks for, read by the audit capability's one
+    /// reader (ADR-0062, amendment 2026-09-29). Every surface's audit read is
+    /// this call.
+    /// </summary>
+    /// <exception cref="ArgumentException">The capability refused the query,
+    /// with its sentence.</exception>
+    /// <exception cref="IOException">The file is there and could not be
+    /// read.</exception>
+    public AuditRead Read(AuditQuery query)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+
+        return RuntimeLibrary.Rules.Audit.Read(Directory, query.Pairs());
+    }
+
+    /// <summary>
     /// Audit every exception this process does not handle — on any thread,
     /// and every faulted task nobody observed — as <c>unhandled</c>, before
     /// the runtime does whatever it would have done. Once per process, at

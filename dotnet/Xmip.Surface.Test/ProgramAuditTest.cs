@@ -76,6 +76,28 @@ public sealed class ProgramAuditTest
     }
 
     [Fact]
+    public void WhatAProgramRecordedItReadsBackByTheQuerysWords()
+    {
+        string directory = Scratch();
+        ProgramAudit audit = new("Xmip.Surface.Test", directory);
+        audit.Record("start", AuditPhase.Begin, AuditSeverity.Information);
+        audit.Record("stop", AuditPhase.Finished, AuditSeverity.Warning, "stopped");
+
+        AuditQuery query = new() { Severity = "warning", Sort = "action", Order = "ascending" };
+        AuditRead read = audit.Read(query);
+
+        Assert.False(query.Descending);
+        Assert.Equal(
+            [new("severity", "warning"), new("sort", "action"), new("order", "ascending")],
+            query.Pairs());
+        Assert.Equal(2, read.Read);
+        Assert.Equal("stopped", Assert.Single(read.Records).Summary);
+        Assert.Equal(["stop"], read.Actions);
+        Assert.EndsWith("audit.toml", read.File, StringComparison.Ordinal);
+        Directory.Delete(directory, recursive: true);
+    }
+
+    [Fact]
     public void AProgramThatCannotReachAuditSaysWhyFirst()
     {
         // The sentence, not the entry: no test writes to this machine's log.

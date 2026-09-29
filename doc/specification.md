@@ -487,3 +487,14 @@ standing in a directory, the node's own when none is named, whether or not
 their processes still run. The file, its directory, its words and its
 reading are the node's alone. The Rust mirror is `.src/operate/process.rs`;
 .NET binds it as `RuntimeProcesses`.
+
+Section 9 is a program's audit record (ADR-0062): `xmip_audit_v1` hands one
+to `xmip-core-audit`, and since 2026-09-29 `xmip_audit_read_v1` answers, as
+JSON in memory, the records an audit query asks for — who (a location and
+what is beneath it, a host, a program, one record), the scope pattern,
+severity, action and time, sorted by any column and paged — with the groups
+one step down the drill and the words a reader offers. The reader and the
+query are the capability's alone. The Rust mirror is
+`.src/operate/audit.rs`; .NET binds it as `RuntimeAudit`. Section 7 gained
+`xmip_scope_matches_v1` the same day, the one wildcard over scopes,
+`observe::wildcard`'s.

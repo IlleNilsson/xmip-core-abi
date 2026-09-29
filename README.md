@@ -64,7 +64,10 @@ topology (`Topology.cs`, the header's values) and run (ADR-0052, amendments
 (`Words`, a `TopologyWord` of the word a publication writes and the name a
 person reads, `observe::topology`'s; ADR-0052, amendment 2026-09-25); and `RuntimeAudit`, section 9, a program's audit record handed
 to `xmip-core-audit` through the runtime's library, with `AuditPhase`,
-`AuditSeverity` and `AuditKept` as the header defines them (ADR-0062). Section 11 — Events, subscribed (ADR-0065) — is bound once as
+`AuditSeverity` and `AuditKept` as the header defines them (ADR-0062), and
+`Read`, the records read back by the capability's one reader and query —
+`AuditRead`, its `AuditEntry` page and its `AuditGroup`s one step down the
+drill (ADR-0062, amendment 2026-09-29). Section 11 — Events, subscribed (ADR-0065) — is bound once as
 `RuntimeRules.Events` (`RuntimeEvents`): `Subscribe` returns a disposable
 `EventSubscription` drained with `Next(timeout, max)`, `Listen` calls a
 handler on the runtime's listener thread, and `Publish` hands an Event to
@@ -113,7 +116,8 @@ faces over it.
   prompt's letters are `MessagePath`, each stage its own figure (the owner,
   2026-09-26: *drill-down does not work and datapoints are wrong*).
 - **Narrowing.** `ScopePattern`, the one wildcard every surface matches with
-  (ADR-0059 clauses 7 and 8); `ScopeFilter`, that pattern applied to a
+  (ADR-0059 clauses 7 and 8), `observe::wildcard`'s since 2026-09-29, called
+  through `RuntimeRules.Matches` (`xmip_scope_matches_v1`); `ScopeFilter`, that pattern applied to a
   publication so the views narrow alike and none decides for itself what a
   pattern means; and `ScopeSelection`, what a scope argument selects on the
   command line and in a cmdlet — the scope itself, or the topmost scopes a
@@ -182,6 +186,9 @@ faces over it.
   and `Properties`, the one way a value becomes a record's text for every
   .NET program and the estate's script module — each
   a call into `xmip_audit_v1` and never a record of its own; and
+  `Read(AuditQuery)`, every .NET surface's read of the records back — the
+  Audit view, `xmip-cli audit` and `Get-XmipAudit` — through
+  `xmip_audit_read_v1` (ADR-0062, amendment 2026-09-29); and
   `OperatingSystemLog`, the one .NET writer to the Windows Event Log or the
   local syslog, used only when the runtime's library cannot be loaded at all
   and saying why.

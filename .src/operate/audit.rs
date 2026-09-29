@@ -3,13 +3,18 @@
 //! Every Xmip program audits through `xmip-core-audit` (ADR-0062); a .NET
 //! program and PowerShell reach it through the runtime's library, whose
 //! `xmip_audit_v1` forwards to the capability and writes no record of its
-//! own. Declarations only; the runtime's tests fail to compile if its export
-//! drifts from [`AuditFn`].
+//! own; `xmip_audit_read_v1` reads the records back through the capability's
+//! one reader and query (ADR-0062, amendment 2026-09-29). Declarations only;
+//! the runtime's tests fail to compile if an export drifts from [`AuditFn`]
+//! or [`AuditReadFn`].
 
 use crate::ffi::Str;
 
 /// `xmip_audit_v1`.
 pub const AUDIT_ENTRYPOINT: &str = "xmip_audit_v1";
+
+/// `xmip_audit_read_v1`.
+pub const AUDIT_READ_ENTRYPOINT: &str = "xmip_audit_read_v1";
 
 /// `XMIP_EVENT_SOURCE`: the Windows Event Log source every Xmip entry is
 /// written under when audit cannot persist a record (ADR-0062 clause 3).
@@ -60,4 +65,16 @@ pub type AuditFn = unsafe extern "C" fn(
     said: *mut u8,
     said_cap: usize,
     said_len: *mut usize,
+) -> i32;
+
+/// `xmip_audit_read_v1`: the records in `directory` a query asks for.
+/// `query` holds `query_len` strings, key then value; the answer is the
+/// header's JSON, written into `out` as UTF-8, its true length in `out_len`.
+pub type AuditReadFn = unsafe extern "C" fn(
+    directory: Str,
+    query: *const Str,
+    query_len: usize,
+    out: *mut u8,
+    cap: usize,
+    out_len: *mut usize,
 ) -> i32;
