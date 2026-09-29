@@ -205,6 +205,22 @@ public sealed class EnglishTest
         Assert.StartsWith("50", English.Percent(0.5), StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void TheAuditIsSaidInTheCapabilitysWordsToTheSecond()
+    {
+        Assert.Equal(
+            "2026-09-29T14:00:00Z", English.ToTheSecond("2026-09-29T14:00:00.123456789Z"));
+        Assert.Equal(
+            "2026-09-29T14:00:00+02:00", English.ToTheSecond("2026-09-29T14:00:00.5+02:00"));
+        Assert.Equal("2026-09-29T14:00:00Z", English.ToTheSecond("2026-09-29T14:00:00Z"));
+        Assert.Equal(
+            "REFUSED: severity \"loud\" is none of these.",
+            English.Refusal(new ArgumentException(
+                "REFUSED: severity \"loud\" is none of these.", "query")));
+        Assert.Contains("operating system's log", English.NoAuditDirectory(),
+            StringComparison.Ordinal);
+    }
+
     private static CommunicationLink Link(TopologyOrigin origin, ulong volume, double rate)
     {
         return new CommunicationLink(

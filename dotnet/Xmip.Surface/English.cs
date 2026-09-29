@@ -200,6 +200,51 @@ public static class English
         return $"Nothing measured at {scope} ({source}).";
     }
 
+    /// <summary>What a surface says when it has no audit to read: no audit
+    /// directory is stated, so its program's records went to the operating
+    /// system's log (<see cref="AuditRead.File"/> is empty).</summary>
+    public static string NoAuditDirectory()
+    {
+        return "No audit directory is stated — neither Xmip:AuditDirectory in this "
+            + "program's configuration nor XMIP_AUDIT_DIRECTORY — so its records go to the "
+            + "operating system's log, and there is no audit here to read.";
+    }
+
+    /// <summary>A record's time as written (<see cref="AuditEntry.At"/>, RFC
+    /// 3339 to the nanosecond) to the second, its zone kept: what a table's
+    /// column shows, where the fraction would only widen it.</summary>
+    public static string ToTheSecond(string at)
+    {
+        ArgumentNullException.ThrowIfNull(at);
+
+        if (at.Length <= 19 || at[19] != '.')
+        {
+            return at;
+        }
+
+        int zone = 20;
+
+        while (zone < at.Length && char.IsAsciiDigit(at[zone]))
+        {
+            zone++;
+        }
+
+        return string.Concat(at.AsSpan(0, 19), at.AsSpan(zone));
+    }
+
+    /// <summary>The audit capability's refusal of a query, as it said it:
+    /// the REFUSED sentence <see cref="ProgramAudit.Read"/> threw, without the
+    /// parameter name .NET appends to an argument's message.</summary>
+    public static string Refusal(ArgumentException refused)
+    {
+        ArgumentNullException.ThrowIfNull(refused);
+
+        return refused.ParamName is { } name
+            ? refused.Message.Replace($" (Parameter '{name}')", string.Empty,
+                StringComparison.Ordinal)
+            : refused.Message;
+    }
+
     /// <summary>What a figure is moving, as a reader's <see cref="FigureWatch"/>
     /// gave it: the rate, or — where the reader has seen one publication and so
     /// has no interval — that it is waiting, which is not a stall.</summary>

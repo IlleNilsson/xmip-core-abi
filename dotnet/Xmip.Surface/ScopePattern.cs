@@ -12,8 +12,11 @@ namespace Xmip.Surface;
 /// <para>
 /// PowerShell matches with <c>-like</c> and declares <c>[SupportsWildcards()]</c>;
 /// the executable and the GUI match here, so an operator who learns the pattern
-/// at one surface is right at the others. Where this cannot be <c>-like</c>
-/// exactly, it says so:
+/// at one surface is right at the others. The matching itself is
+/// <c>observe::wildcard</c>'s, in Rust, reached through the runtime's library
+/// (<c>xmip_scope_matches_v1</c>): the audit read filters by it too, and a rule
+/// is placed once (ADR-0052, amendment 2026-09-24; moved 2026-09-29). Where
+/// this cannot be <c>-like</c> exactly, it says so:
 /// </para>
 /// <list type="bullet">
 /// <item><c>*</c> and <c>?</c> are the only metacharacters. <c>-like</c> also
@@ -55,7 +58,7 @@ public static class ScopePattern
     /// </summary>
     public static bool Matches(string candidate, string pattern)
     {
-        return Like(Normal(candidate), Normal(pattern));
+        return RuntimeLibrary.Rules.Matches(candidate, pattern);
     }
 
     /// <summary>A scope as this comparison reads it: the path under the root,
@@ -92,54 +95,5 @@ public static class ScopePattern
         }
 
         return topmost;
-    }
-
-    /// <summary>
-    /// <c>-like</c> itself: <c>*</c> for any run of characters including none,
-    /// <c>?</c> for exactly one, everything else literal, the whole text or
-    /// nothing. Iterative with one backtrack point, so a pattern of several
-    /// stars over eleven thousand scopes cannot fall off a stack.
-    /// </summary>
-    private static bool Like(ReadOnlySpan<char> text, ReadOnlySpan<char> pattern)
-    {
-        int at = 0;
-        int step = 0;
-        int star = -1;
-        int resume = 0;
-
-        while (at < text.Length)
-        {
-            if (step < pattern.Length && (pattern[step] == '?' || Same(pattern[step], text[at])))
-            {
-                at++;
-                step++;
-            }
-            else if (step < pattern.Length && pattern[step] == '*')
-            {
-                star = step++;
-                resume = at;
-            }
-            else if (star >= 0)
-            {
-                step = star + 1;
-                at = ++resume;
-            }
-            else
-            {
-                return false;
-            }
-        }
-
-        while (step < pattern.Length && pattern[step] == '*')
-        {
-            step++;
-        }
-
-        return step == pattern.Length;
-    }
-
-    private static bool Same(char pattern, char text)
-    {
-        return pattern == text || char.ToUpperInvariant(pattern) == char.ToUpperInvariant(text);
     }
 }

@@ -38,6 +38,10 @@ public static class OperateAbi
     /// forwarded to <c>observe::Scope::contains</c>.</summary>
     public const string ScopeContainsEntrypoint = "xmip_scope_contains_v1";
 
+    /// <summary>Whether a scope is what a pattern names by the one wildcard:
+    /// section 7, forwarded to <c>observe::wildcard::matches</c>.</summary>
+    public const string ScopeMatchesEntrypoint = "xmip_scope_matches_v1";
+
     /// <summary>A scope's segments: section 7, <c>observe::Scope::segments</c>.</summary>
     public const string ScopePartsEntrypoint = "xmip_scope_parts_v1";
 
@@ -142,6 +146,11 @@ public static class OperateAbi
     /// <summary>Record one act of a program: section 9, forwarded to
     /// <c>xmip-core-audit</c>'s <c>ProgramAudit::record</c> (ADR-0062).</summary>
     public const string AuditEntrypoint = "xmip_audit_v1";
+
+    /// <summary>The audit read back: section 9, forwarded to
+    /// <c>xmip-core-audit</c>'s reader and <c>AuditQuery</c> (ADR-0062,
+    /// amendment 2026-09-29).</summary>
+    public const string AuditReadEntrypoint = "xmip_audit_read_v1";
 
     /// <summary>The Windows Event Log source every Xmip entry is written under
     /// when audit cannot persist a record: section 9's
