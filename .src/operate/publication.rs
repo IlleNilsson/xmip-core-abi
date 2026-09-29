@@ -59,6 +59,7 @@ pub mod kind {
     pub const NODE: i32 = 12;
     pub const STAGE: i32 = 13;
     pub const ENDPOINT: i32 = 14;
+    pub const PARTY: i32 = 15;
 }
 
 /// Header section 8, `XmipTopologyOrigin`, as it crosses.
@@ -293,6 +294,7 @@ mod tests {
             ("XMIP_TOPOLOGY_NODE", kind::NODE),
             ("XMIP_TOPOLOGY_STAGE", kind::STAGE),
             ("XMIP_TOPOLOGY_ENDPOINT", kind::ENDPOINT),
+            ("XMIP_TOPOLOGY_PARTY", kind::PARTY),
             ("XMIP_ORIGIN_CONFIGURED", origin::CONFIGURED),
             ("XMIP_ORIGIN_BOTH", origin::BOTH),
             ("XMIP_PATTERN_REQUEST_RESPONSE", pattern::REQUEST_RESPONSE),
