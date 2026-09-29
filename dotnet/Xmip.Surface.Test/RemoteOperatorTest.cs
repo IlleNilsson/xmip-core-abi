@@ -93,6 +93,45 @@ public sealed class RemoteOperatorTest
     }
 
     [Fact]
+    public async Task ListsAndActsOnTheHostsSubscriptionsAsTheHostDoes()
+    {
+        string copy = Path.Combine(
+            Path.GetTempPath(), $"xmip-remote-{Guid.NewGuid():n}-snapshot.toml");
+        string orders = Path.Combine(Path.GetTempPath(), $"xmip-remote-orders-{Guid.NewGuid():n}");
+        File.WriteAllText(
+            copy,
+            $"node = \"xmip:///CT\"\norders = '{orders}'\n[[subscriptions]]\n"
+            + "node = \"xmip:///CT/node/R1\"\nid = 7\nsubscriber = \"p\"\nstate = \"active\"\n");
+
+        try
+        {
+            IOperatorSurface local = new SnapshotOperator(copy);
+            await using WebApplication host = await Serve(local).ConfigureAwait(true);
+            using RemoteOperator remoteHost = new(new Uri(host.Urls.First()));
+            IOperatorSurface remote = remoteHost;
+
+            Assert.True(remoteHost.Connect(), remoteHost.Reason);
+            Abi.Operate.SubscriptionRecord held = Assert.Single(
+                remote.Subscriptions().Subscriptions);
+            Assert.Equal(local.Subscriptions().Subscriptions[0], held);
+
+            SubscriptionOperation paused = remote.Act(held, SubscriptionAct.Pause, "ilian");
+
+            Assert.True(paused.Applied, paused.Result);
+            Assert.Equal(SubscriptionAct.Pause, paused.Act);
+            Assert.Single(Directory.GetFiles(Path.Combine(orders, "R1"), "*.toml"));
+        }
+        finally
+        {
+            File.Delete(copy);
+            if (Directory.Exists(orders))
+            {
+                Directory.Delete(orders, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
     public void AHostThatIsNotThereIsSaidSo()
     {
         using RemoteOperator remote = new(new Uri("http://127.0.0.1:9"));

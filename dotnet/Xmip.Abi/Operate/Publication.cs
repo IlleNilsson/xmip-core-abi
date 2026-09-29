@@ -13,13 +13,17 @@ namespace Xmip.Abi.Operate;
 /// <param name="Counts">Its counts, each at the scope it was recorded at.</param>
 /// <param name="Topology">The topology it draws, or null.</param>
 /// <param name="Run">What its run was started with, or null.</param>
+/// <param name="Subscriptions">The Event subscriptions its nodes hold, and
+/// where its publisher takes an act on one (ADR-0065, amendment
+/// 2026-09-29).</param>
 public sealed record Publication(
     string Source,
     string Node,
     IReadOnlyList<HealthRecord> Records,
     IReadOnlyList<MeasurementRecord> Counts,
     TopologySnapshot? Topology,
-    PublishedRun? Run);
+    PublishedRun? Run,
+    SubscriptionList Subscriptions);
 
 /// <summary>What a run was started with, as a publication says it under
 /// <c>[run]</c>: <c>observe::Run</c>.</summary>

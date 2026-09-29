@@ -217,6 +217,34 @@ public sealed class NativeOperator : IOperatorSurface, IDisposable
     }
 
     /// <inheritdoc />
+    /// <remarks>The hub of the process that loaded the runtime, each
+    /// subscription at <see cref="IOperatorSurface.Root"/>.</remarks>
+    public SubscriptionList Subscriptions()
+    {
+        return Runtime() is null
+            ? SubscriptionList.Empty
+            : RuntimeLibrary.Rules.Subscriptions.Standing(((IOperatorSurface)this).Root());
+    }
+
+    /// <inheritdoc />
+    public SubscriptionOperation Act(
+        SubscriptionRecord subscription, SubscriptionAct act, string who)
+    {
+        ArgumentNullException.ThrowIfNull(subscription);
+
+        if (Runtime() is null)
+        {
+            return SubscriptionOperation.Declined(subscription, act, NotLoaded());
+        }
+
+        XmipStatus status = RuntimeLibrary.Rules.Subscriptions.Act(
+            subscription.Id, SubscriptionOperation.Word(act), who, out string said);
+
+        return new SubscriptionOperation(
+            subscription.Node, subscription.Id, act, status == XmipStatus.Ok, said);
+    }
+
+    /// <inheritdoc />
     public ScopeOperation Control(string scope, ScopeAction action, string who)
     {
         if (Runtime() is not { } runtime)

@@ -103,6 +103,7 @@ public sealed unsafe class RuntimeRules
         Events = new RuntimeEvents(library);
         Catalogue = new RuntimeCatalogue(library);
         Processes = new RuntimeProcesses(library);
+        Subscriptions = new RuntimeSubscriptions(library);
 
         delegate* unmanaged[Cdecl]<XmipStr*, nuint, nuint*, int> words =
             (delegate* unmanaged[Cdecl]<XmipStr*, nuint, nuint*, int>)
@@ -133,6 +134,11 @@ public sealed unsafe class RuntimeRules
     /// that stand (ADR-0053 clause 3).</summary>
     public RuntimeProcesses Processes { get; }
 
+    /// <summary>Section 11, what an operator lists and does: the
+    /// subscriptions a hub holds, and pause, resume and remove on one
+    /// (ADR-0065, amendment 2026-09-29).</summary>
+    public RuntimeSubscriptions Subscriptions { get; }
+
     /// <summary>The words a node may declare, in message-path order —
     /// <c>node::Stage::WORDS</c>, read once when the library loads.</summary>
     public IReadOnlyList<string> StageWords { get; }
@@ -154,6 +160,7 @@ public sealed unsafe class RuntimeRules
         .. RuntimeEvents.Entrypoints,
         .. RuntimeCatalogue.Entrypoints,
         .. RuntimeProcesses.Entrypoints,
+        .. RuntimeSubscriptions.Entrypoints,
         OperateAbi.ScopeContainsEntrypoint,
         OperateAbi.ScopeMatchesEntrypoint,
         OperateAbi.ScopePartsEntrypoint,
