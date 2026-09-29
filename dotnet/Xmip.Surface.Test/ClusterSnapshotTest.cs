@@ -239,13 +239,49 @@ public sealed class ClusterSnapshotTest
                 ("node/beta/process", "node/beta/send", TopologyOrigin.Configured, 0UL, 0D),
                 ("node/beta/process", "node/gamma/send", TopologyOrigin.Both, 6UL, 1.5D),
             ],
-            topology.Links.Select(link =>
-                (link.From, link.To, link.Origin, link.Volume, link.Rate)));
+            topology.Links
+                .Where(link => link.Protocol == "handoff")
+                .Select(link => (link.From, link.To, link.Origin, link.Volume, link.Rate)));
         Assert.All(topology.Links, link =>
+            Assert.Equal(CommunicationPattern.SendReceive, link.Pattern));
+    }
+
+    [Fact]
+    public void APartySendsIntoTheReceiveStagesAndTheSendStagesDeliverToOne()
+    {
+        // The owner, 2026-09-29: something is sending streams to a Xmip Node;
+        // a Xmip Node sends streams to somethings. The kind crosses as the
+        // header's value, and the side is said by the links.
+        TopologySnapshot topology = new SnapshotOperator(Fixture).Topology();
+
+        IReadOnlyList<TopologyNode> parties =
+            [.. topology.Nodes.Where(node => node.Kind == TopologyNodeKind.Party)];
+        Assert.Equal(
+            ["party/receiving/partner-x", "party/sending/partner-x"],
+            parties.Select(party => party.Id).Order(StringComparer.Ordinal));
+        Assert.All(parties, party =>
         {
-            Assert.Equal(CommunicationPattern.SendReceive, link.Pattern);
-            Assert.Equal("handoff", link.Protocol);
+            Assert.Equal("partner-x", party.Label);
+            Assert.Equal("cluster", party.ParentId);
+            Assert.Equal("xmip:///C1/party/partner-x", party.Scope);
         });
+        Assert.Equal(
+            HealthState.Holding,
+            parties.Single(party => party.Id == "party/receiving/partner-x").State);
+
+        Assert.Equal(
+            [
+                ("party/sending/partner-x", "node/alpha/receive", TopologyOrigin.Both, 6UL,
+                    HealthState.Fine),
+                ("node/beta/send", "party/receiving/partner-x", TopologyOrigin.Configured, 0UL,
+                    HealthState.Working),
+                ("node/gamma/send", "party/receiving/partner-x", TopologyOrigin.Both, 6UL,
+                    HealthState.Stressed),
+            ],
+            topology.Links
+                .Where(link => link.Protocol != "handoff")
+                .Select(link => (link.From, link.To, link.Origin, link.Volume, link.State)));
+        Assert.Equal("party", English.Word(TopologyNodeKind.Party));
     }
 
     [Fact]

@@ -36,6 +36,9 @@ public enum TopologyNodeKind
     Stage = 13,
     /// <summary>A receiving or sending endpoint of a stage, one per transport.</summary>
     Endpoint = 14,
+    /// <summary>A Party outside the cluster (ADR-0019): one that sends into a Receive
+    /// Location, or one a Send Location delivers to; its links say which.</summary>
+    Party = 15,
 }
 
 /// <summary>Where a topology fact came from: the header's

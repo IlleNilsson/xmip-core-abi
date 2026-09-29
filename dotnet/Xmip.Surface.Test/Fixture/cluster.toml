@@ -1,8 +1,9 @@
 # A snapshot as a Playground roll publishes one since 2026-09-19: a cluster,
 # its nodes, what each node declared it can do, what the run was started with
 # under [run], and the topology the owner asked for — cluster, nodes, receive,
-# process, send, the endpoints beneath receive and send, and the handoffs
-# receive -> process -> send.
+# process, send, the endpoints beneath receive and send, the handoffs
+# receive -> process -> send, and the Parties outside (2026-09-29): the one
+# that sends into the receive stages and the one the send stages deliver to.
 #
 # The names below are what an operator typed and nothing more (ADR-0053): a
 # node's name is not a criterion, and the node called beta proves it by declaring
@@ -256,6 +257,33 @@ load = 0.0
 activity = 0.0
 evidence = "2/3 rounds passed, 1 failed"
 
+# The Parties outside the cluster (ADR-0052, amendment 2026-09-29): the
+# Playground's one Party, drawn once on each side it is on. Which side is said
+# by its links, never by its id or its name.
+[[topology.nodes]]
+id = "party/sending/partner-x"
+parent = "cluster"
+label = "partner-x"
+kind = "party"
+scope = "xmip:///C1/party/partner-x"
+state = "fine"
+origin = "both"
+load = 0.0
+activity = 0.0
+evidence = "sends into alpha; worst at alpha over file: 3/3 rounds passed"
+
+[[topology.nodes]]
+id = "party/receiving/partner-x"
+parent = "cluster"
+label = "partner-x"
+kind = "party"
+scope = "xmip:///C1/party/partner-x"
+state = "holding"
+origin = "both"
+load = 0.0
+activity = 0.0
+evidence = "is delivered to by beta, gamma; worst at gamma over tcp: 2/3 rounds passed, 1 failed"
+
 # Every pair the roster configures a handoff between, and the hops delivered
 # over each (the owner, 2026-09-25: configured traffic and its usage): alpha to
 # beta and beta to gamma are configured and used, beta's own process to its send stage
@@ -305,3 +333,48 @@ latency_ms = 0.0
 progress = 0.0
 attempts = 0
 evidence = "6 handoffs beta to gamma; worst leaf at either end: 2/3 rounds passed, 1 failed"
+
+[[topology.links]]
+id = "party/sending/partner-x/alpha"
+from = "party/sending/partner-x"
+to = "node/alpha/receive"
+pattern = "send-receive"
+origin = "both"
+protocol = "2 transports"
+state = "fine"
+volume = 6
+rate = 1.5
+latency_ms = 0.0
+progress = 0.0
+attempts = 0
+evidence = "partner-x sends into alpha over 2 transports; worst over file: 3/3 rounds passed"
+
+[[topology.links]]
+id = "party/receiving/partner-x/beta"
+from = "node/beta/send"
+to = "party/receiving/partner-x"
+pattern = "send-receive"
+origin = "configured"
+protocol = "no transport reported"
+state = "working"
+volume = 0
+rate = 0.0
+latency_ms = 0.0
+progress = 0.0
+attempts = 0
+evidence = "beta delivers to partner-x; no transport reported yet"
+
+[[topology.links]]
+id = "party/receiving/partner-x/gamma"
+from = "node/gamma/send"
+to = "party/receiving/partner-x"
+pattern = "send-receive"
+origin = "both"
+protocol = "2 transports"
+state = "stressed"
+volume = 6
+rate = 1.5
+latency_ms = 0.0
+progress = 0.0
+attempts = 0
+evidence = "gamma delivers to partner-x over 2 transports; worst over tcp: 2/3 rounds passed, 1 failed"

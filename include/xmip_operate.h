@@ -460,7 +460,8 @@ typedef enum {
     XMIP_TOPOLOGY_CLUSTER         = 11,
     XMIP_TOPOLOGY_NODE            = 12,
     XMIP_TOPOLOGY_STAGE           = 13,
-    XMIP_TOPOLOGY_ENDPOINT        = 14
+    XMIP_TOPOLOGY_ENDPOINT        = 14,
+    XMIP_TOPOLOGY_PARTY           = 15
 } XmipTopologyKind;
 
 typedef enum {
