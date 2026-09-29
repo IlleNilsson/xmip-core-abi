@@ -185,6 +185,22 @@ public static class OperateAbi
     /// <c>Hub::publish</c>.</summary>
     public const string EventPublishEntrypoint = "xmip_event_publish_v1";
 
+    /// <summary>The subscriptions this process's hub holds: section 11
+    /// (ADR-0065, amendment 2026-09-29), <c>Hub::standing</c>.</summary>
+    public const string EventSubscriptionsEntrypoint = "xmip_event_subscriptions_v1";
+
+    /// <summary>Pause, resume or remove one of them: section 11,
+    /// <c>Hub::act</c>.</summary>
+    public const string EventSubscriptionActEntrypoint = "xmip_event_subscription_act_v1";
+
+    /// <summary>The same act left for a node read through its publication:
+    /// section 11, <c>Order::leave</c>.</summary>
+    public const string EventSubscriptionOrderEntrypoint = "xmip_event_subscription_order_v1";
+
+    /// <summary>The subscriptions a read publication carries: section 11
+    /// over section 8's handle.</summary>
+    public const string PublicationSubscriptionsEntrypoint = "xmip_publication_subscriptions_v1";
+
     /// <summary>The technologies the runtime carries and the settings each
     /// declares: section 12 (ADR-0064, amendment 2026-09-26).</summary>
     public const string TechnologyCatalogueEntrypoint = "xmip_technology_catalogue_v1";

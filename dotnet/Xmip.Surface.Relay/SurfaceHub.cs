@@ -56,6 +56,20 @@ public sealed class SurfaceHub(IOperatorSurface surface) : Hub
         return surface.Root();
     }
 
+    /// <summary>The Event subscriptions the host's surface lists.</summary>
+    public SubscriptionList Subscriptions()
+    {
+        return surface.Subscriptions();
+    }
+
+    /// <summary>Pause, resume or remove one subscription, by who the caller
+    /// said.</summary>
+    public SubscriptionOperation Act(
+        SubscriptionRecord subscription, SubscriptionAct act, string who)
+    {
+        return surface.Act(subscription, act, who);
+    }
+
     /// <summary>Pause everything at and beneath a scope.</summary>
     public string Pause(string scope, string who)
     {

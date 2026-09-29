@@ -927,6 +927,76 @@ typedef XmipStatus (*XmipEventPublishFn)(const XmipEvent *event, size_t *out_del
 #define XMIP_EVENT_UNSUBSCRIBE_ENTRYPOINT "xmip_event_unsubscribe_v1"
 #define XMIP_EVENT_PUBLISH_ENTRYPOINT     "xmip_event_publish_v1"
 
+/*
+ * What an operator lists and does (ADR-0065, amendment 2026-09-29): every
+ * subscription a hub holds, and pause, resume and remove on one of them.
+ * Thin forwarders into xmip-core-event, pure like section 7: no handle, any
+ * thread, before, during and without a node. Who may act is the surface's to
+ * decide by role; the hub applies what reaches it and audits it in the
+ * subscriber's audit, with who acted.
+ *
+ * A list is JSON, in memory only (ADR-0031 clause 2), written into out as
+ * UTF-8, its true byte length in out_len whether or not it fit:
+ *
+ *   {"orders":"<where acts are left, empty for none>",
+ *    "subscriptions":[{"node","id","subscriber","party","action","scope","state",
+ *                      "paused","queued","capacity","delivered","missed",
+ *                      "since_unix_nanos"}]}
+ *
+ * node is the scope of the node whose hub holds it and id its number there,
+ * the two naming it; subscriber is the name the Party was declared with,
+ * empty where it was declared with none, and party its UUID; action what its filter
+ * asks for, in words (every Event, or the types, then the outcomes); scope
+ * what its filter reaches; state active or paused, and paused true when it
+ * is, so no reader keeps the words; queued, capacity,
+ * delivered and missed its queue's counts, missed being what a full queue
+ * refused since it was made.
+ *
+ * xmip_event_subscriptions_v1 lists this process's hub, each entry at node,
+ * the scope the caller says this process publishes at; orders is empty.
+ * XMIP_OK; XMIP_E_MALFORMED when node is not UTF-8.
+ *
+ * xmip_event_subscription_act_v1 applies act - pause, resume or remove,
+ * exact - to subscription id in this process's hub, by who. Paused, it keeps
+ * queuing up to its capacity and hands nothing over, a full queue counting
+ * what it refused as missed; resumed, it hands over what queued; removed, it
+ * is unsubscribed and its holder's next drain finds it closed. XMIP_OK with
+ * what came of it in said, one sentence; XMIP_E_NOT_FOUND with the refusal,
+ * opening REFUSED, when no subscription of that number is held;
+ * XMIP_E_INVALID with the refusal for a word that is no act.
+ *
+ * A surface reading a publication touches no node. Where the publication
+ * says where its publisher takes orders (xmip_publication_subscriptions_v1's
+ * orders), xmip_event_subscription_order_v1 leaves the act there for the
+ * node at node, which takes it at its next look and applies it as above;
+ * said holds the file written. XMIP_OK; XMIP_E_INVALID with the refusal for
+ * an empty orders, a node that names no node, or a word that is no act;
+ * XMIP_E_IO with the reason when it could not be written.
+ *
+ * xmip_publication_subscriptions_v1 lists what a read publication (section
+ * 8) carries, orders as it says. XMIP_E_INVALID for no handle.
+ *
+ * Every string may be empty. Optional symbols, as section 7's are;
+ * XMIP_OPERATE_VERSION is unchanged.
+ */
+typedef XmipStatus (*XmipEventSubscriptionsFn)(XmipScope node, uint8_t *out, size_t cap,
+                                               size_t *out_len);
+typedef XmipStatus (*XmipEventSubscriptionActFn)(uint64_t id, XmipStr act, XmipStr who,
+                                                 uint8_t *said, size_t said_cap,
+                                                 size_t *said_len);
+typedef XmipStatus (*XmipEventSubscriptionOrderFn)(XmipStr orders, XmipScope node,
+                                                   uint64_t id, XmipStr act, XmipStr who,
+                                                   uint8_t *said, size_t said_cap,
+                                                   size_t *said_len);
+typedef XmipStatus (*XmipPublicationSubscriptionsFn)(const XmipPublication *publication,
+                                                     uint8_t *out, size_t cap,
+                                                     size_t *out_len);
+
+#define XMIP_EVENT_SUBSCRIPTIONS_ENTRYPOINT       "xmip_event_subscriptions_v1"
+#define XMIP_EVENT_SUBSCRIPTION_ACT_ENTRYPOINT    "xmip_event_subscription_act_v1"
+#define XMIP_EVENT_SUBSCRIPTION_ORDER_ENTRYPOINT  "xmip_event_subscription_order_v1"
+#define XMIP_PUBLICATION_SUBSCRIPTIONS_ENTRYPOINT "xmip_publication_subscriptions_v1"
+
 /* ===================================================================== */
 /* 12. The technologies a runtime carries, and what each declares        */
 /* ===================================================================== */

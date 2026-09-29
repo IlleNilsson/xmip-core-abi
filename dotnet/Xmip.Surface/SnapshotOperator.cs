@@ -1,5 +1,6 @@
 using System.Runtime.CompilerServices;
 using System.Threading.Channels;
+using Xmip.Abi.Module;
 using Xmip.Abi.Operate;
 
 namespace Xmip.Surface;
@@ -168,6 +169,43 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
     }
 
     /// <inheritdoc />
+    public SubscriptionList Subscriptions()
+    {
+        return Read().Subscriptions;
+    }
+
+    /// <inheritdoc cref="IOperatorSurface.Act" />
+    /// <remarks>A snapshot touches no node. Where its publication says where
+    /// its publisher takes orders, the act is left there for the node that
+    /// holds the subscription, which applies it at its next look and publishes
+    /// what came of it (<c>xevent::order::Order</c>, ADR-0065, amendment
+    /// 2026-09-29); where it says nowhere, the act is declined.</remarks>
+    public SubscriptionOperation Act(
+        SubscriptionRecord subscription, SubscriptionAct act, string who)
+    {
+        ArgumentNullException.ThrowIfNull(subscription);
+
+        string orders = Read().Subscriptions.Orders;
+        if (orders.Length == 0)
+        {
+            return SubscriptionOperation.Declined(
+                subscription, act,
+                "a snapshot is a record of what was published, and its publisher takes no orders");
+        }
+
+        XmipStatus status = RuntimeLibrary.Rules.Subscriptions.Order(
+            orders, subscription.Node, subscription.Id, SubscriptionOperation.Word(act), who,
+            out string said);
+
+        return new SubscriptionOperation(
+            subscription.Node, subscription.Id, act, status == XmipStatus.Ok,
+            status == XmipStatus.Ok
+                ? $"{SubscriptionOperation.Word(act)} of subscription {subscription.Id} left for "
+                  + $"{ScopeTree.Node(subscription.Node)} to take at its next look"
+                : said);
+    }
+
+    /// <inheritdoc />
     public string PauseScope(string scope, string who)
     {
         return "a snapshot is a record of what was published and cannot be paused";
@@ -188,7 +226,11 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
     }
 
     private sealed record Reading(
-        ScopeIndex Index, TopologySnapshot Topology, RunHeader Run, string Root)
+        ScopeIndex Index,
+        TopologySnapshot Topology,
+        RunHeader Run,
+        string Root,
+        SubscriptionList Subscriptions)
     {
         public static Reading Nothing(string source)
         {
@@ -196,7 +238,8 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
                 ScopeIndex.Empty(source),
                 TopologySnapshot.Empty(source),
                 RunHeader.None,
-                ScopeTree.Root);
+                ScopeTree.Root,
+                SubscriptionList.Empty);
         }
     }
 
@@ -283,6 +326,7 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
             index,
             read.Topology ?? TopologySnapshot.Empty(source),
             RunHeader.From(read.Run),
-            read.Node.Length > 0 ? read.Node : ScopeTree.Root);
+            read.Node.Length > 0 ? read.Node : ScopeTree.Root,
+            read.Subscriptions);
     }
 }

@@ -226,6 +226,20 @@ public sealed class RemoteOperator : IOperatorSurface, IDisposable
     }
 
     /// <inheritdoc />
+    public SubscriptionList Subscriptions()
+    {
+        return Ask<SubscriptionList>("Subscriptions") ?? SubscriptionList.Empty;
+    }
+
+    /// <inheritdoc />
+    public SubscriptionOperation Act(
+        SubscriptionRecord subscription, SubscriptionAct act, string who)
+    {
+        return Ask<SubscriptionOperation>("Act", subscription, act, who)
+            ?? SubscriptionOperation.Declined(subscription, act, Source);
+    }
+
+    /// <inheritdoc />
     public string PauseScope(string scope, string who)
     {
         return Ask<string>("Pause", scope, who) ?? Source;

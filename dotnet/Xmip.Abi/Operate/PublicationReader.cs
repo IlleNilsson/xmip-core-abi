@@ -39,6 +39,7 @@ public sealed unsafe class PublicationReader
     private readonly delegate* unmanaged[Cdecl]<int, XmipStr*, XmipStr*, int> _kindWords;
     private readonly delegate* unmanaged[Cdecl]<int, XmipStr*, XmipStr*, int> _originWords;
     private readonly delegate* unmanaged[Cdecl]<int, XmipStr*, XmipStr*, int> _patternWords;
+    private readonly delegate* unmanaged[Cdecl]<nint, byte*, nuint, nuint*, int> _subscriptions;
 
     internal PublicationReader(nint library)
     {
@@ -70,6 +71,8 @@ public sealed unsafe class PublicationReader
             NativeLibrary.GetExport(library, OperateAbi.TopologyOriginWordsEntrypoint);
         _patternWords = (delegate* unmanaged[Cdecl]<int, XmipStr*, XmipStr*, int>)
             NativeLibrary.GetExport(library, OperateAbi.TopologyPatternWordsEntrypoint);
+        _subscriptions = (delegate* unmanaged[Cdecl]<nint, byte*, nuint, nuint*, int>)
+            NativeLibrary.GetExport(library, OperateAbi.PublicationSubscriptionsEntrypoint);
     }
 
     /// <summary>Section 8's symbols, each of which a runtime must export.</summary>
@@ -89,6 +92,7 @@ public sealed unsafe class PublicationReader
         OperateAbi.TopologyKindWordsEntrypoint,
         OperateAbi.TopologyOriginWordsEntrypoint,
         OperateAbi.TopologyPatternWordsEntrypoint,
+        OperateAbi.PublicationSubscriptionsEntrypoint,
     ];
 
     /// <summary>
@@ -233,7 +237,32 @@ public sealed unsafe class PublicationReader
             [.. Fill(_records, handle).Select(Record)],
             [.. Fill(_counts, handle).Select(Count)],
             head.HasTopology == 0 ? null : Topology(handle, head, source),
-            head.HasRun == 0 ? null : Run(handle, head));
+            head.HasRun == 0 ? null : Run(handle, head),
+            Subscriptions(handle));
+    }
+
+    // Section 11's list over this handle: JSON, asked for again at its length.
+    private SubscriptionList Subscriptions(nint handle)
+    {
+        byte[] text = new byte[4096];
+        nuint needed = 0;
+
+        fixed (byte* into = text)
+        {
+            Check(_subscriptions(handle, into, (nuint)text.Length, &needed));
+        }
+
+        if (needed > (nuint)text.Length)
+        {
+            text = new byte[checked((int)needed)];
+
+            fixed (byte* into = text)
+            {
+                Check(_subscriptions(handle, into, (nuint)text.Length, &needed));
+            }
+        }
+
+        return SubscriptionList.Parse(text.AsMemory(0, (int)needed));
     }
 
     private TopologySnapshot Topology(nint handle, XmipPublicationHead head, string source)

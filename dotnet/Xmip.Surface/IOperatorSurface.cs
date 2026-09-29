@@ -218,6 +218,30 @@ public interface IOperatorSurface
         }
     }
 
+    /// <summary>
+    /// The Event subscriptions the nodes this surface reads hold, each by
+    /// node and number, and where an act on one is left when this surface
+    /// reads a publication (ADR-0065, amendment 2026-09-29). None where this
+    /// surface cannot list them.
+    /// </summary>
+    public SubscriptionList Subscriptions()
+    {
+        return SubscriptionList.Empty;
+    }
+
+    /// <summary>
+    /// Pause, resume or remove one subscription, by <paramref name="who"/>,
+    /// and say what came of it. Who may act is the caller's to decide by
+    /// role (ADR-0009); the node applies what reaches it and audits it. The
+    /// default declines: this surface reaches no hub.
+    /// </summary>
+    public SubscriptionOperation Act(
+        SubscriptionRecord subscription, SubscriptionAct act, string who)
+    {
+        return SubscriptionOperation.Declined(
+            subscription, act, $"{Source} does not act on subscriptions");
+    }
+
     /// <summary>Pause everything at and beneath a scope, by <paramref name="who"/>.
     /// The first operation that acts rather than reads. Returns what the runtime
     /// said, for the operator to see.</summary>

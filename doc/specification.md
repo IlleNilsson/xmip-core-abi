@@ -466,7 +466,15 @@ starts, and unsubscribes; it may publish an Event of its own. The matching,
 the authorization of the subscriber and the audit are `xmip-core-event`'s,
 forwarded by the runtime's library. Its bindings beside this one — C and C++
 over the header, .NET in `dotnet/Xmip.Abi`, Java and Python — decide nothing.
-The Rust mirror is `.src/operate/event.rs`.
+The Rust mirror is `.src/operate/event.rs`. Since 2026-09-29 the section also
+carries what an operator lists and does (ADR-0065, amendment of that date):
+`xmip_event_subscriptions_v1`, a process hub's subscriptions as JSON in memory;
+`xmip_event_subscription_act_v1`, pause, resume or remove one by its number;
+`xmip_event_subscription_order_v1`, the same act left where a publication says
+its publisher takes orders, for a surface that reads a node only through its
+publication; and `xmip_publication_subscriptions_v1`, what a read publication
+carries, over section 8's handle. .NET binds the first three as
+`RuntimeSubscriptions` and the fourth in `PublicationReader`.
 
 Section 12 is the technologies a runtime carries (ADR-0064, amendment
 2026-09-26): `xmip_technology_catalogue_v1` answers, as JSON in memory, each
