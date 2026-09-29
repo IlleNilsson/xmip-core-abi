@@ -25,7 +25,7 @@ public sealed class EventFeedTest
             Type = "se.xmip.send.test",
             Action = EventAction.Send,
             Outcome = outcome,
-            Scope = scope + "/node/n/send/partner-x",
+            Scope = scope + "/node/n/send/party-x",
         };
     }
 
@@ -44,7 +44,7 @@ public sealed class EventFeedTest
                 subscription.Next(TimeSpan.FromSeconds(2), 16).Events);
 
             Assert.Equal(EventOutcome.Rejection, heard.Outcome);
-            Assert.Equal(scope + "/node/n/send/partner-x", heard.Scope);
+            Assert.Equal(scope + "/node/n/send/party-x", heard.Scope);
         }
 
         // Unsubscribing waits until every record is kept.

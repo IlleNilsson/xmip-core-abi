@@ -60,10 +60,10 @@ public sealed class SnapshotOperatorTest
         IReadOnlyList<HealthRecord> all = surface.Health(ScopeTree.Root);
 
         Assert.Equal(5, all.Count);
-        Assert.Equal("xmip:///edge-01/receive/partner", all[0].Scope);
+        Assert.Equal("xmip:///edge-01/receive/party", all[0].Scope);
         Assert.Equal(HealthState.Done, all[0].State);
         Assert.Equal(95, all[0].Severity);
-        Assert.Equal("connection refused by partner-x (10.0.4.21:22)", all[0].Evidence);
+        Assert.Equal("connection refused by party-x (10.0.4.21:22)", all[0].Evidence);
         Assert.Equal(HealthState.Stressed, all[1].State);
         Assert.Equal(HealthState.Paused, all[2].State);
         Assert.Equal(HealthState.Fine, all[3].State);
@@ -99,10 +99,10 @@ public sealed class SnapshotOperatorTest
     {
         SnapshotOperator surface = new(Fixture);
 
-        HealthRecord partner = surface.Health("xmip:///edge-01/receive/partner").Single();
+        HealthRecord party = surface.Health("xmip:///edge-01/receive/party").Single();
 
         Assert.Equal(
-            DateTimeOffset.UnixEpoch.AddTicks(1789111684000000000 / 100), partner.Observed);
+            DateTimeOffset.UnixEpoch.AddTicks(1789111684000000000 / 100), party.Observed);
     }
 
     [Fact]

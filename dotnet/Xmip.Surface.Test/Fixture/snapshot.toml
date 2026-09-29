@@ -13,10 +13,10 @@ evidence = ""
 observed_unix_nanos = 1789111688000000000
 
 [[records]]
-scope = "xmip:///edge-01/receive/partner"
+scope = "xmip:///edge-01/receive/party"
 state = "done"
 severity = 95
-evidence = "connection refused by partner-x (10.0.4.21:22)"
+evidence = "connection refused by party-x (10.0.4.21:22)"
 observed_unix_nanos = 1789111684000000000
 
 [[records]]
