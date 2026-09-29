@@ -261,11 +261,11 @@ evidence = "2/3 rounds passed, 1 failed"
 # Playground's one Party, drawn once on each side it is on. Which side is said
 # by its links, never by its id or its name.
 [[topology.nodes]]
-id = "party/sending/partner-x"
+id = "party/sending/party-x"
 parent = "cluster"
-label = "partner-x"
+label = "party-x"
 kind = "party"
-scope = "xmip:///C1/party/partner-x"
+scope = "xmip:///C1/party/party-x"
 state = "fine"
 origin = "both"
 load = 0.0
@@ -273,11 +273,11 @@ activity = 0.0
 evidence = "sends into alpha; worst at alpha over file: 3/3 rounds passed"
 
 [[topology.nodes]]
-id = "party/receiving/partner-x"
+id = "party/receiving/party-x"
 parent = "cluster"
-label = "partner-x"
+label = "party-x"
 kind = "party"
-scope = "xmip:///C1/party/partner-x"
+scope = "xmip:///C1/party/party-x"
 state = "holding"
 origin = "both"
 load = 0.0
@@ -335,8 +335,8 @@ attempts = 0
 evidence = "6 handoffs beta to gamma; worst leaf at either end: 2/3 rounds passed, 1 failed"
 
 [[topology.links]]
-id = "party/sending/partner-x/alpha"
-from = "party/sending/partner-x"
+id = "party/sending/party-x/alpha"
+from = "party/sending/party-x"
 to = "node/alpha/receive"
 pattern = "send-receive"
 origin = "both"
@@ -347,12 +347,12 @@ rate = 1.5
 latency_ms = 0.0
 progress = 0.0
 attempts = 0
-evidence = "partner-x sends into alpha over 2 transports; worst over file: 3/3 rounds passed"
+evidence = "party-x sends into alpha over 2 transports; worst over file: 3/3 rounds passed"
 
 [[topology.links]]
-id = "party/receiving/partner-x/beta"
+id = "party/receiving/party-x/beta"
 from = "node/beta/send"
-to = "party/receiving/partner-x"
+to = "party/receiving/party-x"
 pattern = "send-receive"
 origin = "configured"
 protocol = "no transport reported"
@@ -362,12 +362,12 @@ rate = 0.0
 latency_ms = 0.0
 progress = 0.0
 attempts = 0
-evidence = "beta delivers to partner-x; no transport reported yet"
+evidence = "beta delivers to party-x; no transport reported yet"
 
 [[topology.links]]
-id = "party/receiving/partner-x/gamma"
+id = "party/receiving/party-x/gamma"
 from = "node/gamma/send"
-to = "party/receiving/partner-x"
+to = "party/receiving/party-x"
 pattern = "send-receive"
 origin = "both"
 protocol = "2 transports"
@@ -377,4 +377,4 @@ rate = 1.5
 latency_ms = 0.0
 progress = 0.0
 attempts = 0
-evidence = "gamma delivers to partner-x over 2 transports; worst over tcp: 2/3 rounds passed, 1 failed"
+evidence = "gamma delivers to party-x over 2 transports; worst over tcp: 2/3 rounds passed, 1 failed"

@@ -15,7 +15,7 @@ public sealed class ScopeIndexTest
     private static readonly HealthRecord[] Leaves =
     [
         Leaf("xmip:///edge-01/receive/orders", HealthState.Fine),
-        Leaf("xmip:///edge-01/receive/partner", HealthState.Done, 95, "refused"),
+        Leaf("xmip:///edge-01/receive/party", HealthState.Done, 95, "refused"),
         Leaf("xmip:///edge-01/process/approval", HealthState.Stressed, 55, "waiting"),
         Leaf("xmip:///edge-02/send/warehouse", HealthState.Paused, 30, "paused by ilian"),
         Leaf("xmip:///edge-02/send/billing", HealthState.Fine),
@@ -61,7 +61,7 @@ public sealed class ScopeIndexTest
 
         Assert.Equal(HealthState.Holding, index.Rollup(ScopeTree.Root));
         Assert.Equal(HealthState.Holding, index.Rollup("xmip:///edge-01"));
-        Assert.Equal(HealthState.Done, index.Rollup("xmip:///edge-01/receive/partner"));
+        Assert.Equal(HealthState.Done, index.Rollup("xmip:///edge-01/receive/party"));
         Assert.Equal(HealthState.Fine, index.Rollup("xmip:///edge-02/send/billing"));
         Assert.Null(index.Rollup("xmip:///nowhere"));
     }

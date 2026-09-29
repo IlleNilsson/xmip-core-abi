@@ -450,7 +450,7 @@ static void a_subscriber_is_a_party(void)
     XmipStatus status = xmip.subscribe(xmip_str(PROGRAM), xmip_str(directory), xmip_str(""),
                                        NULL, 0, &out, said, sizeof said, &said_len);
     check(status == XMIP_E_INVALID && out == NULL, "no subscriber is XMIP_E_INVALID");
-    status = xmip.subscribe(xmip_str(PROGRAM), xmip_str(directory), xmip_str("partner-x"),
+    status = xmip.subscribe(xmip_str(PROGRAM), xmip_str(directory), xmip_str("party-x"),
                             NULL, 0, &out, said, sizeof said, &said_len);
     check(status == XMIP_E_MALFORMED && out == NULL, "a subscriber not a UUID is MALFORMED");
 }

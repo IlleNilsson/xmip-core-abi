@@ -14,7 +14,7 @@ public sealed class ScopeTreeTest
     private static readonly HealthRecord[] Leaves =
     [
         new("xmip:///edge-01/receive/orders", HealthState.Fine, 0, "", Now),
-        new("xmip:///edge-01/receive/partner", HealthState.Done, 95, "refused", Now.AddSeconds(-4)),
+        new("xmip:///edge-01/receive/party", HealthState.Done, 95, "refused", Now.AddSeconds(-4)),
         new("xmip:///edge-01/process/approval", HealthState.Stressed, 55, "waiting", Now),
         new("xmip:///edge-02/send/warehouse", HealthState.Paused, 30, "paused by ilian", Now),
         new("xmip:///edge-02/send/billing", HealthState.Fine, 0, "", Now),
@@ -134,7 +134,7 @@ public sealed class ScopeTreeTest
         HealthRecord? worst = ScopeTree.Worst(Leaves);
 
         Assert.NotNull(worst);
-        Assert.Equal("xmip:///edge-01/receive/partner", worst.Scope);
+        Assert.Equal("xmip:///edge-01/receive/party", worst.Scope);
         Assert.Equal("refused", worst.Evidence);
         Assert.Equal(Now.AddSeconds(-4), worst.Observed);
     }
@@ -186,7 +186,7 @@ public sealed class ScopeTreeTest
         Assert.Equal(2, branches.Count);
         Assert.True(branches[0].IsLeaf);
         Assert.Equal(HealthState.Done, branches[0].State);
-        Assert.Equal("partner", branches[0].Label);
+        Assert.Equal("party", branches[0].Label);
         Assert.Equal(HealthState.Fine, branches[1].State);
     }
 

@@ -257,25 +257,25 @@ public sealed class ClusterSnapshotTest
         IReadOnlyList<TopologyNode> parties =
             [.. topology.Nodes.Where(node => node.Kind == TopologyNodeKind.Party)];
         Assert.Equal(
-            ["party/receiving/partner-x", "party/sending/partner-x"],
+            ["party/receiving/party-x", "party/sending/party-x"],
             parties.Select(party => party.Id).Order(StringComparer.Ordinal));
         Assert.All(parties, party =>
         {
-            Assert.Equal("partner-x", party.Label);
+            Assert.Equal("party-x", party.Label);
             Assert.Equal("cluster", party.ParentId);
-            Assert.Equal("xmip:///C1/party/partner-x", party.Scope);
+            Assert.Equal("xmip:///C1/party/party-x", party.Scope);
         });
         Assert.Equal(
             HealthState.Holding,
-            parties.Single(party => party.Id == "party/receiving/partner-x").State);
+            parties.Single(party => party.Id == "party/receiving/party-x").State);
 
         Assert.Equal(
             [
-                ("party/sending/partner-x", "node/alpha/receive", TopologyOrigin.Both, 6UL,
+                ("party/sending/party-x", "node/alpha/receive", TopologyOrigin.Both, 6UL,
                     HealthState.Fine),
-                ("node/beta/send", "party/receiving/partner-x", TopologyOrigin.Configured, 0UL,
+                ("node/beta/send", "party/receiving/party-x", TopologyOrigin.Configured, 0UL,
                     HealthState.Working),
-                ("node/gamma/send", "party/receiving/partner-x", TopologyOrigin.Both, 6UL,
+                ("node/gamma/send", "party/receiving/party-x", TopologyOrigin.Both, 6UL,
                     HealthState.Stressed),
             ],
             topology.Links
