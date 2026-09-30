@@ -115,7 +115,10 @@ public final class Library implements AutoCloseable {
         }
     }
 
-    /** Unload the library. Every EventSubscription must be closed first. */
+    /**
+     * Release the library, which stays in the process (xmip_operate.h section 1).
+     * Every EventSubscription must be closed first.
+     */
     @Override
     public void close() {
         loaded.close();

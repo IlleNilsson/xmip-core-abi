@@ -57,8 +57,12 @@ class TheHeaderIsTheBindings(unittest.TestCase):
         self.assertEqual({a.name: a.value for a in Action}, self.numbers("XMIP_ACTION_"))
 
     def test_entrypoints_are_the_headers(self) -> None:
-        found = re.findall(r'#define XMIP_EVENT_(\w+)_ENTRYPOINT\s+"(\w+)"', self.operate)
-        self.assertEqual(xmip_event.ENTRYPOINTS, dict(found))
+        # Every symbol the binding looks up is the header's by the same name;
+        # the header's operator symbols (list and act) are the surfaces'.
+        found = dict(re.findall(r'#define XMIP_EVENT_(\w+)_ENTRYPOINT\s+"(\w+)"', self.operate))
+        self.assertTrue(xmip_event.ENTRYPOINTS)
+        self.assertEqual(xmip_event.ENTRYPOINTS,
+                         {name: found.get(name) for name in xmip_event.ENTRYPOINTS})
 
     def test_statuses_are_the_headers(self) -> None:
         self.assertRegex(self.module, rf"#define XMIP_OK\s+{xmip_event.OK}\b")
