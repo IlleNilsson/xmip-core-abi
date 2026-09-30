@@ -110,6 +110,8 @@ pub struct PublicationHead {
     pub has_run: u8,
     pub cluster: Str,
     pub stress: Str,
+    /// 1 where the run declared itself hidden (`observe::Run::hidden`).
+    pub hidden: u8,
     pub has_topology: u8,
     pub topology_source: Str,
     pub topology_observed_unix_nanos: i64,

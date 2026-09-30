@@ -23,6 +23,9 @@ namespace Xmip.Abi.Operate;
 /// <param name="Scope">The Message execution the act belongs to, key to text;
 /// empty for a program's own act.</param>
 /// <param name="Properties">Everything else it recorded, key to text.</param>
+/// <param name="Hidden">Its process belongs to a run that declared itself
+/// hidden (ADR-0028, amendment 2026-09-30); read only when the query included
+/// what is hidden.</param>
 public sealed record AuditEntry(
     string AuditId,
     string At,
@@ -38,4 +41,5 @@ public sealed record AuditEntry(
     string? Message,
     string Summary,
     IReadOnlyDictionary<string, string> Scope,
-    IReadOnlyDictionary<string, string> Properties);
+    IReadOnlyDictionary<string, string> Properties,
+    bool Hidden);

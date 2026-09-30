@@ -8,7 +8,9 @@ namespace Xmip.Surface;
 /// which of them are online, and how hard. The owner, 2026-09-19: the run says
 /// what it was started with — a board could not be told from the one before
 /// it. A publication with no such table is <see cref="None"/>, and a surface
-/// shows nothing for it.
+/// shows nothing for it. <see cref="Hidden"/> is what the run declared of
+/// itself when it was started (ADR-0028, amendment 2026-09-30): an assistant's
+/// test run, which a view leaves out until asked to show it.
 /// </summary>
 public sealed record RunHeader(
     string Cluster,
@@ -16,7 +18,8 @@ public sealed record RunHeader(
     IReadOnlyList<string> Nodes,
     IReadOnlyList<string> Capabilities,
     IReadOnlyList<string> Online,
-    string Stress)
+    string Stress,
+    bool Hidden = false)
 {
     /// <summary>What a publication that says nothing of its run is read as.</summary>
     public static RunHeader None { get; } = new(string.Empty, [], [], [], [], string.Empty);
@@ -91,6 +94,11 @@ public sealed record RunHeader(
             parts.Add(Stress);
         }
 
+        if (Hidden)
+        {
+            parts.Add("hidden test run");
+        }
+
         return string.Join(" · ", parts);
     }
 
@@ -102,7 +110,8 @@ public sealed record RunHeader(
         return run is null
             ? None
             : new RunHeader(
-                run.Cluster, run.Tests, run.Nodes, run.Capabilities, run.Online, run.Stress);
+                run.Cluster, run.Tests, run.Nodes, run.Capabilities, run.Online, run.Stress,
+                run.Hidden);
     }
 
     /// <summary>A node as the run line names it: the publisher's own

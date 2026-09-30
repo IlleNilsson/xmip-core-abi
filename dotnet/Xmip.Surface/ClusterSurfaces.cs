@@ -20,6 +20,13 @@ namespace Xmip.Surface;
 /// <c>Start-XmipTest</c> refuses a cluster already rolling (ADR-0052,
 /// amendment 2026-09-19) and a face that showed two of them could not say
 /// which it was showing.
+///
+/// A cluster whose run declared itself hidden — an assistant's test run
+/// (the owner, 2026-09-29; ADR-0028 and ADR-0052, amendments 2026-09-30) —
+/// is held like any other and listed only to a face that asks to include what
+/// is hidden: every question a face asks of the set says whether it does, and
+/// the answer is the one rule, <c>observe::run::shown</c>, over what the run
+/// declared, read once with its name. Nothing is read out of the name.
 /// </remarks>
 public sealed class ClusterSurfaces : IDisposable
 {
@@ -27,23 +34,50 @@ public sealed class ClusterSurfaces : IDisposable
 
     private readonly string[] clusters;
 
+    private readonly bool[] hidden;
+
     private ClusterSurfaces(string[] clusters, IOperatorSurface[] surfaces)
     {
         this.clusters = clusters;
         this.surfaces = surfaces;
+        hidden = [.. surfaces.Select(surface => surface.Run().Hidden)];
     }
 
-    /// <summary>The clusters this face holds, in the order it was given them.
-    /// A publication that names no cluster is an empty name, which only ever
-    /// happens where there is one, and a face with one shows no chooser.</summary>
+    /// <summary>Every cluster this face holds, hidden or not, in the order it
+    /// was given them. A publication that names no cluster is an empty name,
+    /// which only ever happens where there is one.</summary>
     public IReadOnlyList<string> Clusters => clusters;
 
     /// <summary>How many clusters are held.</summary>
     public int Count => surfaces.Length;
 
-    /// <summary>Whether there is more than one to move between — what a face
-    /// asks before it draws a chooser at all.</summary>
-    public bool Several => surfaces.Length > 1;
+    /// <summary>The clusters a face lists: every one whose run declared
+    /// nothing, and the hidden ones too where it is
+    /// <paramref name="includingHidden"/>.</summary>
+    public IReadOnlyList<string> Listed(bool includingHidden)
+    {
+        return [.. clusters.Where((_, at) => Shown(at, includingHidden))];
+    }
+
+    /// <summary>Whether there is more than one listed to move between — what
+    /// a face asks before it draws a chooser at all.</summary>
+    public bool Several(bool includingHidden)
+    {
+        return Listed(includingHidden).Count > 1;
+    }
+
+    /// <summary>Whether this cluster's run declared itself hidden when it was
+    /// started; false for a name this set does not hold.</summary>
+    public bool Hidden(string? cluster)
+    {
+        int held = cluster is null ? -1 : Array.IndexOf(clusters, cluster);
+
+        return held >= 0 && hidden[held];
+    }
+
+    /// <summary>Whether any cluster held is hidden — whether a face has
+    /// anything for a "show test clusters" choice to show.</summary>
+    public bool AnyHidden => hidden.Contains(true);
 
     /// <summary>The one a face shows when nothing said which: the first given.
     /// A set is never empty, so this always answers.</summary>
@@ -51,7 +85,7 @@ public sealed class ClusterSurfaces : IDisposable
 
     /// <summary>Where the records come from, for a process that declares
     /// itself (ADR-0053) and for anything that wants one line.</summary>
-    public string Source => Several
+    public string Source => Count > 1
         ? $"{Count} clusters — {string.Join(", ", clusters)}"
         : First.Source;
 
@@ -134,26 +168,31 @@ public sealed class ClusterSurfaces : IDisposable
     }
 
     /// <summary>
-    /// The surface for one cluster; <see cref="First"/> for a name this set
-    /// does not hold, including none at all. A face that asked for a cluster
-    /// that ended sees the first rather than an error page, and
-    /// <see cref="Holds"/> is how it knows which it got.
+    /// The surface for one cluster, among those listed: that one where it is
+    /// listed, else the first listed — a face that asked for a cluster that
+    /// ended, or for a hidden one without including what is hidden, sees the
+    /// first rather than an error page, and <see cref="Showing"/> says which
+    /// it got. Where nothing is listed — every cluster held is hidden and the
+    /// face did not include them — a surface that holds nothing and says why.
     /// </summary>
-    public IOperatorSurface For(string? cluster)
+    public IOperatorSurface For(string? cluster, bool includingHidden)
     {
-        int held = cluster is null ? -1 : Array.IndexOf(clusters, cluster);
+        int at = Chosen(cluster, includingHidden);
 
-        return held < 0 ? First : surfaces[held];
+        return at < 0 ? Withheld.Surface : surfaces[at];
     }
 
     /// <summary>
     /// Which cluster a face is on, having asked for this one: the name where
-    /// this set holds it, the first otherwise. The name a chooser marks and a
-    /// link carries — <see cref="For"/> answers with the same surface.
+    /// it is listed, the first listed otherwise, and empty where nothing is.
+    /// The name a chooser marks and a link carries — <see cref="For"/>
+    /// answers with the same surface.
     /// </summary>
-    public string Showing(string? cluster)
+    public string Showing(string? cluster, bool includingHidden)
     {
-        return Holds(cluster) ? cluster! : clusters[0];
+        int at = Chosen(cluster, includingHidden);
+
+        return at < 0 ? string.Empty : clusters[at];
     }
 
     /// <summary>
@@ -163,7 +202,37 @@ public sealed class ClusterSurfaces : IDisposable
     /// </summary>
     public bool Publishing(string cluster)
     {
-        return Holds(cluster) && For(cluster).Index().Leaves > 0;
+        int held = Array.IndexOf(clusters, cluster);
+
+        return held >= 0 && surfaces[held].Index().Leaves > 0;
+    }
+
+    // The one rule, observe::run::shown, over what the run declared.
+    private bool Shown(int at, bool includingHidden)
+    {
+        return RuntimeLibrary.Rules.Shown(hidden[at], includingHidden);
+    }
+
+    // The index a face is on: the asked cluster where it is listed, else the
+    // first listed, else none.
+    private int Chosen(string? cluster, bool includingHidden)
+    {
+        int asked = cluster is null ? -1 : Array.IndexOf(clusters, cluster);
+
+        if (asked >= 0 && Shown(asked, includingHidden))
+        {
+            return asked;
+        }
+
+        for (int at = 0; at < clusters.Length; at++)
+        {
+            if (Shown(at, includingHidden))
+            {
+                return at;
+            }
+        }
+
+        return -1;
     }
 
     /// <inheritdoc />

@@ -41,6 +41,7 @@ public sealed unsafe class RuntimeRules
 
     private readonly delegate* unmanaged[Cdecl]<XmipStr, XmipStr, byte*, int> _contains;
     private readonly delegate* unmanaged[Cdecl]<XmipStr, XmipStr, byte*, int> _matches;
+    private readonly delegate* unmanaged[Cdecl]<byte, byte, byte*, int> _shown;
     private readonly delegate* unmanaged[Cdecl]<XmipStr, XmipStr*, nuint, nuint*, int> _parts;
     private readonly delegate* unmanaged[Cdecl]<XmipStr, XmipStr*, XmipStr*, int> _node;
     private readonly delegate* unmanaged[Cdecl]<
@@ -67,6 +68,8 @@ public sealed unsafe class RuntimeRules
             Export(library, OperateAbi.ScopeContainsEntrypoint);
         _matches = (delegate* unmanaged[Cdecl]<XmipStr, XmipStr, byte*, int>)
             Export(library, OperateAbi.ScopeMatchesEntrypoint);
+        _shown = (delegate* unmanaged[Cdecl]<byte, byte, byte*, int>)
+            Export(library, OperateAbi.RunShownEntrypoint);
         _parts = (delegate* unmanaged[Cdecl]<XmipStr, XmipStr*, nuint, nuint*, int>)
             Export(library, OperateAbi.ScopePartsEntrypoint);
         _node = (delegate* unmanaged[Cdecl]<XmipStr, XmipStr*, XmipStr*, int>)
@@ -170,6 +173,7 @@ public sealed unsafe class RuntimeRules
         .. RuntimeSubscriptions.Entrypoints,
         OperateAbi.ScopeContainsEntrypoint,
         OperateAbi.ScopeMatchesEntrypoint,
+        OperateAbi.RunShownEntrypoint,
         OperateAbi.ScopePartsEntrypoint,
         OperateAbi.ScopeNodeEntrypoint,
         OperateAbi.StageWordsEntrypoint,
@@ -222,6 +226,20 @@ public sealed unsafe class RuntimeRules
         ArgumentNullException.ThrowIfNull(pattern);
 
         return Pair(_matches, candidate, pattern);
+    }
+
+    /// <summary>Whether what a run made — its cluster, its audit records — is
+    /// shown to a reader: always where the run declared nothing, and where it
+    /// declared itself <paramref name="hidden"/> only when the reader is
+    /// <paramref name="includingHidden"/> — <c>observe::run::shown</c>
+    /// (ADR-0028 and ADR-0052, amendments 2026-09-30).</summary>
+    public bool Shown(bool hidden, bool includingHidden)
+    {
+        byte shown = 0;
+
+        Check(_shown((byte)(hidden ? 1 : 0), (byte)(includingHidden ? 1 : 0), &shown));
+
+        return shown != 0;
     }
 
     // Two strings in, a yes or a no out: the shape containment and the

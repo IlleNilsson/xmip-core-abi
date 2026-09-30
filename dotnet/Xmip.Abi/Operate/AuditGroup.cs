@@ -13,5 +13,8 @@ namespace Xmip.Abi.Operate;
 /// <param name="Warnings">How many of them are warnings.</param>
 /// <param name="Errors">How many of them are errors.</param>
 /// <param name="Latest">The newest one's time, as written.</param>
+/// <param name="Hidden">Some record in it came from a run that declared itself
+/// hidden: a reader that included what is hidden marks the group as
+/// test.</param>
 public sealed record AuditGroup(
-    string Kind, string Who, int Count, int Warnings, int Errors, string Latest);
+    string Kind, string Who, int Count, int Warnings, int Errors, string Latest, bool Hidden);

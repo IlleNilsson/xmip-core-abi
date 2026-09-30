@@ -291,7 +291,8 @@ public sealed unsafe class PublicationReader
             Listed(handle, RunList.Nodes),
             Listed(handle, RunList.Capabilities),
             Listed(handle, RunList.Online),
-            head.Stress.Read());
+            head.Stress.Read(),
+            head.Hidden != 0);
     }
 
     private string[] Listed(nint handle, RunList list)

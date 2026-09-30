@@ -38,10 +38,13 @@ public sealed record Publication(
 /// <c>node::Capability::entry</c> writes it.</param>
 /// <param name="Online">The nodes that may assume the internet.</param>
 /// <param name="Stress">The stress level's name.</param>
+/// <param name="Hidden">The run declared itself hidden when it was started
+/// (ADR-0028, amendment 2026-09-30).</param>
 public sealed record PublishedRun(
     string Cluster,
     IReadOnlyList<string> Tests,
     IReadOnlyList<string> Nodes,
     IReadOnlyList<string> Capabilities,
     IReadOnlyList<string> Online,
-    string Stress);
+    string Stress,
+    bool Hidden);

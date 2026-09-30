@@ -94,6 +94,11 @@ public sealed class ProgramAuditTest
         Assert.Equal("stopped", Assert.Single(read.Records).Summary);
         Assert.Equal(["stop"], read.Actions);
         Assert.EndsWith("audit.toml", read.File, StringComparison.Ordinal);
+        Assert.False(Assert.Single(read.Records).Hidden);
+        Assert.Contains(
+            new KeyValuePair<string, string>("hidden", "include"),
+            (query with { IncludeHidden = true }).Pairs());
+        Assert.DoesNotContain(query.Pairs(), pair => pair.Key == "hidden");
         Directory.Delete(directory, recursive: true);
     }
 
