@@ -40,6 +40,15 @@ extern "C" {
 #define XMIP_OPERATE_ENTRYPOINT    "xmip_operate_v1"
 #define XMIP_WAIT_CHANGE_ENTRYPOINT "xmip_wait_change_v1"
 
+/*
+ * The library that exports this boundary stays in the process once loaded.
+ * It runs threads of its own that outlive every call - the audit keeper
+ * (section 9), a listening Event subscription's (section 11) - so it pins
+ * itself as it loads: FreeLibrary or dlclose releases the caller's reference
+ * and never unmaps its code. A program may close the library when it is
+ * done with it; nothing is unloaded under a thread still running in it.
+ */
+
 /* ===================================================================== */
 /* 2. Scope                                                              */
 /* ===================================================================== */
