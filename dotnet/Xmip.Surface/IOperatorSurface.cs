@@ -224,22 +224,47 @@ public interface IOperatorSurface
     /// reads a publication (ADR-0065, amendment 2026-09-29). None where this
     /// surface cannot list them.
     /// </summary>
+    public EventSubscriptionList EventSubscriptions()
+    {
+        return EventSubscriptionList.Empty;
+    }
+
+    /// <summary>
+    /// Pause, resume or remove one Event subscription, by
+    /// <paramref name="who"/>, and say what came of it. Who may act is the
+    /// caller's to decide by role (ADR-0009); the node applies what reaches it
+    /// and audits it. The default declines: this surface reaches no hub.
+    /// </summary>
+    public EventSubscriptionOperation Act(
+        EventSubscriptionRecord subscription, EventSubscriptionAct act, string who)
+    {
+        return EventSubscriptionOperation.Declined(
+            subscription, act, $"{Source} does not act on Event subscriptions");
+    }
+
+    /// <summary>
+    /// The Subscriptions the nodes this surface reads route by, each by node
+    /// and name, and where an act on one is left when this surface reads a
+    /// publication (ADR-0013, amendment 2026-09-30). None where this surface
+    /// cannot list them.
+    /// </summary>
     public SubscriptionList Subscriptions()
     {
         return SubscriptionList.Empty;
     }
 
     /// <summary>
-    /// Pause, resume or remove one subscription, by <paramref name="who"/>,
-    /// and say what came of it. Who may act is the caller's to decide by
-    /// role (ADR-0009); the node applies what reaches it and audits it. The
-    /// default declines: this surface reaches no hub.
+    /// Pause or resume one Subscription, by <paramref name="who"/>, and say
+    /// what came of it. There is no remove: a Subscription is added and
+    /// removed in the TOML configuration. Who may act is the caller's to
+    /// decide by role (ADR-0009); the node applies what reaches it and audits
+    /// it. The default declines: this surface reaches no node.
     /// </summary>
     public SubscriptionOperation Act(
         SubscriptionRecord subscription, SubscriptionAct act, string who)
     {
         return SubscriptionOperation.Declined(
-            subscription, act, $"{Source} does not act on subscriptions");
+            subscription, act, $"{Source} does not act on Subscriptions");
     }
 
     /// <summary>Pause everything at and beneath a scope, by <paramref name="who"/>.

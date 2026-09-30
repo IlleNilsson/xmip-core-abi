@@ -93,7 +93,46 @@ public sealed class RemoteOperatorTest
     }
 
     [Fact]
-    public async Task ListsAndActsOnTheHostsSubscriptionsAsTheHostDoes()
+    public async Task ListsAndActsOnTheHostsEventSubscriptionsAsTheHostDoes()
+    {
+        string copy = Path.Combine(
+            Path.GetTempPath(), $"xmip-remote-{Guid.NewGuid():n}-snapshot.toml");
+        string orders = Path.Combine(Path.GetTempPath(), $"xmip-remote-orders-{Guid.NewGuid():n}");
+        File.WriteAllText(
+            copy,
+            $"node = \"xmip:///CT\"\norders = '{orders}'\n[[event_subscriptions]]\n"
+            + "node = \"xmip:///CT/node/alpha\"\nid = 7\nsubscriber = \"p\"\nstate = \"active\"\n");
+
+        try
+        {
+            IOperatorSurface local = new SnapshotOperator(copy);
+            await using WebApplication host = await Serve(local).ConfigureAwait(true);
+            using RemoteOperator remoteHost = new(new Uri(host.Urls.First()));
+            IOperatorSurface remote = remoteHost;
+
+            Assert.True(remoteHost.Connect(), remoteHost.Reason);
+            Abi.Operate.EventSubscriptionRecord held = Assert.Single(
+                remote.EventSubscriptions().EventSubscriptions);
+            Assert.Equal(local.EventSubscriptions().EventSubscriptions[0], held);
+
+            EventSubscriptionOperation paused = remote.Act(held, EventSubscriptionAct.Pause, "ilian");
+
+            Assert.True(paused.Applied, paused.Result);
+            Assert.Equal(EventSubscriptionAct.Pause, paused.Act);
+            Assert.Single(Directory.GetFiles(Path.Combine(orders, "alpha"), "*.toml"));
+        }
+        finally
+        {
+            File.Delete(copy);
+            if (Directory.Exists(orders))
+            {
+                Directory.Delete(orders, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task ListsAndPausesTheHostsSubscriptionsAsTheHostDoes()
     {
         string copy = Path.Combine(
             Path.GetTempPath(), $"xmip-remote-{Guid.NewGuid():n}-snapshot.toml");
@@ -101,7 +140,7 @@ public sealed class RemoteOperatorTest
         File.WriteAllText(
             copy,
             $"node = \"xmip:///CT\"\norders = '{orders}'\n[[subscriptions]]\n"
-            + "node = \"xmip:///CT/node/R1\"\nid = 7\nsubscriber = \"p\"\nstate = \"active\"\n");
+            + "node = \"xmip:///CT/node/beta\"\nname = \"structured\"\nstate = \"active\"\n");
 
         try
         {
@@ -119,7 +158,7 @@ public sealed class RemoteOperatorTest
 
             Assert.True(paused.Applied, paused.Result);
             Assert.Equal(SubscriptionAct.Pause, paused.Act);
-            Assert.Single(Directory.GetFiles(Path.Combine(orders, "R1"), "*.toml"));
+            Assert.Single(Directory.GetFiles(Path.Combine(orders, "beta"), "*.toml"));
         }
         finally
         {

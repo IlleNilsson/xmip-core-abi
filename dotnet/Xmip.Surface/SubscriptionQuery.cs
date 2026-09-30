@@ -3,13 +3,13 @@ using Xmip.Abi.Operate;
 namespace Xmip.Surface;
 
 /// <summary>
-/// What a surface asks of the Event subscriptions it lists (ADR-0065,
-/// amendment 2026-09-29), in the words every surface uses: the Subscriptions
-/// view's address, <c>xmip-cli subscriptions</c>'s arguments and
+/// What a surface asks of the Subscriptions it lists (ADR-0013, amendment
+/// 2026-09-30), in the words every surface uses: the Subscriptions view's
+/// address, <c>xmip-cli subscriptions</c>'s arguments and
 /// <c>Get-XmipSubscription</c>'s parameters are these names. Where the drill
-/// stands — a cluster, a node, one subscription — the scope pattern over
-/// each subscription's node and reach, and the order: written once, here,
-/// for every surface.
+/// stands — a cluster, a node, one Subscription — the scope pattern over
+/// each Subscription's node and name, and the order: written once, here, for
+/// every surface.
 /// </summary>
 public sealed record SubscriptionQuery
 {
@@ -17,21 +17,21 @@ public sealed record SubscriptionQuery
     /// them. The first is the default.</summary>
     public static IReadOnlyList<string> Columns { get; } =
     [
-        "subscriber", "cluster", "node", "action", "state", "queued", "delivered", "missed",
-        "since",
+        "subscription", "cluster", "node", "filter", "destination", "state", "picked-up",
+        "held", "since",
     ];
 
-    /// <summary>The scope pattern, <c>*</c> and <c>?</c>: a subscription
-    /// matches when its node or the scope its filter reaches does.</summary>
+    /// <summary>The scope pattern, <c>*</c> and <c>?</c>: a Subscription
+    /// matches when its node, or its node and name as one scope, does.</summary>
     public string? Pattern { get; init; }
 
     /// <summary>Where the drill stands: a cluster or a node, and every
-    /// subscription held at or beneath it.</summary>
+    /// Subscription routed by at or beneath it.</summary>
     public string? Location { get; init; }
 
-    /// <summary>One subscription's number on the node at
+    /// <summary>One Subscription's name on the node at
     /// <see cref="Location"/>.</summary>
-    public ulong? Id { get; init; }
+    public string? Name { get; init; }
 
     /// <summary>A column of <see cref="Columns"/>; null is the first.</summary>
     public string? Sort { get; init; }
@@ -42,19 +42,7 @@ public sealed record SubscriptionQuery
     /// <summary>Whether the order is greatest first.</summary>
     public bool Descending => string.Equals(Order, "descending", StringComparison.Ordinal);
 
-    /// <summary>
-    /// Who a subscription's subscriber is, as every surface shows it: the
-    /// name its Party was declared with, and its identifier only where it was
-    /// declared with none — shown as it is, never a name made from it.
-    /// </summary>
-    public static string Who(SubscriptionRecord subscription)
-    {
-        ArgumentNullException.ThrowIfNull(subscription);
-
-        return subscription.Subscriber.Length > 0 ? subscription.Subscriber : subscription.Party;
-    }
-
-    /// <summary>The cluster a subscription is in: its node's first
+    /// <summary>The cluster a Subscription is in: its node's first
     /// segment.</summary>
     public static string Cluster(SubscriptionRecord subscription)
     {
@@ -63,7 +51,7 @@ public sealed record SubscriptionQuery
         return ScopeTree.Parts(subscription.Node) is [var cluster, ..] ? cluster : string.Empty;
     }
 
-    /// <summary>The node's name, <c>R1</c> of <c>xmip:///C9/node/R1</c>.</summary>
+    /// <summary>The node's name, <c>beta</c> of <c>xmip:///CT/node/beta</c>.</summary>
     public static string NodeName(SubscriptionRecord subscription)
     {
         ArgumentNullException.ThrowIfNull(subscription);
@@ -71,9 +59,18 @@ public sealed record SubscriptionQuery
         return ScopeTree.Node(subscription.Node);
     }
 
+    /// <summary>A Subscription as one scope: its node's, then its name —
+    /// what a pattern is matched against beside the node.</summary>
+    public static string Scope(SubscriptionRecord subscription)
+    {
+        ArgumentNullException.ThrowIfNull(subscription);
+
+        return $"{subscription.Node}/subscription/{subscription.Name}";
+    }
+
     /// <summary>
     /// What this query selects of <paramref name="subscriptions"/>, in its
-    /// order, with ties by node and number.
+    /// order, with ties by node and name.
     /// </summary>
     /// <exception cref="ArgumentException">REFUSED: a sort that is no column or
     /// an order that is neither word.</exception>
@@ -103,7 +100,7 @@ public sealed record SubscriptionQuery
         [
             .. ordered
                 .ThenBy(entry => entry.Node, StringComparer.Ordinal)
-                .ThenBy(entry => entry.Id),
+                .ThenBy(entry => entry.Name, StringComparer.Ordinal),
         ];
     }
 
@@ -111,12 +108,13 @@ public sealed record SubscriptionQuery
     {
         bool placed = Location is not { Length: > 0 } location
             || ScopeTree.Beneath(subscription.Node, location);
-        bool numbered = Id is not { } id || subscription.Id == id;
+        bool named = Name is not { Length: > 0 } name
+            || string.Equals(subscription.Name, name, StringComparison.Ordinal);
 
-        return placed && numbered
+        return placed && named
             && (Pattern is not { Length: > 0 } pattern
                 || ScopePattern.Matches(subscription.Node, pattern)
-                || ScopePattern.Matches(subscription.Scope, pattern));
+                || ScopePattern.Matches(Scope(subscription), pattern));
     }
 
     private static IComparable Key(SubscriptionRecord entry, string sort)
@@ -125,13 +123,13 @@ public sealed record SubscriptionQuery
         {
             "cluster" => Cluster(entry),
             "node" => NodeName(entry),
-            "action" => entry.Action,
+            "filter" => entry.Filter,
+            "destination" => entry.Destination,
             "state" => entry.State,
-            "queued" => entry.Queued,
-            "delivered" => entry.Delivered,
-            "missed" => entry.Missed,
+            "picked-up" => entry.PickedUp,
+            "held" => entry.Held,
             "since" => entry.Since,
-            _ => Who(entry),
+            _ => entry.Name,
         };
     }
 }

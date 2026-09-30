@@ -18,7 +18,7 @@ import java.util.Optional;
  * unsubscribes; for a listening one, once the callback in progress returned.
  * Close it only after every thread draining it has returned from next.
  */
-public final class Subscription implements AutoCloseable {
+public final class EventSubscription implements AutoCloseable {
     private final Library library;
     private final Arena callback;
     private final Arena held = Arena.ofShared();
@@ -30,7 +30,7 @@ public final class Subscription implements AutoCloseable {
     private final MemorySegment refused = held.allocate(JAVA_LONG);
     private MemorySegment handle;
 
-    Subscription(Library library, MemorySegment handle, Arena callback) {
+    EventSubscription(Library library, MemorySegment handle, Arena callback) {
         this.library = library;
         this.handle = handle;
         this.callback = callback;

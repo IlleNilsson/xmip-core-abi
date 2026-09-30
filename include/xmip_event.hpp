@@ -2,14 +2,14 @@
 // Copyright the Xmip authors.
 
 // xmip_event.hpp - xmip_operate.h section 11 for C++17: the runtime's
-// library loaded once by path, a Subscription that unsubscribes when it
+// library loaded once by path, an EventSubscription that unsubscribes when it
 // goes, a Batch that frees when it goes, and a callback as a std::function.
 //
 // Header-only and thin (ADR-0065): which Events a filter matches, whether a
 // subscriber may see them, the queue and the audit are the runtime's. An
 // EventView's strings are std::string_view borrowing from the Batch it came
 // in, or valid for the callback it was handed to. A Library outlives every
-// Subscription it made.
+// EventSubscription it made.
 
 #ifndef XMIP_EVENT_HPP
 #define XMIP_EVENT_HPP
@@ -171,15 +171,15 @@ private:
 using Callback = std::function<void(const EventView &)>;
 
 // A subscription, drained or listening; unsubscribes when it goes.
-class Subscription {
+class EventSubscription {
 public:
-    Subscription(const Symbols *symbols, XmipEventSubscription *handle,
+    EventSubscription(const Symbols *symbols, XmipEventSubscription *handle,
                  std::unique_ptr<Callback> callback) noexcept
         : symbols_(symbols), handle_(handle), callback_(std::move(callback)) {}
-    Subscription(const Subscription &) = delete;
-    Subscription &operator=(const Subscription &) = delete;
-    Subscription(Subscription &&other) noexcept { *this = std::move(other); }
-    Subscription &operator=(Subscription &&other) noexcept {
+    EventSubscription(const EventSubscription &) = delete;
+    EventSubscription &operator=(const EventSubscription &) = delete;
+    EventSubscription(EventSubscription &&other) noexcept { *this = std::move(other); }
+    EventSubscription &operator=(EventSubscription &&other) noexcept {
         if (this != &other) {
             release();
             symbols_ = other.symbols_;
@@ -188,7 +188,7 @@ public:
         }
         return *this;
     }
-    ~Subscription() { release(); }
+    ~EventSubscription() { release(); }
 
     // Up to max Events, waiting up to timeout_ms for the first; nothing
     // when none arrived. Throws Error on any other status.
@@ -244,14 +244,14 @@ public:
     ~Library() { close(); }
 
     // Subscribe to drain. Throws Error, with the gate's sentence when refused.
-    Subscription subscribe(std::string_view program, std::string_view directory,
+    EventSubscription subscribe(std::string_view program, std::string_view directory,
                            std::string_view subscriber, const Filter &filter,
                            std::size_t capacity = 0) const {
         return open(program, directory, subscriber, filter, capacity, nullptr);
     }
 
     // Subscribe to be called back on a runtime thread, one call at a time.
-    Subscription listen(std::string_view program, std::string_view directory,
+    EventSubscription listen(std::string_view program, std::string_view directory,
                         std::string_view subscriber, const Filter &filter, Callback callback,
                         std::size_t capacity = 0) const {
         return open(program, directory, subscriber, filter, capacity,
@@ -321,7 +321,7 @@ private:
         (*static_cast<Callback *>(context))(EventView(*event));
     }
 
-    Subscription open(std::string_view program, std::string_view directory,
+    EventSubscription open(std::string_view program, std::string_view directory,
                       std::string_view subscriber, const Filter &filter,
                       std::size_t capacity, std::unique_ptr<Callback> callback) const {
         std::vector<XmipStr> types;
@@ -349,7 +349,7 @@ private:
         if (status != XMIP_OK) {
             throw Error(status, std::string(reinterpret_cast<const char *>(said), said_len));
         }
-        return Subscription(&symbols_, handle, std::move(callback));
+        return EventSubscription(&symbols_, handle, std::move(callback));
     }
 
     void *handle_ = nullptr;

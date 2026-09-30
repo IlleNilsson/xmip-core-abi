@@ -3,53 +3,57 @@ using System.Text.Json;
 namespace Xmip.Abi.Operate;
 
 /// <summary>
-/// One Event subscription as a node's hub holds it (ADR-0065, amendment
-/// 2026-09-29): <c>observe::Subscription</c>, read from the JSON section 11
-/// writes. <see cref="Node"/> and <see cref="Id"/> together name it.
+/// One Subscription as a node routes by it (ADR-0013, amendment
+/// 2026-09-30): <c>observe::Subscription</c>, read from the JSON section 14
+/// writes. <see cref="Node"/> and <see cref="Name"/> together name it. A
+/// Subscription picks a published Message up and opens a Journey; it is
+/// configuration, added and removed in the TOML of the Xmip Application that
+/// draws it, and an operator pauses and resumes it — never removes it.
 /// </summary>
-/// <param name="Node">The node whose hub holds it:
+/// <param name="Node">The node that routes by it:
 /// <c>xmip:///&lt;cluster&gt;/node/&lt;name&gt;</c>.</param>
-/// <param name="Id">Its number in that hub.</param>
-/// <param name="Subscriber">The Party subscribed, by the name it was declared
-/// with — what an operator reads; empty where it was declared with none.</param>
-/// <param name="Party">The Party subscribed, by its UUID.</param>
-/// <param name="Action">What its filter asks for, in words.</param>
-/// <param name="Scope">What its filter reaches.</param>
+/// <param name="Name">Its configured name, unique on its node.</param>
+/// <param name="Application">The Xmip Application that draws it.</param>
+/// <param name="Filter">What it subscribes to: its filter, as configured.</param>
+/// <param name="Destination">Where it leads, in words.</param>
+/// <param name="File">The file its Application was read from.</param>
+/// <param name="Configuration">Its entry in that file, as the file says it.</param>
 /// <param name="State">Its state as the runtime words it: active or paused.</param>
-/// <param name="Paused">Whether its delivery is held.</param>
-/// <param name="Queued">Events waiting in its queue.</param>
-/// <param name="Capacity">How many its queue holds.</param>
-/// <param name="Delivered">Events handed over since it was made.</param>
-/// <param name="Missed">Matching Events a full queue refused since it was made.</param>
-/// <param name="Since">When it was made.</param>
+/// <param name="Paused">Whether what it matches is held.</param>
+/// <param name="By">Who paused it; empty while it is active.</param>
+/// <param name="PickedUp">Messages it picked up since its node started.</param>
+/// <param name="Held">Messages it holds, matched while paused and not yet
+/// picked up.</param>
+/// <param name="Since">When its state began.</param>
 public sealed record SubscriptionRecord(
     string Node,
-    ulong Id,
-    string Subscriber,
-    string Party,
-    string Action,
-    string Scope,
+    string Name,
+    string Application,
+    string Filter,
+    string Destination,
+    string File,
+    string Configuration,
     string State,
     bool Paused,
-    ulong Queued,
-    ulong Capacity,
-    ulong Delivered,
-    ulong Missed,
+    string By,
+    ulong PickedUp,
+    ulong Held,
     DateTimeOffset Since);
 
 /// <summary>
-/// The subscriptions a hub or a publication carries, and where acts on them
+/// The Subscriptions a node or a publication carries, and where acts on them
 /// are left when they are read through a publication — empty where they are
 /// applied in the process itself.
 /// </summary>
 /// <param name="Orders">Where a surface leaves an act for the publisher.</param>
-/// <param name="Subscriptions">The subscriptions, by node and number.</param>
-public sealed record SubscriptionList(string Orders, IReadOnlyList<SubscriptionRecord> Subscriptions)
+/// <param name="Subscriptions">The Subscriptions, by node and name.</param>
+public sealed record SubscriptionList(
+    string Orders, IReadOnlyList<SubscriptionRecord> Subscriptions)
 {
-    /// <summary>No subscription, nowhere to leave an act.</summary>
+    /// <summary>No Subscription, nowhere to leave an act.</summary>
     public static SubscriptionList Empty { get; } = new(string.Empty, []);
 
-    /// <summary>The list section 11 wrote.</summary>
+    /// <summary>The list section 14 wrote.</summary>
     public static SubscriptionList Parse(ReadOnlyMemory<byte> json)
     {
         using JsonDocument answer = JsonDocument.Parse(json);
@@ -62,19 +66,24 @@ public sealed record SubscriptionList(string Orders, IReadOnlyList<SubscriptionR
 
     private static SubscriptionRecord Record(JsonElement entry)
     {
+        string Text(string name)
+        {
+            return entry.GetProperty(name).GetString() ?? string.Empty;
+        }
+
         return new SubscriptionRecord(
-            entry.GetProperty("node").GetString() ?? string.Empty,
-            entry.GetProperty("id").GetUInt64(),
-            entry.GetProperty("subscriber").GetString() ?? string.Empty,
-            entry.GetProperty("party").GetString() ?? string.Empty,
-            entry.GetProperty("action").GetString() ?? string.Empty,
-            entry.GetProperty("scope").GetString() ?? string.Empty,
-            entry.GetProperty("state").GetString() ?? string.Empty,
+            Text("node"),
+            Text("name"),
+            Text("application"),
+            Text("filter"),
+            Text("destination"),
+            Text("file"),
+            Text("configuration"),
+            Text("state"),
             entry.GetProperty("paused").GetBoolean(),
-            entry.GetProperty("queued").GetUInt64(),
-            entry.GetProperty("capacity").GetUInt64(),
-            entry.GetProperty("delivered").GetUInt64(),
-            entry.GetProperty("missed").GetUInt64(),
+            Text("by"),
+            entry.GetProperty("picked_up").GetUInt64(),
+            entry.GetProperty("held").GetUInt64(),
             Operator.FromNanos(entry.GetProperty("since_unix_nanos").GetInt64()));
     }
 }

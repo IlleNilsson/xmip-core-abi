@@ -2,7 +2,7 @@
 // Copyright the Xmip authors.
 
 // xmip_event_test.cpp - include/xmip_event.hpp through the runtime's real
-// library: a Subscription drains what it matches and frees its Batch, a
+// library: an EventSubscription drains what it matches and frees its Batch, a
 // listener is called back through a std::function, and an Event reaches
 // its subscriber within a millisecond of its publish.
 //
@@ -149,7 +149,7 @@ void a_subscription_drains_what_it_matches(const Library &xmip, const std::strin
     Filter filter;
     filter.outcomes = {XMIP_OUTCOME_FAILURE};
     filter.scope = "xmip:///cpp-drain";
-    Subscription subscription = xmip.subscribe(program, directory, subscriber, filter);
+    EventSubscription subscription = xmip.subscribe(program, directory, subscriber, filter);
 
     Draft draft = raised("xmip:///cpp-drain/node/n1/receive/orders", XMIP_OUTCOME_FAILURE);
     draft.diagnostics = {{"status", "refused"}};
@@ -177,7 +177,7 @@ void a_drained_event_arrives_within_a_millisecond(const Library &xmip,
                                                   const std::string &directory) {
     Filter filter;
     filter.scope = "xmip:///cpp-drain-latency";
-    Subscription subscription = xmip.subscribe(program, directory, subscriber, filter);
+    EventSubscription subscription = xmip.subscribe(program, directory, subscriber, filter);
     static Timing timing;
     std::atomic<bool> stop{false};
     std::thread receiver([&] {
@@ -200,7 +200,7 @@ void a_listener_is_called_back_within_a_millisecond(const Library &xmip,
     Filter filter;
     filter.scope = "xmip:///cpp-listen";
     static Timing timing;
-    Subscription listening =
+    EventSubscription listening =
         xmip.listen(program, directory, subscriber, filter, [](const EventView &event) {
             if (event.type() == "se.xmip.receive.failure") {
                 timing.arrived(Clock::now());

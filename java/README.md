@@ -8,7 +8,7 @@ them, the queue and the audit are the runtime's.
 | Type | What it is |
 | --- | --- |
 | `Library` | Loads the runtime's library by path and looks up the six entrypoints once; `subscribe`, `listen`, `publish`. |
-| `Subscription` | `next(timeout, max)` drains; `close()` unsubscribes. |
+| `EventSubscription` | `next(timeout, max)` drains; `close()` unsubscribes. |
 | `Event`, `Filter`, `Delivery` | The header's `XmipEvent`, `XmipEventFilter` and one drain, copied into Java. |
 | `Action`, `Outcome` | `XmipAction` and `XmipOutcome` with the header's numbers. |
 | `EventException` | Any status other than `XMIP_OK`, with the gate's sentence when a subscription is refused. |
@@ -31,7 +31,7 @@ where `size_t` is a Java `long`.
 
 ```java
 try (Library xmip = Library.load(Path.of("xmip_core_runtime.dll"));
-     Subscription subscription = xmip.subscribe("my-program", "/var/log/my-program",
+     EventSubscription subscription = xmip.subscribe("my-program", "/var/log/my-program",
              "0198a3c4-0000-7000-8000-000000000042",
              new Filter(List.of(), List.of(Outcome.FAILURE), "xmip:///cluster-a", ""), 0)) {
     subscription.next(Duration.ofSeconds(1), 64)

@@ -8,7 +8,7 @@ them, the queue and the audit are the runtime's.
 - `xmip::event::Library` loads the runtime's library by path and resolves
   the six `XMIP_EVENT_*_ENTRYPOINT` symbols once. It outlives every
   subscription it makes.
-- `Subscription` unsubscribes in its destructor. `next` returns a `Batch`,
+- `EventSubscription` unsubscribes in its destructor. `next` returns a `Batch`,
   or nothing when the wait timed out.
 - `Batch` frees itself in its destructor. Its `EventView`s expose every
   string as a `std::string_view` borrowing from the batch.

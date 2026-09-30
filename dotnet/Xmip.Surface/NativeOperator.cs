@@ -217,8 +217,36 @@ public sealed class NativeOperator : IOperatorSurface, IDisposable
     }
 
     /// <inheritdoc />
-    /// <remarks>The hub of the process that loaded the runtime, each
+    /// <remarks>The hub of the process that loaded the runtime, each Event
     /// subscription at <see cref="IOperatorSurface.Root"/>.</remarks>
+    public EventSubscriptionList EventSubscriptions()
+    {
+        return Runtime() is null
+            ? EventSubscriptionList.Empty
+            : RuntimeLibrary.Rules.EventSubscriptions.Standing(((IOperatorSurface)this).Root());
+    }
+
+    /// <inheritdoc />
+    public EventSubscriptionOperation Act(
+        EventSubscriptionRecord subscription, EventSubscriptionAct act, string who)
+    {
+        ArgumentNullException.ThrowIfNull(subscription);
+
+        if (Runtime() is null)
+        {
+            return EventSubscriptionOperation.Declined(subscription, act, NotLoaded());
+        }
+
+        XmipStatus status = RuntimeLibrary.Rules.EventSubscriptions.Act(
+            subscription.Id, EventSubscriptionOperation.Word(act), who, out string said);
+
+        return new EventSubscriptionOperation(
+            subscription.Node, subscription.Id, act, status == XmipStatus.Ok, said);
+    }
+
+    /// <inheritdoc />
+    /// <remarks>Every node running in the process that loaded the runtime,
+    /// at or beneath <see cref="IOperatorSurface.Root"/>.</remarks>
     public SubscriptionList Subscriptions()
     {
         return Runtime() is null
@@ -238,10 +266,11 @@ public sealed class NativeOperator : IOperatorSurface, IDisposable
         }
 
         XmipStatus status = RuntimeLibrary.Rules.Subscriptions.Act(
-            subscription.Id, SubscriptionOperation.Word(act), who, out string said);
+            subscription.Node, subscription.Name, SubscriptionOperation.Word(act), who,
+            out string said);
 
         return new SubscriptionOperation(
-            subscription.Node, subscription.Id, act, status == XmipStatus.Ok, said);
+            subscription.Node, subscription.Name, act, status == XmipStatus.Ok, said);
     }
 
     /// <inheritdoc />

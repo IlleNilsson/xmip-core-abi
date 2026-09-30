@@ -3,32 +3,38 @@ using Xmip.Abi.Operate;
 namespace Xmip.Surface;
 
 /// <summary>
-/// What an operator does to an Event subscription (ADR-0065, amendment
-/// 2026-09-29): <c>xevent::act::Act</c>, whose word — the name, lower case —
-/// is what crosses to the runtime, which refuses any other.
+/// What an operator does to a Subscription (ADR-0013, amendment
+/// 2026-09-30): <c>observe::Act</c> as <c>observe::Noun::Subscription</c>
+/// takes it, whose word — the name, lower case — is what crosses to the
+/// runtime. There is no remove: a Subscription is added and removed in the
+/// TOML configuration of the Xmip Application that draws it, and the
+/// runtime refuses the word.
 /// </summary>
 public enum SubscriptionAct
 {
-    /// <summary>Hold delivery; the queue keeps filling up to its capacity.</summary>
+    /// <summary>Hold what it matches: kept, counted, not picked up.</summary>
     Pause,
 
-    /// <summary>Deliver again, what queued first.</summary>
+    /// <summary>Pick up what it held, oldest first, and what it matches.</summary>
     Resume,
-
-    /// <summary>Unsubscribe it.</summary>
-    Remove,
 }
 
 /// <summary>
-/// What came of a <see cref="SubscriptionAct"/> on the subscription numbered
-/// <paramref name="Id"/> on <paramref name="Node"/>: whether it was applied
-/// — or, through a publication, left for the node — and what was said. The
-/// executable and the PowerShell module emit this one shape, as they emit a
-/// <see cref="ScopeOperation"/>.
+/// What came of a <see cref="SubscriptionAct"/> on the Subscription called
+/// <paramref name="Name"/> on <paramref name="Node"/>: whether it was
+/// applied — or, through a publication, left for the node — and what was
+/// said. The executable and the PowerShell module emit this one shape, as
+/// they emit a <see cref="ScopeOperation"/>.
 /// </summary>
 public sealed record SubscriptionOperation(
-    string Node, ulong Id, SubscriptionAct Act, bool Applied, string Result)
+    string Node, string Name, SubscriptionAct Act, bool Applied, string Result)
 {
+    /// <summary>What a surface says where a Subscription would be removed:
+    /// it is not removed by an act.</summary>
+    public const string Configured =
+        "A Subscription is added and removed in the TOML configuration of the Xmip " +
+        "Application that draws it; an operator pauses and resumes it.";
+
     /// <summary>The word the runtime names <paramref name="act"/> by.</summary>
     public static string Word(SubscriptionAct act)
     {
@@ -41,6 +47,6 @@ public sealed record SubscriptionOperation(
     {
         ArgumentNullException.ThrowIfNull(subscription);
 
-        return new SubscriptionOperation(subscription.Node, subscription.Id, act, false, why);
+        return new SubscriptionOperation(subscription.Node, subscription.Name, act, false, why);
     }
 }

@@ -106,7 +106,10 @@ public final class EventBindingTest {
                 bound.put(field.getName(), (String) get(field));
             }
         }
-        check(!entrypoints.isEmpty() && entrypoints.equals(bound),
+        // What an operator lists and does of Event subscriptions is section
+        // 11's too and bound by the operator surfaces, not by a program's
+        // binding: every name this binds is the header's.
+        check(!bound.isEmpty() && entrypoints.entrySet().containsAll(bound.entrySet()),
                 "the entrypoint names are the header's");
         check(module.matches("(?s).*#define XMIP_OK\\s+" + Library.OK + "\\b.*")
                 && module.matches("(?s).*#define XMIP_E_TIMEOUT\\s+\\(" + Library.E_TIMEOUT
@@ -137,7 +140,7 @@ public final class EventBindingTest {
 
     private static void aSubscriptionDrainsWhatItMatches(Library xmip, String directory) {
         Filter failures = new Filter(List.of(), List.of(Outcome.FAILURE), "xmip:///java-drain", "");
-        try (Subscription subscription = xmip.subscribe(PROGRAM, directory, SUBSCRIBER,
+        try (EventSubscription subscription = xmip.subscribe(PROGRAM, directory, SUBSCRIBER,
                 failures, 0)) {
             String scope = "xmip:///java-drain/node/n1/receive/orders";
             check(xmip.publish(raised(scope, Outcome.FAILURE, Map.of("status", "refused"))) == 1,
@@ -247,7 +250,7 @@ public final class EventBindingTest {
             throws InterruptedException {
         Timing timing = new Timing();
         AtomicBoolean stop = new AtomicBoolean();
-        try (Subscription subscription = xmip.subscribe(PROGRAM, directory, SUBSCRIBER,
+        try (EventSubscription subscription = xmip.subscribe(PROGRAM, directory, SUBSCRIBER,
                 Filter.at("xmip:///java-drain-latency"), 0)) {
             Thread receiver = new Thread(() -> {
                 while (!stop.get()) {
@@ -267,7 +270,7 @@ public final class EventBindingTest {
     private static void aListenerIsCalledBackWithinAMillisecond(Library xmip, String directory)
             throws InterruptedException {
         Timing timing = new Timing();
-        try (Subscription listening = xmip.listen(PROGRAM, directory, SUBSCRIBER,
+        try (EventSubscription listening = xmip.listen(PROGRAM, directory, SUBSCRIBER,
                 Filter.at("xmip:///java-listen"), 0, event -> timing.arrived(System.nanoTime()))) {
             try {
                 listening.next(Duration.ofMillis(1), 1);
