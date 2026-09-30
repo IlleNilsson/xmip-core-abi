@@ -4,11 +4,12 @@ using Xmip.Abi.Operate;
 namespace Xmip.Surface.Test;
 
 /// <summary>
-/// The Event subscriptions as every surface lists and acts on them (ADR-0065,
-/// amendment 2026-09-29): a snapshot lists what its publication carries and
-/// leaves an act where it says its publisher takes orders, or declines where
-/// it says nowhere; the one query drills, filters and sorts; every act the
-/// runtime knows is a word it takes.
+/// The Subscriptions as every surface lists and acts on them (ADR-0013,
+/// amendment 2026-09-30): a snapshot lists what its publication carries and
+/// leaves a pause or a resume where it says its publisher takes orders, or
+/// declines where it says nowhere; the one query drills, filters and sorts;
+/// every act a surface offers is a word the runtime takes, and there is no
+/// remove among them.
 /// </summary>
 public sealed class SubscriptionSurfaceTest
 {
@@ -16,31 +17,18 @@ public sealed class SubscriptionSurfaceTest
     {
         return "node = \"xmip:///CT\"\n"
             + (orders.Length > 0 ? $"orders = '{orders}'\n" : string.Empty)
-            + Entry("R1", 1, "every Event", "active", 3, "xmip:///CT/node/R1")
-            + Entry("S1", 2, "every Event ending failure", "paused", 9, "xmip:///CT/node/S1")
-            + Entry("S1", 4, "se.xmip.send.failure", "active", 1, "xmip:///CT");
+            + Entry("beta", "structured", "active", 12, 0)
+            + Entry("beta", "edi", "paused", 3, 9)
+            + Entry("delta", "flat", "active", 40, 0);
     }
 
-    private static string Entry(
-        string node, int id, string action, string state, int queued, string scope)
+    private static string Entry(string node, string name, string state, int picked, int held)
     {
-        return $"[[subscriptions]]\nnode = \"xmip:///CT/node/{node}\"\nid = {id}\n"
-            + Named(id)
-            + $"party = \"0199a0a0-0000-7000-8000-00000000000{id}\"\n"
-            + $"action = \"{action}\"\nscope = \"{scope}\"\n"
-            + $"state = \"{state}\"\nqueued = {queued}\n";
-    }
-
-    // Two declared with a name, as the Playground's are; the fourth with
-    // none, as a program that subscribed by identifier alone is.
-    private static string Named(int id)
-    {
-        return id switch
-        {
-            1 => "subscriber = \"operations\"\n",
-            2 => "subscriber = \"on-call\"\n",
-            _ => string.Empty,
-        };
+        return $"[[subscriptions]]\nnode = \"xmip:///CT/node/{node}\"\nname = \"{name}\"\n"
+            + "application = \"RoundTrip\"\n"
+            + $"filter = \"MessageType = '{name}'\"\n"
+            + "destination = \"the Send Port 'RoundTripOut'\"\n"
+            + $"state = \"{state}\"\npicked_up = {picked}\nheld = {held}\n";
     }
 
     private static SnapshotOperator Over(string text, out string file)
@@ -61,14 +49,15 @@ public sealed class SubscriptionSurfaceTest
             SubscriptionList listed = surface.Subscriptions();
             Assert.Equal(orders, listed.Orders);
             Assert.Equal(3, listed.Subscriptions.Count);
-            SubscriptionRecord held = listed.Subscriptions.Single(entry => entry.Id == 2);
+            SubscriptionRecord held = listed.Subscriptions.Single(entry => entry.Name == "edi");
             Assert.True(held.Paused);
+            Assert.Equal(9ul, held.Held);
 
             SubscriptionOperation resumed = surface.Act(held, SubscriptionAct.Resume, "ilian");
 
             Assert.True(resumed.Applied, resumed.Result);
-            Assert.Contains("left for S1", resumed.Result, StringComparison.Ordinal);
-            Assert.Single(Directory.GetFiles(Path.Combine(orders, "S1"), "*.toml"));
+            Assert.Contains("left for beta", resumed.Result, StringComparison.Ordinal);
+            Assert.Single(Directory.GetFiles(Path.Combine(orders, "beta"), "*.toml"));
         }
         finally
         {
@@ -108,29 +97,32 @@ public sealed class SubscriptionSurfaceTest
         {
             IReadOnlyList<SubscriptionRecord> all = surface.Subscriptions().Subscriptions;
 
-            // Who a subscriber is: its declared name, its identifier where
-            // it was declared with none; the default order is by it.
             Assert.Equal(
-                ["operations", "on-call", "0199a0a0-0000-7000-8000-000000000004"],
-                all.OrderBy(s => s.Id).Select(SubscriptionQuery.Who));
-            Assert.Equal([4ul, 2ul, 1ul], new SubscriptionQuery().Apply(all).Select(s => s.Id));
+                ["edi", "flat", "structured"], new SubscriptionQuery().Apply(all).Select(s => s.Name));
             Assert.Equal(
-                [4ul, 2ul],
-                new SubscriptionQuery { Location = "xmip:///CT/node/S1" }.Apply(all)
-                    .Select(s => s.Id));
+                ["edi", "structured"],
+                new SubscriptionQuery { Location = "xmip:///CT/node/beta" }.Apply(all)
+                    .Select(s => s.Name));
             Assert.Equal(
-                [4ul],
-                new SubscriptionQuery { Location = "xmip:///CT/node/S1", Id = 4 }.Apply(all)
-                    .Select(s => s.Id));
+                ["structured"],
+                new SubscriptionQuery { Location = "xmip:///CT/node/beta", Name = "structured" }
+                    .Apply(all).Select(s => s.Name));
             Assert.Equal(
-                [2ul, 1ul, 4ul],
-                new SubscriptionQuery { Sort = "queued", Order = "descending" }.Apply(all)
-                    .Select(s => s.Id));
+                ["edi", "structured", "flat"],
+                new SubscriptionQuery { Sort = "held", Order = "descending" }.Apply(all)
+                    .Select(s => s.Name));
             Assert.Equal(
-                [1ul],
-                new SubscriptionQuery { Pattern = "*/R1" }.Apply(all).Select(s => s.Id));
+                ["flat", "structured", "edi"],
+                new SubscriptionQuery { Sort = "picked-up", Order = "descending" }.Apply(all)
+                    .Select(s => s.Name));
+            Assert.Equal(
+                ["flat"], new SubscriptionQuery { Pattern = "*/delta" }.Apply(all).Select(s => s.Name));
+            Assert.Equal(
+                ["edi"],
+                new SubscriptionQuery { Pattern = "*/subscription/ed?" }.Apply(all)
+                    .Select(s => s.Name));
             Assert.Equal("CT", SubscriptionQuery.Cluster(all[0]));
-            Assert.Equal("R1", SubscriptionQuery.NodeName(all[0]));
+            Assert.Equal("beta", SubscriptionQuery.NodeName(all[0]));
 
             ArgumentException refused = Assert.Throws<ArgumentException>(
                 () => new SubscriptionQuery { Sort = "mood" }.Apply(all));
@@ -143,14 +135,22 @@ public sealed class SubscriptionSurfaceTest
     }
 
     [Fact]
-    public void EveryActIsAWordTheRuntimeTakes()
+    public void EveryActIsAWordTheRuntimeTakesAndNoneRemoves()
     {
+        Assert.Equal(["Pause", "Resume"], Enum.GetNames<SubscriptionAct>());
+
         foreach (SubscriptionAct act in Enum.GetValues<SubscriptionAct>())
         {
             XmipStatus status = RuntimeLibrary.Rules.Subscriptions.Act(
-                ulong.MaxValue, SubscriptionOperation.Word(act), "ilian", out string said);
+                "xmip:///CT/node/beta", "structured", SubscriptionOperation.Word(act), "ilian",
+                out string said);
 
             Assert.True(status == XmipStatus.NotFound, $"{act}: {status} {said}");
         }
+
+        XmipStatus removed = RuntimeLibrary.Rules.Subscriptions.Act(
+            "xmip:///CT/node/beta", "structured", "remove", "ilian", out string refusal);
+        Assert.Equal(XmipStatus.Invalid, removed);
+        Assert.Contains("TOML configuration", refusal, StringComparison.Ordinal);
     }
 }

@@ -468,13 +468,12 @@ forwarded by the runtime's library. Its bindings beside this one — C and C++
 over the header, .NET in `dotnet/Xmip.Abi`, Java and Python — decide nothing.
 The Rust mirror is `.src/operate/event.rs`. Since 2026-09-29 the section also
 carries what an operator lists and does (ADR-0065, amendment of that date):
-`xmip_event_subscriptions_v1`, a process hub's subscriptions as JSON in memory;
-`xmip_event_subscription_act_v1`, pause, resume or remove one by its number;
-`xmip_event_subscription_order_v1`, the same act left where a publication says
-its publisher takes orders, for a surface that reads a node only through its
-publication; and `xmip_publication_subscriptions_v1`, what a read publication
-carries, over section 8's handle. .NET binds the first three as
-`RuntimeSubscriptions` and the fourth in `PublicationReader`.
+`xmip_event_subscriptions_v1`, a process hub's Event subscriptions as JSON in
+memory; `xmip_event_subscription_act_v1`, pause, resume or remove one by its
+number; and `xmip_publication_event_subscriptions_v1`, what a read publication
+carries, over section 8's handle. .NET binds the first two as
+`RuntimeEventSubscriptions` and the third in `PublicationReader`. The act
+left where a publication says is section 14's one order.
 
 Section 12 is the technologies a runtime carries (ADR-0064, amendment
 2026-09-26): `xmip_technology_catalogue_v1` answers, as JSON in memory, each
@@ -495,6 +494,22 @@ standing in a directory, the node's own when none is named, whether or not
 their processes still run. The file, its directory, its words and its
 reading are the node's alone. The Rust mirror is `.src/operate/process.rs`;
 .NET binds it as `RuntimeProcesses`.
+
+Section 14 is a node's Subscriptions (ADR-0013, amendment 2026-09-30): a
+Subscription picks a published Message up and is configuration, added and
+removed in the TOML of the Xmip Application that draws it, so an operator
+pauses and resumes one and never removes one. `xmip_subscriptions_v1`
+answers, as JSON in memory, the Subscriptions of every node running in the
+process — each with its Application, file and entry as the file says it,
+its filter and destination, whether it is paused and by whom, what it
+picked up and what it holds; `xmip_subscription_act_v1` pauses or resumes
+one by its node and name, and refuses remove in words;
+`xmip_publication_subscriptions_v1` is what a read publication carries; and
+`xmip_order_v1` leaves an act — on a Subscription by its name, or on an
+Event subscription by its number — where a publication says its publisher
+takes orders, the file `observe::Order`'s alone. The Rust mirror is
+`.src/operate/subscription.rs`; .NET binds the first, second and fourth as
+`RuntimeSubscriptions` and the third in `PublicationReader`.
 
 Section 9 is a program's audit record (ADR-0062): `xmip_audit_v1` hands one
 to `xmip-core-audit`, and since 2026-09-29 `xmip_audit_read_v1` answers, as

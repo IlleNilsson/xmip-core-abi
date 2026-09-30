@@ -293,6 +293,7 @@ pub mod design;
 pub mod event;
 pub mod process;
 pub mod publication;
+pub mod subscription;
 
 #[cfg(test)]
 mod tests {

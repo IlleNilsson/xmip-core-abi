@@ -24,13 +24,12 @@ pub const UNSUBSCRIBE_ENTRYPOINT: &str = "xmip_event_unsubscribe_v1";
 /// `xmip_event_publish_v1`.
 pub const PUBLISH_ENTRYPOINT: &str = "xmip_event_publish_v1";
 /// `xmip_event_subscriptions_v1`.
-pub const SUBSCRIPTIONS_ENTRYPOINT: &str = "xmip_event_subscriptions_v1";
+pub const EVENT_SUBSCRIPTIONS_ENTRYPOINT: &str = "xmip_event_subscriptions_v1";
 /// `xmip_event_subscription_act_v1`.
-pub const SUBSCRIPTION_ACT_ENTRYPOINT: &str = "xmip_event_subscription_act_v1";
-/// `xmip_event_subscription_order_v1`.
-pub const SUBSCRIPTION_ORDER_ENTRYPOINT: &str = "xmip_event_subscription_order_v1";
-/// `xmip_publication_subscriptions_v1`.
-pub const PUBLICATION_SUBSCRIPTIONS_ENTRYPOINT: &str = "xmip_publication_subscriptions_v1";
+pub const EVENT_SUBSCRIPTION_ACT_ENTRYPOINT: &str = "xmip_event_subscription_act_v1";
+/// `xmip_publication_event_subscriptions_v1`.
+pub const PUBLICATION_EVENT_SUBSCRIPTIONS_ENTRYPOINT: &str =
+    "xmip_publication_event_subscriptions_v1";
 
 /// Header section 11, `XmipAction`: the stage whose action completed.
 pub mod action {
@@ -154,14 +153,15 @@ pub type UnsubscribeFn = unsafe extern "C" fn(subscription: *mut EventSubscripti
 /// matching subscription; how many took it.
 pub type PublishFn = unsafe extern "C" fn(event: *const Event, out_delivered: *mut usize) -> i32;
 
-/// `xmip_event_subscriptions_v1`: this process's hub's subscriptions, each
-/// at `node`, as JSON.
-pub type SubscriptionsFn =
+/// `xmip_event_subscriptions_v1`: this process's hub's Event subscriptions,
+/// each at `node`, as JSON.
+pub type EventSubscriptionsFn =
     unsafe extern "C" fn(node: Scope, out: *mut u8, cap: usize, out_len: *mut usize) -> i32;
 
-/// `xmip_event_subscription_act_v1`: pause, resume or remove subscription
-/// `id` in this process's hub, by `who`; what came of it in `said`.
-pub type SubscriptionActFn = unsafe extern "C" fn(
+/// `xmip_event_subscription_act_v1`: pause, resume or remove Event
+/// subscription `id` in this process's hub, by `who`; what came of it in
+/// `said`.
+pub type EventSubscriptionActFn = unsafe extern "C" fn(
     id: u64,
     act: Str,
     who: Str,
@@ -170,22 +170,9 @@ pub type SubscriptionActFn = unsafe extern "C" fn(
     said_len: *mut usize,
 ) -> i32;
 
-/// `xmip_event_subscription_order_v1`: the act left in `orders` for the node
-/// at `node` to take.
-pub type SubscriptionOrderFn = unsafe extern "C" fn(
-    orders: Str,
-    node: Scope,
-    id: u64,
-    act: Str,
-    who: Str,
-    said: *mut u8,
-    said_cap: usize,
-    said_len: *mut usize,
-) -> i32;
-
-/// `xmip_publication_subscriptions_v1`: what a read publication carries,
-/// as JSON.
-pub type PublicationSubscriptionsFn = unsafe extern "C" fn(
+/// `xmip_publication_event_subscriptions_v1`: the Event subscriptions a
+/// read publication carries, as JSON.
+pub type PublicationEventSubscriptionsFn = unsafe extern "C" fn(
     publication: *const super::publication::Publication,
     out: *mut u8,
     cap: usize,
@@ -221,19 +208,15 @@ mod tests {
             ("XMIP_EVENT_PUBLISH_ENTRYPOINT", PUBLISH_ENTRYPOINT),
             (
                 "XMIP_EVENT_SUBSCRIPTIONS_ENTRYPOINT",
-                SUBSCRIPTIONS_ENTRYPOINT,
+                EVENT_SUBSCRIPTIONS_ENTRYPOINT,
             ),
             (
                 "XMIP_EVENT_SUBSCRIPTION_ACT_ENTRYPOINT",
-                SUBSCRIPTION_ACT_ENTRYPOINT,
+                EVENT_SUBSCRIPTION_ACT_ENTRYPOINT,
             ),
             (
-                "XMIP_EVENT_SUBSCRIPTION_ORDER_ENTRYPOINT",
-                SUBSCRIPTION_ORDER_ENTRYPOINT,
-            ),
-            (
-                "XMIP_PUBLICATION_SUBSCRIPTIONS_ENTRYPOINT",
-                PUBLICATION_SUBSCRIPTIONS_ENTRYPOINT,
+                "XMIP_PUBLICATION_EVENT_SUBSCRIPTIONS_ENTRYPOINT",
+                PUBLICATION_EVENT_SUBSCRIPTIONS_ENTRYPOINT,
             ),
         ] {
             let line = HEADER

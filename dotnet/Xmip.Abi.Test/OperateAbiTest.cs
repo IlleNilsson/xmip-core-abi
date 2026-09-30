@@ -71,10 +71,13 @@ public sealed class OperateAbiTest
     [InlineData(
         "XMIP_EVENT_SUBSCRIPTION_ACT_ENTRYPOINT", OperateAbi.EventSubscriptionActEntrypoint)]
     [InlineData(
-        "XMIP_EVENT_SUBSCRIPTION_ORDER_ENTRYPOINT", OperateAbi.EventSubscriptionOrderEntrypoint)]
+        "XMIP_PUBLICATION_EVENT_SUBSCRIPTIONS_ENTRYPOINT",
+        OperateAbi.PublicationEventSubscriptionsEntrypoint)]
+    [InlineData("XMIP_SUBSCRIPTIONS_ENTRYPOINT", OperateAbi.SubscriptionsEntrypoint)]
+    [InlineData("XMIP_SUBSCRIPTION_ACT_ENTRYPOINT", OperateAbi.SubscriptionActEntrypoint)]
     [InlineData(
-        "XMIP_PUBLICATION_SUBSCRIPTIONS_ENTRYPOINT",
-        OperateAbi.PublicationSubscriptionsEntrypoint)]
+        "XMIP_PUBLICATION_SUBSCRIPTIONS_ENTRYPOINT", OperateAbi.PublicationSubscriptionsEntrypoint)]
+    [InlineData("XMIP_ORDER_ENTRYPOINT", OperateAbi.OrderEntrypoint)]
     [InlineData(
         "XMIP_TECHNOLOGY_CATALOGUE_ENTRYPOINT", OperateAbi.TechnologyCatalogueEntrypoint)]
     [InlineData("XMIP_PROCESS_DECLARE_ENTRYPOINT", OperateAbi.ProcessDeclareEntrypoint)]

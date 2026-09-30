@@ -169,17 +169,56 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
     }
 
     /// <inheritdoc />
+    public EventSubscriptionList EventSubscriptions()
+    {
+        return Read().EventSubscriptions;
+    }
+
+    /// <inheritdoc cref="IOperatorSurface.Act(EventSubscriptionRecord, EventSubscriptionAct, string)" />
+    /// <remarks>A snapshot touches no node. Where its publication says where
+    /// its publisher takes orders, the act is left there for the node that
+    /// holds the Event subscription, which applies it at its next look and
+    /// publishes what came of it (<c>observe::Order</c>, ADR-0065, amendment
+    /// 2026-09-29); where it says nowhere, the act is declined.</remarks>
+    public EventSubscriptionOperation Act(
+        EventSubscriptionRecord subscription, EventSubscriptionAct act, string who)
+    {
+        ArgumentNullException.ThrowIfNull(subscription);
+
+        string orders = Read().EventSubscriptions.Orders;
+        if (orders.Length == 0)
+        {
+            return EventSubscriptionOperation.Declined(
+                subscription, act,
+                "a snapshot is a record of what was published, and its publisher takes no orders");
+        }
+
+        XmipStatus status = RuntimeLibrary.Rules.Subscriptions.Order(
+            orders, subscription.Node, "event-subscription",
+            subscription.Id.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            EventSubscriptionOperation.Word(act), who, out string said);
+
+        return new EventSubscriptionOperation(
+            subscription.Node, subscription.Id, act, status == XmipStatus.Ok,
+            status == XmipStatus.Ok
+                ? $"{EventSubscriptionOperation.Word(act)} of Event subscription "
+                  + $"{subscription.Id} left for {ScopeTree.Node(subscription.Node)} to take "
+                  + "at its next look"
+                : said);
+    }
+
+    /// <inheritdoc />
     public SubscriptionList Subscriptions()
     {
         return Read().Subscriptions;
     }
 
-    /// <inheritdoc cref="IOperatorSurface.Act" />
+    /// <inheritdoc cref="IOperatorSurface.Act(SubscriptionRecord, SubscriptionAct, string)" />
     /// <remarks>A snapshot touches no node. Where its publication says where
     /// its publisher takes orders, the act is left there for the node that
-    /// holds the subscription, which applies it at its next look and publishes
-    /// what came of it (<c>xevent::order::Order</c>, ADR-0065, amendment
-    /// 2026-09-29); where it says nowhere, the act is declined.</remarks>
+    /// routes by the Subscription, which applies it at its next look and
+    /// publishes what came of it (<c>observe::Order</c>, ADR-0013, amendment
+    /// 2026-09-30); where it says nowhere, the act is declined.</remarks>
     public SubscriptionOperation Act(
         SubscriptionRecord subscription, SubscriptionAct act, string who)
     {
@@ -194,14 +233,14 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
         }
 
         XmipStatus status = RuntimeLibrary.Rules.Subscriptions.Order(
-            orders, subscription.Node, subscription.Id, SubscriptionOperation.Word(act), who,
-            out string said);
+            orders, subscription.Node, "subscription", subscription.Name,
+            SubscriptionOperation.Word(act), who, out string said);
 
         return new SubscriptionOperation(
-            subscription.Node, subscription.Id, act, status == XmipStatus.Ok,
+            subscription.Node, subscription.Name, act, status == XmipStatus.Ok,
             status == XmipStatus.Ok
-                ? $"{SubscriptionOperation.Word(act)} of subscription {subscription.Id} left for "
-                  + $"{ScopeTree.Node(subscription.Node)} to take at its next look"
+                ? $"{SubscriptionOperation.Word(act)} of Subscription '{subscription.Name}' left "
+                  + $"for {ScopeTree.Node(subscription.Node)} to take at its next look"
                 : said);
     }
 
@@ -230,7 +269,8 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
         TopologySnapshot Topology,
         RunHeader Run,
         string Root,
-        SubscriptionList Subscriptions)
+        SubscriptionList Subscriptions,
+        EventSubscriptionList EventSubscriptions)
     {
         public static Reading Nothing(string source)
         {
@@ -239,7 +279,8 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
                 TopologySnapshot.Empty(source),
                 RunHeader.None,
                 ScopeTree.Root,
-                SubscriptionList.Empty);
+                SubscriptionList.Empty,
+                EventSubscriptionList.Empty);
         }
     }
 
@@ -327,6 +368,7 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
             read.Topology ?? TopologySnapshot.Empty(source),
             RunHeader.From(read.Run),
             read.Node.Length > 0 ? read.Node : ScopeTree.Root,
-            read.Subscriptions);
+            read.Subscriptions,
+            read.EventSubscriptions);
     }
 }

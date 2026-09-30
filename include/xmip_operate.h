@@ -929,19 +929,20 @@ typedef XmipStatus (*XmipEventPublishFn)(const XmipEvent *event, size_t *out_del
 
 /*
  * What an operator lists and does (ADR-0065, amendment 2026-09-29): every
- * subscription a hub holds, and pause, resume and remove on one of them.
- * Thin forwarders into xmip-core-event, pure like section 7: no handle, any
- * thread, before, during and without a node. Who may act is the surface's to
- * decide by role; the hub applies what reaches it and audits it in the
- * subscriber's audit, with who acted.
+ * Event subscription a hub holds, and pause, resume and remove on one of
+ * them. Thin forwarders into xmip-core-event, pure like section 7: no
+ * handle, any thread, before, during and without a node. Who may act is the
+ * surface's to decide by role; the hub applies what reaches it and audits it
+ * in the subscriber's audit, with who acted. An Event subscription is not a
+ * Subscription, which picks a published Message up (section 14).
  *
  * A list is JSON, in memory only (ADR-0031 clause 2), written into out as
  * UTF-8, its true byte length in out_len whether or not it fit:
  *
  *   {"orders":"<where acts are left, empty for none>",
- *    "subscriptions":[{"node","id","subscriber","party","action","scope","state",
- *                      "paused","queued","capacity","delivered","missed",
- *                      "since_unix_nanos"}]}
+ *    "event_subscriptions":[{"node","id","subscriber","party","action","scope",
+ *                            "state","paused","queued","capacity","delivered",
+ *                            "missed","since_unix_nanos"}]}
  *
  * node is the scope of the node whose hub holds it and id its number there,
  * the two naming it; subscriber is the name the Party was declared with,
@@ -957,24 +958,20 @@ typedef XmipStatus (*XmipEventPublishFn)(const XmipEvent *event, size_t *out_del
  * XMIP_OK; XMIP_E_MALFORMED when node is not UTF-8.
  *
  * xmip_event_subscription_act_v1 applies act - pause, resume or remove,
- * exact - to subscription id in this process's hub, by who. Paused, it keeps
- * queuing up to its capacity and hands nothing over, a full queue counting
- * what it refused as missed; resumed, it hands over what queued; removed, it
- * is unsubscribed and its holder's next drain finds it closed. XMIP_OK with
- * what came of it in said, one sentence; XMIP_E_NOT_FOUND with the refusal,
- * opening REFUSED, when no subscription of that number is held;
+ * exact - to Event subscription id in this process's hub, by who. Paused, it
+ * keeps queuing up to its capacity and hands nothing over, a full queue
+ * counting what it refused as missed; resumed, it hands over what queued;
+ * removed, it is unsubscribed and its holder's next drain finds it closed.
+ * XMIP_OK with what came of it in said, one sentence; XMIP_E_NOT_FOUND with
+ * the refusal, opening REFUSED, when no subscription of that number is held;
  * XMIP_E_INVALID with the refusal for a word that is no act.
  *
- * A surface reading a publication touches no node. Where the publication
- * says where its publisher takes orders (xmip_publication_subscriptions_v1's
- * orders), xmip_event_subscription_order_v1 leaves the act there for the
- * node at node, which takes it at its next look and applies it as above;
- * said holds the file written. XMIP_OK; XMIP_E_INVALID with the refusal for
- * an empty orders, a node that names no node, or a word that is no act;
- * XMIP_E_IO with the reason when it could not be written.
+ * A surface reading a publication touches no node: it leaves the act where
+ * the publication says (orders) through section 14's xmip_order_v1, noun
+ * event-subscription, target the number.
  *
- * xmip_publication_subscriptions_v1 lists what a read publication (section
- * 8) carries, orders as it says. XMIP_E_INVALID for no handle.
+ * xmip_publication_event_subscriptions_v1 lists what a read publication
+ * (section 8) carries, orders as it says. XMIP_E_INVALID for no handle.
  *
  * Every string may be empty. Optional symbols, as section 7's are;
  * XMIP_OPERATE_VERSION is unchanged.
@@ -984,18 +981,13 @@ typedef XmipStatus (*XmipEventSubscriptionsFn)(XmipScope node, uint8_t *out, siz
 typedef XmipStatus (*XmipEventSubscriptionActFn)(uint64_t id, XmipStr act, XmipStr who,
                                                  uint8_t *said, size_t said_cap,
                                                  size_t *said_len);
-typedef XmipStatus (*XmipEventSubscriptionOrderFn)(XmipStr orders, XmipScope node,
-                                                   uint64_t id, XmipStr act, XmipStr who,
-                                                   uint8_t *said, size_t said_cap,
-                                                   size_t *said_len);
-typedef XmipStatus (*XmipPublicationSubscriptionsFn)(const XmipPublication *publication,
-                                                     uint8_t *out, size_t cap,
-                                                     size_t *out_len);
+typedef XmipStatus (*XmipPublicationEventSubscriptionsFn)(const XmipPublication *publication,
+                                                          uint8_t *out, size_t cap,
+                                                          size_t *out_len);
 
-#define XMIP_EVENT_SUBSCRIPTIONS_ENTRYPOINT       "xmip_event_subscriptions_v1"
-#define XMIP_EVENT_SUBSCRIPTION_ACT_ENTRYPOINT    "xmip_event_subscription_act_v1"
-#define XMIP_EVENT_SUBSCRIPTION_ORDER_ENTRYPOINT  "xmip_event_subscription_order_v1"
-#define XMIP_PUBLICATION_SUBSCRIPTIONS_ENTRYPOINT "xmip_publication_subscriptions_v1"
+#define XMIP_EVENT_SUBSCRIPTIONS_ENTRYPOINT             "xmip_event_subscriptions_v1"
+#define XMIP_EVENT_SUBSCRIPTION_ACT_ENTRYPOINT          "xmip_event_subscription_act_v1"
+#define XMIP_PUBLICATION_EVENT_SUBSCRIPTIONS_ENTRYPOINT "xmip_publication_event_subscriptions_v1"
 
 /* ===================================================================== */
 /* 12. The technologies a runtime carries, and what each declares        */
@@ -1080,6 +1072,88 @@ typedef XmipStatus (*XmipProcessDeclarationsFn)(XmipStr directory, uint8_t *out,
 
 #define XMIP_PROCESS_DECLARE_ENTRYPOINT      "xmip_process_declare_v1"
 #define XMIP_PROCESS_DECLARATIONS_ENTRYPOINT "xmip_process_declarations_v1"
+
+/* ===================================================================== */
+/* 14. A node's Subscriptions, seen and paused; an operator's order      */
+/* ===================================================================== */
+
+/*
+ * A Subscription picks a published Message up and opens a Journey (ADR-0013).
+ * It is configuration: drawn in an Xmip Application, bound in a node's TOML,
+ * and added and removed there and nowhere else. An operator lists every
+ * Subscription and pauses or resumes one; there is no remove (ADR-0013,
+ * amendment 2026-09-30). Thin forwarders into the runtime's pickup, pure
+ * like section 7: no handle, any thread, before, during and without a node.
+ * Who may act is the surface's to decide by role; the node applies what
+ * reaches it and audits it with who acted.
+ *
+ * Paused, every Message routing matches to the Subscription is held: kept
+ * in the node's runtime store, numbered in the order held and counted, and
+ * not picked up; nothing is lost. Resumed, what it held is picked up oldest
+ * first, and what it matches meanwhile joins the end. A pause, and what it
+ * holds, survives a restart of the node.
+ *
+ * A list is JSON, in memory only (ADR-0031 clause 2), written into out as
+ * UTF-8, its true byte length in out_len whether or not it fit:
+ *
+ *   {"orders":"<where acts are left, empty for none>",
+ *    "subscriptions":[{"node","name","application","filter","destination",
+ *                      "file","configuration","state","paused","by",
+ *                      "picked_up","held","since_unix_nanos"}]}
+ *
+ * node is the scope of the node that routes by it and name its configured
+ * name, the two naming it; application the Xmip Application that draws it,
+ * file the file that Application was read from and configuration its
+ * [[subscriptions]] entry there as the file says it; filter what it
+ * subscribes to, as configured; destination where it leads, in words; state
+ * active or paused, paused true when it is, and by who paused it; picked_up
+ * what it picked up since the node started and held what it holds now;
+ * since when its state began.
+ *
+ * xmip_subscriptions_v1 lists the Subscriptions of every node running in
+ * this process at or beneath node (empty: every one); orders is empty.
+ * XMIP_OK; XMIP_E_MALFORMED when node is not UTF-8.
+ *
+ * xmip_subscription_act_v1 applies act - pause or resume, exact - to the
+ * Subscription name of the node at node in this process, by who. XMIP_OK
+ * with what came of it in said, one sentence; XMIP_E_NOT_FOUND with the
+ * refusal, opening REFUSED, when that node does not run here or is not
+ * configured with that Subscription; XMIP_E_INVALID with the refusal for a
+ * word that is no act on a Subscription - remove among them, whose refusal
+ * says a Subscription is removed in the TOML configuration.
+ *
+ * xmip_publication_subscriptions_v1 lists what a read publication (section
+ * 8) carries, orders as it says. XMIP_E_INVALID for no handle.
+ *
+ * A surface reading a publication touches no node. Where the publication
+ * says where its publisher takes orders, xmip_order_v1 leaves act on the
+ * noun called target of the node at node there - noun subscription with a
+ * Subscription's name, or event-subscription with an Event subscription's
+ * number - for the node to take at its next look and apply as above; said
+ * holds the file written. XMIP_OK; XMIP_E_INVALID with the refusal for an
+ * empty orders, a node that names no node, a noun that is no noun, or an
+ * act the noun does not take; XMIP_E_IO with the reason when it could not
+ * be written.
+ *
+ * Every string may be empty. Optional symbols, as section 7's are;
+ * XMIP_OPERATE_VERSION is unchanged.
+ */
+typedef XmipStatus (*XmipSubscriptionsFn)(XmipScope node, uint8_t *out, size_t cap,
+                                          size_t *out_len);
+typedef XmipStatus (*XmipSubscriptionActFn)(XmipScope node, XmipStr name, XmipStr act,
+                                            XmipStr who, uint8_t *said, size_t said_cap,
+                                            size_t *said_len);
+typedef XmipStatus (*XmipPublicationSubscriptionsFn)(const XmipPublication *publication,
+                                                     uint8_t *out, size_t cap,
+                                                     size_t *out_len);
+typedef XmipStatus (*XmipOrderFn)(XmipStr orders, XmipScope node, XmipStr noun,
+                                  XmipStr target, XmipStr act, XmipStr who, uint8_t *said,
+                                  size_t said_cap, size_t *said_len);
+
+#define XMIP_SUBSCRIPTIONS_ENTRYPOINT             "xmip_subscriptions_v1"
+#define XMIP_SUBSCRIPTION_ACT_ENTRYPOINT          "xmip_subscription_act_v1"
+#define XMIP_PUBLICATION_SUBSCRIPTIONS_ENTRYPOINT "xmip_publication_subscriptions_v1"
+#define XMIP_ORDER_ENTRYPOINT                     "xmip_order_v1"
 
 #ifdef __cplusplus
 }

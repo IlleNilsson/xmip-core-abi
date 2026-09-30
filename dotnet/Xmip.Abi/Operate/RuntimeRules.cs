@@ -103,6 +103,7 @@ public sealed unsafe class RuntimeRules
         Events = new RuntimeEvents(library);
         Catalogue = new RuntimeCatalogue(library);
         Processes = new RuntimeProcesses(library);
+        EventSubscriptions = new RuntimeEventSubscriptions(library);
         Subscriptions = new RuntimeSubscriptions(library);
 
         delegate* unmanaged[Cdecl]<XmipStr*, nuint, nuint*, int> words =
@@ -134,9 +135,14 @@ public sealed unsafe class RuntimeRules
     /// that stand (ADR-0053 clause 3).</summary>
     public RuntimeProcesses Processes { get; }
 
-    /// <summary>Section 11, what an operator lists and does: the
+    /// <summary>Section 11, what an operator lists and does: the Event
     /// subscriptions a hub holds, and pause, resume and remove on one
     /// (ADR-0065, amendment 2026-09-29).</summary>
+    public RuntimeEventSubscriptions EventSubscriptions { get; }
+
+    /// <summary>Section 14: the Subscriptions of the nodes running in this
+    /// process, pause and resume on one, and an operator's order on either
+    /// noun (ADR-0013, amendment 2026-09-30).</summary>
     public RuntimeSubscriptions Subscriptions { get; }
 
     /// <summary>The words a node may declare, in message-path order —
@@ -144,8 +150,8 @@ public sealed unsafe class RuntimeRules
     public IReadOnlyList<string> StageWords { get; }
 
     /// <summary>Section 7's, section 8's, section 9's, section 11's, section
-    /// 12's and section 13's symbols, each of which a runtime must
-    /// export.</summary>
+    /// 12's, section 13's and section 14's symbols, each of which a runtime
+    /// must export.</summary>
     public static IReadOnlyList<string> Entrypoints { get; } =
     [
         OperateAbi.HealthRolledEntrypoint,
@@ -160,6 +166,7 @@ public sealed unsafe class RuntimeRules
         .. RuntimeEvents.Entrypoints,
         .. RuntimeCatalogue.Entrypoints,
         .. RuntimeProcesses.Entrypoints,
+        .. RuntimeEventSubscriptions.Entrypoints,
         .. RuntimeSubscriptions.Entrypoints,
         OperateAbi.ScopeContainsEntrypoint,
         OperateAbi.ScopeMatchesEntrypoint,

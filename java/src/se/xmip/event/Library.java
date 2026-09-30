@@ -24,7 +24,7 @@ import java.util.function.Consumer;
  * The runtime's library, loaded by path, and xmip_operate.h section 11's six
  * symbols looked up once by the names the header gives them. Thin: which
  * Events a filter matches, whether a subscriber may see them, the queue and
- * the audit are the runtime's (ADR-0065). Outlives every Subscription.
+ * the audit are the runtime's (ADR-0065). Outlives every EventSubscription.
  */
 public final class Library implements AutoCloseable {
     public static final String SUBSCRIBE_ENTRYPOINT = "xmip_event_subscribe_v1";
@@ -84,7 +84,7 @@ public final class Library implements AutoCloseable {
      * {@code subscriber} is the Party's UUID. Throws {@link EventException},
      * with the authorization gate's sentence when refused.
      */
-    public Subscription subscribe(String program, String directory, String subscriber,
+    public EventSubscription subscribe(String program, String directory, String subscriber,
             Filter filter, long capacity) {
         return open(program, directory, subscriber, filter, capacity, null);
     }
@@ -94,7 +94,7 @@ public final class Library implements AutoCloseable {
      * starts for this subscription, one call at a time. An exception the
      * callback throws is dropped, since nothing may unwind into the runtime.
      */
-    public Subscription listen(String program, String directory, String subscriber,
+    public EventSubscription listen(String program, String directory, String subscriber,
             Filter filter, long capacity, Consumer<Event> callback) {
         return open(program, directory, subscriber, filter, capacity, callback);
     }
@@ -115,13 +115,13 @@ public final class Library implements AutoCloseable {
         }
     }
 
-    /** Unload the library. Every Subscription must be closed first. */
+    /** Unload the library. Every EventSubscription must be closed first. */
     @Override
     public void close() {
         loaded.close();
     }
 
-    private Subscription open(String program, String directory, String subscriber,
+    private EventSubscription open(String program, String directory, String subscriber,
             Filter filter, long capacity, Consumer<Event> callback) {
         Arena upcall = callback == null ? null : Arena.ofShared();
         try (Arena arena = Arena.ofConfined()) {
@@ -149,7 +149,7 @@ public final class Library implements AutoCloseable {
                 MemorySegment.copy(said, JAVA_BYTE, 0, text, 0, text.length);
                 throw new EventException(status, new String(text, StandardCharsets.UTF_8));
             }
-            return new Subscription(this, out.get(ADDRESS, 0), upcall);
+            return new EventSubscription(this, out.get(ADDRESS, 0), upcall);
         } catch (EventException | Error failed) {
             closeQuietly(upcall);
             throw failed;

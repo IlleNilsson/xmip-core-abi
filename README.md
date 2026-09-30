@@ -73,11 +73,17 @@ drill (ADR-0062, amendment 2026-09-29). Section 11 — Events, subscribed (ADR-0
 handler on the runtime's listener thread, and `Publish` hands an Event to
 every matching subscription in the process; `EventRecord`, `EventFilter`,
 `EventAction` and `EventOutcome` are the header's. What an operator lists and
-does is `RuntimeRules.Subscriptions` (`RuntimeSubscriptions`): `Standing`, the
-hub's `SubscriptionList` of `SubscriptionRecord`s, `Act`, pause, resume or
-remove one, and `Order`, the act left where a publication says; a
-`Publication` carries its own `Subscriptions` (ADR-0065, amendment
-2026-09-29). Section 12 — the
+does of Event subscriptions is `RuntimeRules.EventSubscriptions`
+(`RuntimeEventSubscriptions`): `Standing`, the hub's `EventSubscriptionList`
+of `EventSubscriptionRecord`s, and `Act`, pause, resume or remove one; a
+`Publication` carries its own `EventSubscriptions` (ADR-0065, amendments
+2026-09-29 and 2026-09-30). Section 14 — a node's Subscriptions (ADR-0013,
+amendment 2026-09-30) — is `RuntimeRules.Subscriptions`
+(`RuntimeSubscriptions`): `Standing`, the `SubscriptionList` of
+`SubscriptionRecord`s of every node running in the process, `Act`, pause or
+resume one — there is no remove — and `Order`, an act on either noun left
+where a publication says; a `Publication` carries its own `Subscriptions`.
+Section 12 — the
 technologies the runtime carries and what each declares a Location may set —
 is `RuntimeRules.Catalogue` (`RuntimeCatalogue`): `TryRead` brings back the
 header's JSON, every technology or the one named, for the desktop editor's
@@ -107,14 +113,21 @@ faces over it.
   machine — and `ClusterSurfaces`, the set a face holds when more than one
   cluster is published: one surface per cluster, and nothing added across them
   (ADR-0052, amendment 2026-09-20).
-- **Event subscriptions.** `IOperatorSurface.Subscriptions` lists what the
-  nodes' hubs hold and `IOperatorSurface.Act` pauses, resumes or removes one
-  (`SubscriptionAct`, answered as a `SubscriptionOperation`): in the node's
+- **Subscriptions.** `IOperatorSurface.Subscriptions` lists what the nodes
+  route by and `IOperatorSurface.Act` pauses or resumes one (`SubscriptionAct`,
+  which holds no remove, answered as a `SubscriptionOperation`; a
+  Subscription is added and removed in the TOML configuration,
+  `SubscriptionOperation.Configured` says so in words): in the node's
   process for `NativeOperator`, through the host's hub for `RemoteOperator`,
   and for `SnapshotOperator` left where the publication says its publisher
   takes orders, or declined where it says nowhere. `SubscriptionQuery` is the
-  one drill, pattern and order every surface asks of them (ADR-0065,
-  amendment 2026-09-29).
+  one drill, pattern and order every surface asks of them (ADR-0013,
+  amendment 2026-09-30).
+- **Event subscriptions.** `IOperatorSurface.EventSubscriptions` lists what
+  the nodes' hubs hold and `IOperatorSurface.Act` pauses, resumes or removes
+  one (`EventSubscriptionAct`, answered as an `EventSubscriptionOperation`),
+  reached the same three ways. `EventSubscriptionQuery` is their one drill,
+  pattern and order (ADR-0065, amendments 2026-09-29 and 2026-09-30).
 - **The tree.** `ScopeTree` — the tree, its rollup and the worst leaf beneath
   a scope, over the runtime's containment, parts, stage words and order;
   `ScopeIndex`, a publication read once as that tree with every answer a

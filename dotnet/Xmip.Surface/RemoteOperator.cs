@@ -226,6 +226,20 @@ public sealed class RemoteOperator : IOperatorSurface, IDisposable
     }
 
     /// <inheritdoc />
+    public EventSubscriptionList EventSubscriptions()
+    {
+        return Ask<EventSubscriptionList>("EventSubscriptions") ?? EventSubscriptionList.Empty;
+    }
+
+    /// <inheritdoc />
+    public EventSubscriptionOperation Act(
+        EventSubscriptionRecord subscription, EventSubscriptionAct act, string who)
+    {
+        return Ask<EventSubscriptionOperation>("ActOnEventSubscription", subscription, act, who)
+            ?? EventSubscriptionOperation.Declined(subscription, act, Source);
+    }
+
+    /// <inheritdoc />
     public SubscriptionList Subscriptions()
     {
         return Ask<SubscriptionList>("Subscriptions") ?? SubscriptionList.Empty;
@@ -235,7 +249,7 @@ public sealed class RemoteOperator : IOperatorSurface, IDisposable
     public SubscriptionOperation Act(
         SubscriptionRecord subscription, SubscriptionAct act, string who)
     {
-        return Ask<SubscriptionOperation>("Act", subscription, act, who)
+        return Ask<SubscriptionOperation>("ActOnSubscription", subscription, act, who)
             ?? SubscriptionOperation.Declined(subscription, act, Source);
     }
 
