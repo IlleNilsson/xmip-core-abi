@@ -52,6 +52,17 @@ public sealed class RuntimeRulesTest
         Assert.Equal(matches, Rules.Matches(candidate, pattern));
     }
 
+    [Theory]
+    [InlineData(false, false, true)]
+    [InlineData(false, true, true)]
+    [InlineData(true, false, false)]
+    [InlineData(true, true, true)]
+    public void AHiddenRunIsShownOnlyWhenTheReaderIncludesIt(
+        bool hidden, bool includingHidden, bool shown)
+    {
+        Assert.Equal(shown, Rules.Shown(hidden, includingHidden));
+    }
+
     [Fact]
     public void PartsComeBackAsTheSegmentsTopFirst()
     {
@@ -200,6 +211,7 @@ public sealed class RuntimeRulesTest
             nodes = ["alpha", "ö"]
             capabilities = ["alpha=receive"]
             stress = "harsh"
+            hidden = true
 
             [topology]
             observed_unix_nanos = 5
@@ -234,6 +246,7 @@ public sealed class RuntimeRulesTest
         Assert.Equal(["alpha", "ö"], read.Run.Nodes);
         Assert.Empty(read.Run.Tests);
         Assert.Equal("harsh", read.Run.Stress);
+        Assert.True(read.Run.Hidden);
 
         Assert.NotNull(read.Topology);
         TopologyNode cluster = Assert.Single(read.Topology.Nodes);

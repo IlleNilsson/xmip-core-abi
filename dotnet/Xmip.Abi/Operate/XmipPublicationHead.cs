@@ -24,6 +24,9 @@ public struct XmipPublicationHead
     /// <summary><c>stress</c>.</summary>
     public XmipStr Stress;
 
+    /// <summary><c>hidden</c>: 1 where the run declared itself hidden.</summary>
+    public byte Hidden;
+
     /// <summary><c>has_topology</c>: 1 when the publication draws one.</summary>
     public byte HasTopology;
 

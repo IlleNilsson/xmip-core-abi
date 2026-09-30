@@ -169,6 +169,8 @@ pub mod rule {
     pub const SCOPE_CONTAINS_ENTRYPOINT: &str = "xmip_scope_contains_v1";
     /// `observe::wildcard::matches`.
     pub const SCOPE_MATCHES_ENTRYPOINT: &str = "xmip_scope_matches_v1";
+    /// `observe::run::shown`.
+    pub const RUN_SHOWN_ENTRYPOINT: &str = "xmip_run_shown_v1";
     /// `observe::Scope::segments`.
     pub const SCOPE_PARTS_ENTRYPOINT: &str = "xmip_scope_parts_v1";
     /// `observe::Scope::node` and `observe::Scope::stage`.
@@ -208,6 +210,11 @@ pub mod rule {
     /// `out_matches` 1 or 0.
     pub type ScopeMatchesFn =
         unsafe extern "C" fn(candidate: Scope, pattern: Str, out_matches: *mut u8) -> i32;
+
+    /// Whether what a run made is shown: `hidden` as the run declared,
+    /// `including_hidden` as the reader asked; `out_shown` 1 or 0.
+    pub type RunShownFn =
+        unsafe extern "C" fn(hidden: u8, including_hidden: u8, out_shown: *mut u8) -> i32;
 
     /// A scope's segments, borrowed from `scope`, in the fill shape.
     pub type ScopePartsFn =
@@ -360,6 +367,7 @@ mod tests {
                 "XMIP_SCOPE_MATCHES_ENTRYPOINT",
                 rule::SCOPE_MATCHES_ENTRYPOINT,
             ),
+            ("XMIP_RUN_SHOWN_ENTRYPOINT", rule::RUN_SHOWN_ENTRYPOINT),
             ("XMIP_SCOPE_PARTS_ENTRYPOINT", rule::SCOPE_PARTS_ENTRYPOINT),
             ("XMIP_SCOPE_NODE_ENTRYPOINT", rule::SCOPE_NODE_ENTRYPOINT),
             ("XMIP_STAGE_WORDS_ENTRYPOINT", rule::STAGE_WORDS_ENTRYPOINT),

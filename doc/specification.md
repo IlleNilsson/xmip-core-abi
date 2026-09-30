@@ -521,3 +521,12 @@ query are the capability's alone. The Rust mirror is
 `.src/operate/audit.rs`; .NET binds it as `RuntimeAudit`. Section 7 gained
 `xmip_scope_matches_v1` the same day, the one wildcard over scopes,
 `observe::wildcard`'s.
+
+Section 7 gained `xmip_run_shown_v1` on 2026-09-30, `observe::run::shown`:
+whether what a run made is shown, as the run declared (hidden) and the reader
+asked (including what is hidden). Section 8's `XmipPublicationHead` gained
+`hidden` the same day, 1 where the run declared itself hidden; it takes the
+byte `has_topology` was padded beside, so the head's size is unchanged but
+`has_topology` moves by one, and an older reader and a newer runtime do not
+mix. An audit query takes `hidden` (`include` or `exclude`) and a record and
+a group say `hidden` in section 9's JSON (ADR-0028, amendment 2026-09-30).

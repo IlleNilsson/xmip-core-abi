@@ -157,7 +157,11 @@ faces over it.
   one whenever the publication advances and the answer changed, a wildcard
   matched again at every notice, until cancelled — `xmip-cli --follow` and
   `Get-XmipHealth -Follow` / `Get-XmipScope -Follow` run it.
-- **What a run says.** `RunHeader` for the `[run]` table a publisher writes,
+- **What a run says.** `RunHeader` for the `[run]` table a publisher writes —
+  `Hidden` where the run declared itself hidden, and `ClusterSurfaces` lists,
+  reaches and names such a cluster only for a face that includes what is
+  hidden, by the one rule `observe::run::shown` through `RuntimeRules.Shown`
+  (`xmip_run_shown_v1`; ADR-0028 and ADR-0052, amendments 2026-09-30) —
   `NodeCapability` for what one node declared it can do — never inferred from
   what the node is called (ADR-0056 clause 1), read by the rule of
   `node::Stage::declared` (lowercase exactly, any other word refused and the

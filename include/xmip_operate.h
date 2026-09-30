@@ -308,6 +308,17 @@ typedef XmipStatus (*XmipScopeMatchesFn)(XmipScope candidate, XmipStr pattern,
                                          uint8_t *out_matches);
 
 /*
+ * Whether something a run made is shown - the run's cluster, its audit
+ * records: always where the run declared nothing (hidden 0), and where it
+ * declared itself hidden (1) only when the reader asked to include what is
+ * hidden (including_hidden 1). The one rule of observe::run::shown (ADR-0028
+ * and ADR-0052, amendments 2026-09-30); nothing is read out of a name.
+ * *out_shown is 1 or 0.
+ */
+typedef XmipStatus (*XmipRunShownFn)(uint8_t hidden, uint8_t including_hidden,
+                                     uint8_t *out_shown);
+
+/*
  * The segments of a scope's path, top first, in the fill shape of section 5:
  * up to cap entries into out, the true count in out_len. Each entry borrows
  * from scope. The root has none.
@@ -418,6 +429,7 @@ typedef XmipStatus (*XmipCapabilityEntryFn)(XmipStr entry, XmipStr *out_node,
 
 #define XMIP_SCOPE_CONTAINS_ENTRYPOINT "xmip_scope_contains_v1"
 #define XMIP_SCOPE_MATCHES_ENTRYPOINT  "xmip_scope_matches_v1"
+#define XMIP_RUN_SHOWN_ENTRYPOINT      "xmip_run_shown_v1"
 #define XMIP_SCOPE_PARTS_ENTRYPOINT    "xmip_scope_parts_v1"
 #define XMIP_SCOPE_NODE_ENTRYPOINT     "xmip_scope_node_v1"
 #define XMIP_STAGE_WORDS_ENTRYPOINT    "xmip_stage_words_v1"
@@ -502,7 +514,8 @@ typedef enum {
 /*
  * Who published and at which scope, and the single values of the run and
  * the topology: has_run and has_topology are 1 when the publication says
- * either, and the fields beside them are empty when it does not.
+ * either, and the fields beside them are empty when it does not. hidden is
+ * 1 where the run declared itself hidden (observe::Run::hidden).
  */
 typedef struct {
     XmipStr   source;
@@ -510,6 +523,7 @@ typedef struct {
     uint8_t   has_run;
     XmipStr   cluster;
     XmipStr   stress;
+    uint8_t   hidden;    /* 1 where the run declared itself hidden */
     uint8_t   has_topology;
     XmipStr   topology_source;
     int64_t   topology_observed_unix_nanos;

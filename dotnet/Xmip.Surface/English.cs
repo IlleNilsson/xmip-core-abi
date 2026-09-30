@@ -210,6 +210,15 @@ public static class English
             + "operating system's log, and there is no audit here to read.";
     }
 
+    /// <summary>What follows the name of a cluster, a group or a record whose
+    /// run declared itself hidden, where a reader asked to see it: " · test",
+    /// in words and never by colour alone (ADR-0052, amendment 2026-09-30);
+    /// nothing for everything else.</summary>
+    public static string Test(bool hidden)
+    {
+        return hidden ? " · test" : string.Empty;
+    }
+
     /// <summary>A record's time as written (<see cref="AuditEntry.At"/>, RFC
     /// 3339 to the nanosecond) to the second, its zone kept: what a table's
     /// column shows, where the fraction would only widen it.</summary>

@@ -24,6 +24,7 @@ public sealed class OperateAbiTest
     [InlineData("XMIP_VALIDATE_ENTRYPOINT", OperateAbi.ValidateEntrypoint)]
     [InlineData("XMIP_SCOPE_CONTAINS_ENTRYPOINT", OperateAbi.ScopeContainsEntrypoint)]
     [InlineData("XMIP_SCOPE_MATCHES_ENTRYPOINT", OperateAbi.ScopeMatchesEntrypoint)]
+    [InlineData("XMIP_RUN_SHOWN_ENTRYPOINT", OperateAbi.RunShownEntrypoint)]
     [InlineData("XMIP_SCOPE_PARTS_ENTRYPOINT", OperateAbi.ScopePartsEntrypoint)]
     [InlineData("XMIP_SCOPE_NODE_ENTRYPOINT", OperateAbi.ScopeNodeEntrypoint)]
     [InlineData("XMIP_STAGE_WORDS_ENTRYPOINT", OperateAbi.StageWordsEntrypoint)]
