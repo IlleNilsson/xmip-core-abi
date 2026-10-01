@@ -84,7 +84,7 @@ pub mod pattern {
 pub mod run_list {
     pub const TESTS: u32 = 0;
     pub const NODES: u32 = 1;
-    pub const CAPABILITIES: u32 = 2;
+    pub const ROLES: u32 = 2;
     pub const ONLINE: u32 = 3;
 }
 
@@ -308,7 +308,7 @@ mod tests {
         for (name, value) in [
             ("XMIP_RUN_TESTS", run_list::TESTS),
             ("XMIP_RUN_NODES", run_list::NODES),
-            ("XMIP_RUN_CAPABILITIES", run_list::CAPABILITIES),
+            ("XMIP_RUN_ROLES", run_list::ROLES),
             ("XMIP_RUN_ONLINE", run_list::ONLINE),
         ] {
             assert_eq!(i64::from(value), defined(name), "{name}");

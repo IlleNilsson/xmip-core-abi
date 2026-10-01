@@ -17,21 +17,21 @@ node = "xmip:///C1"
 scope = "xmip:///C1/node/alpha/capability"
 state = "fine"
 severity = 0
-evidence = "declares receive; online; authentication and runtime capability are not modelled"
+evidence = "declares receiving; online; authentication and runtime capability are not modelled"
 observed_unix_nanos = 1789111688000000000
 
 [[records]]
 scope = "xmip:///C1/node/beta/capability"
 state = "fine"
 severity = 0
-evidence = "declares process,send; offline; authentication and runtime capability are not modelled"
+evidence = "declares processing,sending; offline; authentication and runtime capability are not modelled"
 observed_unix_nanos = 1789111688000000000
 
 [[records]]
 scope = "xmip:///C1/node/gamma/capability"
 state = "fine"
 severity = 0
-evidence = "declares send; offline; authentication and runtime capability are not modelled"
+evidence = "declares sending; offline; authentication and runtime capability are not modelled"
 observed_unix_nanos = 1789111688000000000
 
 [[records]]
@@ -104,7 +104,7 @@ scope = "xmip:///C1/node/gamma/send"
 cluster = "C1"
 tests = ["RoundTrip"]
 nodes = ["alpha", "beta", "gamma"]
-capabilities = ["alpha=receive", "beta=process+send", "gamma=send"]
+roles = ["alpha=receiving", "beta=processing+sending", "gamma=sending"]
 online = ["alpha"]
 stress = "realistic"
 
