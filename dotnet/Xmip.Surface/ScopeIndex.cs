@@ -168,19 +168,19 @@ public sealed class ScopeIndex
     }
 
     /// <summary>
-    /// What a node declared it can do, as the node itself published it at
-    /// <c>&lt;node&gt;/capability</c> (ADR-0056 clause 1: a node declares its
-    /// capabilities and nothing is inferred). <see cref="NodeCapability.None"/>
-    /// when this publication carries no such record for the node — which is
-    /// not the same as a node that declared no stage, and the two never read
-    /// alike.
+    /// What a node declared — its roles and its online capability — as the
+    /// node itself published it at <c>&lt;node&gt;/capability</c> (ADR-0056
+    /// clause 1: a node declares its capabilities and nothing is inferred).
+    /// <see cref="NodeCapability.None"/> when this publication carries no
+    /// such record for the node — which is not the same as a node that
+    /// declared no role, and the two never read alike.
     /// </summary>
     public NodeCapability Capability(string node)
     {
         return declared.TryGetValue(node, out NodeCapability? said) ? said : NodeCapability.None;
     }
 
-    /// <summary>Every node that published what it can do, by name.</summary>
+    /// <summary>Every node that published what it declares, by name.</summary>
     public IReadOnlyList<NodeCapability> Capabilities()
     {
         return [.. declared.Values.OrderBy(said => said.Node, StringComparer.Ordinal)];

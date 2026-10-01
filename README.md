@@ -52,7 +52,7 @@ and the probe's judgement of whether a library loaded at all
 (`ModuleProbe.Result.Unloadable`) and whether a module conforms, and `StatusMeaning`,
 what a status code means; `Operate/` the operator boundary and its records,
 and `RuntimeRules`, section 7 bound once: scope containment, a scope's
-parts and the node and stage it is on, the stage words, a declaration's parse and the facts of a stage, a
+parts and the node and stage it is on, the stage words and the facts of a stage, the role words, a declaration's parse and the stages a role serves, a
 node's published capability and a run's entry for it, a mood's word, color
 name and rollup, a counted kind's word and the worst-first order, each written
 once in the crate that owns it (`observe`, `node`) and forwarded by the
@@ -162,10 +162,11 @@ faces over it.
   reaches and names such a cluster only for a face that includes what is
   hidden, by the one rule `observe::run::shown` through `RuntimeRules.Shown`
   (`xmip_run_shown_v1`; ADR-0028 and ADR-0052, amendments 2026-09-30) —
-  `NodeCapability` for what one node declared it can do — never inferred from
-  what the node is called (ADR-0056 clause 1), read by the rule of
-  `node::Stage::declared` (lowercase exactly, any other word refused and the
-  refusal carried in `Refusal`) — and `Topology` for the communication view.
+  `NodeCapability` for what one node declared — its roles, and the stages they
+  serve — never inferred from what the node is called (ADR-0056 clause 1),
+  read by the rule of `node::NodeRole::declared` (lowercase exactly, any
+  other word refused and the refusal carried in `Refusal`; amendment
+  2026-10-01) — and `Topology` for the communication view.
 - **Acts and verdicts.** `ScopeAction`, the two acts `xmip_operate.h` carries
   and no start, stop or restart; `ScopeOperation`, the one shape they answer
   in, so an exit code and a pipeline object agree, and `ScopeOperation.Who`,

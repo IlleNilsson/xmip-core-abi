@@ -182,7 +182,8 @@ public interface IOperatorSurface
     }
 
     /// <summary>
-    /// What one node declares it can do (ADR-0056), by name. What the node
+    /// What one node declares (ADR-0056) — its roles and its online
+    /// capability — by name. What the node
     /// itself published wins; a node the publication holds no capability
     /// record for falls back to what <c>[run]</c> says it was started with,
     /// and <see cref="NodeCapability.Published"/> says which of the two a

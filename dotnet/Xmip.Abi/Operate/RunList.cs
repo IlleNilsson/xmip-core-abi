@@ -10,8 +10,8 @@ public enum RunList
     /// <summary>The nodes spawned.</summary>
     Nodes = 1,
 
-    /// <summary>What each node was started with, as entries.</summary>
-    Capabilities = 2,
+    /// <summary>The roles each node was started with, as entries.</summary>
+    Roles = 2,
 
     /// <summary>The nodes that may assume the internet.</summary>
     Online = 3,

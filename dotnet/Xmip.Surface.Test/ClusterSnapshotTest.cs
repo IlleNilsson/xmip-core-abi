@@ -16,7 +16,7 @@ public sealed class ClusterSnapshotTest
     /// <summary>The run line the cluster fixture publishes, node by node with
     /// what each was started with.</summary>
     private const string Line =
-        "RoundTrip · C1 · nodes alpha=receive beta=process+send gamma=send · "
+        "RoundTrip · C1 · nodes alpha=receiving beta=processing+sending gamma=sending · "
         + "online alpha · realistic";
 
     [Fact]
@@ -28,7 +28,7 @@ public sealed class ClusterSnapshotTest
         Assert.Equal("C1", run.Cluster);
         Assert.Equal(["RoundTrip"], run.Tests);
         Assert.Equal(["alpha", "beta", "gamma"], run.Nodes);
-        Assert.Equal(["alpha=receive", "beta=process+send", "gamma=send"], run.Capabilities);
+        Assert.Equal(["alpha=receiving", "beta=processing+sending", "gamma=sending"], run.Roles);
         Assert.Equal(["alpha"], run.Online);
         Assert.Equal(Line, run.Line());
     }
@@ -45,7 +45,7 @@ public sealed class ClusterSnapshotTest
             "C2 · no nodes · calm",
             new RunHeader("C2", [], [], [], [], "calm").Line());
 
-        // A publisher older than capabilities leaves the names bare, and the
+        // A publisher that says no roles leaves the names bare, and the
         // line is what it always was.
         Assert.Equal(
             "Filing · C2 · nodes node-01 · none online · harsh",
@@ -63,20 +63,21 @@ public sealed class ClusterSnapshotTest
         NodeCapability received = surface.Capability("alpha");
         Assert.True(received.Said);
         Assert.True(received.Published);
-        Assert.Equal(["receive"], received.Stages);
+        Assert.Equal(["receiving"], received.Roles);
         Assert.True(received.Online);
-        Assert.Equal("receive · online", received.Line());
+        Assert.Equal("receiving · online", received.Line());
         Assert.Contains(
             "authentication and runtime capability are not modelled",
             received.Evidence,
             StringComparison.Ordinal);
 
-        // Two stages, in message-path order however the record writes them,
-        // and capability is not what the node happened to serve this round.
+        // Two roles, in declaration order however the record writes them,
+        // and a role is not what the node happened to serve this round.
         NodeCapability both = surface.Capability("beta");
+        Assert.Equal(["processing", "sending"], both.Roles);
         Assert.Equal(["process", "send"], both.Stages);
-        Assert.Equal("process+send", both.Words);
-        Assert.Equal("process+send · offline", both.Line());
+        Assert.Equal("processing+sending", both.Words);
+        Assert.Equal("processing+sending · offline", both.Line());
 
         Assert.Equal(
             ["alpha", "beta", "gamma"], surface.Index().Capabilities().Select(one => one.Node));
@@ -91,25 +92,29 @@ public sealed class ClusterSnapshotTest
 
         Assert.False(started.Published);
         Assert.Equal("what the run started it with", started.Origin);
-        Assert.Equal(["process", "send"], started.Stages);
+        Assert.Equal(["processing", "sending"], started.Roles);
         Assert.True(run.Capability("alpha").Online);
         Assert.Equal(NodeCapability.None, run.Capability("nobody"));
 
-        // A node started with no stage of its own is named alone in [run], and
+        // A node started with no role of its own is named alone in [run], and
         // declaring none is a choice said in words, never an absence.
         NodeCapability whole = NodeCapability.Started("n1");
         Assert.True(whole.Said);
-        Assert.Empty(whole.Stages);
-        Assert.Equal("no stage · offline", whole.Line());
-        Assert.Equal(
-            "no stage · offline",
-            Capability("declares no stage of the message path; offline; x").Line());
-        Assert.Empty(Capability("alive").Stages);
+        Assert.Empty(whole.Roles);
+        Assert.Equal("no role · offline", whole.Line());
+        Assert.Equal("no role · offline", Capability("declares no role; offline; x").Line());
+        Assert.Empty(Capability("alive").Roles);
+
+        // The three stage roles together are executing, their sum, said once.
+        NodeCapability executing = NodeCapability.Started("n3=sending+receiving+processing");
+        Assert.Equal(["executing"], executing.Roles);
+        Assert.Equal(ScopeTree.Stages, executing.Stages);
+        Assert.Equal(7, NodeCapability.RoleWords.Count);
     }
 
     /// <summary>
     /// The surface reads a declaration by the node crate's rule
-    /// (<c>node::Stage::declared</c>, called in the runtime and tested
+    /// (<c>node::NodeRole::declared</c>, called in the runtime and tested
     /// there): what it takes out of a node's evidence or a <c>[run]</c> entry
     /// is handed to that rule, and a refused declaration carries the rule's
     /// own sentence, never the words that were known (open problem 25, row i).
@@ -117,27 +122,28 @@ public sealed class ClusterSnapshotTest
     [Fact]
     public void ADeclarationReadsByTheNodesRuleAndARefusalIsCarriedWhole()
     {
-        NodeCapability lower = Capability("declares send,receive; online; x");
+        NodeCapability lower = Capability("declares sending,receiving; online; x");
         Assert.Equal("n1", lower.Node);
-        Assert.Equal(["receive", "send"], lower.Stages);
+        Assert.Equal(["receiving", "sending"], lower.Roles);
         Assert.True(lower.Online);
         Assert.Empty(lower.Refusal);
 
-        NodeCapability cased = Capability("declares Send,RECEIVE; online; x");
-        Assert.Empty(cased.Stages);
-        Assert.Equal(Refusal("Send,RECEIVE"), cased.Refusal);
+        NodeCapability cased = Capability("declares Sending,RECEIVING; online; x");
+        Assert.Empty(cased.Roles);
+        Assert.Equal(Refusal("Sending,RECEIVING"), cased.Refusal);
         Assert.StartsWith("REFUSED:", cased.Refusal, StringComparison.Ordinal);
-        Assert.NotEmpty(NodeCapability.Started("n2=Process").Refusal);
+        Assert.NotEmpty(NodeCapability.Started("n2=Processing").Refusal);
+        Assert.NotEmpty(NodeCapability.Started("n2=process").Refusal);
 
-        string refused = Refusal("receive,relay+hold");
+        string refused = Refusal("receiving,relay+hold");
 
-        NodeCapability published = Capability("declares receive,relay+hold; offline; x");
-        Assert.Empty(published.Stages);
+        NodeCapability published = Capability("declares receiving,relay+hold; offline; x");
+        Assert.Empty(published.Roles);
         Assert.Equal(refused, published.Refusal);
         Assert.Equal(refused, published.Line());
 
-        NodeCapability started = NodeCapability.Started("n2=receive+relay+hold");
-        Assert.Empty(started.Stages);
+        NodeCapability started = NodeCapability.Started("n2=receiving+relay+hold");
+        Assert.Empty(started.Roles);
         Assert.Equal(refused, started.Refusal);
     }
 
@@ -150,9 +156,9 @@ public sealed class ClusterSnapshotTest
     public void OnlyTheRecordAtANodesCapabilityScopeIsItsDeclaration()
     {
         Assert.Null(NodeCapability.Declared(
-            "xmip:///C1/node/n1/receive/tcp", "declares send; online; x"));
-        Assert.Null(NodeCapability.Declared("xmip:///capability", "declares send; online; x"));
-        Assert.Equal("n1", Capability("declares send; online; x").Node);
+            "xmip:///C1/node/n1/receive/tcp", "declares sending; online; x"));
+        Assert.Null(NodeCapability.Declared("xmip:///capability", "declares sending; online; x"));
+        Assert.Equal("n1", Capability("declares sending; online; x").Node);
     }
 
     // The capability record node n1 publishes, with this evidence.

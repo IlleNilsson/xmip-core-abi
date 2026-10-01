@@ -87,17 +87,28 @@ public sealed class RuntimeRulesTest
     }
 
     [Fact]
-    public void TheStageWordsAndADeclarationCrossAndARefusalComesBackWhole()
+    public void TheStageAndRoleWordsAndADeclarationCrossAndARefusalComesBackWhole()
     {
         Assert.Equal(["receive", "process", "send"], Rules.StageWords);
-        Assert.Equal(["receive", "send"], Rules.Declared(" send + receive ", out string none));
-        Assert.Empty(none);
-        Assert.Empty(Rules.Declared(string.Empty, out _));
-
-        Assert.Empty(Rules.Declared("Send+relay", out string refusal));
         Assert.Equal(
-            "REFUSED: no capability is called Send, relay; a node declares receive, process, " +
-            "send, or nothing at all.",
+            ["operational", "monitoring", "receiving", "processing", "sending", "executing",
+                "development"],
+            Rules.RoleWords);
+        Assert.Equal(
+            ["receiving", "sending"], Rules.Declared(" sending + receiving ", out string none));
+        Assert.Empty(none);
+        Assert.Equal(["executing"], Rules.Declared("sending,receiving,processing", out _));
+        Assert.Empty(Rules.Declared(string.Empty, out _));
+        Assert.Equal(["process"], Rules.RoleStages("processing"));
+        Assert.Equal(Rules.StageWords, Rules.RoleStages("executing"));
+        Assert.Empty(Rules.RoleStages("monitoring"));
+        Assert.Empty(Rules.RoleStages("process"));
+
+        Assert.Empty(Rules.Declared("Sending+relay", out string refusal));
+        Assert.Equal(
+            "REFUSED: no role is called Sending, relay; a node declares operational, " +
+            "monitoring, receiving, processing, sending, executing, development, or nothing " +
+            "at all.",
             refusal);
 
         string many = string.Join(',', Enumerable.Range(0, 100).Select(n => $"word{n}"));
@@ -159,23 +170,23 @@ public sealed class RuntimeRulesTest
     public void ACapabilityRecordAndARunEntryCrossWithTheirNameAndARefusalKeepsIt()
     {
         DeclaredCapability? said = Rules.Published(
-            "xmip:///C1/node/edge-01/capability", "declares send,receive; online; x");
+            "xmip:///C1/node/edge-01/capability", "declares sending,receiving; online; x");
 
         Assert.NotNull(said);
-        Assert.Equal(new DeclaredCapability("edge-01", said.Stages, true, string.Empty), said);
-        Assert.Equal(["receive", "send"], said.Stages);
-        Assert.Null(Rules.Published("xmip:///C1/node/edge-01/receive", "declares send"));
+        Assert.Equal(new DeclaredCapability("edge-01", said.Roles, true, string.Empty), said);
+        Assert.Equal(["receiving", "sending"], said.Roles);
+        Assert.Null(Rules.Published("xmip:///C1/node/edge-01/receive", "declares sending"));
 
         DeclaredCapability refused = Rules.Published(
             "xmip:///C1/node/ö/capability", "declares relay; online;")!;
         Assert.Equal("ö", refused.Node);
-        Assert.Empty(refused.Stages);
+        Assert.Empty(refused.Roles);
         Assert.StartsWith("REFUSED:", refused.Refusal, StringComparison.Ordinal);
 
-        DeclaredCapability entry = Rules.Entry(" edge-02 =process+send");
+        DeclaredCapability entry = Rules.Entry(" edge-02 =processing+sending");
         Assert.Equal("edge-02", entry.Node);
-        Assert.Equal(["process", "send"], entry.Stages);
-        Assert.Empty(Rules.Entry("edge-03").Stages);
+        Assert.Equal(["processing", "sending"], entry.Roles);
+        Assert.Empty(Rules.Entry("edge-03").Roles);
         Assert.Equal("edge-04", Rules.Entry("edge-04=relay").Node);
         Assert.NotEmpty(Rules.Entry("edge-04=relay").Refusal);
     }
@@ -209,7 +220,7 @@ public sealed class RuntimeRulesTest
             [run]
             cluster = "C1"
             nodes = ["alpha", "ö"]
-            capabilities = ["alpha=receive"]
+            roles = ["alpha=receiving"]
             stress = "harsh"
             hidden = true
 

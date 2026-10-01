@@ -177,8 +177,12 @@ pub mod rule {
     pub const SCOPE_NODE_ENTRYPOINT: &str = "xmip_scope_node_v1";
     /// `node::Stage::WORDS`.
     pub const STAGE_WORDS_ENTRYPOINT: &str = "xmip_stage_words_v1";
-    /// `node::Stage::declared`.
-    pub const STAGE_DECLARED_ENTRYPOINT: &str = "xmip_stage_declared_v1";
+    /// `node::NodeRole::WORDS`.
+    pub const ROLE_WORDS_ENTRYPOINT: &str = "xmip_role_words_v1";
+    /// `node::NodeRole::declared`.
+    pub const ROLE_DECLARED_ENTRYPOINT: &str = "xmip_role_declared_v1";
+    /// `node::NodeRole::stages`.
+    pub const ROLE_STAGES_ENTRYPOINT: &str = "xmip_role_stages_v1";
     /// `observe::Health::word`.
     pub const HEALTH_WORD_ENTRYPOINT: &str = "xmip_health_word_v1";
     /// `observe::Health::color`.
@@ -229,16 +233,24 @@ pub mod rule {
     pub type StageWordsFn =
         unsafe extern "C" fn(out: *mut Str, cap: usize, out_len: *mut usize) -> i32;
 
-    /// A declaration's stages, or its refusal written as UTF-8.
-    pub type StageDeclaredFn = unsafe extern "C" fn(
+    /// The role words, static, in the fill shape.
+    pub type RoleWordsFn =
+        unsafe extern "C" fn(out: *mut Str, cap: usize, out_len: *mut usize) -> i32;
+
+    /// A declaration's roles, or its refusal written as UTF-8.
+    pub type RoleDeclaredFn = unsafe extern "C" fn(
         declared: Str,
-        stages: *mut Str,
+        roles: *mut Str,
         cap: usize,
         out_len: *mut usize,
         refusal: *mut u8,
         refusal_cap: usize,
         refusal_len: *mut usize,
     ) -> i32;
+
+    /// The stages a role serves, static, in the fill shape.
+    pub type RoleStagesFn =
+        unsafe extern "C" fn(role: Str, out: *mut Str, cap: usize, out_len: *mut usize) -> i32;
 
     /// A mood's word or color name, static.
     pub type HealthTextFn = unsafe extern "C" fn(health: i32, out: *mut Str) -> i32;
@@ -266,12 +278,12 @@ pub mod rule {
     pub type StageLocationFn = unsafe extern "C" fn(stage: Str, out: *mut Str) -> i32;
 
     /// The capability a node published: its name (borrowed from `scope`),
-    /// its stages, its online capability, or its refusal.
+    /// its roles, its online capability, or its refusal.
     pub type CapabilityPublishedFn = unsafe extern "C" fn(
         scope: Scope,
         evidence: Str,
         out_node: *mut Str,
-        stages: *mut Str,
+        roles: *mut Str,
         cap: usize,
         out_len: *mut usize,
         out_online: *mut u8,
@@ -281,11 +293,11 @@ pub mod rule {
     ) -> i32;
 
     /// A run's entry for a node: its name (borrowed from `entry`), its
-    /// stages, or its refusal.
+    /// roles, or its refusal.
     pub type CapabilityEntryFn = unsafe extern "C" fn(
         entry: Str,
         out_node: *mut Str,
-        stages: *mut Str,
+        roles: *mut Str,
         cap: usize,
         out_len: *mut usize,
         refusal: *mut u8,
@@ -371,10 +383,12 @@ mod tests {
             ("XMIP_SCOPE_PARTS_ENTRYPOINT", rule::SCOPE_PARTS_ENTRYPOINT),
             ("XMIP_SCOPE_NODE_ENTRYPOINT", rule::SCOPE_NODE_ENTRYPOINT),
             ("XMIP_STAGE_WORDS_ENTRYPOINT", rule::STAGE_WORDS_ENTRYPOINT),
+            ("XMIP_ROLE_WORDS_ENTRYPOINT", rule::ROLE_WORDS_ENTRYPOINT),
             (
-                "XMIP_STAGE_DECLARED_ENTRYPOINT",
-                rule::STAGE_DECLARED_ENTRYPOINT,
+                "XMIP_ROLE_DECLARED_ENTRYPOINT",
+                rule::ROLE_DECLARED_ENTRYPOINT,
             ),
+            ("XMIP_ROLE_STAGES_ENTRYPOINT", rule::ROLE_STAGES_ENTRYPOINT),
             ("XMIP_HEALTH_WORD_ENTRYPOINT", rule::HEALTH_WORD_ENTRYPOINT),
             (
                 "XMIP_HEALTH_COLOR_ENTRYPOINT",

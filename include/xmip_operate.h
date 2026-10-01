@@ -274,8 +274,9 @@ typedef XmipStatus (*XmipValidateFn)(XmipStr configuration,
  *
  *     containment, parts    observe::Scope        (xmip-core-observe)
  *     the wildcard          observe::wildcard     (xmip-core-observe)
- *     stage words, a parse  node::Stage           (xmip-core-node)
- *     pausable, location    node::Stage           (xmip-core-node)
+ *     stage words,          node::Stage           (xmip-core-node)
+ *       pausable, location
+ *     role words, a parse   node::NodeRole        (xmip-core-node)
  *     a run's node entry    node::Capability      (xmip-core-node)
  *     mood word, color,     observe::Health       (xmip-core-observe)
  *       the rollup
@@ -346,21 +347,42 @@ typedef XmipStatus (*XmipScopePartsFn)(XmipScope scope,
 typedef XmipStatus (*XmipScopeNodeFn)(XmipScope scope, XmipStr *out_node,
                                       XmipStr *out_stage);
 
-/* The words a node may declare, in message-path order. Static. */
+/*
+ * The stage words, in message-path order: the segments a scope names a stage
+ * by. Static.
+ */
 typedef XmipStatus (*XmipStageWordsFn)(XmipStr *out, size_t cap, size_t *out_len);
 
 /*
- * The stages a declaration names - words separated by commas or +, each exact
- * lower case - in path order, each at most once, into stages (static words,
- * the fill shape of section 5). A declaration naming any other word is
- * XMIP_E_INVALID with no stage, and the refusal sentence is written into
- * refusal as UTF-8, its true byte length in refusal_len whether or not it fit
- * (ADR-0055: refused by name, never dropped). refusal_len is 0 on XMIP_OK.
+ * The words a node may declare: its roles, in declaration order (ADR-0056,
+ * amendment 2026-10-01). Static.
  */
-typedef XmipStatus (*XmipStageDeclaredFn)(XmipStr declared,
-                                          XmipStr *stages, size_t cap, size_t *out_len,
-                                          uint8_t *refusal, size_t refusal_cap,
-                                          size_t *refusal_len);
+typedef XmipStatus (*XmipRoleWordsFn)(XmipStr *out, size_t cap, size_t *out_len);
+
+/*
+ * The roles a declaration names - words separated by commas or +, each exact
+ * lower case - each at most once, in declaration order, and receiving,
+ * processing and sending together said as executing, their sum, into roles
+ * (static words, the fill shape of section 5). A declaration naming any
+ * other word is XMIP_E_INVALID with no role, and the refusal sentence is
+ * written into refusal as UTF-8, its true byte length in refusal_len whether
+ * or not it fit (ADR-0055: refused by name, never dropped). refusal_len is 0
+ * on XMIP_OK.
+ */
+typedef XmipStatus (*XmipRoleDeclaredFn)(XmipStr declared,
+                                         XmipStr *roles, size_t cap, size_t *out_len,
+                                         uint8_t *refusal, size_t refusal_cap,
+                                         size_t *refusal_len);
+
+/*
+ * The stages of the message path a role serves, named by its word (exact
+ * lower case), in path order, into out (static words, the fill shape of
+ * section 5): one for receiving, processing and sending, all three for
+ * executing, none for a role off the path. XMIP_E_NOT_FOUND for a word that
+ * is no role.
+ */
+typedef XmipStatus (*XmipRoleStagesFn)(XmipStr role,
+                                       XmipStr *out, size_t cap, size_t *out_len);
 
 /*
  * A mood as the word the estate uses, lower case, and the name of the color a
@@ -411,28 +433,28 @@ typedef XmipStatus (*XmipStageLocationFn)(XmipStr stage, XmipStr *out);
 
 /*
  * What a node declared of itself (ADR-0056), read from one health record it
- * published: its name in *out_node (borrowed from scope), its stages in the
- * fill shape (static words, path order), and *out_online 1 when it may
- * assume the internet. XMIP_E_NOT_FOUND when the record is not a capability
- * record at all; XMIP_E_INVALID, *out_node still written, when it names a
- * word that is no stage, the refusal written as xmip_stage_declared_v1
+ * published: its name in *out_node (borrowed from scope), its roles in the
+ * fill shape (static words, declaration order), and *out_online 1 when it
+ * may assume the internet. XMIP_E_NOT_FOUND when the record is not a
+ * capability record at all; XMIP_E_INVALID, *out_node still written, when it
+ * names a word that is no role, the refusal written as xmip_role_declared_v1
  * writes one.
  */
 typedef XmipStatus (*XmipCapabilityPublishedFn)(XmipScope scope, XmipStr evidence,
                                                 XmipStr *out_node,
-                                                XmipStr *stages, size_t cap,
+                                                XmipStr *roles, size_t cap,
                                                 size_t *out_len, uint8_t *out_online,
                                                 uint8_t *refusal, size_t refusal_cap,
                                                 size_t *refusal_len);
 
 /*
- * One entry of a run's node list - edge-01=receive+send, or a bare name for a
- * node that declared no stage: the name in *out_node (borrowed from entry,
- * trimmed) and the stages in the fill shape. XMIP_E_INVALID, *out_node still
- * written, with the refusal, as above.
+ * One entry of a run's node list - edge-01=receiving+sending, or a bare name
+ * for a node that declared no role: the name in *out_node (borrowed from
+ * entry, trimmed) and the roles in the fill shape. XMIP_E_INVALID, *out_node
+ * still written, with the refusal, as above.
  */
 typedef XmipStatus (*XmipCapabilityEntryFn)(XmipStr entry, XmipStr *out_node,
-                                            XmipStr *stages, size_t cap, size_t *out_len,
+                                            XmipStr *roles, size_t cap, size_t *out_len,
                                             uint8_t *refusal, size_t refusal_cap,
                                             size_t *refusal_len);
 
@@ -442,7 +464,9 @@ typedef XmipStatus (*XmipCapabilityEntryFn)(XmipStr entry, XmipStr *out_node,
 #define XMIP_SCOPE_PARTS_ENTRYPOINT    "xmip_scope_parts_v1"
 #define XMIP_SCOPE_NODE_ENTRYPOINT     "xmip_scope_node_v1"
 #define XMIP_STAGE_WORDS_ENTRYPOINT    "xmip_stage_words_v1"
-#define XMIP_STAGE_DECLARED_ENTRYPOINT "xmip_stage_declared_v1"
+#define XMIP_ROLE_WORDS_ENTRYPOINT     "xmip_role_words_v1"
+#define XMIP_ROLE_DECLARED_ENTRYPOINT  "xmip_role_declared_v1"
+#define XMIP_ROLE_STAGES_ENTRYPOINT    "xmip_role_stages_v1"
 #define XMIP_HEALTH_WORD_ENTRYPOINT    "xmip_health_word_v1"
 #define XMIP_HEALTH_COLOR_ENTRYPOINT   "xmip_health_color_v1"
 #define XMIP_HEALTH_NAMED_ENTRYPOINT   "xmip_health_named_v1"
@@ -514,10 +538,10 @@ typedef enum {
 } XmipCommunicationPattern;
 
 typedef enum {
-    XMIP_RUN_TESTS        = 0,
-    XMIP_RUN_NODES        = 1,
-    XMIP_RUN_CAPABILITIES = 2,
-    XMIP_RUN_ONLINE       = 3
+    XMIP_RUN_TESTS  = 0,
+    XMIP_RUN_NODES  = 1,
+    XMIP_RUN_ROLES  = 2,
+    XMIP_RUN_ONLINE = 3
 } XmipRunList;
 
 /*

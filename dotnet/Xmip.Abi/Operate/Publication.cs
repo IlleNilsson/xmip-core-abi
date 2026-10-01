@@ -34,8 +34,8 @@ public sealed record Publication(
 /// <param name="Cluster">The cluster's name.</param>
 /// <param name="Tests">The tests that run.</param>
 /// <param name="Nodes">The nodes spawned.</param>
-/// <param name="Capabilities">What each node was started with, as
-/// <c>node::Capability::entry</c> writes it.</param>
+/// <param name="Roles">The roles each node was started with, as
+/// <c>node::Capability::entry</c> writes them.</param>
 /// <param name="Online">The nodes that may assume the internet.</param>
 /// <param name="Stress">The stress level's name.</param>
 /// <param name="Hidden">The run declared itself hidden when it was started
@@ -44,7 +44,7 @@ public sealed record PublishedRun(
     string Cluster,
     IReadOnlyList<string> Tests,
     IReadOnlyList<string> Nodes,
-    IReadOnlyList<string> Capabilities,
+    IReadOnlyList<string> Roles,
     IReadOnlyList<string> Online,
     string Stress,
     bool Hidden);

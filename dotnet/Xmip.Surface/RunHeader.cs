@@ -4,7 +4,7 @@ namespace Xmip.Surface;
 
 /// <summary>
 /// What a run was started with, as its publisher says it under <c>[run]</c>:
-/// the cluster, the tests, the nodes, what each of them declared it can do,
+/// the cluster, the tests, the nodes, the roles each of them declared,
 /// which of them are online, and how hard. The owner, 2026-09-19: the run says
 /// what it was started with — a board could not be told from the one before
 /// it. A publication with no such table is <see cref="None"/>, and a surface
@@ -16,7 +16,7 @@ public sealed record RunHeader(
     string Cluster,
     IReadOnlyList<string> Tests,
     IReadOnlyList<string> Nodes,
-    IReadOnlyList<string> Capabilities,
+    IReadOnlyList<string> Roles,
     IReadOnlyList<string> Online,
     string Stress,
     bool Hidden = false)
@@ -29,8 +29,8 @@ public sealed record RunHeader(
         Cluster.Length > 0 || Tests.Count > 0 || Nodes.Count > 0 || Stress.Length > 0;
 
     /// <summary>
-    /// What one node was started with, by name — the stages of
-    /// <c>[run].capabilities</c>, with the online capability <c>[run]</c>
+    /// What one node was started with, by name — its roles in
+    /// <c>[run].roles</c>, with the online capability <c>[run]</c>
     /// lists apart folded back in. <see cref="NodeCapability.None"/> when this
     /// run does not name the node. It is what the node was *started* with;
     /// what it *published* is <see cref="ScopeIndex.Capability"/>, and that is
@@ -38,7 +38,7 @@ public sealed record RunHeader(
     /// </summary>
     public NodeCapability Capability(string node)
     {
-        foreach (string entry in Capabilities)
+        foreach (string entry in Roles)
         {
             NodeCapability started = NodeCapability.Started(entry);
 
@@ -53,10 +53,10 @@ public sealed record RunHeader(
 
     /// <summary>
     /// The one line every surface shows:
-    /// <c>RoundTrip · orders · nodes edge-01=receive edge-02=process+send ·
-    /// online edge-01 · realistic</c>. A node is named with what it declared it
-    /// can do, because bare names say nothing a board could be told apart by;
-    /// a publisher that says no capabilities leaves the names bare, as before.
+    /// <c>RoundTrip · orders · nodes edge-01=receiving edge-02=processing+sending ·
+    /// online edge-01 · realistic</c>. A node is named with the roles it
+    /// declared, because bare names say nothing a board could be told apart
+    /// by; a publisher that says no roles leaves the names bare, as before.
     /// The names are the operator's and mean nothing to Xmip (ADR-0053). A part
     /// the publisher left out is left out; no nodes and none online are said in
     /// words, because both are choices.
@@ -110,16 +110,16 @@ public sealed record RunHeader(
         return run is null
             ? None
             : new RunHeader(
-                run.Cluster, run.Tests, run.Nodes, run.Capabilities, run.Online, run.Stress,
+                run.Cluster, run.Tests, run.Nodes, run.Roles, run.Online, run.Stress,
                 run.Hidden);
     }
 
     /// <summary>A node as the run line names it: the publisher's own
-    /// <c>[run].capabilities</c> entry for it, or the bare name when the
-    /// publisher said nothing of what it can do.</summary>
+    /// <c>[run].roles</c> entry for it, or the bare name when the publisher
+    /// said nothing of its roles.</summary>
     private string Declared(string node)
     {
-        foreach (string entry in Capabilities)
+        foreach (string entry in Roles)
         {
             if (string.Equals(NodeCapability.Started(entry).Node, node, StringComparison.Ordinal))
             {

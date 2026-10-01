@@ -56,9 +56,16 @@ public static class OperateAbi
     /// <summary>The stage words: section 7, <c>node::Stage::WORDS</c>.</summary>
     public const string StageWordsEntrypoint = "xmip_stage_words_v1";
 
-    /// <summary>A node's declared stages: section 7,
-    /// <c>node::Stage::declared</c>.</summary>
-    public const string StageDeclaredEntrypoint = "xmip_stage_declared_v1";
+    /// <summary>The role words: section 7, <c>node::NodeRole::WORDS</c>.</summary>
+    public const string RoleWordsEntrypoint = "xmip_role_words_v1";
+
+    /// <summary>A node's declared roles: section 7,
+    /// <c>node::NodeRole::declared</c>.</summary>
+    public const string RoleDeclaredEntrypoint = "xmip_role_declared_v1";
+
+    /// <summary>The stages a role serves: section 7,
+    /// <c>node::NodeRole::stages</c>.</summary>
+    public const string RoleStagesEntrypoint = "xmip_role_stages_v1";
 
     /// <summary>A mood's word: section 7, <c>observe::Health::word</c>.</summary>
     public const string HealthWordEntrypoint = "xmip_health_word_v1";

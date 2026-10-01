@@ -289,7 +289,7 @@ public sealed unsafe class PublicationReader
             head.Cluster.Read(),
             Listed(handle, RunList.Tests),
             Listed(handle, RunList.Nodes),
-            Listed(handle, RunList.Capabilities),
+            Listed(handle, RunList.Roles),
             Listed(handle, RunList.Online),
             head.Stress.Read(),
             head.Hidden != 0);

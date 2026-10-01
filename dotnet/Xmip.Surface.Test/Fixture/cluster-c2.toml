@@ -11,7 +11,7 @@ node = "xmip:///C2"
 scope = "xmip:///C2/node/delta/capability"
 state = "fine"
 severity = 0
-evidence = "declares receive; online"
+evidence = "declares receiving; online"
 observed_unix_nanos = 1789111688000000000
 
 [[records]]
@@ -44,7 +44,7 @@ value = 1
 cluster = "C2"
 tests = ["RoundTrip"]
 nodes = ["delta", "zeta"]
-capabilities = ["delta=receive", "zeta=send"]
+roles = ["delta=receiving", "zeta=sending"]
 online = ["delta"]
 stress = "harsh"
 
