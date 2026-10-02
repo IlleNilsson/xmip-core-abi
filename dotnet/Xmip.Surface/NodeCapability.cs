@@ -7,8 +7,8 @@ namespace Xmip.Surface;
 /// machine may be assumed, and the evidence it published saying so. Its
 /// roles are the one declaration of what it is for and which stages of the
 /// message path it serves — receiving, processing, sending, executing (all
-/// three in one process), operational, monitoring, development (ADR-0056,
-/// amendment 2026-10-01). Nothing here is inferred from a node's name —
+/// three in one process), operational, monitoring, development, storage
+/// (ADR-0056, amendments 2026-10-01). Nothing here is inferred from a node's name —
 /// ADR-0056 clause 1, and the owner on 2026-09-19 when a rig read a stage out
 /// of a first letter: <i>a name is not a criterion</i>.
 /// </summary>
