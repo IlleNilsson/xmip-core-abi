@@ -109,7 +109,8 @@ public sealed class ClusterSnapshotTest
         NodeCapability executing = NodeCapability.Started("n3=sending+receiving+processing");
         Assert.Equal(["executing"], executing.Roles);
         Assert.Equal(ScopeTree.Stages, executing.Stages);
-        Assert.Equal(7, NodeCapability.RoleWords.Count);
+        Assert.Equal(8, NodeCapability.RoleWords.Count);
+        Assert.Equal("storage", NodeCapability.RoleWords[^1]);
     }
 
     /// <summary>

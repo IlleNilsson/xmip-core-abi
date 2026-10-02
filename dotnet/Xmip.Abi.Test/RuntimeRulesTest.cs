@@ -92,7 +92,7 @@ public sealed class RuntimeRulesTest
         Assert.Equal(["receive", "process", "send"], Rules.StageWords);
         Assert.Equal(
             ["operational", "monitoring", "receiving", "processing", "sending", "executing",
-                "development"],
+                "development", "storage"],
             Rules.RoleWords);
         Assert.Equal(
             ["receiving", "sending"], Rules.Declared(" sending + receiving ", out string none));
@@ -102,13 +102,14 @@ public sealed class RuntimeRulesTest
         Assert.Equal(["process"], Rules.RoleStages("processing"));
         Assert.Equal(Rules.StageWords, Rules.RoleStages("executing"));
         Assert.Empty(Rules.RoleStages("monitoring"));
+        Assert.Empty(Rules.RoleStages("storage"));
         Assert.Empty(Rules.RoleStages("process"));
 
         Assert.Empty(Rules.Declared("Sending+relay", out string refusal));
         Assert.Equal(
             "REFUSED: no role is called Sending, relay; a node declares operational, " +
-            "monitoring, receiving, processing, sending, executing, development, or nothing " +
-            "at all.",
+            "monitoring, receiving, processing, sending, executing, development, storage, or " +
+            "nothing at all.",
             refusal);
 
         string many = string.Join(',', Enumerable.Range(0, 100).Select(n => $"word{n}"));
