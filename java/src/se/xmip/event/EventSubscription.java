@@ -61,7 +61,8 @@ public final class EventSubscription implements AutoCloseable {
                 for (long i = 0; i < count; i++) {
                     copied.add(Layout.event(first.asSlice(i * size)));
                 }
-                return Optional.of(new Delivery(List.copyOf(copied), refused.get(JAVA_LONG, 0)));
+                return Optional.of(new Delivery(List.copyOf(copied), refused.get(JAVA_LONG, 0),
+                        library.batchUnheard(drained)));
             } finally {
                 library.batchFree(drained);
             }

@@ -16,9 +16,10 @@ public sealed class RuntimeProcessesTest
     public void ADeclarationMadeFromDotNetIsReadBackWhole()
     {
         RuntimeProcesses processes = RuntimeRulesTest.Rules.Processes;
+        string location = TestCluster.Read().Scope;
 
         XmipStatus status = processes.Declare(
-            "xmip-abi-test", "xmip:///C1", "test", [new("stress", "calm")], out string file);
+            "xmip-abi-test", location, "test", [new("stress", "calm")], out string file);
 
         Assert.True(status == XmipStatus.Ok, file);
 
@@ -29,7 +30,7 @@ public sealed class RuntimeProcessesTest
                 read.Processes, process => process.File == file);
 
             Assert.Equal("xmip-abi-test", standing.Name);
-            Assert.Equal("xmip:///C1", standing.Location);
+            Assert.Equal(location, standing.Location);
             Assert.Equal("test", standing.Purpose);
             Assert.Equal(Environment.ProcessId, standing.Pid);
             Assert.Equal("calm", standing.Said["stress"]);

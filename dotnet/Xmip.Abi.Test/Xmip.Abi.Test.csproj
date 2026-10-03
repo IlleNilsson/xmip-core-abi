@@ -42,6 +42,15 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The test cluster's names, read by the one helper every .NET test
+         shares (ADR-0056, amendment 2026-10-03); it reads through the
+         surface's one TOML reader. -->
+    <ProjectReference Include="..\Xmip.Surface\Xmip.Surface.csproj" />
+    <Compile Include="..\Xmip.Surface.Test\TestCluster.cs" Link="TestCluster.cs" />
+    <Using Include="Xmip.Surface.Test" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- The normative headers, beside the assembly. -->
     <None Include="..\..\include\*.h"
           Link="include\%(Filename)%(Extension)"

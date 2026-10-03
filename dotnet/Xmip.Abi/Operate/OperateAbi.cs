@@ -196,6 +196,18 @@ public static class OperateAbi
     /// <c>Hub::publish</c>.</summary>
     public const string EventPublishEntrypoint = "xmip_event_publish_v1";
 
+    /// <summary>Hand this process's hub the policy of who may subscribe:
+    /// section 11, <c>XMIP_EVENT_AUTHORIZE_ENTRYPOINT</c>.</summary>
+    public const string EventAuthorizeEntrypoint = "xmip_event_authorize_v1";
+
+    /// <summary>Who was not heard when a batch was drained: section 11,
+    /// <c>XMIP_EVENT_BATCH_UNHEARD_ENTRYPOINT</c>.</summary>
+    public const string EventBatchUnheardEntrypoint = "xmip_event_batch_unheard_v1";
+
+    /// <summary>Who this process's hub does not hear now: section 11,
+    /// <c>XMIP_EVENT_UNHEARD_ENTRYPOINT</c>.</summary>
+    public const string EventUnheardEntrypoint = "xmip_event_unheard_v1";
+
     /// <summary>The Event subscriptions this process's hub holds: section
     /// 11 (ADR-0065, amendment 2026-09-29), <c>Hub::standing</c>.</summary>
     public const string EventSubscriptionsEntrypoint = "xmip_event_subscriptions_v1";
@@ -221,10 +233,22 @@ public static class OperateAbi
     /// over section 8's handle.</summary>
     public const string PublicationSubscriptionsEntrypoint = "xmip_publication_subscriptions_v1";
 
-    /// <summary>An act on a Subscription or an Event subscription left for a
-    /// node read through its publication: section 14,
-    /// <c>observe::Order::leave</c>.</summary>
+    /// <summary>An act on a Subscription, an Event subscription or a Message
+    /// in a Dead Message Queue left for a node read through its publication:
+    /// section 14, <c>observe::Order::leave</c>.</summary>
     public const string OrderEntrypoint = "xmip_order_v1";
+
+    /// <summary>The Dead Message Queues of every node running in this
+    /// process: section 15 (ADR-0052, amendment 2026-10-01).</summary>
+    public const string DeadMessagesEntrypoint = "xmip_dead_messages_v1";
+
+    /// <summary>Replay one Message from a Dead Message Queue: section
+    /// 15.</summary>
+    public const string DeadMessageReplayEntrypoint = "xmip_dead_message_replay_v1";
+
+    /// <summary>The Dead Message Queue entries a read publication carries:
+    /// section 15 over section 8's handle.</summary>
+    public const string PublicationDeadMessagesEntrypoint = "xmip_publication_dead_messages_v1";
 
     /// <summary>The technologies the runtime carries and the settings each
     /// declares: section 12 (ADR-0064, amendment 2026-09-26).</summary>

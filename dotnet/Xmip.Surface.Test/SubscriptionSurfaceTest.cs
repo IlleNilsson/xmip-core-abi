@@ -13,18 +13,25 @@ namespace Xmip.Surface.Test;
 /// </summary>
 public sealed class SubscriptionSurfaceTest
 {
+    private static readonly TestCluster Cluster = TestCluster.Read();
+
+    // The test cluster's processing and sending nodes, by what each declares.
+    private static readonly string Processor = Cluster.WithRole("processing");
+    private static readonly string Sender = Cluster.WithRole("sending");
+    private static readonly string Processing = $"{Cluster.Scope}/node/{Processor}";
+
     private static string Published(string orders)
     {
-        return "node = \"xmip:///CT\"\n"
+        return $"node = \"{Cluster.Scope}\"\n"
             + (orders.Length > 0 ? $"orders = '{orders}'\n" : string.Empty)
-            + Entry("beta", "structured", "active", 12, 0)
-            + Entry("beta", "edi", "paused", 3, 9)
-            + Entry("delta", "flat", "active", 40, 0);
+            + Entry(Processor, "structured", "active", 12, 0)
+            + Entry(Processor, "edi", "paused", 3, 9)
+            + Entry(Sender, "flat", "active", 40, 0);
     }
 
     private static string Entry(string node, string name, string state, int picked, int held)
     {
-        return $"[[subscriptions]]\nnode = \"xmip:///CT/node/{node}\"\nname = \"{name}\"\n"
+        return $"[[subscriptions]]\nnode = \"{Cluster.Scope}/node/{node}\"\nname = \"{name}\"\n"
             + "application = \"RoundTrip\"\n"
             + $"filter = \"MessageType = '{name}'\"\n"
             + "destination = \"the Send Port 'RoundTripOut'\"\n"
@@ -56,8 +63,8 @@ public sealed class SubscriptionSurfaceTest
             SubscriptionOperation resumed = surface.Act(held, SubscriptionAct.Resume, "ilian");
 
             Assert.True(resumed.Applied, resumed.Result);
-            Assert.Contains("left for beta", resumed.Result, StringComparison.Ordinal);
-            Assert.Single(Directory.GetFiles(Path.Combine(orders, "beta"), "*.toml"));
+            Assert.Contains($"left for {Processor}", resumed.Result, StringComparison.Ordinal);
+            Assert.Single(Directory.GetFiles(Path.Combine(orders, Processor), "*.toml"));
         }
         finally
         {
@@ -101,11 +108,11 @@ public sealed class SubscriptionSurfaceTest
                 ["edi", "flat", "structured"], new SubscriptionQuery().Apply(all).Select(s => s.Name));
             Assert.Equal(
                 ["edi", "structured"],
-                new SubscriptionQuery { Location = "xmip:///CT/node/beta" }.Apply(all)
+                new SubscriptionQuery { Location = Processing }.Apply(all)
                     .Select(s => s.Name));
             Assert.Equal(
                 ["structured"],
-                new SubscriptionQuery { Location = "xmip:///CT/node/beta", Name = "structured" }
+                new SubscriptionQuery { Location = Processing, Name = "structured" }
                     .Apply(all).Select(s => s.Name));
             Assert.Equal(
                 ["edi", "structured", "flat"],
@@ -116,13 +123,14 @@ public sealed class SubscriptionSurfaceTest
                 new SubscriptionQuery { Sort = "picked-up", Order = "descending" }.Apply(all)
                     .Select(s => s.Name));
             Assert.Equal(
-                ["flat"], new SubscriptionQuery { Pattern = "*/delta" }.Apply(all).Select(s => s.Name));
+                ["flat"],
+                new SubscriptionQuery { Pattern = $"*/{Sender}" }.Apply(all).Select(s => s.Name));
             Assert.Equal(
                 ["edi"],
                 new SubscriptionQuery { Pattern = "*/subscription/ed?" }.Apply(all)
                     .Select(s => s.Name));
-            Assert.Equal("CT", SubscriptionQuery.Cluster(all[0]));
-            Assert.Equal("beta", SubscriptionQuery.NodeName(all[0]));
+            Assert.Equal(Cluster.Name, SubscriptionQuery.Cluster(all[0]));
+            Assert.Equal(Processor, SubscriptionQuery.NodeName(all[0]));
 
             ArgumentException refused = Assert.Throws<ArgumentException>(
                 () => new SubscriptionQuery { Sort = "mood" }.Apply(all));
@@ -142,14 +150,14 @@ public sealed class SubscriptionSurfaceTest
         foreach (SubscriptionAct act in Enum.GetValues<SubscriptionAct>())
         {
             XmipStatus status = RuntimeLibrary.Rules.Subscriptions.Act(
-                "xmip:///CT/node/beta", "structured", SubscriptionOperation.Word(act), "ilian",
+                Processing, "structured", SubscriptionOperation.Word(act), "ilian",
                 out string said);
 
             Assert.True(status == XmipStatus.NotFound, $"{act}: {status} {said}");
         }
 
         XmipStatus removed = RuntimeLibrary.Rules.Subscriptions.Act(
-            "xmip:///CT/node/beta", "structured", "remove", "ilian", out string refusal);
+            Processing, "structured", "remove", "ilian", out string refusal);
         Assert.Equal(XmipStatus.Invalid, removed);
         Assert.Contains("TOML configuration", refusal, StringComparison.Ordinal);
     }

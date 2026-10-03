@@ -5,10 +5,16 @@
 the boundary and nothing more: which Events a filter matches, whether a
 subscriber may see them, the queue and the audit are the runtime's.
 
-- `Library(path)` loads the runtime's library and looks up the six
-  `XMIP_EVENT_*_ENTRYPOINT` symbols once.
+- `Library(path)` loads the runtime's library and looks up the
+  `XMIP_EVENT_*_ENTRYPOINT` symbols a subscriber calls once. `authorize_by(decide)`
+  hands the hub the program's policy of who may subscribe — being in the
+  process admits nobody (ADR-0065, amendment 2026-09-26) — and `unheard()` lists the members
+  of the cluster the process's hub does not hear now.
 - `subscribe` returns a `Subscription`; `next(timeout_ms, max)` returns a
-  `Delivery` of `Event`s, or `None` when nothing arrived. It waits until an
+  `Delivery` of `Event`s, with `unheard` — every member of the cluster not
+  heard now, each an `Unheard` whose `said` is the one line every surface
+  shows — and `unheard_changed`, a drain waking for that alone with no Event
+  (amendment 2026-10-02); or `None` when nothing arrived. It waits until an
   Event arrives, not on a timer.
 - `listen` takes a callable, called with each `Event` on a thread the
   runtime starts, one call at a time.
@@ -23,7 +29,7 @@ subscriber may see them, the queue and the audit are the runtime's.
 from xmip_event import Filter, Library, Outcome
 
 xmip = Library("xmip_core_runtime.dll")
-failures = Filter(outcomes=(Outcome.FAILURE,), scope="xmip:///cluster-a")
+failures = Filter(outcomes=(Outcome.FAILURE,), scope="xmip:///C1")
 with xmip.subscribe("my-program", "/var/log/my-program",
                     "0198a3c4-0000-7000-8000-000000000042", failures) as subscription:
     delivery = subscription.next(timeout_ms=1000)

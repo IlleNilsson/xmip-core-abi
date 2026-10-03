@@ -217,6 +217,16 @@ void a_listener_is_called_back_within_a_millisecond(const Library &xmip,
 
 } // namespace
 
+void a_party_no_policy_allows_is_refused(const Library &xmip, const char *directory) {
+    try {
+        xmip.subscribe(program, directory, subscriber, Filter{});
+        check(false, "a Party no policy allows is refused");
+    } catch (const Error &refused) {
+        check(refused.status() == XMIP_E_AUTH, "a Party no policy allows is XMIP_E_AUTH");
+    }
+    check(xmip.unheard() == "{\"unheard\":[]}", "nobody unheard is said so");
+}
+
 int main(int argc, char **argv) {
     const char *path = argc > 1 ? argv[1] : std::getenv("XMIP_RUNTIME_LIBRARY");
     const char *directory = argc > 2 ? argv[2] : std::getenv("XMIP_EVENT_AUDIT_DIRECTORY");
@@ -226,6 +236,12 @@ int main(int argc, char **argv) {
     }
     try {
         Library xmip(path);
+        a_party_no_policy_allows_is_refused(xmip, directory);
+        // Being in this process admits nobody: the test hands the hub a
+        // policy allowing its Party.
+        xmip.authorize_by([](std::string_view party, auto &&...) {
+            return party == subscriber ? XMIP_EVENT_ALLOW : XMIP_EVENT_NO_OPINION;
+        });
         a_subscriber_is_a_party(xmip, directory);
         a_subscription_drains_what_it_matches(xmip, directory);
         a_drained_event_arrives_within_a_millisecond(xmip, directory);

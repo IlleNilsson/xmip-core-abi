@@ -274,6 +274,33 @@ public sealed class NativeOperator : IOperatorSurface, IDisposable
     }
 
     /// <inheritdoc />
+    /// <remarks>Every node running in the process that loaded the runtime,
+    /// at or beneath <see cref="IOperatorSurface.Root"/>.</remarks>
+    public DeadMessageList DeadMessages()
+    {
+        return Runtime() is null
+            ? DeadMessageList.Empty
+            : RuntimeLibrary.Rules.DeadMessages.Standing(((IOperatorSurface)this).Root());
+    }
+
+    /// <inheritdoc />
+    public DeadMessageOperation Act(DeadMessageRecord message, DeadMessageAct act, string who)
+    {
+        ArgumentNullException.ThrowIfNull(message);
+
+        if (Runtime() is null)
+        {
+            return DeadMessageOperation.Declined(message, act, NotLoaded());
+        }
+
+        XmipStatus status = RuntimeLibrary.Rules.DeadMessages.Replay(
+            message.Node, message.Message, who, out string said);
+
+        return new DeadMessageOperation(
+            message.Node, message.Message, act, status == XmipStatus.Ok, said);
+    }
+
+    /// <inheritdoc />
     public ScopeOperation Control(string scope, ScopeAction action, string who)
     {
         if (Runtime() is not { } runtime)

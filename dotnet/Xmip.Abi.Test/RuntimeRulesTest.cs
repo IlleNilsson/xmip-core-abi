@@ -22,31 +22,61 @@ public sealed class RuntimeRulesTest
             $"no runtime beside {AppContext.BaseDirectory}: cargo build in " +
             "module/platform/runtime, then build this project");
 
-        return RuntimeRules.Load(beside[0], out string reason)
+        RuntimeRules rules = RuntimeRules.Load(beside[0], out string reason)
             ?? throw new InvalidOperationException(reason);
+
+        // Being in this process admits a subscriber to nothing: the tests
+        // hand the hub a policy allowing the Parties they subscribe as, as a
+        // hosting program does.
+        rules.Events.AuthorizeBy(RuntimeEventsTest.Allowed);
+        return rules;
     });
 
     /// <summary>The runtime this estate built, loaded once for every test
     /// that crosses to it.</summary>
     internal static RuntimeRules Rules => Loaded.Value;
 
+    private static readonly TestCluster Cluster = TestCluster.Read();
+
+    // The test cluster's nodes by what each declares; a name made from the
+    // receiving node's that carries what is not ASCII across; and the
+    // receiving node directly beneath the root and beneath its cluster.
+    private static readonly string Receiver = Cluster.WithRole("receiving");
+    private static readonly string Processor = Cluster.WithRole("processing");
+    private static readonly string Sender = Cluster.WithRole("sending");
+    private static readonly string Wide = $"{Receiver}ö";
+    private static readonly string Top = $"xmip:///{Receiver}";
+    private static readonly string Node = $"{Cluster.Scope}/node/{Receiver}";
+
+    /// <summary>A scope, a candidate, and whether the one holds the other.</summary>
+    public static TheoryData<string, string, bool> Containment => new()
+    {
+        { Top, $"{Top}/receive/a", true },
+        { Top, $"{Top}x", false },
+        { "", Top, true },
+        { $"xmip://localhost/{Receiver}", $"{Top}/receive", true },
+        { $"{Top}/receive", Top, false },
+        { $"xmip:///{Wide}/å", $"xmip:///{Wide}/å/ä", true },
+    };
+
+    /// <summary>A candidate, a pattern, and whether the one matches the other.</summary>
+    public static TheoryData<string, string, bool> Wildcards => new()
+    {
+        { Node, $"{Cluster.Name.ToLowerInvariant()}/NODE/{Receiver[..1]}*", true },
+        { Node, $"{Cluster.Scope}/node", false },
+        { $"xmip:///{Wide}/å", $"xmip:///{Wide.ToUpperInvariant()}/?", true },
+        { "", "*", true },
+    };
+
     [Theory]
-    [InlineData("xmip:///n", "xmip:///n/receive/a", true)]
-    [InlineData("xmip:///n", "xmip:///nx", false)]
-    [InlineData("", "xmip:///n", true)]
-    [InlineData("xmip://edge-01/n", "xmip:///n/receive", true)]
-    [InlineData("xmip:///n/receive", "xmip:///n", false)]
-    [InlineData("xmip:///ö/å", "xmip:///ö/å/ä", true)]
+    [MemberData(nameof(Containment))]
     public void ContainmentCrossesBothWays(string scope, string candidate, bool contains)
     {
         Assert.Equal(contains, Rules.Contains(scope, candidate));
     }
 
     [Theory]
-    [InlineData("xmip:///C1/node/alpha", "c1/NODE/al*", true)]
-    [InlineData("xmip:///C1/node/alpha", "xmip:///C1/node", false)]
-    [InlineData("xmip:///ö/å", "xmip:///Ö/?", true)]
-    [InlineData("", "*", true)]
+    [MemberData(nameof(Wildcards))]
     public void TheWildcardCrossesAsTheOneRule(string candidate, string pattern, bool matches)
     {
         Assert.Equal(matches, Rules.Matches(candidate, pattern));
@@ -67,9 +97,9 @@ public sealed class RuntimeRulesTest
     public void PartsComeBackAsTheSegmentsTopFirst()
     {
         Assert.Equal(
-            ["edge-01", "receive", "orders"],
-            Rules.Parts("xmip://lab:9000/edge-01/receive/orders/"));
-        Assert.Equal(["ö", "å"], Rules.Parts("xmip:///ö/å"));
+            [Receiver, "receive", "orders"],
+            Rules.Parts($"xmip://localhost:9000/{Receiver}/receive/orders/"));
+        Assert.Equal([Wide, "å"], Rules.Parts($"xmip:///{Wide}/å"));
         Assert.Empty(Rules.Parts("xmip:///"));
 
         string deep = "xmip:///" + string.Join('/', Enumerable.Range(0, 40));
@@ -80,9 +110,10 @@ public sealed class RuntimeRulesTest
     [Fact]
     public void TheNodeComesBackBorrowedAndTheStageStatic()
     {
-        Assert.Equal(("ö", "send"), Rules.Node("xmip://lab/C1/node/ö/send/x"));
-        Assert.Equal(("alpha", string.Empty), Rules.Node("xmip:///C1/node/alpha"));
-        Assert.Equal((string.Empty, "receive"), Rules.Node("xmip:///C1/t/receive"));
+        Assert.Equal(
+            (Wide, "send"), Rules.Node($"xmip://localhost/{Cluster.Name}/node/{Wide}/send/x"));
+        Assert.Equal((Receiver, string.Empty), Rules.Node(Node));
+        Assert.Equal((string.Empty, "receive"), Rules.Node($"{Cluster.Scope}/t/receive"));
         Assert.Equal((string.Empty, string.Empty), Rules.Node(string.Empty));
     }
 
@@ -171,43 +202,43 @@ public sealed class RuntimeRulesTest
     public void ACapabilityRecordAndARunEntryCrossWithTheirNameAndARefusalKeepsIt()
     {
         DeclaredCapability? said = Rules.Published(
-            "xmip:///C1/node/edge-01/capability", "declares sending,receiving; online; x");
+            $"{Node}/capability", "declares sending,receiving; online; x");
 
         Assert.NotNull(said);
-        Assert.Equal(new DeclaredCapability("edge-01", said.Roles, true, string.Empty), said);
+        Assert.Equal(new DeclaredCapability(Receiver, said.Roles, true, string.Empty), said);
         Assert.Equal(["receiving", "sending"], said.Roles);
-        Assert.Null(Rules.Published("xmip:///C1/node/edge-01/receive", "declares sending"));
+        Assert.Null(Rules.Published($"{Node}/receive", "declares sending"));
 
         DeclaredCapability refused = Rules.Published(
-            "xmip:///C1/node/ö/capability", "declares relay; online;")!;
-        Assert.Equal("ö", refused.Node);
+            $"{Cluster.Scope}/node/{Wide}/capability", "declares relay; online;")!;
+        Assert.Equal(Wide, refused.Node);
         Assert.Empty(refused.Roles);
         Assert.StartsWith("REFUSED:", refused.Refusal, StringComparison.Ordinal);
 
-        DeclaredCapability entry = Rules.Entry(" edge-02 =processing+sending");
-        Assert.Equal("edge-02", entry.Node);
+        DeclaredCapability entry = Rules.Entry($" {Processor} =processing+sending");
+        Assert.Equal(Processor, entry.Node);
         Assert.Equal(["processing", "sending"], entry.Roles);
-        Assert.Empty(Rules.Entry("edge-03").Roles);
-        Assert.Equal("edge-04", Rules.Entry("edge-04=relay").Node);
-        Assert.NotEmpty(Rules.Entry("edge-04=relay").Refusal);
+        Assert.Empty(Rules.Entry(Sender).Roles);
+        Assert.Equal(Sender, Rules.Entry($"{Sender}=relay").Node);
+        Assert.NotEmpty(Rules.Entry($"{Sender}=relay").Refusal);
     }
 
     [Fact]
     public void APublicationCrossesAsTheRuntimeReadsItAndAStrangerIsRefused()
     {
-        const string Text = """
+        string text = $$"""
             source = "a publisher"
-            node = "xmip:///C1"
+            node = "{{Cluster.Scope}}"
 
             [[records]]
-            scope = "xmip:///C1/node/alpha/receive/tcp"
+            scope = "{{Node}}/receive/tcp"
             state = "done"
             severity = 90
             evidence = "refused"
             observed_unix_nanos = 1000
 
             [[records]]
-            scope = "xmip:///C1/node/alpha/send/tcp"
+            scope = "{{Node}}/send/tcp"
             state = "sulking"
 
             [[counts]]
@@ -219,9 +250,9 @@ public sealed class RuntimeRulesTest
             value = 1
 
             [run]
-            cluster = "C1"
-            nodes = ["alpha", "ö"]
-            roles = ["alpha=receiving"]
+            cluster = "{{Cluster.Name}}"
+            nodes = ["{{Receiver}}", "{{Wide}}"]
+            roles = ["{{Receiver}}=receiving"]
             stress = "harsh"
             hidden = true
 
@@ -242,20 +273,20 @@ public sealed class RuntimeRulesTest
             attempts = 3
             """;
 
-        Publication read = Rules.Publications.Read(Text, out string refusal)!;
+        Publication read = Rules.Publications.Read(text, out string refusal)!;
 
         Assert.Empty(refusal);
-        Assert.Equal(("a publisher", "xmip:///C1"), (read.Source, read.Node));
+        Assert.Equal(("a publisher", Cluster.Scope), (read.Source, read.Node));
         Assert.Equal(
             [HealthState.Done, HealthState.Stressed],
             read.Records.Select(record => record.State));
         Assert.Equal(90, read.Records[0].Severity);
         MeasurementRecord journeys = Assert.Single(read.Counts);
-        Assert.Equal((Counted.Journeys, 4UL, "xmip:///C1"),
+        Assert.Equal((Counted.Journeys, 4UL, Cluster.Scope),
             (journeys.Counted, journeys.Value, journeys.Scope));
 
         Assert.NotNull(read.Run);
-        Assert.Equal(["alpha", "ö"], read.Run.Nodes);
+        Assert.Equal([Receiver, Wide], read.Run.Nodes);
         Assert.Empty(read.Run.Tests);
         Assert.Equal("harsh", read.Run.Stress);
         Assert.True(read.Run.Hidden);
@@ -308,8 +339,8 @@ public sealed class RuntimeRulesTest
     [Fact]
     public void ACurveCrossesPointByPointAndAStrangerIsRefused()
     {
-        const string Text = """
-            node = "xmip:///Y1"
+        string text = $$"""
+            node = "{{Node}}"
 
             [[points]]
             counted = "bytes"
@@ -321,10 +352,10 @@ public sealed class RuntimeRulesTest
             value = 1
             """;
 
-        MeasurementRecord point = Assert.Single(Rules.Publications.Curve(Text, out string none)!);
+        MeasurementRecord point = Assert.Single(Rules.Publications.Curve(text, out string none)!);
 
         Assert.Empty(none);
-        Assert.Equal(("xmip:///Y1", Counted.Bytes, 1024UL), (point.Scope, point.Counted, point.Value));
+        Assert.Equal((Node, Counted.Bytes, 1024UL), (point.Scope, point.Counted, point.Value));
         Assert.Equal(DateTimeOffset.UnixEpoch.AddSeconds(1), point.Observed);
         Assert.Null(Rules.Publications.Curve("points = 3", out string said));
         Assert.NotEmpty(said);
@@ -337,16 +368,16 @@ public sealed class RuntimeRulesTest
         DateTimeOffset seen = DateTimeOffset.UnixEpoch;
         HealthRecord[] records =
         [
-            new("xmip:///a", HealthState.Fine, 0, string.Empty, seen),
-            new("xmip:///ö/d", HealthState.Done, 60, string.Empty, seen),
-            new("xmip:///h", HealthState.Holding, 0, string.Empty, seen),
-            new("xmip:///e", HealthState.Done, 90, string.Empty, seen),
+            new($"{Top}/a", HealthState.Fine, 0, string.Empty, seen),
+            new($"xmip:///{Wide}/d", HealthState.Done, 60, string.Empty, seen),
+            new($"{Top}/h", HealthState.Holding, 0, string.Empty, seen),
+            new($"{Top}/e", HealthState.Done, 90, string.Empty, seen),
         ];
 
         Assert.Equal([2, 3, 1, 0], Rules.WorstFirst(records));
         Assert.Empty(Rules.WorstFirst([]));
         Assert.Throws<InvalidOperationException>(() => Rules.WorstFirst(
-            [new HealthRecord("xmip:///a", (HealthState)42, 0, string.Empty, seen)]));
+            [new HealthRecord($"{Top}/a", (HealthState)42, 0, string.Empty, seen)]));
     }
 
     [Fact]

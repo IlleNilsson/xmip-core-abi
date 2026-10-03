@@ -308,6 +308,7 @@ pub mod rule {
 
 pub mod audit;
 pub mod catalogue;
+pub mod dead_message;
 pub mod design;
 pub mod event;
 pub mod process;
@@ -440,8 +441,8 @@ mod tests {
             ("XMIP_START_ENTRYPOINT", XMIP_START_ENTRYPOINT),
             ("XMIP_VALIDATE_ENTRYPOINT", XMIP_VALIDATE_ENTRYPOINT),
             (
-                "XMIP_APPLICATION_ROUTES_ENTRYPOINT",
-                design::APPLICATION_ROUTES_ENTRYPOINT,
+                "XMIP_CLUSTER_VIEWS_ENTRYPOINT",
+                design::CLUSTER_VIEWS_ENTRYPOINT,
             ),
             (
                 "XMIP_FILTER_STRUCTURE_ENTRYPOINT",
@@ -452,8 +453,8 @@ mod tests {
                 design::FILTER_TEXT_ENTRYPOINT,
             ),
             (
-                "XMIP_APPLICATION_EDIT_ENTRYPOINT",
-                design::APPLICATION_EDIT_ENTRYPOINT,
+                "XMIP_CLUSTER_EDIT_ENTRYPOINT",
+                design::CLUSTER_EDIT_ENTRYPOINT,
             ),
             (
                 "XMIP_PROCESS_DECLARE_ENTRYPOINT",

@@ -5,30 +5,32 @@
 # receive -> process -> send, and the Parties outside (2026-09-29): the one
 # that sends into the receive stages and the one the send stages deliver to.
 #
-# The names below are what an operator typed and nothing more (ADR-0053): a
-# node's name is not a criterion, and the node called beta proves it by declaring
-# two stages and serving one. Capability is what a node could do (ADR-0056),
+# The names below are the test cluster's, test/xmip.toml's (ADR-0056,
+# amendment 2026-10-03), and a test reads them from there. They are what an
+# operator typed and nothing more (ADR-0053): a node's name is not a
+# criterion, and the node called P1 proves it by declaring two stages and
+# serving one. Capability is what a node could do (ADR-0056),
 # never what its name looks like and never what it happened to do this round.
 
 source = "playground — xmip:///C1"
 node = "xmip:///C1"
 
 [[records]]
-scope = "xmip:///C1/node/alpha/capability"
+scope = "xmip:///C1/node/R1/capability"
 state = "fine"
 severity = 0
 evidence = "declares receiving; online; authentication and runtime capability are not modelled"
 observed_unix_nanos = 1789111688000000000
 
 [[records]]
-scope = "xmip:///C1/node/beta/capability"
+scope = "xmip:///C1/node/P1/capability"
 state = "fine"
 severity = 0
 evidence = "declares processing,sending; offline; authentication and runtime capability are not modelled"
 observed_unix_nanos = 1789111688000000000
 
 [[records]]
-scope = "xmip:///C1/node/gamma/capability"
+scope = "xmip:///C1/node/S1/capability"
 state = "fine"
 severity = 0
 evidence = "declares sending; offline; authentication and runtime capability are not modelled"
@@ -38,46 +40,46 @@ observed_unix_nanos = 1789111688000000000
 scope = "xmip:///C1/node"
 state = "stressed"
 severity = 39
-evidence = "3 nodes, 5 of 6 leaves fine; worst gamma/send/tcp/json: 2/3 rounds passed, 1 failed"
+evidence = "3 nodes, 5 of 6 leaves fine; worst S1/send/tcp/json: 2/3 rounds passed, 1 failed"
 observed_unix_nanos = 1789111688000000000
 
 [[records]]
-scope = "xmip:///C1/node/alpha/system-process"
+scope = "xmip:///C1/node/R1/system-process"
 state = "fine"
 severity = 0
 evidence = "alive"
 observed_unix_nanos = 1789111688000000000
 
 [[records]]
-scope = "xmip:///C1/node/alpha/receive/tcp/json"
+scope = "xmip:///C1/node/R1/receive/tcp/json"
 state = "fine"
 severity = 0
 evidence = "3/3 rounds passed"
 observed_unix_nanos = 1789111688000000000
 
 [[records]]
-scope = "xmip:///C1/node/alpha/receive/file/text"
+scope = "xmip:///C1/node/R1/receive/file/text"
 state = "fine"
 severity = 0
 evidence = "3/3 rounds passed"
 observed_unix_nanos = 1789111688000000000
 
 [[records]]
-scope = "xmip:///C1/node/beta/process/tcp/json"
+scope = "xmip:///C1/node/P1/process/tcp/json"
 state = "fine"
 severity = 0
 evidence = "3/3 rounds passed"
 observed_unix_nanos = 1789111688000000000
 
 [[records]]
-scope = "xmip:///C1/node/gamma/send/tcp/json"
+scope = "xmip:///C1/node/S1/send/tcp/json"
 state = "stressed"
 severity = 40
 evidence = "2/3 rounds passed, 1 failed"
 observed_unix_nanos = 1789111688000000000
 
 [[records]]
-scope = "xmip:///C1/node/gamma/send/file/text"
+scope = "xmip:///C1/node/S1/send/file/text"
 state = "fine"
 severity = 0
 evidence = "3/3 rounds passed"
@@ -88,24 +90,24 @@ observed_unix_nanos = 1789111688000000000
 [[counts]]
 counted = "streams"
 value = 6
-scope = "xmip:///C1/node/alpha/receive"
+scope = "xmip:///C1/node/R1/receive"
 
 [[counts]]
 counted = "journeys"
 value = 6
-scope = "xmip:///C1/node/beta/process"
+scope = "xmip:///C1/node/P1/process"
 
 [[counts]]
 counted = "messages"
 value = 5
-scope = "xmip:///C1/node/gamma/send"
+scope = "xmip:///C1/node/S1/send"
 
 [run]
 cluster = "C1"
 tests = ["RoundTrip"]
-nodes = ["alpha", "beta", "gamma"]
-roles = ["alpha=receiving", "beta=processing+sending", "gamma=sending"]
-online = ["alpha"]
+nodes = ["R1", "P1", "S1"]
+roles = ["R1=receiving", "P1=processing+sending", "S1=sending"]
+online = ["R1"]
 stress = "realistic"
 
 [topology]
@@ -125,11 +127,11 @@ activity = 1.0
 evidence = "3 nodes, 5 of 6 leaves fine"
 
 [[topology.nodes]]
-id = "node/alpha"
+id = "node/R1"
 parent = "cluster"
-label = "alpha"
+label = "R1"
 kind = "node"
-scope = "xmip:///C1/node/alpha"
+scope = "xmip:///C1/node/R1"
 state = "fine"
 origin = "both"
 load = 0.0
@@ -137,11 +139,11 @@ activity = 1.0
 evidence = "alive"
 
 [[topology.nodes]]
-id = "node/alpha/receive"
-parent = "node/alpha"
+id = "node/R1/receive"
+parent = "node/R1"
 label = "receive"
 kind = "stage"
-scope = "xmip:///C1/node/alpha/receive"
+scope = "xmip:///C1/node/R1/receive"
 state = "fine"
 origin = "both"
 load = 0.0
@@ -149,11 +151,11 @@ activity = 0.0
 evidence = "3/3 rounds passed"
 
 [[topology.nodes]]
-id = "node/alpha/receive/file"
-parent = "node/alpha/receive"
+id = "node/R1/receive/file"
+parent = "node/R1/receive"
 label = "file"
 kind = "endpoint"
-scope = "xmip:///C1/node/alpha/receive/file"
+scope = "xmip:///C1/node/R1/receive/file"
 state = "fine"
 origin = "both"
 load = 0.0
@@ -161,11 +163,11 @@ activity = 0.0
 evidence = "3/3 rounds passed"
 
 [[topology.nodes]]
-id = "node/alpha/receive/tcp"
-parent = "node/alpha/receive"
+id = "node/R1/receive/tcp"
+parent = "node/R1/receive"
 label = "tcp"
 kind = "endpoint"
-scope = "xmip:///C1/node/alpha/receive/tcp"
+scope = "xmip:///C1/node/R1/receive/tcp"
 state = "fine"
 origin = "both"
 load = 0.0
@@ -173,11 +175,11 @@ activity = 0.0
 evidence = "3/3 rounds passed"
 
 [[topology.nodes]]
-id = "node/beta"
+id = "node/P1"
 parent = "cluster"
-label = "beta"
+label = "P1"
 kind = "node"
-scope = "xmip:///C1/node/beta"
+scope = "xmip:///C1/node/P1"
 state = "fine"
 origin = "both"
 load = 0.0
@@ -185,24 +187,24 @@ activity = 1.0
 evidence = "3/3 rounds passed"
 
 [[topology.nodes]]
-id = "node/beta/process"
-parent = "node/beta"
+id = "node/P1/process"
+parent = "node/P1"
 label = "process"
 kind = "stage"
-scope = "xmip:///C1/node/beta/process"
+scope = "xmip:///C1/node/P1/process"
 state = "fine"
 origin = "both"
 load = 0.0
 activity = 0.0
 evidence = "3/3 rounds passed"
 
-# Declared and not yet reported on: drawn because beta declared it (ADR-0056).
+# Declared and not yet reported on: drawn because P1 declared it (ADR-0056).
 [[topology.nodes]]
-id = "node/beta/send"
-parent = "node/beta"
+id = "node/P1/send"
+parent = "node/P1"
 label = "send"
 kind = "stage"
-scope = "xmip:///C1/node/beta/send"
+scope = "xmip:///C1/node/P1/send"
 state = "working"
 origin = "configured"
 load = 0.0
@@ -210,11 +212,11 @@ activity = 0.0
 evidence = "nothing published yet"
 
 [[topology.nodes]]
-id = "node/gamma"
+id = "node/S1"
 parent = "cluster"
-label = "gamma"
+label = "S1"
 kind = "node"
-scope = "xmip:///C1/node/gamma"
+scope = "xmip:///C1/node/S1"
 state = "stressed"
 origin = "both"
 load = 0.0
@@ -222,11 +224,11 @@ activity = 1.0
 evidence = "2/3 rounds passed, 1 failed"
 
 [[topology.nodes]]
-id = "node/gamma/send"
-parent = "node/gamma"
+id = "node/S1/send"
+parent = "node/S1"
 label = "send"
 kind = "stage"
-scope = "xmip:///C1/node/gamma/send"
+scope = "xmip:///C1/node/S1/send"
 state = "stressed"
 origin = "both"
 load = 0.0
@@ -234,11 +236,11 @@ activity = 0.0
 evidence = "2/3 rounds passed, 1 failed"
 
 [[topology.nodes]]
-id = "node/gamma/send/file"
-parent = "node/gamma/send"
+id = "node/S1/send/file"
+parent = "node/S1/send"
 label = "file"
 kind = "endpoint"
-scope = "xmip:///C1/node/gamma/send/file"
+scope = "xmip:///C1/node/S1/send/file"
 state = "fine"
 origin = "both"
 load = 0.0
@@ -246,11 +248,11 @@ activity = 0.0
 evidence = "3/3 rounds passed"
 
 [[topology.nodes]]
-id = "node/gamma/send/tcp"
-parent = "node/gamma/send"
+id = "node/S1/send/tcp"
+parent = "node/S1/send"
 label = "tcp"
 kind = "endpoint"
-scope = "xmip:///C1/node/gamma/send/tcp"
+scope = "xmip:///C1/node/S1/send/tcp"
 state = "stressed"
 origin = "both"
 load = 0.0
@@ -270,7 +272,7 @@ state = "fine"
 origin = "both"
 load = 0.0
 activity = 0.0
-evidence = "sends into alpha; worst at alpha over file: 3/3 rounds passed"
+evidence = "sends into R1; worst at R1 over file: 3/3 rounds passed"
 
 [[topology.nodes]]
 id = "party/receiving/party-x"
@@ -282,17 +284,17 @@ state = "holding"
 origin = "both"
 load = 0.0
 activity = 0.0
-evidence = "is delivered to by beta, gamma; worst at gamma over tcp: 2/3 rounds passed, 1 failed"
+evidence = "is delivered to by P1, S1; worst at S1 over tcp: 2/3 rounds passed, 1 failed"
 
 # Every pair the roster configures a handoff between, and the hops delivered
-# over each (the owner, 2026-09-25: configured traffic and its usage): alpha to
-# beta and beta to gamma are configured and used, beta's own process to its send stage
+# over each (the owner, 2026-09-25: configured traffic and its usage): R1 to
+# P1 and P1 to S1 are configured and used, P1's own process to its send stage
 # is configured and has carried nothing. The rate is the rise per second since
 # the roll's publication before this one.
 [[topology.links]]
-id = "handoff/alpha/receive/beta/process"
-from = "node/alpha/receive"
-to = "node/beta/process"
+id = "handoff/R1/receive/P1/process"
+from = "node/R1/receive"
+to = "node/P1/process"
 pattern = "send-receive"
 origin = "both"
 protocol = "handoff"
@@ -302,12 +304,12 @@ rate = 1.5
 latency_ms = 0.0
 progress = 0.0
 attempts = 0
-evidence = "6 handoffs alpha to beta; worst leaf at either end: 3/3 rounds passed"
+evidence = "6 handoffs R1 to P1; worst leaf at either end: 3/3 rounds passed"
 
 [[topology.links]]
-id = "handoff/beta/process/beta/send"
-from = "node/beta/process"
-to = "node/beta/send"
+id = "handoff/P1/process/P1/send"
+from = "node/P1/process"
+to = "node/P1/send"
 pattern = "send-receive"
 origin = "configured"
 protocol = "handoff"
@@ -317,12 +319,12 @@ rate = 0.0
 latency_ms = 0.0
 progress = 0.0
 attempts = 0
-evidence = "configured beta to beta; no handoff observed yet; worst leaf at either end: 3/3 rounds passed"
+evidence = "configured P1 to P1; no handoff observed yet; worst leaf at either end: 3/3 rounds passed"
 
 [[topology.links]]
-id = "handoff/beta/process/gamma/send"
-from = "node/beta/process"
-to = "node/gamma/send"
+id = "handoff/P1/process/S1/send"
+from = "node/P1/process"
+to = "node/S1/send"
 pattern = "send-receive"
 origin = "both"
 protocol = "handoff"
@@ -332,12 +334,12 @@ rate = 1.5
 latency_ms = 0.0
 progress = 0.0
 attempts = 0
-evidence = "6 handoffs beta to gamma; worst leaf at either end: 2/3 rounds passed, 1 failed"
+evidence = "6 handoffs P1 to S1; worst leaf at either end: 2/3 rounds passed, 1 failed"
 
 [[topology.links]]
-id = "party/sending/party-x/alpha"
+id = "party/sending/party-x/R1"
 from = "party/sending/party-x"
-to = "node/alpha/receive"
+to = "node/R1/receive"
 pattern = "send-receive"
 origin = "both"
 protocol = "2 transports"
@@ -347,11 +349,11 @@ rate = 1.5
 latency_ms = 0.0
 progress = 0.0
 attempts = 0
-evidence = "party-x sends into alpha over 2 transports; worst over file: 3/3 rounds passed"
+evidence = "party-x sends into R1 over 2 transports; worst over file: 3/3 rounds passed"
 
 [[topology.links]]
-id = "party/receiving/party-x/beta"
-from = "node/beta/send"
+id = "party/receiving/party-x/P1"
+from = "node/P1/send"
 to = "party/receiving/party-x"
 pattern = "send-receive"
 origin = "configured"
@@ -362,11 +364,11 @@ rate = 0.0
 latency_ms = 0.0
 progress = 0.0
 attempts = 0
-evidence = "beta delivers to party-x; no transport reported yet"
+evidence = "P1 delivers to party-x; no transport reported yet"
 
 [[topology.links]]
-id = "party/receiving/party-x/gamma"
-from = "node/gamma/send"
+id = "party/receiving/party-x/S1"
+from = "node/S1/send"
 to = "party/receiving/party-x"
 pattern = "send-receive"
 origin = "both"
@@ -377,4 +379,4 @@ rate = 1.5
 latency_ms = 0.0
 progress = 0.0
 attempts = 0
-evidence = "gamma delivers to party-x over 2 transports; worst over tcp: 2/3 rounds passed, 1 failed"
+evidence = "S1 delivers to party-x over 2 transports; worst over tcp: 2/3 rounds passed, 1 failed"

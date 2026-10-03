@@ -53,9 +53,9 @@ public sealed record RunHeader(
 
     /// <summary>
     /// The one line every surface shows:
-    /// <c>RoundTrip · orders · nodes edge-01=receiving edge-02=processing+sending ·
-    /// online edge-01 · realistic</c>. A node is named with the roles it
-    /// declared, because bare names say nothing a board could be told apart
+    /// <c>RoundTrip · &lt;cluster&gt; · nodes &lt;node&gt;=receiving
+    /// &lt;other&gt;=processing+sending · online &lt;node&gt; · realistic</c>. A
+    /// node is named with the roles it declared, because bare names say nothing a board could be told apart
     /// by; a publisher that says no roles leaves the names bare, as before.
     /// The names are the operator's and mean nothing to Xmip (ADR-0053). A part
     /// the publisher left out is left out; no nodes and none online are said in

@@ -64,7 +64,8 @@ public sealed record EventSubscriptionQuery
         return ScopeTree.Parts(subscription.Node) is [var cluster, ..] ? cluster : string.Empty;
     }
 
-    /// <summary>The node's name, <c>alpha</c> of <c>xmip:///C9/node/alpha</c>.</summary>
+    /// <summary>The node's name, the segment after <c>node/</c> of
+    /// <c>xmip:///&lt;cluster&gt;/node/&lt;node&gt;</c>.</summary>
     public static string NodeName(EventSubscriptionRecord subscription)
     {
         ArgumentNullException.ThrowIfNull(subscription);
@@ -105,6 +106,41 @@ public sealed record EventSubscriptionQuery
             .. ordered
                 .ThenBy(entry => entry.Node, StringComparer.Ordinal)
                 .ThenBy(entry => entry.Id),
+        ];
+    }
+
+    /// <summary>
+    /// The read-only line every surface shows for a member not heard: the
+    /// node that does not hear it, then the runtime's own words —
+    /// <c>&lt;node&gt;: not hearing xmip:///&lt;cluster&gt;/node/&lt;member&gt; since
+    /// 2026-10-02T12:00:00Z: connection refused</c>.
+    /// </summary>
+    public static string Line(UnheardRecord unheard)
+    {
+        ArgumentNullException.ThrowIfNull(unheard);
+
+        return $"{ScopeTree.Node(unheard.By)}: {unheard.Said}";
+    }
+
+    /// <summary>
+    /// The members not heard by the nodes this query stands at — each said in
+    /// its one line, <c>not hearing &lt;node&gt; since &lt;time&gt;: &lt;why&gt;</c>
+    /// — by node, then member: what every surface shows read-only beside the
+    /// Event subscriptions, so no Event is missing silently (ADR-0065,
+    /// amendment 2026-10-02). The links themselves are never listed.
+    /// </summary>
+    public IReadOnlyList<UnheardRecord> Unheard(IEnumerable<UnheardRecord> unheard)
+    {
+        ArgumentNullException.ThrowIfNull(unheard);
+
+        return
+        [
+            .. unheard
+                .Where(gone => Location is not { Length: > 0 } location
+                    || ScopeTree.Beneath(gone.By, location)
+                    || ScopeTree.Beneath(location, gone.By))
+                .OrderBy(gone => gone.By, StringComparer.Ordinal)
+                .ThenBy(gone => gone.Node, StringComparer.Ordinal),
         ];
     }
 

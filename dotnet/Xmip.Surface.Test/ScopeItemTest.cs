@@ -13,34 +13,44 @@ public sealed class ScopeItemTest
 {
     private static readonly DateTimeOffset Now = new(2026, 9, 11, 12, 0, 0, TimeSpan.Zero);
 
+    private static readonly TestCluster Test = TestCluster.Read();
+
+    // Three nodes of the test cluster as scopes; the sending one is stressed.
+    private static readonly string Nodes = $"{Test.Scope}/node";
+    private static readonly string Receiving = $"{Nodes}/{Test.WithRole("receiving")}";
+    private static readonly string Processing = $"{Nodes}/{Test.WithRole("processing")}";
+    private static readonly string Sending = $"{Nodes}/{Test.WithRole("sending")}";
+
     private static Published Cluster()
     {
         return new Published(
-            new("xmip:///C1/node/alpha/receive/tcp", HealthState.Fine, 0, "", Now),
-            new("xmip:///C1/node/beta/receive/tcp", HealthState.Fine, 0, "", Now),
-            new("xmip:///C1/node/gamma/receive/file", HealthState.Stressed, 55, "slow", Now));
+            new($"{Receiving}/receive/tcp", HealthState.Fine, 0, "", Now),
+            new($"{Processing}/receive/tcp", HealthState.Fine, 0, "", Now),
+            new($"{Sending}/receive/file", HealthState.Stressed, 55, "slow", Now));
     }
 
     [Fact]
     public void AScopeWithNothingAtItDoesNotExist()
     {
         IOperatorSurface surface = Cluster();
+        string absent = $"{Receiving}-absent";
 
-        Assert.True(surface.Describe("xmip:///C1/node/alpha").Exists);
-        Assert.False(surface.Describe("xmip:///C1/node/delta").Exists);
-        Assert.Empty(ScopeItem.Selected(surface, ScopeSelection.Exactly("xmip:///C1/node/delta")));
+        Assert.True(surface.Describe(Receiving).Exists);
+        Assert.False(surface.Describe(absent).Exists);
+        Assert.Empty(ScopeItem.Selected(surface, ScopeSelection.Exactly(absent)));
     }
 
     [Fact]
     public void AWildcardsRowsComeWorstFirst()
     {
         IOperatorSurface surface = Cluster();
-        ScopeSelection chosen = ScopeSelection.Of(surface, "xmip:///C1/node/*", out _)!;
+        ScopeSelection chosen = ScopeSelection.Of(surface, $"{Nodes}/*", out _)!;
 
         IReadOnlyList<ScopeItem> rows = ScopeItem.Selected(surface, chosen);
 
+        // The worst first, then the equals by scope.
         Assert.Equal(
-            ["xmip:///C1/node/gamma", "xmip:///C1/node/alpha", "xmip:///C1/node/beta"],
+            [Sending, .. new[] { Receiving, Processing }.Order(StringComparer.Ordinal)],
             rows.Select(row => row.Scope));
     }
 

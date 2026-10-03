@@ -28,9 +28,11 @@ namespace Xmip.Surface;
 /// The wire is JSON, which the estate reserves for memory and the wire; the
 /// records are the binding's, so a remote answer has the shape a local one
 /// has. A host that cannot be reached is said so in <see cref="Source"/> and
-/// reports nothing, as ADR-0052 asks of every surface. The two acts cross the
-/// wire as they cross the desktop: by role, once the role gate lands
-/// (ADR-0009).
+/// reports nothing, as ADR-0052 asks of every surface. An act crosses the
+/// wire without a name: the host takes it as the identity this side's
+/// certificate proved, where the host's role may act, and refuses it in
+/// words otherwise (ADR-0009, amendment 2026-10-03). The <c>who</c> an act
+/// is given here does not leave this process.
 /// </remarks>
 public sealed class RemoteOperator : IOperatorSurface, IDisposable
 {
@@ -235,7 +237,7 @@ public sealed class RemoteOperator : IOperatorSurface, IDisposable
     public EventSubscriptionOperation Act(
         EventSubscriptionRecord subscription, EventSubscriptionAct act, string who)
     {
-        return Ask<EventSubscriptionOperation>("ActOnEventSubscription", subscription, act, who)
+        return Ask<EventSubscriptionOperation>("ActOnEventSubscription", subscription, act)
             ?? EventSubscriptionOperation.Declined(subscription, act, Source);
     }
 
@@ -249,14 +251,27 @@ public sealed class RemoteOperator : IOperatorSurface, IDisposable
     public SubscriptionOperation Act(
         SubscriptionRecord subscription, SubscriptionAct act, string who)
     {
-        return Ask<SubscriptionOperation>("ActOnSubscription", subscription, act, who)
+        return Ask<SubscriptionOperation>("ActOnSubscription", subscription, act)
             ?? SubscriptionOperation.Declined(subscription, act, Source);
+    }
+
+    /// <inheritdoc />
+    public DeadMessageList DeadMessages()
+    {
+        return Ask<DeadMessageList>("DeadMessages") ?? DeadMessageList.Empty;
+    }
+
+    /// <inheritdoc />
+    public DeadMessageOperation Act(DeadMessageRecord message, DeadMessageAct act, string who)
+    {
+        return Ask<DeadMessageOperation>("ActOnDeadMessage", message, act)
+            ?? DeadMessageOperation.Declined(message, act, Source);
     }
 
     /// <inheritdoc />
     public string PauseScope(string scope, string who)
     {
-        return Ask<string>("Pause", scope, who) ?? Source;
+        return Ask<string>("Pause", scope) ?? Source;
     }
 
     /// <inheritdoc />

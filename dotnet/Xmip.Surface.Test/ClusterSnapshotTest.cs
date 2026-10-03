@@ -13,11 +13,37 @@ public sealed class ClusterSnapshotTest
     private static readonly string Fixture =
         Path.Combine(AppContext.BaseDirectory, "Fixture", "cluster.toml");
 
+    private static readonly TestCluster Cluster = TestCluster.Read();
+
+    // The fixture's nodes, found by what each declares in the test cluster.
+    private static readonly string Receiver = Cluster.WithRole("receiving");
+    private static readonly string Processor = Cluster.WithRole("processing");
+    private static readonly string Sender = Cluster.WithRole("sending");
+
     /// <summary>The run line the cluster fixture publishes, node by node with
     /// what each was started with.</summary>
-    private const string Line =
-        "RoundTrip · C1 · nodes alpha=receiving beta=processing+sending gamma=sending · "
-        + "online alpha · realistic";
+    private static readonly string Line =
+        $"RoundTrip · {Cluster.Name} · nodes {Receiver}=receiving "
+        + $"{Processor}=processing+sending {Sender}=sending · online {Receiver} · realistic";
+
+    /// <summary>The fixture's three nodes in ordinal order, the order every
+    /// list of them is answered in.</summary>
+    private static string[] Ordered => [.. new[] { Receiver, Processor, Sender }.Order(
+        StringComparer.Ordinal)];
+
+    /// <summary>The cluster fixture is the test cluster's (ADR-0056, amendment
+    /// 2026-10-03): its <c>[run]</c> names the test cluster and only nodes the
+    /// test cluster configures, so a name a test takes from
+    /// <see cref="TestCluster"/> is one the fixture publishes.</summary>
+    [Fact]
+    public void TheClusterFixtureIsTheTestClustersOwn()
+    {
+        RunHeader run = new SnapshotOperator(Fixture).Run();
+
+        Assert.Equal(Cluster.Name, run.Cluster);
+        Assert.NotEmpty(run.Nodes);
+        Assert.All(run.Nodes, node => Assert.Contains(node, Cluster.Nodes));
+    }
 
     [Fact]
     public void TheRunSaysWhatItWasStartedWith()
@@ -25,11 +51,13 @@ public sealed class ClusterSnapshotTest
         RunHeader run = new SnapshotOperator(Fixture).Run();
 
         Assert.True(run.Said);
-        Assert.Equal("C1", run.Cluster);
+        Assert.Equal(Cluster.Name, run.Cluster);
         Assert.Equal(["RoundTrip"], run.Tests);
-        Assert.Equal(["alpha", "beta", "gamma"], run.Nodes);
-        Assert.Equal(["alpha=receiving", "beta=processing+sending", "gamma=sending"], run.Roles);
-        Assert.Equal(["alpha"], run.Online);
+        Assert.Equal([Receiver, Processor, Sender], run.Nodes);
+        Assert.Equal(
+            [$"{Receiver}=receiving", $"{Processor}=processing+sending", $"{Sender}=sending"],
+            run.Roles);
+        Assert.Equal([Receiver], run.Online);
         Assert.Equal(Line, run.Line());
     }
 
@@ -42,15 +70,15 @@ public sealed class ClusterSnapshotTest
         Assert.False(run.Said);
         Assert.Equal(string.Empty, run.Line());
         Assert.Equal(
-            "C2 · no nodes · calm",
-            new RunHeader("C2", [], [], [], [], "calm").Line());
+            $"{Cluster.Name} · no nodes · calm",
+            new RunHeader(Cluster.Name, [], [], [], [], "calm").Line());
 
         // A publisher that says no roles leaves the names bare, and the
         // line is what it always was.
         Assert.Equal(
-            "Filing · C2 · nodes node-01 · none online · harsh",
-            new RunHeader("C2", ["Filing"], ["node-01"], [], [], "harsh").Line());
-        Assert.Equal(NodeCapability.None, run.Capability("node-01"));
+            $"Filing · {Cluster.Name} · nodes {Receiver} · none online · harsh",
+            new RunHeader(Cluster.Name, ["Filing"], [Receiver], [], [], "harsh").Line());
+        Assert.Equal(NodeCapability.None, run.Capability(Receiver));
     }
 
     [Fact]
@@ -60,7 +88,7 @@ public sealed class ClusterSnapshotTest
 
         // What the node published wins, and it carries the two kinds this rig
         // does not model in the publisher's own words (ADR-0056).
-        NodeCapability received = surface.Capability("alpha");
+        NodeCapability received = surface.Capability(Receiver);
         Assert.True(received.Said);
         Assert.True(received.Published);
         Assert.Equal(["receiving"], received.Roles);
@@ -73,32 +101,31 @@ public sealed class ClusterSnapshotTest
 
         // Two roles, in declaration order however the record writes them,
         // and a role is not what the node happened to serve this round.
-        NodeCapability both = surface.Capability("beta");
+        NodeCapability both = surface.Capability(Processor);
         Assert.Equal(["processing", "sending"], both.Roles);
         Assert.Equal(["process", "send"], both.Stages);
         Assert.Equal("processing+sending", both.Words);
         Assert.Equal("processing+sending · offline", both.Line());
 
-        Assert.Equal(
-            ["alpha", "beta", "gamma"], surface.Index().Capabilities().Select(one => one.Node));
-        Assert.False(surface.Capability("omega").Said);
+        Assert.Equal(Ordered, surface.Index().Capabilities().Select(one => one.Node));
+        Assert.False(surface.Capability($"{Receiver}-absent").Said);
     }
 
     [Fact]
     public void ANodeThatPublishedNothingFallsBackToWhatTheRunStartedItWith()
     {
         RunHeader run = new SnapshotOperator(Fixture).Run();
-        NodeCapability started = run.Capability("beta");
+        NodeCapability started = run.Capability(Processor);
 
         Assert.False(started.Published);
         Assert.Equal("what the run started it with", started.Origin);
         Assert.Equal(["processing", "sending"], started.Roles);
-        Assert.True(run.Capability("alpha").Online);
-        Assert.Equal(NodeCapability.None, run.Capability("nobody"));
+        Assert.True(run.Capability(Receiver).Online);
+        Assert.Equal(NodeCapability.None, run.Capability($"{Receiver}-absent"));
 
         // A node started with no role of its own is named alone in [run], and
         // declaring none is a choice said in words, never an absence.
-        NodeCapability whole = NodeCapability.Started("n1");
+        NodeCapability whole = NodeCapability.Started(Receiver);
         Assert.True(whole.Said);
         Assert.Empty(whole.Roles);
         Assert.Equal("no role · offline", whole.Line());
@@ -106,7 +133,8 @@ public sealed class ClusterSnapshotTest
         Assert.Empty(Capability("alive").Roles);
 
         // The three stage roles together are executing, their sum, said once.
-        NodeCapability executing = NodeCapability.Started("n3=sending+receiving+processing");
+        NodeCapability executing =
+            NodeCapability.Started($"{Sender}=sending+receiving+processing");
         Assert.Equal(["executing"], executing.Roles);
         Assert.Equal(ScopeTree.Stages, executing.Stages);
         Assert.Equal(8, NodeCapability.RoleWords.Count);
@@ -124,7 +152,7 @@ public sealed class ClusterSnapshotTest
     public void ADeclarationReadsByTheNodesRuleAndARefusalIsCarriedWhole()
     {
         NodeCapability lower = Capability("declares sending,receiving; online; x");
-        Assert.Equal("n1", lower.Node);
+        Assert.Equal(Receiver, lower.Node);
         Assert.Equal(["receiving", "sending"], lower.Roles);
         Assert.True(lower.Online);
         Assert.Empty(lower.Refusal);
@@ -133,8 +161,8 @@ public sealed class ClusterSnapshotTest
         Assert.Empty(cased.Roles);
         Assert.Equal(Refusal("Sending,RECEIVING"), cased.Refusal);
         Assert.StartsWith("REFUSED:", cased.Refusal, StringComparison.Ordinal);
-        Assert.NotEmpty(NodeCapability.Started("n2=Processing").Refusal);
-        Assert.NotEmpty(NodeCapability.Started("n2=process").Refusal);
+        Assert.NotEmpty(NodeCapability.Started($"{Processor}=Processing").Refusal);
+        Assert.NotEmpty(NodeCapability.Started($"{Processor}=process").Refusal);
 
         string refused = Refusal("receiving,relay+hold");
 
@@ -143,7 +171,7 @@ public sealed class ClusterSnapshotTest
         Assert.Equal(refused, published.Refusal);
         Assert.Equal(refused, published.Line());
 
-        NodeCapability started = NodeCapability.Started("n2=receiving+relay+hold");
+        NodeCapability started = NodeCapability.Started($"{Processor}=receiving+relay+hold");
         Assert.Empty(started.Roles);
         Assert.Equal(refused, started.Refusal);
     }
@@ -157,15 +185,17 @@ public sealed class ClusterSnapshotTest
     public void OnlyTheRecordAtANodesCapabilityScopeIsItsDeclaration()
     {
         Assert.Null(NodeCapability.Declared(
-            "xmip:///C1/node/n1/receive/tcp", "declares sending; online; x"));
-        Assert.Null(NodeCapability.Declared("xmip:///capability", "declares sending; online; x"));
-        Assert.Equal("n1", Capability("declares sending; online; x").Node);
+            $"{Cluster.Scope}/node/{Receiver}/receive/tcp", "declares sending; online; x"));
+        // The root's own capability scope names no node.
+        Assert.Null(NodeCapability.Declared(
+            $"{ScopeTree.Root}capability", "declares sending; online; x"));
+        Assert.Equal(Receiver, Capability("declares sending; online; x").Node);
     }
 
-    // The capability record node n1 publishes, with this evidence.
+    // The capability record the receiving node publishes, with this evidence.
     private static NodeCapability Capability(string evidence)
     {
-        return NodeCapability.Declared("xmip:///C1/node/n1/capability", evidence)
+        return NodeCapability.Declared($"{Cluster.Scope}/node/{Receiver}/capability", evidence)
             ?? throw new InvalidOperationException("a capability record reads as one");
     }
 
@@ -187,13 +217,14 @@ public sealed class ClusterSnapshotTest
     public void TheNodesAreWhatThePublisherDrawsAsNodes()
     {
         Assert.Equal(
-            ["xmip:///C1/node/alpha", "xmip:///C1/node/beta", "xmip:///C1/node/gamma"],
+            Ordered.Select(node => $"{Cluster.Scope}/node/{node}"),
             ((IOperatorSurface)new SnapshotOperator(Fixture)).NodeScopes());
 
+        // A node's own publication: its nodes stand directly beneath the root.
         string plain = Path.Combine(AppContext.BaseDirectory, "Fixture", "snapshot.toml");
 
         Assert.Equal(
-            ["xmip:///edge-01", "xmip:///edge-02", "xmip:///lab"],
+            Ordered.Select(node => ScopeTree.Root + node),
             ((IOperatorSurface)new SnapshotOperator(plain)).NodeScopes());
     }
 
@@ -204,11 +235,11 @@ public sealed class ClusterSnapshotTest
 
         TopologyNode cluster = Assert.Single(topology.Nodes, node => node.ParentId is null);
         Assert.Equal(TopologyNodeKind.Cluster, cluster.Kind);
-        Assert.Equal("C1", cluster.Label);
-        Assert.Equal("xmip:///C1", cluster.Scope);
+        Assert.Equal(Cluster.Name, cluster.Label);
+        Assert.Equal(Cluster.Scope, cluster.Scope);
 
         Assert.Equal(
-            ["alpha", "beta", "gamma"],
+            Ordered,
             topology.Nodes
                 .Where(node => node.Kind == TopologyNodeKind.Node)
                 .Select(node => node.Label)
@@ -216,22 +247,26 @@ public sealed class ClusterSnapshotTest
         Assert.All(
             topology.Nodes.Where(node => node.Kind == TopologyNodeKind.Node),
             node => Assert.Equal("cluster", node.ParentId));
-        // beta declared process and send, and both are drawn: the send stage
-        // before it has reported on anything, as configured.
+        // The processing node declared process and send, and both are drawn:
+        // the send stage before it has reported on anything, as configured.
         Assert.Equal(
-            ["node/alpha/receive", "node/beta/process", "node/beta/send", "node/gamma/send"],
+            new[]
+            {
+                $"node/{Receiver}/receive", $"node/{Processor}/process",
+                $"node/{Processor}/send", $"node/{Sender}/send",
+            }.Order(StringComparer.Ordinal),
             topology.Nodes
                 .Where(node => node.Kind == TopologyNodeKind.Stage)
                 .Select(node => node.Id)
                 .Order(StringComparer.Ordinal));
         Assert.Equal(
             TopologyOrigin.Configured,
-            Assert.Single(topology.Nodes, node => node.Id == "node/beta/send").Origin);
+            Assert.Single(topology.Nodes, node => node.Id == $"node/{Processor}/send").Origin);
 
         TopologyNode endpoint = Assert.Single(
-            topology.Nodes, node => node.Id == "node/gamma/send/tcp");
+            topology.Nodes, node => node.Id == $"node/{Sender}/send/tcp");
         Assert.Equal(TopologyNodeKind.Endpoint, endpoint.Kind);
-        Assert.Equal("node/gamma/send", endpoint.ParentId);
+        Assert.Equal($"node/{Sender}/send", endpoint.ParentId);
         Assert.Equal(HealthState.Stressed, endpoint.State);
     }
 
@@ -242,9 +277,12 @@ public sealed class ClusterSnapshotTest
 
         Assert.Equal(
             [
-                ("node/alpha/receive", "node/beta/process", TopologyOrigin.Both, 6UL, 1.5D),
-                ("node/beta/process", "node/beta/send", TopologyOrigin.Configured, 0UL, 0D),
-                ("node/beta/process", "node/gamma/send", TopologyOrigin.Both, 6UL, 1.5D),
+                ($"node/{Receiver}/receive", $"node/{Processor}/process", TopologyOrigin.Both,
+                    6UL, 1.5D),
+                ($"node/{Processor}/process", $"node/{Processor}/send", TopologyOrigin.Configured,
+                    0UL, 0D),
+                ($"node/{Processor}/process", $"node/{Sender}/send", TopologyOrigin.Both,
+                    6UL, 1.5D),
             ],
             topology.Links
                 .Where(link => link.Protocol == "handoff")
@@ -270,7 +308,7 @@ public sealed class ClusterSnapshotTest
         {
             Assert.Equal("party-x", party.Label);
             Assert.Equal("cluster", party.ParentId);
-            Assert.Equal("xmip:///C1/party/party-x", party.Scope);
+            Assert.Equal($"{Cluster.Scope}/party/party-x", party.Scope);
         });
         Assert.Equal(
             HealthState.Holding,
@@ -278,11 +316,11 @@ public sealed class ClusterSnapshotTest
 
         Assert.Equal(
             [
-                ("party/sending/party-x", "node/alpha/receive", TopologyOrigin.Both, 6UL,
+                ("party/sending/party-x", $"node/{Receiver}/receive", TopologyOrigin.Both, 6UL,
                     HealthState.Fine),
-                ("node/beta/send", "party/receiving/party-x", TopologyOrigin.Configured, 0UL,
-                    HealthState.Working),
-                ("node/gamma/send", "party/receiving/party-x", TopologyOrigin.Both, 6UL,
+                ($"node/{Processor}/send", "party/receiving/party-x", TopologyOrigin.Configured,
+                    0UL, HealthState.Working),
+                ($"node/{Sender}/send", "party/receiving/party-x", TopologyOrigin.Both, 6UL,
                     HealthState.Stressed),
             ],
             topology.Links
@@ -297,14 +335,15 @@ public sealed class ClusterSnapshotTest
         ScopeIndex index = new SnapshotOperator(Fixture).Index();
 
         Assert.Equal(
-            ["alpha", "beta", "gamma"],
-            index.Branches("xmip:///C1/node")
+            Ordered,
+            index.Branches($"{Cluster.Scope}/node")
                 .Select(branch => branch.Label)
                 .Order(StringComparer.Ordinal));
-        Assert.Equal(["node"], index.Branches("xmip:///C1").Select(branch => branch.Label));
+        Assert.Equal(["node"], index.Branches(Cluster.Scope).Select(branch => branch.Label));
 
         // The way to the problem ends at the leaf, not at the rollup above it.
-        Assert.Equal("xmip:///C1/node/gamma/send/tcp/json", index.Worst("xmip:///C1")?.Scope);
-        Assert.Equal(HealthState.Holding, index.Rollup("xmip:///C1/node"));
+        Assert.Equal(
+            $"{Cluster.Scope}/node/{Sender}/send/tcp/json", index.Worst(Cluster.Scope)?.Scope);
+        Assert.Equal(HealthState.Holding, index.Rollup($"{Cluster.Scope}/node"));
     }
 }

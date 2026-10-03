@@ -21,8 +21,7 @@ namespace Xmip.Abi.Operate;
 /// </remarks>
 public sealed unsafe class PublicationReader
 {
-    // A reader's report is a parser's sentence; this holds any of them, and a
-    // longer one is asked for again at its length.
+    // A reader's report, a parser's sentence; a longer one is asked again.
     private const int Report = 1024;
 
     private readonly delegate* unmanaged[Cdecl]<XmipStr, nint*, byte*, nuint, nuint*, int> _read;
@@ -41,6 +40,7 @@ public sealed unsafe class PublicationReader
     private readonly delegate* unmanaged[Cdecl]<int, XmipStr*, XmipStr*, int> _patternWords;
     private readonly delegate* unmanaged[Cdecl]<nint, byte*, nuint, nuint*, int> _subscriptions;
     private readonly delegate* unmanaged[Cdecl]<nint, byte*, nuint, nuint*, int> _eventSubscriptions;
+    private readonly delegate* unmanaged[Cdecl]<nint, byte*, nuint, nuint*, int> _deadMessages;
 
     internal PublicationReader(nint library)
     {
@@ -76,6 +76,8 @@ public sealed unsafe class PublicationReader
             NativeLibrary.GetExport(library, OperateAbi.PublicationSubscriptionsEntrypoint);
         _eventSubscriptions = (delegate* unmanaged[Cdecl]<nint, byte*, nuint, nuint*, int>)
             NativeLibrary.GetExport(library, OperateAbi.PublicationEventSubscriptionsEntrypoint);
+        _deadMessages = (delegate* unmanaged[Cdecl]<nint, byte*, nuint, nuint*, int>)
+            NativeLibrary.GetExport(library, OperateAbi.PublicationDeadMessagesEntrypoint);
     }
 
     /// <summary>Section 8's symbols, each of which a runtime must export.</summary>
@@ -97,6 +99,7 @@ public sealed unsafe class PublicationReader
         OperateAbi.TopologyPatternWordsEntrypoint,
         OperateAbi.PublicationSubscriptionsEntrypoint,
         OperateAbi.PublicationEventSubscriptionsEntrypoint,
+        OperateAbi.PublicationDeadMessagesEntrypoint,
     ];
 
     /// <summary>
@@ -243,11 +246,11 @@ public sealed unsafe class PublicationReader
             head.HasTopology == 0 ? null : Topology(handle, head, source),
             head.HasRun == 0 ? null : Run(handle, head),
             SubscriptionList.Parse(Listed(_subscriptions, handle)),
-            EventSubscriptionList.Parse(Listed(_eventSubscriptions, handle)));
+            EventSubscriptionList.Parse(Listed(_eventSubscriptions, handle)),
+            DeadMessageList.Parse(Listed(_deadMessages, handle)));
     }
 
-    // Section 14's or section 11's list over this handle: JSON, asked for
-    // again at its length.
+    // Section 11's, 14's or 15's list over this handle: JSON, asked again at its length.
     private static ReadOnlyMemory<byte> Listed(
         delegate* unmanaged[Cdecl]<nint, byte*, nuint, nuint*, int> list, nint handle)
     {

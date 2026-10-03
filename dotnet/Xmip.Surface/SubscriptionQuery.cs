@@ -51,7 +51,8 @@ public sealed record SubscriptionQuery
         return ScopeTree.Parts(subscription.Node) is [var cluster, ..] ? cluster : string.Empty;
     }
 
-    /// <summary>The node's name, <c>beta</c> of <c>xmip:///CT/node/beta</c>.</summary>
+    /// <summary>The node's name, the segment after <c>node/</c> of
+    /// <c>xmip:///&lt;cluster&gt;/node/&lt;node&gt;</c>.</summary>
     public static string NodeName(SubscriptionRecord subscription)
     {
         ArgumentNullException.ThrowIfNull(subscription);

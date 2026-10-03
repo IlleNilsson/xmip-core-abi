@@ -79,6 +79,9 @@ class ThroughTheRuntime(unittest.TestCase):
         if not path or not cls.directory:
             raise unittest.SkipTest("XMIP_RUNTIME_LIBRARY and XMIP_EVENT_AUDIT_DIRECTORY")
         cls.xmip = Library(path)
+        # Being in this process admits nobody: the test hands the hub a
+        # policy allowing its Party.
+        cls.xmip.authorize_by(lambda party, *_: True if party == SUBSCRIBER else None)
 
     def subscribe(self, filter: Filter):
         return self.xmip.subscribe(PROGRAM, self.directory, SUBSCRIBER, filter)
@@ -87,6 +90,13 @@ class ThroughTheRuntime(unittest.TestCase):
         with self.assertRaises(EventError) as refused:
             self.xmip.subscribe(PROGRAM, self.directory, "")
         self.assertEqual(refused.exception.status, -1, "XMIP_E_INVALID")
+
+    def test_a_party_the_policy_does_not_allow_is_refused_and_nobody_unheard_is_said(
+            self) -> None:
+        with self.assertRaises(EventError) as refused:
+            self.xmip.subscribe(PROGRAM, self.directory, "0198a3c4-0000-7000-8000-0000000000ff")
+        self.assertEqual(refused.exception.status, -23, "XMIP_E_AUTH")
+        self.assertEqual(self.xmip.unheard(), [])
 
     def test_a_subscription_drains_what_it_matches(self) -> None:
         scope = "xmip:///python-drain/node/n1/receive/orders"

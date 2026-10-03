@@ -28,8 +28,8 @@ public static class ScopeTree
     public const string Root = "xmip:///";
 
     /// <summary>
-    /// The path segments of a scope: <c>xmip:///edge-01/receive/orders</c> is
-    /// <c>edge-01</c>, <c>receive</c>, <c>orders</c>. The scheme and the
+    /// The path segments of a scope: <c>xmip:///&lt;cluster&gt;/receive/orders</c>
+    /// is <c>&lt;cluster&gt;</c>, <c>receive</c>, <c>orders</c>. The scheme and the
     /// authority go; an omitted host means estate-wide and the tree is the
     /// path. The root has no segments, so everything is beneath it.
     /// <c>observe::Scope::segments</c>, called in the runtime.
@@ -64,8 +64,8 @@ public static class ScopeTree
     }
 
     /// <summary>The node a thing runs on: the segment after the node marker
-    /// beneath the cluster, <c>alpha</c> in
-    /// <c>xmip:///C1/node/alpha/receive/tcp</c>, or empty for a scope on no
+    /// beneath the cluster, <c>&lt;node&gt;</c> in
+    /// <c>xmip:///&lt;cluster&gt;/node/&lt;node&gt;/receive/tcp</c>, or empty for a scope on no
     /// node — the cluster is never one. <c>observe::Scope::node</c>, called in
     /// the runtime.</summary>
     public static string Node(string scope)
@@ -79,9 +79,9 @@ public static class ScopeTree
 
     /// <summary>The stage of the message path a scope sits in — <c>receive</c>,
     /// <c>process</c> or <c>send</c> — beneath its node
-    /// (<c>C1/node/alpha/receive/orders</c>) or, on no node, beneath its
-    /// cluster, where the Playground nests a test between
-    /// (<c>C1/round-trip/receive/tcp/json</c>); a cluster's or a node's name
+    /// (<c>&lt;cluster&gt;/node/&lt;node&gt;/receive/orders</c>) or, on no node,
+    /// beneath its cluster, where the Playground nests a test between
+    /// (<c>&lt;cluster&gt;/round-trip/receive/tcp/json</c>); a cluster's or a node's name
     /// is never one. Empty for a scope on no stage.
     /// <c>observe::Scope::stage</c>, called in the runtime.</summary>
     public static string Stage(string scope)
@@ -129,7 +129,7 @@ public static class ScopeTree
 
     /// <summary>What a thing is called within its cluster: every segment
     /// beneath the first, which is the cluster (<c>observe::Scope</c>: segment
-    /// 0 is the cluster and never the node) — <c>node/alpha/receive/http/json</c>,
+    /// 0 is the cluster and never the node) — <c>node/&lt;node&gt;/receive/http/json</c>,
     /// <c>filing/s3/xml</c> — or the scope itself when it is the cluster or
     /// the root. Until 2026-09-26 the first two segments were dropped, which
     /// read a scope as node, stage, name: a Playground scope lost its test
@@ -207,7 +207,7 @@ public static class ScopeTree
     /// to climb back to. The first step is the top by its own name, and
     /// <c>cluster</c> only where the top is the root itself. Until 2026-09-26
     /// every trail began at the root, so a Playground cluster's read
-    /// <c>cluster / C1 / …</c>: one cluster named twice, and a level to click
+    /// <c>cluster / &lt;cluster&gt; / …</c>: one cluster named twice, and a level to click
     /// through that held one row. A scope not beneath the top is trailed from
     /// the root.
     /// </summary>

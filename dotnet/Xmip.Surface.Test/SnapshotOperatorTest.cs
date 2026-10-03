@@ -12,6 +12,12 @@ public sealed class SnapshotOperatorTest
     private static readonly string Fixture =
         Path.Combine(AppContext.BaseDirectory, "Fixture", "snapshot.toml");
 
+    private static readonly TestCluster Cluster = TestCluster.Read();
+
+    // The fixture's nodes, beneath the root, by what each declares.
+    private static readonly string Receiver = ScopeTree.Root + Cluster.WithRole("receiving");
+    private static readonly string Sender = ScopeTree.Root + Cluster.WithRole("sending");
+
     [Fact]
     public void ANewPublicationIsReadAndAnUnchangedOneIsNotParsedAgain()
     {
@@ -23,7 +29,7 @@ public sealed class SnapshotOperatorTest
         IReadOnlyList<HealthRecord> again = surface.Health(ScopeTree.Root);
         Assert.Equal(first.Count, again.Count);
 
-        File.WriteAllText(copy, "node = \"xmip:///edge-01\"\n");
+        File.WriteAllText(copy, $"node = \"{Receiver}\"\n");
         File.SetLastWriteTimeUtc(copy, DateTime.UtcNow.AddSeconds(5));
 
         Assert.Empty(surface.Health(ScopeTree.Root));
@@ -46,7 +52,7 @@ public sealed class SnapshotOperatorTest
             Assert.Equal(before, surface.Health(ScopeTree.Root).Count);
         }
 
-        File.WriteAllText(copy, "node = \"xmip:///edge-01\"\n");
+        File.WriteAllText(copy, $"node = \"{Receiver}\"\n");
         File.SetLastWriteTimeUtc(copy, DateTime.UtcNow.AddSeconds(5));
         Assert.Empty(surface.Health(ScopeTree.Root));
         File.Delete(copy);
@@ -60,7 +66,7 @@ public sealed class SnapshotOperatorTest
         IReadOnlyList<HealthRecord> all = surface.Health(ScopeTree.Root);
 
         Assert.Equal(5, all.Count);
-        Assert.Equal("xmip:///edge-01/receive/party", all[0].Scope);
+        Assert.Equal($"{Receiver}/receive/party", all[0].Scope);
         Assert.Equal(HealthState.Done, all[0].State);
         Assert.Equal(95, all[0].Severity);
         Assert.Equal("connection refused by party-x (10.0.4.21:22)", all[0].Evidence);
@@ -72,11 +78,12 @@ public sealed class SnapshotOperatorTest
     [Fact]
     public void TheRootIsWhereThePublisherSaysItPublishesWhereAnythingIsBeneathIt()
     {
-        // This fixture names xmip:///lab and publishes beneath edge-01 and
-        // edge-02: a drill that started at lab would start on nothing.
+        // This fixture names the processing node and publishes beneath the
+        // receiving and the sending one: a drill that started at the
+        // processing node would start on nothing.
         Assert.Equal(ScopeTree.Root, new SnapshotOperator(Fixture).Root());
         Assert.Equal(
-            "xmip:///C1",
+            Cluster.Scope,
             new SnapshotOperator(Path.Combine(AppContext.BaseDirectory, "Fixture", "cluster.toml"))
                 .Root());
         Assert.Equal(
@@ -89,7 +96,7 @@ public sealed class SnapshotOperatorTest
     {
         SnapshotOperator surface = new(Fixture);
 
-        HealthRecord warehouse = surface.Health("xmip:///edge-02/send/warehouse").Single();
+        HealthRecord warehouse = surface.Health($"{Sender}/send/warehouse").Single();
 
         Assert.Equal(HealthState.Paused, warehouse.State);
     }
@@ -99,7 +106,7 @@ public sealed class SnapshotOperatorTest
     {
         SnapshotOperator surface = new(Fixture);
 
-        HealthRecord party = surface.Health("xmip:///edge-01/receive/party").Single();
+        HealthRecord party = surface.Health($"{Receiver}/receive/party").Single();
 
         Assert.Equal(
             DateTimeOffset.UnixEpoch.AddTicks(1789111684000000000 / 100), party.Observed);
@@ -110,10 +117,11 @@ public sealed class SnapshotOperatorTest
     {
         SnapshotOperator surface = new(Fixture);
 
-        IReadOnlyList<HealthRecord> edge02 = surface.Health("xmip:///edge-02");
+        IReadOnlyList<HealthRecord> sending = surface.Health(Sender);
 
-        Assert.Equal(2, edge02.Count);
-        Assert.All(edge02, record => Assert.Equal("edge-02", ScopeTree.Parts(record.Scope)[0]));
+        Assert.Equal(2, sending.Count);
+        Assert.All(sending, record => Assert.Equal(
+            ScopeTree.Parts(Sender)[0], ScopeTree.Parts(record.Scope)[0]));
     }
 
     [Fact]
@@ -124,7 +132,7 @@ public sealed class SnapshotOperatorTest
         Assert.Equal(1_284UL, surface.Measure(ScopeTree.Root, Counted.Streams)!.Value);
         Assert.Equal(2_110UL, surface.Measure(ScopeTree.Root, Counted.Journeys)!.Value);
         Assert.Null(surface.Measure(ScopeTree.Root, Counted.Messages));
-        Assert.Null(surface.Measure("xmip:///edge-01", Counted.Streams));
+        Assert.Null(surface.Measure(Receiver, Counted.Streams));
         Assert.Equal(2UL, surface.Measure(ScopeTree.Root, Counted.Retrying)!.Value);
         Assert.Equal(1UL, surface.Measure(ScopeTree.Root, Counted.Failed)!.Value);
     }

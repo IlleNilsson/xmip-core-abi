@@ -171,18 +171,18 @@ public sealed class SurfaceChoiceTest
     public void WithNothingStatedTheDocumentChooses()
     {
         IOperatorSurface chosen = SurfaceChoice.Stated(
-            SurfaceLine.None, Pairs(("Surface", "snapshot"), ("Snapshot", "c1.toml")),
+            SurfaceLine.None, Pairs(("Surface", "snapshot"), ("Snapshot", "a.toml")),
             Beside, Beside);
 
-        Assert.Equal(Path.Combine(Beside, "c1.toml"), Assert.IsType<SnapshotOperator>(chosen).Path);
+        Assert.Equal(Path.Combine(Beside, "a.toml"), Assert.IsType<SnapshotOperator>(chosen).Path);
     }
 
     [Fact]
     public void ARemoteHostStatedWinsOverEverything()
     {
         IOperatorSurface chosen = SurfaceChoice.Stated(
-            new SurfaceLine("http://elsewhere:5087", "C2.toml", "mine.dll"),
-            Pairs(("Surface", "snapshot"), ("Snapshot", "c1.toml")),
+            new SurfaceLine("http://elsewhere:5087", "b.toml", "mine.dll"),
+            Pairs(("Surface", "snapshot"), ("Snapshot", "a.toml")),
             Beside,
             Beside);
 
@@ -194,13 +194,13 @@ public sealed class SurfaceChoiceTest
     public void ASnapshotStatedNamesWhichClusterAndWinsOverARuntime()
     {
         IOperatorSurface chosen = SurfaceChoice.Stated(
-            new SurfaceLine(Snapshot: "C2-snapshot.toml", Runtime: "mine.dll"),
-            Pairs(("Surface", "snapshot"), ("Snapshot", "c1.toml")),
+            new SurfaceLine(Snapshot: "b-snapshot.toml", Runtime: "mine.dll"),
+            Pairs(("Surface", "snapshot"), ("Snapshot", "a.toml")),
             Beside,
             Beside);
 
         Assert.Equal(
-            Path.Combine(Beside, "C2-snapshot.toml"), Assert.IsType<SnapshotOperator>(chosen).Path);
+            Path.Combine(Beside, "b-snapshot.toml"), Assert.IsType<SnapshotOperator>(chosen).Path);
     }
 
     [Fact]
@@ -208,7 +208,7 @@ public sealed class SurfaceChoiceTest
     {
         IOperatorSurface chosen = SurfaceChoice.Stated(
             new SurfaceLine(Runtime: "mine.dll"),
-            Pairs(("Surface", "snapshot"), ("Snapshot", "c1.toml")),
+            Pairs(("Surface", "snapshot"), ("Snapshot", "a.toml")),
             Beside,
             Beside);
 
@@ -234,11 +234,11 @@ public sealed class SurfaceChoiceTest
         // moves between them.
         IOperatorSurface chosen = SurfaceChoice.Stated(
             SurfaceLine.None,
-            Pairs(("Surface", "snapshot"), ("Snapshot:0", "c1.toml"), ("Snapshot:1", "c2.toml")),
+            Pairs(("Surface", "snapshot"), ("Snapshot:0", "a.toml"), ("Snapshot:1", "b.toml")),
             Beside,
             Beside);
 
-        Assert.Equal(Path.Combine(Beside, "c1.toml"), Assert.IsType<SnapshotOperator>(chosen).Path);
+        Assert.Equal(Path.Combine(Beside, "a.toml"), Assert.IsType<SnapshotOperator>(chosen).Path);
     }
 
     [Fact]

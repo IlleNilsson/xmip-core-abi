@@ -39,7 +39,7 @@ public interface IOperatorSurface
 
     /// <summary>
     /// The scope the publisher publishes at, where every drill starts: a
-    /// Playground roll's cluster, <c>xmip:///C1</c>, where the publication
+    /// Playground roll's cluster, <c>xmip:///&lt;cluster&gt;</c>, where the publication
     /// says so; the root otherwise. Until 2026-09-26 every drill started at
     /// the root, above the cluster, so the first level of every surface was
     /// one row — the cluster — and <c>xmip-cli list</c> with no scope listed
@@ -232,9 +232,10 @@ public interface IOperatorSurface
 
     /// <summary>
     /// Pause, resume or remove one Event subscription, by
-    /// <paramref name="who"/>, and say what came of it. Who may act is the
-    /// caller's to decide by role (ADR-0009); the node applies what reaches it
-    /// and audits it. The default declines: this surface reaches no hub.
+    /// <paramref name="who"/>, and say what came of it. Who may act is decided
+    /// by role (ADR-0009): by the screen in its own process, and by
+    /// <see cref="GatedOperator"/> for an act from elsewhere; the node applies
+    /// what reaches it and audits it. The default declines: this surface reaches no hub.
     /// </summary>
     public EventSubscriptionOperation Act(
         EventSubscriptionRecord subscription, EventSubscriptionAct act, string who)
@@ -257,15 +258,43 @@ public interface IOperatorSurface
     /// <summary>
     /// Pause or resume one Subscription, by <paramref name="who"/>, and say
     /// what came of it. There is no remove: a Subscription is added and
-    /// removed in the TOML configuration. Who may act is the caller's to
-    /// decide by role (ADR-0009); the node applies what reaches it and audits
-    /// it. The default declines: this surface reaches no node.
+    /// removed in the TOML configuration. Who may act is decided by role
+    /// (ADR-0009): by the screen in its own process, and by
+    /// <see cref="GatedOperator"/> for an act from elsewhere; the node applies
+    /// what reaches it and audits it. The default declines: this surface
+    /// reaches no node.
     /// </summary>
     public SubscriptionOperation Act(
         SubscriptionRecord subscription, SubscriptionAct act, string who)
     {
         return SubscriptionOperation.Declined(
             subscription, act, $"{Source} does not act on Subscriptions");
+    }
+
+    /// <summary>
+    /// What the Dead Message Queues of the nodes this surface reads keep —
+    /// each accepted Message no Subscription matched, by node and Message,
+    /// the oldest of each queue — and where a Replay is left when this
+    /// surface reads a publication (ADR-0052, amendment 2026-10-01). None
+    /// where this surface cannot list them.
+    /// </summary>
+    public DeadMessageList DeadMessages()
+    {
+        return DeadMessageList.Empty;
+    }
+
+    /// <summary>
+    /// Replay one Message from its node's Dead Message Queue, by
+    /// <paramref name="who"/>, and say what came of it. Who may act is
+    /// decided by role (ADR-0009): by the screen in its own process, and by
+    /// <see cref="GatedOperator"/> for an act from elsewhere; the node applies
+    /// what reaches it and audits it. The default declines: this surface
+    /// reaches no node.
+    /// </summary>
+    public DeadMessageOperation Act(DeadMessageRecord message, DeadMessageAct act, string who)
+    {
+        return DeadMessageOperation.Declined(
+            message, act, $"{Source} does not replay from a Dead Message Queue");
     }
 
     /// <summary>Pause everything at and beneath a scope, by <paramref name="who"/>.

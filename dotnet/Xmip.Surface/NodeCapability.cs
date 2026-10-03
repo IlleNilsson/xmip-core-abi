@@ -98,7 +98,7 @@ public sealed record NodeCapability(
     }
 
     /// <summary>One entry of <c>[run].roles</c> —
-    /// <c>edge-01=receiving+sending</c>, or a bare <c>edge-02</c> for a node
+    /// <c>&lt;node&gt;=receiving+sending</c>, or a bare <c>&lt;node&gt;</c> for a node
     /// started with no role of its own — as <c>node::Capability::from_entry</c>
     /// reads it in the runtime. Whatever the node is called is read as a name
     /// and nothing else. It says nothing of the online capability, which

@@ -36,6 +36,9 @@ public sealed class ClusterSurfaces : IDisposable
 
     private readonly bool[] hidden;
 
+    // Ends every follow this set started, when the set is disposed.
+    private readonly CancellationTokenSource following = new();
+
     private ClusterSurfaces(string[] clusters, IOperatorSurface[] surfaces)
     {
         this.clusters = clusters;
@@ -235,9 +238,47 @@ public sealed class ClusterSurfaces : IDisposable
         return -1;
     }
 
+    /// <summary>
+    /// Follow every surface held for as long as this set lives: each one's
+    /// change feed is read to its end on a thread of its own, so a surface
+    /// that reads a file reads each publication once, as it changes, and
+    /// every question a face asks of it — a view's, a chooser's naming every
+    /// cluster on every render — is answered from what was already read
+    /// (<see cref="SnapshotOperator"/>). Until 2026-10-03 a render after a
+    /// Playground tick read every changed cluster's 2 MB snapshot itself.
+    /// Returns this set.
+    /// </summary>
+    public ClusterSurfaces Follow()
+    {
+        foreach (IOperatorSurface surface in surfaces)
+        {
+            _ = Task.Run(() => Following(surface, following.Token));
+        }
+
+        return this;
+    }
+
+    private static async Task Following(IOperatorSurface surface, CancellationToken stop)
+    {
+        try
+        {
+            await foreach (SurfaceChange _ in surface.WatchAsync(stop).ConfigureAwait(false))
+            {
+                // Reading the feed is the point: the surface reads before it announces.
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Disposing the set ends its follows.
+        }
+    }
+
     /// <inheritdoc />
     public void Dispose()
     {
+        following.Cancel();
+        following.Dispose();
+
         foreach (IOperatorSurface surface in surfaces)
         {
             (surface as IDisposable)?.Dispose();

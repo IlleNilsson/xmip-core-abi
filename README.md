@@ -71,18 +71,32 @@ drill (ADR-0062, amendment 2026-09-29). Section 11 — Events, subscribed (ADR-0
 `RuntimeRules.Events` (`RuntimeEvents`): `Subscribe` returns a disposable
 `EventSubscription` drained with `Next(timeout, max)`, `Listen` calls a
 handler on the runtime's listener thread, and `Publish` hands an Event to
-every matching subscription in the process; `EventRecord`, `EventFilter`,
+every matching subscription in the process; `AuthorizeBy` hands the hub
+the program's policy of who may subscribe, asked of each attempt as an
+`EventAuthorization` and answering allow, deny or no opinion — being in the
+process admits nobody (ADR-0065, amendment 2026-09-26) — and every `EventDelivery` carries `Unheard`, the members of
+the cluster not heard now as `UnheardRecord`s, with `UnheardChanged`, a
+drain waking for that alone (amendment 2026-10-02); `Unheard()` asks the
+hub; `EventRecord`, `EventFilter`,
 `EventAction` and `EventOutcome` are the header's. What an operator lists and
 does of Event subscriptions is `RuntimeRules.EventSubscriptions`
 (`RuntimeEventSubscriptions`): `Standing`, the hub's `EventSubscriptionList`
 of `EventSubscriptionRecord`s, and `Act`, pause, resume or remove one; a
-`Publication` carries its own `EventSubscriptions` (ADR-0065, amendments
+`Publication` carries its own `EventSubscriptions`, each list with the
+members its nodes do not hear (`EventSubscriptionList.Unheard`) (ADR-0065, amendments
 2026-09-29 and 2026-09-30). Section 14 — a node's Subscriptions (ADR-0013,
 amendment 2026-09-30) — is `RuntimeRules.Subscriptions`
 (`RuntimeSubscriptions`): `Standing`, the `SubscriptionList` of
 `SubscriptionRecord`s of every node running in the process, `Act`, pause or
-resume one — there is no remove — and `Order`, an act on either noun left
+resume one — there is no remove — and `Order`, an act on any noun left
 where a publication says; a `Publication` carries its own `Subscriptions`.
+Section 15 — a node's Dead Message Queue (ADR-0052, amendment 2026-10-01) —
+is `RuntimeRules.DeadMessages` (`RuntimeDeadMessages`): `Standing`, the
+`DeadMessageList` of `DeadMessageRecord`s every node running in the process
+keeps, each with its gate verdicts, promoted properties and declines as name
+and value pairs, and `Replay`, one by its node and Message; a `Publication`
+carries its own `DeadMessages`, and a Replay over one is `Order` on the noun
+`dead-message`.
 Section 12 — the
 technologies the runtime carries and what each declares a Location may set —
 is `RuntimeRules.Catalogue` (`RuntimeCatalogue`): `TryRead` brings back the
@@ -112,7 +126,12 @@ faces over it.
   snapshot and `RemoteOperator` over a web host's surface hub on another
   machine — and `ClusterSurfaces`, the set a face holds when more than one
   cluster is published: one surface per cluster, and nothing added across them
-  (ADR-0052, amendment 2026-09-20).
+  (ADR-0052, amendment 2026-09-20). A snapshot is read once per change: a
+  followed `SnapshotOperator` reads each publication before its change feed
+  announces it, and answers every question from that reading without touching
+  the file; `SurfaceChoice.OpenAll` follows every snapshot it opens
+  (`ClusterSurfaces.Follow`), so no render reads one (ADR-0052, amendment
+  2026-10-03; `SnapshotReadCostTest` holds the bound).
 - **Subscriptions.** `IOperatorSurface.Subscriptions` lists what the nodes
   route by and `IOperatorSurface.Act` pauses or resumes one (`SubscriptionAct`,
   which holds no remove, answered as a `SubscriptionOperation`; a
@@ -127,7 +146,12 @@ faces over it.
   the nodes' hubs hold and `IOperatorSurface.Act` pauses, resumes or removes
   one (`EventSubscriptionAct`, answered as an `EventSubscriptionOperation`),
   reached the same three ways. `EventSubscriptionQuery` is their one drill,
-  pattern and order (ADR-0065, amendments 2026-09-29 and 2026-09-30).
+  pattern and order (ADR-0065, amendments 2026-09-29 and 2026-09-30), and
+  `EventSubscriptionQuery.Unheard` and `Line` the one selection and wording
+  of the members the nodes there do not hear — *R1: not hearing
+  `<node>` since `<time>`: `<why>`* — which every surface shows read-only
+  beside them (amendment 2026-10-02); the links between nodes are never
+  listed or acted on.
 - **The tree.** `ScopeTree` — the tree, its rollup and the worst leaf beneath
   a scope, over the runtime's containment, parts, stage words and order;
   `ScopeIndex`, a publication read once as that tree with every answer a
@@ -232,7 +256,15 @@ where such a host listens: plain HTTP beyond loopback and HTTPS with no
 certificate refused before anything listens, the plain loopback addresses
 answered for the host to say it binds them, and `UseXmipTls`, every HTTPS
 address presenting the host's certificate and checking a caller's; the hub
-takes no caller over TLS without one (ADR-0063 clause 1).
+takes no caller over TLS without one (ADR-0063 clause 1). Every act the hub
+serves goes through `GatedOperator` in `Xmip.Surface`, the one role check:
+taken only where the host's `RoleContext` may operate, as the subject of the
+client certificate the connection proved, else on loopback as the operating
+system user the host runs as (`GatedOperator.Proven`) — no hub method takes a
+name, and from elsewhere with no certificate no act is taken — and refused in
+words otherwise; taken or refused, audited through the host's `ProgramAudit`
+(ADR-0009, amendment 2026-10-03). `Role`, `Roles` and `RoleContext` are
+`Xmip.Surface`'s, beneath both GUIs and the relay.
 
 `dotnet/Xmip.Surface.Test` covers the tree and its index, the pattern, the
 filter and the selection, the figures and their flow, runtime discovery and
@@ -243,8 +275,12 @@ configuration verdict, the process declaration, the snapshot surface and the
 cluster set over fixtures, the remote surface against a hub on a loopback
 port — plain, and over mutual TLS with certificates a test authority issued,
 where a client certificate the host does not trust, a host certificate the
-surface does not trust and no certificate at all are each refused — and
-where a host may bind. It tests no rule the runtime owns: it proves the surface returns what
+surface does not trust and no certificate at all are each refused — the
+hub's role gate, where an Observer host refuses every act, an Operator host
+takes each as the certificate's subject or, on loopback without one, as the
+host's own user, and an act from elsewhere without one is refused, over
+the test cluster's names from `test/xmip.toml` (`TestCluster`) — and where a
+host may bind. It tests no rule the runtime owns: it proves the surface returns what
 the runtime's export returns, and those rules are tested once, where they are
 written. `dotnet test dotnet/Xmip.Surface.Test` runs them, after `cargo build`
 in xmip-core-runtime has left the library the test assemblies load.

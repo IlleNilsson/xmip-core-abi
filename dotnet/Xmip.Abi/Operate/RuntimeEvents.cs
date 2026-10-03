@@ -1,6 +1,7 @@
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Text.Json;
 using Xmip.Abi.Module;
 
 namespace Xmip.Abi.Operate;
@@ -15,7 +16,10 @@ namespace Xmip.Abi.Operate;
 /// <remarks>
 /// The hub is the process's: a subscription here hears what is published in
 /// the process that loaded the library — a node started in it, or a
-/// <see cref="Publish"/> — and nothing another process publishes. Every
+/// <see cref="Publish"/> — and, where that node is in a cluster, what every
+/// other node raises (ADR-0065, amendment 2026-10-02). Being in this process
+/// admits a subscriber to nothing: its Party is authorized by the policy the
+/// node or this program hands the hub (<see cref="AuthorizeBy"/>). Every
 /// call may be made from any thread.
 /// </remarks>
 public sealed unsafe class RuntimeEvents
@@ -36,6 +40,14 @@ public sealed unsafe class RuntimeEvents
         int> _listen;
     private readonly delegate* unmanaged[Cdecl]<nint, void> _unsubscribe;
     private readonly delegate* unmanaged[Cdecl]<XmipEvent*, nuint*, int> _publish;
+    private readonly delegate* unmanaged[Cdecl]<
+        delegate* unmanaged[Cdecl]<void*, XmipStr, XmipStr, XmipStr, XmipStr, XmipStr, int>,
+        void*, int> _authorize;
+
+    // The policy handed to the hub, kept alive while the hub may call it.
+    private static readonly GCHandle[] Policy = new GCHandle[1];
+    private readonly delegate* unmanaged[Cdecl]<nint, byte*, nuint, nuint*, int> _batchUnheard;
+    private readonly delegate* unmanaged[Cdecl]<byte*, nuint, nuint*, int> _unheard;
 
     internal RuntimeEvents(nint library)
     {
@@ -56,6 +68,14 @@ public sealed unsafe class RuntimeEvents
             NativeLibrary.GetExport(library, OperateAbi.EventUnsubscribeEntrypoint);
         _publish = (delegate* unmanaged[Cdecl]<XmipEvent*, nuint*, int>)
             NativeLibrary.GetExport(library, OperateAbi.EventPublishEntrypoint);
+        _authorize = (delegate* unmanaged[Cdecl]<
+            delegate* unmanaged[Cdecl]<void*, XmipStr, XmipStr, XmipStr, XmipStr, XmipStr, int>,
+            void*, int>)
+            NativeLibrary.GetExport(library, OperateAbi.EventAuthorizeEntrypoint);
+        _batchUnheard = (delegate* unmanaged[Cdecl]<nint, byte*, nuint, nuint*, int>)
+            NativeLibrary.GetExport(library, OperateAbi.EventBatchUnheardEntrypoint);
+        _unheard = (delegate* unmanaged[Cdecl]<byte*, nuint, nuint*, int>)
+            NativeLibrary.GetExport(library, OperateAbi.EventUnheardEntrypoint);
     }
 
     /// <summary>Section 11's symbols, which a runtime must export.</summary>
@@ -67,7 +87,50 @@ public sealed unsafe class RuntimeEvents
         OperateAbi.EventListenEntrypoint,
         OperateAbi.EventUnsubscribeEntrypoint,
         OperateAbi.EventPublishEntrypoint,
+        OperateAbi.EventAuthorizeEntrypoint,
+        OperateAbi.EventBatchUnheardEntrypoint,
+        OperateAbi.EventUnheardEntrypoint,
     ];
+
+    /// <summary>
+    /// Hand this process's hub <paramref name="decide"/> as its policy, as a
+    /// node hands its own as it starts: asked of each attempt to subscribe,
+    /// it answers allow (<see langword="true"/>), deny
+    /// (<see langword="false"/>) or no opinion (<see langword="null"/>), and
+    /// nothing having an opinion is a refusal. It replaces the policy handed
+    /// before; <see langword="null"/> hands none. Called on the subscribing
+    /// thread; an exception it throws is no opinion.
+    /// </summary>
+    public void AuthorizeBy(Func<EventAuthorization, bool?>? decide)
+    {
+        GCHandle kept = decide is null ? default : GCHandle.Alloc(decide);
+        int status = decide is null
+            ? _authorize(null, null)
+            : _authorize(&Decide, (void*)GCHandle.ToIntPtr(kept));
+
+        lock (Policy)
+        {
+            if (Policy[0].IsAllocated)
+            {
+                Policy[0].Free();
+            }
+
+            Policy[0] = kept;
+        }
+
+        Refused(status, "the policy");
+    }
+
+    /// <summary>
+    /// The members of the cluster this process's hub does not hear now: what
+    /// a listening subscription, which has no drain, asks.
+    /// </summary>
+    public IReadOnlyList<UnheardRecord> Unheard()
+    {
+        byte[] json = Written((into, cap, len) => _unheard(into, cap, len));
+        using JsonDocument read = JsonDocument.Parse(json);
+        return UnheardRecord.Read(read.RootElement.GetProperty("unheard"));
+    }
 
     /// <summary>
     /// Subscribe <paramref name="subscriber"/>, a Party's UUID, to what
@@ -228,7 +291,16 @@ public sealed unsafe class RuntimeEvents
                 copied[at] = Copy(events + at);
             }
 
-            return new EventDelivery(copied, refused);
+            nint drained = batch;
+            byte[] json = Written((into, cap, len) => _batchUnheard(drained, into, cap, len));
+            using JsonDocument read = JsonDocument.Parse(json);
+            JsonElement root = read.RootElement;
+
+            return new EventDelivery(
+                copied,
+                refused,
+                UnheardRecord.Read(root.GetProperty("unheard")),
+                root.GetProperty("changed").GetBoolean());
         }
         finally
         {
@@ -319,6 +391,38 @@ public sealed unsafe class RuntimeEvents
         return subscription;
     }
 
+    // The runtime asks this on the subscribing thread. Nothing may cross back
+    // into it: an exception is no opinion.
+    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
+    private static int Decide(
+        void* context, XmipStr party, XmipStr mechanism, XmipStr value, XmipStr scope,
+        XmipStr type)
+    {
+        if (GCHandle.FromIntPtr((nint)context).Target
+            is not Func<EventAuthorization, bool?> decide)
+        {
+            return 0;
+        }
+
+        try
+        {
+            bool? said = decide(new EventAuthorization(
+                party.Read(), mechanism.Read(), value.Read(), scope.Read(), type.Read()));
+            return said switch
+            {
+                true => 1,
+                false => -1,
+                null => 0,
+            };
+        }
+#pragma warning disable CA1031 // Whatever it is, it must not unwind into Rust.
+        catch (Exception)
+#pragma warning restore CA1031
+        {
+            return 0;
+        }
+    }
+
     // The runtime calls this on its listener thread. Nothing may cross back
     // into it: an exception is kept for the program to read.
     [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
@@ -368,6 +472,35 @@ public sealed unsafe class RuntimeEvents
             Party = raised->Party.Read(),
             Diagnostics = diagnostics,
         };
+    }
+
+    private delegate int Writer(byte* into, nuint cap, nuint* length);
+
+    // What a call that writes JSON into a buffer wrote, asked again with room
+    // where the first buffer was too small.
+    private static byte[] Written(Writer write)
+    {
+        byte[] buffer = new byte[4096];
+
+        while (true)
+        {
+            nuint length = 0;
+            int status;
+
+            fixed (byte* into = buffer)
+            {
+                status = write(into, (nuint)buffer.Length, &length);
+            }
+
+            Refused(status, "a list");
+
+            if (length <= (nuint)buffer.Length)
+            {
+                return buffer[..(int)length];
+            }
+
+            buffer = new byte[checked((int)length)];
+        }
     }
 
     // What the runtime refused, in its status's words; nothing on XMIP_OK.

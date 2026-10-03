@@ -511,6 +511,25 @@ takes orders, the file `observe::Order`'s alone. The Rust mirror is
 `.src/operate/subscription.rs`; .NET binds the first, second and fourth as
 `RuntimeSubscriptions` and the third in `PublicationReader`.
 
+Section 15 is a node's Dead Message Queue (ADR-0052, amendment 2026-10-01):
+an accepted Message that no Subscription matched is kept in the Ledger with
+its entry — its receive context, what its gates concluded, its promoted
+properties and every Subscription's reason for declining — and an Operator
+replays it once a Subscription is added or fixed. It is not a dead letter
+queue: a failed Journey never goes there. `xmip_dead_messages_v1` answers, as
+JSON in memory, what the queues of every node running in the process keep,
+the oldest hundred of each, each entry's verdicts, properties and declines
+as name and value pairs in the order written; `xmip_dead_message_replay_v1`
+replays one by its node and Message — routed against the node's
+Subscriptions of now, a Journey opened for each match and the entry taken
+out, in one write, once; a Message replayed before is said so and not
+replayed twice, and one that still matches nothing stays, refused in words;
+and `xmip_publication_dead_messages_v1` is what a read publication carries.
+A surface over a publication replays through section 14's `xmip_order_v1`,
+noun `dead-message`, act `replay`. The Rust mirror is
+`.src/operate/dead_message.rs`; .NET binds the first two as
+`RuntimeDeadMessages` and the third in `PublicationReader`.
+
 Section 9 is a program's audit record (ADR-0062): `xmip_audit_v1` hands one
 to `xmip-core-audit`, and since 2026-09-29 `xmip_audit_read_v1` answers, as
 JSON in memory, the records an audit query asks for — who (a location and

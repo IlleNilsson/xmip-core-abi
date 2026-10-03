@@ -23,6 +23,12 @@ pub const LISTEN_ENTRYPOINT: &str = "xmip_event_listen_v1";
 pub const UNSUBSCRIBE_ENTRYPOINT: &str = "xmip_event_unsubscribe_v1";
 /// `xmip_event_publish_v1`.
 pub const PUBLISH_ENTRYPOINT: &str = "xmip_event_publish_v1";
+/// `xmip_event_authorize_v1`.
+pub const AUTHORIZE_ENTRYPOINT: &str = "xmip_event_authorize_v1";
+/// `xmip_event_batch_unheard_v1`.
+pub const BATCH_UNHEARD_ENTRYPOINT: &str = "xmip_event_batch_unheard_v1";
+/// `xmip_event_unheard_v1`.
+pub const UNHEARD_ENTRYPOINT: &str = "xmip_event_unheard_v1";
 /// `xmip_event_subscriptions_v1`.
 pub const EVENT_SUBSCRIPTIONS_ENTRYPOINT: &str = "xmip_event_subscriptions_v1";
 /// `xmip_event_subscription_act_v1`.
@@ -153,6 +159,45 @@ pub type UnsubscribeFn = unsafe extern "C" fn(subscription: *mut EventSubscripti
 /// matching subscription; how many took it.
 pub type PublishFn = unsafe extern "C" fn(event: *const Event, out_delivered: *mut usize) -> i32;
 
+/// Header section 11, `XmipEventDecision`: what the hosting program's policy
+/// answers of one attempt to subscribe.
+pub mod decision {
+    pub const DENY: i32 = -1;
+    pub const NONE: i32 = 0;
+    pub const ALLOW: i32 = 1;
+}
+
+/// `XmipEventAuthorizerFn`: the hosting program's policy, asked of one
+/// attempt with the Party, mechanism and value of the accountable identity
+/// and the attempt's artifact and Contract; a decision.
+pub type Authorizer = unsafe extern "C" fn(
+    context: *mut core::ffi::c_void,
+    party: Str,
+    mechanism: Str,
+    value: Str,
+    artifact: Str,
+    contract: Str,
+) -> i32;
+
+/// `xmip_event_authorize_v1`: hand the process's hub `decide` as its policy,
+/// or none for null.
+pub type AuthorizeFn =
+    unsafe extern "C" fn(decide: Option<Authorizer>, context: *mut core::ffi::c_void) -> i32;
+
+/// `xmip_event_batch_unheard_v1`: the members of the cluster not heard when
+/// `batch` was drained, and whether that changed since the drain before,
+/// as JSON.
+pub type BatchUnheardFn = unsafe extern "C" fn(
+    batch: *const EventBatch,
+    out: *mut u8,
+    cap: usize,
+    out_len: *mut usize,
+) -> i32;
+
+/// `xmip_event_unheard_v1`: the members of the cluster this process's hub
+/// does not hear now, as JSON.
+pub type UnheardFn = unsafe extern "C" fn(out: *mut u8, cap: usize, out_len: *mut usize) -> i32;
+
 /// `xmip_event_subscriptions_v1`: this process's hub's Event subscriptions,
 /// each at `node`, as JSON.
 pub type EventSubscriptionsFn =
@@ -206,6 +251,12 @@ mod tests {
             ("XMIP_EVENT_LISTEN_ENTRYPOINT", LISTEN_ENTRYPOINT),
             ("XMIP_EVENT_UNSUBSCRIBE_ENTRYPOINT", UNSUBSCRIBE_ENTRYPOINT),
             ("XMIP_EVENT_PUBLISH_ENTRYPOINT", PUBLISH_ENTRYPOINT),
+            ("XMIP_EVENT_AUTHORIZE_ENTRYPOINT", AUTHORIZE_ENTRYPOINT),
+            (
+                "XMIP_EVENT_BATCH_UNHEARD_ENTRYPOINT",
+                BATCH_UNHEARD_ENTRYPOINT,
+            ),
+            ("XMIP_EVENT_UNHEARD_ENTRYPOINT", UNHEARD_ENTRYPOINT),
             (
                 "XMIP_EVENT_SUBSCRIPTIONS_ENTRYPOINT",
                 EVENT_SUBSCRIPTIONS_ENTRYPOINT,
@@ -242,6 +293,9 @@ mod tests {
             ("XMIP_OUTCOME_TIMEOUT", outcome::TIMEOUT),
             ("XMIP_OUTCOME_EXHAUSTED_RETRIES", outcome::EXHAUSTED_RETRIES),
             ("XMIP_OUTCOME_DISMISSAL", outcome::DISMISSAL),
+            ("XMIP_EVENT_DENY", decision::DENY),
+            ("XMIP_EVENT_NO_OPINION", decision::NONE),
+            ("XMIP_EVENT_ALLOW", decision::ALLOW),
         ] {
             assert_eq!(i64::from(value), enumerator(name), "{name}");
         }

@@ -37,7 +37,7 @@ public sealed class SurfaceFollowTest
             Assert.True(await answers.MoveNextAsync().ConfigureAwait(true));
             Assert.Equal(5, answers.Current.Count);
 
-            File.WriteAllText(copy, "node = \"xmip:///edge-01\"\n");
+            File.WriteAllText(copy, $"node = \"{TestCluster.Read().Scope}\"\n");
             File.SetLastWriteTimeUtc(copy, DateTime.UtcNow.AddSeconds(5));
 
             Assert.True(await answers.MoveNextAsync().ConfigureAwait(true));

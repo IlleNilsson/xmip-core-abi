@@ -59,6 +59,10 @@ public final class EventBindingTest {
         String directory = args[1];
         theHeaderNumbersAreTheBindings(Path.of(args[2]));
         try (Library xmip = Library.load(Path.of(args[0]))) {
+            aPartyNoPolicyAllowsIsRefused(xmip, directory);
+            // Being in this process admits nobody: the test hands the hub a
+            // policy allowing its Party.
+            xmip.authorizeBy(asked -> SUBSCRIBER.equals(asked.party()) ? Boolean.TRUE : null);
             aSubscriberIsAParty(xmip, directory);
             aSubscriptionDrainsWhatItMatches(xmip, directory);
             aDrainedEventArrivesWithinAMillisecond(xmip, directory);
@@ -122,6 +126,16 @@ public final class EventBindingTest {
         } catch (IllegalAccessException failed) {
             throw new IllegalStateException(failed);
         }
+    }
+
+    private static void aPartyNoPolicyAllowsIsRefused(Library xmip, String directory) {
+        try {
+            xmip.subscribe(PROGRAM, directory, SUBSCRIBER, Filter.any(), 0).close();
+            check(false, "a Party no policy allows is refused");
+        } catch (EventException refused) {
+            check(refused.status() == -23, "a Party no policy allows is refused: XMIP_E_AUTH");
+        }
+        check(xmip.unheard().equals("{\"unheard\":[]}"), "nobody unheard is said so");
     }
 
     private static void aSubscriberIsAParty(Library xmip, String directory) {
