@@ -13,6 +13,19 @@ public sealed class EventFeedTest
 {
     private const string Party = "0198a3c4-0000-7000-8000-000000000043";
 
+    private static readonly TestCluster Cluster = TestCluster.Read();
+
+    // Where a raised Event sits beneath its scope: the sending node's send stage.
+    private static readonly string Sent = $"/node/{Cluster.WithRole("sending")}/send/party-x";
+
+    static EventFeedTest()
+    {
+        // Being in this process admits nobody: the test hands the hub a
+        // policy allowing its Party.
+        RuntimeLibrary.Rules.Events.AuthorizeBy(
+            asked => asked.Party == Party ? true : null);
+    }
+
     private static string Scratch()
     {
         return Path.Combine(Path.GetTempPath(), $"xmip-surface-event-{Guid.NewGuid():n}");
@@ -25,7 +38,7 @@ public sealed class EventFeedTest
             Type = "se.xmip.send.test",
             Action = EventAction.Send,
             Outcome = outcome,
-            Scope = scope + "/node/n/send/party-x",
+            Scope = scope + Sent,
         };
     }
 
@@ -33,7 +46,7 @@ public sealed class EventFeedTest
     public void ASubscriptionIsDrainedAndAuditedAsTheProgram()
     {
         string directory = Scratch();
-        string scope = $"xmip:///surface-event-{Guid.NewGuid():n}";
+        string scope = $"{Cluster.Scope}/surface-event-{Guid.NewGuid():n}";
         EventFeed feed = new(new ProgramAudit("Xmip.Surface.Test", directory), Party);
 
         using (EventSubscription subscription = feed.Subscribe(new EventFilter { Scope = scope }))
@@ -44,7 +57,7 @@ public sealed class EventFeedTest
                 subscription.Next(TimeSpan.FromSeconds(2), 16).Events);
 
             Assert.Equal(EventOutcome.Rejection, heard.Outcome);
-            Assert.Equal(scope + "/node/n/send/party-x", heard.Scope);
+            Assert.Equal(scope + Sent, heard.Scope);
         }
 
         // Unsubscribing waits until every record is kept.
@@ -58,7 +71,7 @@ public sealed class EventFeedTest
     public async Task FollowingYieldsEachEventAsItArrivesAndStopsWhenCancelled()
     {
         string directory = Scratch();
-        string scope = $"xmip:///surface-follow-{Guid.NewGuid():n}";
+        string scope = $"{Cluster.Scope}/surface-follow-{Guid.NewGuid():n}";
         EventFeed feed = new(new ProgramAudit("Xmip.Surface.Test", directory), Party);
         using CancellationTokenSource stop = new();
         List<EventRecord> heard = [];

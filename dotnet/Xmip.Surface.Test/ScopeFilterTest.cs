@@ -12,12 +12,22 @@ public sealed class ScopeFilterTest
 {
     private static readonly DateTimeOffset Now = new(2026, 9, 19, 12, 0, 0, TimeSpan.Zero);
 
+    private static readonly TestCluster Cluster = TestCluster.Read();
+
+    // The test cluster's nodes by what each declares, and their scopes.
+    private static readonly string Receiver = Cluster.WithRole("receiving");
+    private static readonly string Processor = Cluster.WithRole("processing");
+    private static readonly string Sender = Cluster.WithRole("sending");
+    private static readonly string Nodes = $"{Cluster.Scope}/node";
+    private static readonly string Receiving = $"{Nodes}/{Receiver}";
+    private static readonly string Sending = $"{Nodes}/{Sender}";
+
     private static readonly HealthRecord[] Leaves =
     [
-        new("xmip:///C1/node/alpha/receive/tcp", HealthState.Fine, 0, "", Now),
-        new("xmip:///C1/node/alpha/receive/file", HealthState.Stressed, 55, "slow", Now),
-        new("xmip:///C1/node/beta/process/json", HealthState.Fine, 0, "", Now),
-        new("xmip:///C1/node/gamma/send/tcp", HealthState.Done, 90, "refused", Now),
+        new($"{Receiving}/receive/tcp", HealthState.Fine, 0, "", Now),
+        new($"{Receiving}/receive/file", HealthState.Stressed, 55, "slow", Now),
+        new($"{Nodes}/{Processor}/process/json", HealthState.Fine, 0, "", Now),
+        new($"{Sending}/send/tcp", HealthState.Done, 90, "refused", Now),
     ];
 
     private static ScopeIndex Index()
@@ -39,27 +49,27 @@ public sealed class ScopeFilterTest
     [Fact]
     public void AMatchShowsThePathDownToItAndEverythingBeneathIt()
     {
-        ScopeFilter filter = ScopeFilter.Over(Index(), "xmip:///C1/node/alpha");
+        ScopeFilter filter = ScopeFilter.Over(Index(), Receiving);
 
-        Assert.True(filter.IsMatch("xmip:///C1/node/alpha"));
-        Assert.True(filter.Shows("xmip:///C1/node/alpha"));
+        Assert.True(filter.IsMatch(Receiving));
+        Assert.True(filter.Shows(Receiving));
 
         // On the way down: without these the match could not be reached.
         Assert.True(filter.Shows(ScopeTree.Root));
-        Assert.True(filter.Shows("xmip:///C1"));
-        Assert.True(filter.Shows("xmip:///C1/node"));
+        Assert.True(filter.Shows(Cluster.Scope));
+        Assert.True(filter.Shows(Nodes));
 
         // Beneath it: a node that matched shows what it holds.
-        Assert.True(filter.Shows("xmip:///C1/node/alpha/receive/file"));
+        Assert.True(filter.Shows($"{Receiving}/receive/file"));
 
         // And nothing else.
-        Assert.False(filter.Shows("xmip:///C1/node/gamma"));
-        Assert.False(filter.Shows("xmip:///C1/node/gamma/send/tcp"));
+        Assert.False(filter.Shows(Sending));
+        Assert.False(filter.Shows($"{Sending}/send/tcp"));
 
         // A flat list asks a narrower question: what stands on the way to a
         // match is a row of the tree, and is not itself part of the answer.
-        Assert.False(filter.Holds("xmip:///C1/node"));
-        Assert.True(filter.Holds("xmip:///C1/node/alpha/receive/file"));
+        Assert.False(filter.Holds(Nodes));
+        Assert.True(filter.Holds($"{Receiving}/receive/file"));
     }
 
     [Fact]
@@ -69,7 +79,7 @@ public sealed class ScopeFilterTest
 
         Assert.Equal(1, filter.Matched);
         Assert.Equal(
-            ["xmip:///C1/node/gamma/send/tcp"],
+            [$"{Sending}/send/tcp"],
             filter.Only(Leaves).Select(record => record.Scope));
         Assert.Contains("1 of ", filter.Said, StringComparison.Ordinal);
         Assert.Contains("*/send/*", filter.Said, StringComparison.Ordinal);
@@ -83,12 +93,13 @@ public sealed class ScopeFilterTest
     [Fact]
     public void APatternThatMatchesNothingIsRefusedInWords()
     {
-        ScopeFilter filter = ScopeFilter.Over(Index(), "xmip:///C1/node/Q*");
+        string nothing = $"{Receiving}-absent*";
+        ScopeFilter filter = ScopeFilter.Over(Index(), nothing);
 
         Assert.True(filter.Filtering);
         Assert.Equal(0, filter.Matched);
         Assert.StartsWith("REFUSED", filter.Said, StringComparison.Ordinal);
-        Assert.Contains("xmip:///C1/node/Q*", filter.Said, StringComparison.Ordinal);
+        Assert.Contains(nothing, filter.Said, StringComparison.Ordinal);
         Assert.Contains("scope(s) published", filter.Said, StringComparison.Ordinal);
         Assert.Empty(filter.Only(Leaves));
     }
@@ -97,11 +108,11 @@ public sealed class ScopeFilterTest
     public void TheBranchesAViewShowsAreTheOnesOnTheWayOrBeneath()
     {
         ScopeIndex index = Index();
-        ScopeFilter filter = ScopeFilter.Over(index, "*/gamma");
-        IReadOnlyList<Branch> nodes = filter.Only(index.Branches("xmip:///C1/node"));
+        ScopeFilter filter = ScopeFilter.Over(index, $"*/{Sender}");
+        IReadOnlyList<Branch> nodes = filter.Only(index.Branches(Nodes));
 
-        Assert.Equal(["gamma"], nodes.Select(branch => branch.Label));
-        Assert.Equal(3, index.Branches("xmip:///C1/node").Count);
+        Assert.Equal([Sender], nodes.Select(branch => branch.Label));
+        Assert.Equal(3, index.Branches(Nodes).Count);
     }
 
     /// <summary>
@@ -113,9 +124,9 @@ public sealed class ScopeFilterTest
     {
         TopologySnapshot snapshot = new(
             [
-                Node("c", null, "C1", "xmip:///C1"),
-                Node("r", "c", "alpha", "xmip:///C1/node/alpha"),
-                Node("p", "c", "beta", "xmip:///C1/node/beta"),
+                Node("c", null, Cluster.Name, Cluster.Scope),
+                Node("r", "c", Receiver, Receiving),
+                Node("p", "c", Processor, $"{Nodes}/{Processor}"),
             ],
             [Link("r-p", "r", "p")],
             Now,
@@ -125,10 +136,10 @@ public sealed class ScopeFilterTest
         Assert.Equal(3, whole.Nodes.Count);
         Assert.Single(whole.Links);
 
-        TopologySnapshot narrowed = ScopeFilter.Over(Index(), "*/alpha").Only(snapshot);
+        TopologySnapshot narrowed = ScopeFilter.Over(Index(), $"*/{Receiver}").Only(snapshot);
 
-        // The cluster stands: it is the way down to alpha.
-        Assert.Equal(["C1", "alpha"], narrowed.Nodes.Select(node => node.Label));
+        // The cluster stands: it is the way down to the receiving node.
+        Assert.Equal([Cluster.Name, Receiver], narrowed.Nodes.Select(node => node.Label));
         Assert.Empty(narrowed.Links);
     }
 

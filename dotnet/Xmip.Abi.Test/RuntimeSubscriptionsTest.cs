@@ -14,7 +14,11 @@ namespace Xmip.Abi.Test;
 /// </summary>
 public sealed class RuntimeSubscriptionsTest
 {
-    private const string Node = "xmip:///CT/node/beta";
+    private static readonly TestCluster Cluster = TestCluster.Read();
+
+    // The test cluster's processing node, by what it declares.
+    private static readonly string Processor = Cluster.WithRole("processing");
+    private static readonly string Node = $"{Cluster.Scope}/node/{Processor}";
 
     private static RuntimeRules Rules => RuntimeRulesTest.Rules;
 
@@ -46,7 +50,7 @@ public sealed class RuntimeSubscriptionsTest
                 Rules.Subscriptions.Order(
                     orders, Node, "subscription", "structured", "pause", "ilian", out string file));
             Assert.True(File.Exists(file), file);
-            Assert.StartsWith(Path.Combine(orders, "beta"), file, StringComparison.Ordinal);
+            Assert.StartsWith(Path.Combine(orders, Processor), file, StringComparison.Ordinal);
             Assert.Equal(
                 XmipStatus.Ok,
                 Rules.Subscriptions.Order(
@@ -64,7 +68,7 @@ public sealed class RuntimeSubscriptionsTest
             Assert.Equal(
                 XmipStatus.Invalid,
                 Rules.Subscriptions.Order(
-                    orders, "xmip:///CT", "subscription", "structured", "pause", "ilian", out _));
+                    orders, Cluster.Scope, "subscription", "structured", "pause", "ilian", out _));
         }
         finally
         {
@@ -75,20 +79,20 @@ public sealed class RuntimeSubscriptionsTest
     [Fact]
     public void APublicationsSubscriptionsAndItsOrdersAreRead()
     {
-        const string Text =
-            "node = \"xmip:///CT\"\norders = \"shared/orders\"\n"
-            + "[[subscriptions]]\nnode = \"xmip:///CT/node/beta\"\nname = \"structured\"\n"
+        string text =
+            $"node = \"{Cluster.Scope}\"\norders = \"shared/orders\"\n"
+            + $"[[subscriptions]]\nnode = \"{Node}\"\nname = \"structured\"\n"
             + "application = \"RoundTrip\"\nfilter = \"MessageType = 'json'\"\n"
             + "destination = \"the Send Port 'RoundTripOut'\"\nstate = \"paused\"\n"
             + "by = \"ilian\"\npicked_up = 7\nheld = 5\n";
 
-        Publication read = Rules.Publications.Read(Text, out _)
+        Publication read = Rules.Publications.Read(text, out _)
             ?? throw new InvalidOperationException("no publication");
         SubscriptionRecord held = Assert.Single(read.Subscriptions.Subscriptions);
 
         Assert.Equal("shared/orders", read.Subscriptions.Orders);
         Assert.Equal(
-            ("xmip:///CT/node/beta", "structured", true, 5ul, 7ul),
+            (Node, "structured", true, 5ul, 7ul),
             (held.Node, held.Name, held.Paused, held.Held, held.PickedUp));
         Assert.Equal(("RoundTrip", "ilian"), (held.Application, held.By));
         Assert.Empty(read.EventSubscriptions.EventSubscriptions);

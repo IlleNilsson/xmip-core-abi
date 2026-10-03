@@ -96,7 +96,8 @@ public static class SurfaceChoice
     /// <summary>
     /// Every snapshot path the document names, in the order it names them:
     /// one where <c>Snapshot</c> is a path, several where it is a list —
-    /// <c>Snapshot = ["…/C1-snapshot.toml", "…/C2-snapshot.toml"]</c> in a
+    /// <c>Snapshot = ["…/&lt;cluster&gt;-snapshot.toml",
+    /// "…/&lt;other&gt;-snapshot.toml"]</c> in a
     /// document, <c>--Xmip:Snapshot:0=… --Xmip:Snapshot:1=…</c> on a line.
     /// Empty where it names none. A list wins over a path: the two sit at the
     /// same key from different sources, and a line naming two clusters must
@@ -129,7 +130,10 @@ public static class SurfaceChoice
     /// (ADR-0052, amendment 2026-09-20). A snapshot surface over a list of
     /// paths is one surface per path; every other choice is the one surface
     /// <see cref="Open"/> returns, held as a set of one, so a face reads the
-    /// same shape whatever it was given.
+    /// same shape whatever it was given. Snapshots are followed for as long
+    /// as the set lives (<see cref="ClusterSurfaces.Follow"/>): a face names
+    /// every cluster on every render, and each publication is read once as it
+    /// changes rather than by whichever render asks first.
     /// </summary>
     /// <exception cref="InvalidOperationException">What <see cref="Open"/>
     /// refuses, or two paths publishing one cluster.</exception>
@@ -139,10 +143,14 @@ public static class SurfaceChoice
 
         IReadOnlyList<string> paths = Listed(configuration);
 
-        return paths.Count > 0
-            ? ClusterSurfaces.Over(
-                paths.Select(path => new SnapshotOperator(TomlDocument.Resolve(path, basePath))))
-            : ClusterSurfaces.Over(Open(configuration, basePath));
+        return paths.Count == 0
+            ? ClusterSurfaces.Over(Open(configuration, basePath))
+            : ClusterSurfaces.Over(paths.Select(Snapshot)).Follow();
+
+        SnapshotOperator Snapshot(string path)
+        {
+            return new SnapshotOperator(TomlDocument.Resolve(path, basePath));
+        }
     }
 
     /// <summary>

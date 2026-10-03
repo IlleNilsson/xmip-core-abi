@@ -1,15 +1,25 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Xmip.Surface.Relay;
 
 /// <summary>How a web host serves its surface: one call to register, one to map.</summary>
 public static class SurfaceRelayExtensions
 {
-    /// <summary>SignalR and the relay that pushes the host's change feed.</summary>
+    /// <summary>
+    /// SignalR and the relay that pushes the host's change feed. The hub acts
+    /// by the host's <see cref="RoleContext"/> — the one the host registered,
+    /// else the role <see cref="RoleContext.Assigned"/> reads from its
+    /// configuration — and audits every act through the host's
+    /// <see cref="ProgramAudit"/>, which the host registers (ADR-0062).
+    /// </summary>
     public static IServiceCollection AddXmipSurfaceRelay(this IServiceCollection services)
     {
+        services.TryAddSingleton(provider => new RoleContext(
+            RoleContext.Assigned(provider.GetRequiredService<IConfiguration>())));
         services.AddSignalR();
         services.AddHostedService<SurfaceRelay>();
 

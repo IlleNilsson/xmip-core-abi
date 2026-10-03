@@ -11,6 +11,11 @@ public sealed class EnglishTest
 {
     private static readonly DateTimeOffset Now = new(2026, 9, 11, 12, 0, 0, TimeSpan.Zero);
 
+    private static readonly TestCluster Cluster = TestCluster.Read();
+
+    // A node of the test cluster as a scope beneath its cluster.
+    private static readonly string Node = Cluster.NodeScope(0);
+
     /// <summary>A mood's word and color name are <c>observe::Health</c>'s,
     /// tested there; the surface says what the runtime's export says, and
     /// only a value the runtime does not define is its own to word.</summary>
@@ -35,8 +40,8 @@ public sealed class EnglishTest
     [Fact]
     public void TheRollupSaysNothingRecordedForNothing()
     {
-        HealthRecord fine = new("xmip:///n/send/a", HealthState.Fine, 0, "", Now);
-        HealthRecord done = new("xmip:///n/send/b", HealthState.Done, 9, "", Now);
+        HealthRecord fine = new($"{Node}/send/a", HealthState.Fine, 0, "", Now);
+        HealthRecord done = new($"{Node}/send/b", HealthState.Done, 9, "", Now);
 
         Assert.Equal("nothing recorded", English.Rollup([]));
         Assert.Equal("fine", English.Rollup([fine]));
@@ -76,48 +81,48 @@ public sealed class EnglishTest
     public void NothingAtAScopeNamesWhereItLooked()
     {
         Assert.Equal(
-            "Nothing at xmip:///C1 (SNAPSHOT — a file).",
-            English.NothingAt("xmip:///C1", "SNAPSHOT — a file"));
+            $"Nothing at {Cluster.Scope} (SNAPSHOT — a file).",
+            English.NothingAt(Cluster.Scope, "SNAPSHOT — a file"));
     }
 
     [Fact]
     public void StartingSaysWhatTheRuntimeAnswered()
     {
-        Assert.Equal("started n.toml", English.Started("n.toml", XmipStatus.Ok));
+        Assert.Equal("started xmip.toml", English.Started("xmip.toml", XmipStatus.Ok));
         Assert.Contains(
             OperateAbi.StartEntrypoint,
-            English.Started("n.toml", XmipStatus.Unsupported),
+            English.Started("xmip.toml", XmipStatus.Unsupported),
             StringComparison.Ordinal);
         Assert.StartsWith(
-            "n.toml refused: ",
-            English.Started("n.toml", XmipStatus.Invalid),
+            "xmip.toml refused: ",
+            English.Started("xmip.toml", XmipStatus.Invalid),
             StringComparison.Ordinal);
     }
 
     [Fact]
     public void ValidatingListsTheProblems()
     {
-        Assert.Equal("n.toml is valid", English.Validated("n.toml", new(XmipStatus.Ok, [])));
+        Assert.Equal("xmip.toml is valid", English.Validated("xmip.toml", new(XmipStatus.Ok, [])));
         Assert.Equal(
-            "n.toml is invalid: no name; no cluster",
-            English.Validated("n.toml", new(XmipStatus.Invalid, ["no name", "no cluster"])));
+            "xmip.toml is invalid: no name; no cluster",
+            English.Validated("xmip.toml", new(XmipStatus.Invalid, ["no name", "no cluster"])));
         Assert.Equal(
-            $"n.toml is invalid: {XmipStatus.Io.Explain()}",
-            English.Validated("n.toml", new(XmipStatus.Io, [])));
+            $"xmip.toml is invalid: {XmipStatus.Io.Explain()}",
+            English.Validated("xmip.toml", new(XmipStatus.Io, [])));
     }
 
     [Fact]
     public void PausingAndResumingSayTheScope()
     {
-        Assert.Equal("paused xmip:///n", English.Paused("xmip:///n", XmipStatus.Ok));
+        Assert.Equal($"paused {Node}", English.Paused(Node, XmipStatus.Ok));
         Assert.StartsWith(
-            "nothing to pause at xmip:///n",
-            English.Paused("xmip:///n", XmipStatus.NotFound),
+            $"nothing to pause at {Node}",
+            English.Paused(Node, XmipStatus.NotFound),
             StringComparison.Ordinal);
-        Assert.Equal("resumed xmip:///n", English.Resumed("xmip:///n", XmipStatus.Ok));
+        Assert.Equal($"resumed {Node}", English.Resumed(Node, XmipStatus.Ok));
         Assert.StartsWith(
-            "nothing to resume at xmip:///n",
-            English.Resumed("xmip:///n", XmipStatus.NotFound),
+            $"nothing to resume at {Node}",
+            English.Resumed(Node, XmipStatus.NotFound),
             StringComparison.Ordinal);
     }
 

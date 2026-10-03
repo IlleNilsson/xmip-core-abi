@@ -1,6 +1,5 @@
 using System.Runtime.CompilerServices;
 using System.Threading.Channels;
-using Xmip.Abi.Module;
 using Xmip.Abi.Operate;
 
 namespace Xmip.Surface;
@@ -23,18 +22,24 @@ namespace Xmip.Surface;
 /// problem 25). A read-only surface: it reports what was published and never
 /// acts on it, so <see cref="PauseScope"/> and <see cref="ResumeScope"/>
 /// decline. ADR-0027, ADR-0028.
+///
+/// A followed surface is told, it does not ask (ADR-0052, amendment
+/// 2026-09-15): while anything follows <see cref="WatchAsync"/>, the follow
+/// reads each publication once, before announcing it and off whoever renders,
+/// and every question is answered from that reading without touching the
+/// file. Until 2026-10-03 the page rendered after each Playground tick read
+/// the 2 MB snapshot itself (867 ms, measured 2026-10-02).
 /// </remarks>
 public sealed class SnapshotOperator(string path) : IOperatorSurface
 {
     private readonly Lock gate = new();
-
-    private Reading? cached;
-
+    private volatile Reading? cached;
     private DateTime cachedWrite;
-
     private long cachedLength;
-
     private ulong revision;
+
+    // How many follows are reading this publication as it changes.
+    private int following;
 
     /// <summary>The snapshot file this surface reads.</summary>
     public string Path { get; } = path;
@@ -82,8 +87,8 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
     }
 
     /// <inheritdoc cref="IOperatorSurface.Root" />
-    /// <remarks>The document's <c>node</c>, <c>xmip:///A1</c> for a Playground
-    /// roll named A1, where a record is published beneath it; the root when
+    /// <remarks>The document's <c>node</c>, <c>xmip:///&lt;cluster&gt;</c> for a
+    /// Playground roll of that cluster, where a record is published beneath it; the root when
     /// it names none, or names a scope nothing is published at — a drill
     /// cannot start where there is nothing to drill.</remarks>
     public string Root()
@@ -122,31 +127,35 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
                 | NotifyFilters.CreationTime,
         };
 
-        void Signal(object sender, FileSystemEventArgs arguments)
+        // Any notice is a reason to look again; a watcher whose buffer
+        // overflowed has lost notices, which is one too.
+        void Signal(object sender, EventArgs arguments)
         {
             changed.Writer.TryWrite(true);
         }
 
-        void Renamed(object sender, RenamedEventArgs arguments)
-        {
-            changed.Writer.TryWrite(true);
-        }
-
-        FileSystemEventHandler signal = Signal;
-        RenamedEventHandler renamed = Renamed;
-        watcher.Changed += signal;
-        watcher.Created += signal;
-        watcher.Deleted += signal;
-        watcher.Renamed += renamed;
+        watcher.Changed += Signal;
+        watcher.Created += Signal;
+        watcher.Deleted += Signal;
+        watcher.Renamed += Signal;
+        watcher.Error += Signal;
         watcher.EnableRaisingEvents = true;
 
-        // Attach before announcing the current view. A replacement racing the
-        // first read is then either already visible or queued as a change.
-        yield return SurfaceChange.Initial(Source);
+        // Attach before reading the current view. A replacement racing that
+        // read is then either already read or queued as a change.
+        Refresh(out bool current);
+        if (!current)
+        {
+            changed.Writer.TryWrite(true);
+        }
+
+        Interlocked.Increment(ref following);
         ulong announced = 0;
 
         try
         {
+            yield return SurfaceChange.Initial(Source);
+
             await foreach (bool notice in changed.Reader.ReadAllAsync(stop).ConfigureAwait(false))
             {
                 _ = notice;
@@ -158,12 +167,24 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
                 {
                 }
 
+                // Read here, on the follow, so whoever the announcement wakes
+                // finds the publication read. A read that met the publisher
+                // mid-replace is tried again rather than left stale.
+                Refresh(out current);
+
+                if (!current)
+                {
+                    changed.Writer.TryWrite(true);
+                    continue;
+                }
+
                 yield return new SurfaceChange(
                     ++announced, SurfaceChangeKind.All, DateTimeOffset.UtcNow, Source);
             }
         }
         finally
         {
+            Interlocked.Decrement(ref following);
             changed.Writer.TryComplete();
         }
     }
@@ -185,26 +206,12 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
     {
         ArgumentNullException.ThrowIfNull(subscription);
 
-        string orders = Read().EventSubscriptions.Orders;
-        if (orders.Length == 0)
-        {
-            return EventSubscriptionOperation.Declined(
-                subscription, act,
-                "a snapshot is a record of what was published, and its publisher takes no orders");
-        }
-
-        XmipStatus status = RuntimeLibrary.Rules.Subscriptions.Order(
-            orders, subscription.Node, "event-subscription",
+        (bool left, string said) = SnapshotOrder.Leave(
+            Read().EventSubscriptions.Orders, subscription.Node, "event-subscription",
             subscription.Id.ToString(System.Globalization.CultureInfo.InvariantCulture),
-            EventSubscriptionOperation.Word(act), who, out string said);
+            EventSubscriptionOperation.Word(act), who, $"Event subscription {subscription.Id}");
 
-        return new EventSubscriptionOperation(
-            subscription.Node, subscription.Id, act, status == XmipStatus.Ok,
-            status == XmipStatus.Ok
-                ? $"{EventSubscriptionOperation.Word(act)} of Event subscription "
-                  + $"{subscription.Id} left for {ScopeTree.Node(subscription.Node)} to take "
-                  + "at its next look"
-                : said);
+        return new EventSubscriptionOperation(subscription.Node, subscription.Id, act, left, said);
     }
 
     /// <inheritdoc />
@@ -224,24 +231,34 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
     {
         ArgumentNullException.ThrowIfNull(subscription);
 
-        string orders = Read().Subscriptions.Orders;
-        if (orders.Length == 0)
-        {
-            return SubscriptionOperation.Declined(
-                subscription, act,
-                "a snapshot is a record of what was published, and its publisher takes no orders");
-        }
+        (bool left, string said) = SnapshotOrder.Leave(
+            Read().Subscriptions.Orders, subscription.Node, "subscription", subscription.Name,
+            SubscriptionOperation.Word(act), who, $"Subscription '{subscription.Name}'");
 
-        XmipStatus status = RuntimeLibrary.Rules.Subscriptions.Order(
-            orders, subscription.Node, "subscription", subscription.Name,
-            SubscriptionOperation.Word(act), who, out string said);
+        return new SubscriptionOperation(subscription.Node, subscription.Name, act, left, said);
+    }
 
-        return new SubscriptionOperation(
-            subscription.Node, subscription.Name, act, status == XmipStatus.Ok,
-            status == XmipStatus.Ok
-                ? $"{SubscriptionOperation.Word(act)} of Subscription '{subscription.Name}' left "
-                  + $"for {ScopeTree.Node(subscription.Node)} to take at its next look"
-                : said);
+    /// <inheritdoc />
+    public DeadMessageList DeadMessages()
+    {
+        return Read().DeadMessages;
+    }
+
+    /// <inheritdoc cref="IOperatorSurface.Act(DeadMessageRecord, DeadMessageAct, string)" />
+    /// <remarks>A snapshot touches no node. Where its publication says where
+    /// its publisher takes orders, the Replay is left there for the node whose
+    /// queue keeps the Message, which takes it at its next look and publishes
+    /// what came of it (<c>observe::Order</c>, ADR-0052, amendment
+    /// 2026-10-01); where it says nowhere, the act is declined.</remarks>
+    public DeadMessageOperation Act(DeadMessageRecord message, DeadMessageAct act, string who)
+    {
+        ArgumentNullException.ThrowIfNull(message);
+
+        (bool left, string said) = SnapshotOrder.Leave(
+            Read().DeadMessages.Orders, message.Node, DeadMessageOperation.Noun, message.Message,
+            DeadMessageOperation.Word(act), who, $"Message {message.Message}");
+
+        return new DeadMessageOperation(message.Node, message.Message, act, left, said);
     }
 
     /// <inheritdoc />
@@ -270,7 +287,8 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
         RunHeader Run,
         string Root,
         SubscriptionList Subscriptions,
-        EventSubscriptionList EventSubscriptions)
+        EventSubscriptionList EventSubscriptions,
+        DeadMessageList DeadMessages)
     {
         public static Reading Nothing(string source)
         {
@@ -280,44 +298,49 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
                 RunHeader.None,
                 ScopeTree.Root,
                 SubscriptionList.Empty,
-                EventSubscriptionList.Empty);
+                EventSubscriptionList.Empty,
+                DeadMessageList.Empty);
         }
     }
 
+    // A follow's last reading while one follows; the file as it is otherwise.
     private Reading Read()
     {
-        // Parsed once per publication, not once per query: a board asks
-        // several times per render, every second, and a Playground snapshot
-        // is eleven thousand records. The file's write time and length say
-        // whether anything changed.
+        return Volatile.Read(ref following) > 0 && cached is { } told ? told : Refresh(out _);
+    }
+
+    // Parsed once per publication, never per question: the file's write time
+    // and length say whether anything changed.
+    private Reading Refresh(out bool current)
+    {
         lock (gate)
         {
             FileInfo file = new(Path);
+            current = true;
 
-            if (cached is not null
+            if (cached is { } held
                 && file.Exists
                 && file.LastWriteTimeUtc == cachedWrite
                 && file.Length == cachedLength)
             {
-                return cached;
+                return held;
             }
 
             Reading? read = Parse(file);
 
-            // The publisher was replacing the file this instant. What was
-            // read last still stands, and the stamps are left alone so the
-            // next question reads again.
+            // The publisher was replacing the file this instant: what was read
+            // last stands, and the stamps stay so the next question reads again.
             if (read is null)
             {
+                current = false;
                 return cached ?? Reading.Nothing(Source);
             }
 
-            Reading fresh = read;
-            cached = fresh;
             cachedWrite = file.Exists ? file.LastWriteTimeUtc : default;
             cachedLength = file.Exists ? file.Length : 0;
+            cached = read;
 
-            return fresh;
+            return read;
         }
     }
 
@@ -369,6 +392,7 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
             RunHeader.From(read.Run),
             read.Node.Length > 0 ? read.Node : ScopeTree.Root,
             read.Subscriptions,
-            read.EventSubscriptions);
+            read.EventSubscriptions,
+            read.DeadMessages);
     }
 }

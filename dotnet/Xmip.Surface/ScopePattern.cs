@@ -24,17 +24,18 @@ namespace Xmip.Surface;
 /// <c>]</c> and <c>`</c> are literal. No scope the estate publishes carries
 /// one, and a set is the part of <c>-like</c> nobody types.</item>
 /// <item><c>*</c> crosses a <c>/</c>, as it does in <c>-like</c>, so
-/// <c>xmip:///orders/*/receive</c> reaches a stage however deep the node
+/// <c>xmip:///&lt;cluster&gt;/*/receive</c> reaches a stage however deep the node
 /// sits.</item>
 /// <item>Both sides are read as scopes first — the scheme and the authority
-/// drop away (<see cref="ScopeTree.Parts"/>) — so <c>orders/node/edge*</c> and
-/// <c>xmip:///orders/node/edge*</c> are one pattern. <c>-like</c> over the raw
-/// text would call them two.</item>
+/// drop away (<see cref="ScopeTree.Parts"/>) — so
+/// <c>&lt;cluster&gt;/node/&lt;prefix&gt;*</c> and
+/// <c>xmip:///&lt;cluster&gt;/node/&lt;prefix&gt;*</c> are one pattern.
+/// <c>-like</c> over the raw text would call them two.</item>
 /// <item>Case-insensitive and culture-invariant, which is what <c>-like</c> is
 /// by default. There is no case-sensitive form here, as there is no surface
 /// that asks for one. The <em>scheme</em> is the exception, read the one way
 /// <see cref="ScopeTree.Parts"/> reads it — lower-case <c>xmip://</c>, as every
-/// publisher writes it — so <c>XMIP:///orders</c> is a path and not a
+/// publisher writes it — so <c>XMIP:///&lt;cluster&gt;</c> is a path and not a
 /// scope.</item>
 /// </list>
 /// </remarks>

@@ -111,6 +111,7 @@ public sealed unsafe class RuntimeRules
         Processes = new RuntimeProcesses(library);
         EventSubscriptions = new RuntimeEventSubscriptions(library);
         Subscriptions = new RuntimeSubscriptions(library);
+        DeadMessages = new RuntimeDeadMessages(library);
 
         delegate* unmanaged[Cdecl]<XmipStr*, nuint, nuint*, int> words =
             (delegate* unmanaged[Cdecl]<XmipStr*, nuint, nuint*, int>)
@@ -150,9 +151,14 @@ public sealed unsafe class RuntimeRules
     public RuntimeEventSubscriptions EventSubscriptions { get; }
 
     /// <summary>Section 14: the Subscriptions of the nodes running in this
-    /// process, pause and resume on one, and an operator's order on either
+    /// process, pause and resume on one, and an operator's order on any
     /// noun (ADR-0013, amendment 2026-09-30).</summary>
     public RuntimeSubscriptions Subscriptions { get; }
+
+    /// <summary>Section 15: the Dead Message Queues of the nodes running in
+    /// this process, and Replay on one of their Messages (ADR-0052,
+    /// amendment 2026-10-01).</summary>
+    public RuntimeDeadMessages DeadMessages { get; }
 
     /// <summary>The stage words, in message-path order — the segments a
     /// scope names a stage by: <c>node::Stage::WORDS</c>, read once when the
@@ -165,8 +171,8 @@ public sealed unsafe class RuntimeRules
     public IReadOnlyList<string> RoleWords { get; }
 
     /// <summary>Section 7's, section 8's, section 9's, section 11's, section
-    /// 12's, section 13's and section 14's symbols, each of which a runtime
-    /// must export.</summary>
+    /// 12's, section 13's, section 14's and section 15's symbols, each of
+    /// which a runtime must export.</summary>
     public static IReadOnlyList<string> Entrypoints { get; } =
     [
         OperateAbi.HealthRolledEntrypoint,
@@ -183,6 +189,7 @@ public sealed unsafe class RuntimeRules
         .. RuntimeProcesses.Entrypoints,
         .. RuntimeEventSubscriptions.Entrypoints,
         .. RuntimeSubscriptions.Entrypoints,
+        .. RuntimeDeadMessages.Entrypoints,
         OperateAbi.ScopeContainsEntrypoint,
         OperateAbi.ScopeMatchesEntrypoint,
         OperateAbi.RunShownEntrypoint,
@@ -596,7 +603,7 @@ public sealed unsafe class RuntimeRules
     }
 
     /// <summary>
-    /// One entry of a run's node list — <c>edge-01=receiving+sending</c>, or a bare
+    /// One entry of a run's node list — <c>&lt;node&gt;=receiving+sending</c>, or a bare
     /// name — as <c>node::Capability::from_entry</c> reads it. A refused entry
     /// keeps its name and carries its refusal (ADR-0055).
     /// </summary>

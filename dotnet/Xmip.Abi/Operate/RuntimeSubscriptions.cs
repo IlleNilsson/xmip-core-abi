@@ -8,7 +8,8 @@ namespace Xmip.Abi.Operate;
 /// Section 14 of <c>include/xmip_operate.h</c>, crossed by P/Invoke
 /// (ADR-0013, amendment 2026-09-30): the Subscriptions of every node running
 /// in this process, pause and resume on one of them, and an operator's order
-/// — on a Subscription or an Event subscription — left for a node a surface
+/// — on a Subscription, an Event subscription or a Message in a Dead Message
+/// Queue — left for a node a surface
 /// reads through its publication. The standing, the hold, the acts, their
 /// words and audit, and the order's file are the runtime's and
 /// <c>observe</c>'s; this binds each call once and decides none of it. There
@@ -108,7 +109,8 @@ public sealed unsafe class RuntimeSubscriptions
 
     /// <summary>
     /// Leave <paramref name="act"/> on the <paramref name="noun"/> —
-    /// <c>subscription</c> or <c>event-subscription</c> — called
+    /// <c>subscription</c>, <c>event-subscription</c> or
+    /// <c>dead-message</c> (section 15) — called
     /// <paramref name="target"/> of the node at <paramref name="node"/> in
     /// <paramref name="orders"/>, the place its publication names, for the
     /// node to take at its next look. <see cref="XmipStatus.Ok"/> with the

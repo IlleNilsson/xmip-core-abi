@@ -3,21 +3,26 @@
 
 """Xmip's Events, subscribed from Python over ctypes (xmip_operate.h section 11).
 
-The runtime's library is loaded by path and its six symbols looked up once by
+The runtime's library is loaded by path and its symbols looked up once by
 the names the header gives them. Thin (ADR-0065): which Events a filter
 matches, whether a subscriber may see them, the queue and the audit are the
 runtime's. Events are copied out of the batch or callback they arrived in.
+
+Being in the process admits a subscriber to nothing: the program hands the
+hub its policy of who may subscribe (Library.authorize_by). Every drain says which members of the
+cluster are not heard now (Delivery.unheard), so nothing missing is silent.
 """
 
 from __future__ import annotations
 
 import ctypes
 import enum
+import json
 from dataclasses import dataclass, field
 
 __all__ = [
     "Action", "Delivery", "Event", "EventError", "Filter", "Library", "Outcome",
-    "Subscription", "ENTRYPOINTS",
+    "Subscription", "Unheard", "ENTRYPOINTS",
 ]
 
 #: The header's XMIP_EVENT_*_ENTRYPOINT names, by what follows XMIP_EVENT_.
@@ -28,6 +33,9 @@ ENTRYPOINTS = {
     "LISTEN": "xmip_event_listen_v1",
     "UNSUBSCRIBE": "xmip_event_unsubscribe_v1",
     "PUBLISH": "xmip_event_publish_v1",
+    "AUTHORIZE": "xmip_event_authorize_v1",
+    "BATCH_UNHEARD": "xmip_event_batch_unheard_v1",
+    "UNHEARD": "xmip_event_unheard_v1",
 }
 
 #: XMIP_OK, XMIP_E_TIMEOUT: xmip_module.h section 3.
@@ -97,11 +105,32 @@ class Filter:
 
 
 @dataclass(frozen=True)
+class Unheard:
+    """A member of the cluster a node does not hear now: its Events are not
+    among any delivered until it is heard again. said is the one line every
+    surface shows: "not hearing <node> since <time>: <why>"."""
+
+    by: str
+    node: str
+    since_unix_nanos: int
+    why: str
+    said: str
+
+
+def _unheard(listed: list) -> list[Unheard]:
+    return [Unheard(**entry) for entry in listed]
+
+
+@dataclass
 class Delivery:
-    """One drain: the Events, and how many a full queue refused since the last."""
+    """One drain: the Events, how many a full queue refused since the last,
+    who is not heard now, and whether that changed since the last drain - a
+    drain wakes for that alone, with no Event."""
 
     events: list[Event]
     refused: int
+    unheard: list[Unheard] = field(default_factory=list)
+    unheard_changed: bool = False
 
 
 class _Str(ctypes.Structure):
@@ -130,6 +159,7 @@ class _Filter(ctypes.Structure):
 
 
 _CALLBACK = ctypes.CFUNCTYPE(None, ctypes.c_void_p, ctypes.POINTER(_Event))
+_DECIDE = ctypes.CFUNCTYPE(ctypes.c_int32, ctypes.c_void_p, _Str, _Str, _Str, _Str, _Str)
 _P = ctypes.c_void_p
 _SIZE = ctypes.c_size_t
 _SIZE_P = ctypes.POINTER(ctypes.c_size_t)
@@ -144,7 +174,24 @@ _SHAPES = {
                                 _P, ctypes.POINTER(_P), _P, _SIZE, _SIZE_P]),
     "UNSUBSCRIBE": (None, [_P]),
     "PUBLISH": (ctypes.c_int32, [ctypes.POINTER(_Event), _SIZE_P]),
+    "AUTHORIZE": (ctypes.c_int32, [_P, _P]),
+    "BATCH_UNHEARD": (ctypes.c_int32, [_P, _P, _SIZE, _SIZE_P]),
+    "UNHEARD": (ctypes.c_int32, [_P, _SIZE, _SIZE_P]),
 }
+
+
+def _written(write) -> dict:
+    """What a call that writes JSON into a buffer wrote, asked again with
+    room where the first buffer was too small."""
+    size = 4096
+    while True:
+        out, length = ctypes.create_string_buffer(size), ctypes.c_size_t()
+        status = write(out, size, ctypes.byref(length))
+        if status != OK:
+            raise EventError(status)
+        if length.value <= size:
+            return json.loads(out.raw[:length.value].decode("utf-8"))
+        size = length.value
 
 
 def _text(value: _Str) -> str:
@@ -201,7 +248,9 @@ class Subscription:
             raise EventError(status)
         try:
             copied = [_copied(events[i]) for i in range(length.value)]
-            return Delivery(copied, refused.value)
+            told = _written(lambda out, size, length_: self._library._fn["BATCH_UNHEARD"](
+                batch, out, size, length_))
+            return Delivery(copied, refused.value, _unheard(told["unheard"]), told["changed"])
         finally:
             self._library._fn["BATCH_FREE"](batch)
 
@@ -248,6 +297,33 @@ class Library:
         def called(_context, event):
             callback(_copied(event.contents))
         return self._open(program, directory, subscriber, filter, capacity, _CALLBACK(called))
+
+    def authorize_by(self, decide) -> None:
+        """Hand this process's hub decide as its policy of who may subscribe:
+        decide(party, mechanism, value, scope, type) answers True (allow),
+        False (deny) or None (no opinion), and nothing having an opinion is a
+        refusal. It replaces the policy handed before; None hands none. An
+        exception it raises is no opinion."""
+        if decide is None:
+            self._decide = None
+            status = self._fn["AUTHORIZE"](None, None)
+        else:
+            def asked(_context, party, mechanism, value, scope, kind):
+                try:
+                    said = decide(_text(party), _text(mechanism), _text(value),
+                                  _text(scope), _text(kind))
+                except Exception:  # Nothing may unwind into the runtime.
+                    return 0
+                return {True: 1, False: -1}.get(said, 0)
+            self._decide = _DECIDE(asked)
+            status = self._fn["AUTHORIZE"](ctypes.cast(self._decide, _P), None)
+        if status != OK:
+            raise EventError(status)
+
+    def unheard(self) -> list[Unheard]:
+        """The members of the cluster this process's hub does not hear now:
+        what a listening subscription, which is never drained, asks."""
+        return _unheard(_written(self._fn["UNHEARD"])["unheard"])
 
     def publish(self, event: Event) -> int:
         """Hand event to every matching subscription; how many queues took it."""

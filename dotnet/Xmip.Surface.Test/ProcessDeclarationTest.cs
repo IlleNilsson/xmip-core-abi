@@ -14,7 +14,7 @@ public sealed class ProcessDeclarationTest
     public void ADeclarationStandsWhileHeldAndIsGoneWhenDisposed()
     {
         ProcessDeclaration? declared = ProcessDeclaration.Declare(
-            "xmip-surface-test", @"D:\a ""b""\C1-snapshot.toml", "test");
+            "xmip-surface-test", @"D:\a ""b""\a-snapshot.toml", "test");
 
         Assert.NotNull(declared);
 
@@ -25,7 +25,7 @@ public sealed class ProcessDeclarationTest
                 process => process.File == declared.File);
 
             Assert.Equal("xmip-surface-test", standing.Name);
-            Assert.Equal(@"D:\a ""b""\C1-snapshot.toml", standing.Location);
+            Assert.Equal(@"D:\a ""b""\a-snapshot.toml", standing.Location);
             Assert.Equal("test", standing.Purpose);
             Assert.Equal(Environment.ProcessId, standing.Pid);
         }

@@ -25,6 +25,20 @@ static void print(const char *name, XmipStr value)
     printf("  %-9s %.*s\n", name, (int)value.len, (const char *)value.ptr);
 }
 
+/* The example's policy: its own Party may subscribe; no opinion on others. */
+static int32_t allowed(void *context, XmipStr party, XmipStr mechanism, XmipStr value,
+                       XmipScope artifact, XmipStr contract)
+{
+    (void)context;
+    (void)mechanism;
+    (void)value;
+    (void)artifact;
+    (void)contract;
+    return party.len == strlen(SUBSCRIBER) && memcmp(party.ptr, SUBSCRIBER, party.len) == 0
+               ? XMIP_EVENT_ALLOW
+               : XMIP_EVENT_NO_OPINION;
+}
+
 int main(int argc, char **argv)
 {
     const char *path = argc > 1 ? argv[1] : getenv("XMIP_RUNTIME_LIBRARY");
@@ -39,6 +53,9 @@ int main(int argc, char **argv)
         fprintf(stderr, "FAILED. %s does not load or lacks the event exports.\n", path);
         return 1;
     }
+
+    /* Being in this process admits nobody: the program hands its policy. */
+    xmip.authorize(allowed, NULL);
 
     /* Failures at or beneath the example's scope; empty lists are any. */
     const int32_t failures[] = {XMIP_OUTCOME_FAILURE};

@@ -8,7 +8,7 @@ public sealed class XmipStrTest
     [Fact]
     public void PinnedTextReadsBackTheSame()
     {
-        const string text = "xmip:///edge-01/receive/orders — åäö";
+        string text = $"{TestCluster.Read().NodeScope(0)}/receive/orders — åäö";
 
         using PinnedStr pinned = XmipStr.Pin(text);
 

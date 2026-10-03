@@ -10,6 +10,9 @@ namespace Xmip.Surface.Test;
 /// </summary>
 public sealed class FiguresTest
 {
+    // A node of the test cluster, beneath the root.
+    private static readonly string Node = ScopeTree.Root + TestCluster.Read().Nodes[0];
+
     [Fact]
     public void ASumAddsWhatWasPublishedAndKeepsWhatNobodyPublishedAbsent()
     {
@@ -52,7 +55,7 @@ public sealed class FiguresTest
     {
         IOperatorSurface surface = new FakeSurface(new Dictionary<Counted, ulong>());
 
-        Figures figures = surface.Figures("xmip:///edge-01");
+        Figures figures = surface.Figures(Node);
 
         Assert.False(figures.HasValues);
         Assert.Null(figures.Observed);
@@ -64,7 +67,7 @@ public sealed class FiguresTest
         IOperatorSurface surface = new FakeSurface(
             new Dictionary<Counted, ulong> { [Counted.Streams] = 3 });
 
-        ScopeItem row = surface.Describe("xmip:///edge-01/receive/orders");
+        ScopeItem row = surface.Describe($"{Node}/receive/orders");
 
         Assert.Equal("receive/orders", row.Name);
         Assert.False(row.IsContainer);
@@ -77,13 +80,13 @@ public sealed class FiguresTest
     {
         IOperatorSurface surface = new FakeSurface(new Dictionary<Counted, ulong>());
 
-        ScopeOperation paused = surface.Control("xmip:///edge-01", ScopeAction.Pause, "test");
-        ScopeOperation resumed = surface.Control("xmip:///edge-01", ScopeAction.Resume, "test");
+        ScopeOperation paused = surface.Control(Node, ScopeAction.Pause, "test");
+        ScopeOperation resumed = surface.Control(Node, ScopeAction.Resume, "test");
 
         Assert.True(paused.Applied);
-        Assert.Equal("paused xmip:///edge-01 by test", paused.Result);
+        Assert.Equal($"paused {Node} by test", paused.Result);
         Assert.Equal(ScopeAction.Resume, resumed.Action);
-        Assert.Equal("resumed xmip:///edge-01", resumed.Result);
+        Assert.Equal($"resumed {Node}", resumed.Result);
     }
 
     private sealed class FakeSurface(IReadOnlyDictionary<Counted, ulong> values)

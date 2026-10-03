@@ -15,7 +15,11 @@ namespace Xmip.Abi.Test;
 /// </summary>
 public sealed class RuntimeEventSubscriptionsTest
 {
-    private const string Node = "xmip:///CT/node/alpha";
+    private static readonly TestCluster Cluster = TestCluster.Read();
+
+    // The test cluster's receiving and sending nodes, by what each declares.
+    private static readonly string Node = $"{Cluster.Scope}/node/{Cluster.WithRole("receiving")}";
+    private static readonly string Sending = $"{Cluster.Scope}/node/{Cluster.WithRole("sending")}";
 
     private static RuntimeRules Rules => RuntimeRulesTest.Rules;
 
@@ -57,18 +61,18 @@ public sealed class RuntimeEventSubscriptionsTest
     [Fact]
     public void APublicationsEventSubscriptionsAndItsOrdersAreRead()
     {
-        const string Text =
-            "node = \"xmip:///CT\"\norders = \"shared/orders\"\n"
-            + "[[event_subscriptions]]\nnode = \"xmip:///CT/node/gamma\"\nid = 2\n"
+        string text =
+            $"node = \"{Cluster.Scope}\"\norders = \"shared/orders\"\n"
+            + $"[[event_subscriptions]]\nnode = \"{Sending}\"\nid = 2\n"
             + "subscriber = \"operations\"\nparty = \"0199a0a0-0000-7000-8000-000000000001\"\n"
             + "action = \"every Event\"\nstate = \"paused\"\nqueued = 5\n";
 
-        Publication read = Rules.Publications.Read(Text, out _)
+        Publication read = Rules.Publications.Read(text, out _)
             ?? throw new InvalidOperationException("no publication");
         EventSubscriptionRecord held = Assert.Single(read.EventSubscriptions.EventSubscriptions);
 
         Assert.Equal("shared/orders", read.EventSubscriptions.Orders);
-        Assert.Equal(("xmip:///CT/node/gamma", 2ul, true, 5ul), (held.Node, held.Id, held.Paused, held.Queued));
+        Assert.Equal((Sending, 2ul, true, 5ul), (held.Node, held.Id, held.Paused, held.Queued));
         Assert.Equal(
             ("operations", "0199a0a0-0000-7000-8000-000000000001"), (held.Subscriber, held.Party));
     }

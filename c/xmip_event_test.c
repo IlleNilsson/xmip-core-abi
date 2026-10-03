@@ -455,6 +455,41 @@ static void a_subscriber_is_a_party(void)
     check(status == XMIP_E_MALFORMED && out == NULL, "a subscriber not a UUID is MALFORMED");
 }
 
+/* The test's policy: its own Party, and no opinion on anyone else. */
+static int32_t allowed(void *context, XmipStr party, XmipStr mechanism, XmipStr value,
+                       XmipScope artifact, XmipStr contract)
+{
+    (void)context;
+    (void)mechanism;
+    (void)value;
+    (void)artifact;
+    (void)contract;
+    return party.len == strlen(SUBSCRIBER) && memcmp(party.ptr, SUBSCRIBER, party.len) == 0
+               ? XMIP_EVENT_ALLOW
+               : XMIP_EVENT_NO_OPINION;
+}
+
+static void a_party_no_policy_allows_is_refused_then_allowed(void)
+{
+    XmipEventSubscription *out = NULL;
+    uint8_t said[256];
+    size_t said_len = 0;
+    XmipStatus status = xmip.subscribe(xmip_str(PROGRAM), xmip_str(directory),
+                                       xmip_str(SUBSCRIBER), NULL, 0, &out, said, sizeof said,
+                                       &said_len);
+    check(status == XMIP_E_AUTH && out == NULL, "a Party no policy allows is XMIP_E_AUTH");
+
+    /* Being in this process admits nobody: the program hands its policy. */
+    check(xmip.authorize(allowed, NULL) == XMIP_OK, "authorize is OK");
+
+    uint8_t listed[256];
+    size_t listed_len = 0;
+    check(xmip.unheard(listed, sizeof listed, &listed_len) == XMIP_OK
+              && listed_len == strlen("{\"unheard\":[]}")
+              && memcmp(listed, "{\"unheard\":[]}", listed_len) == 0,
+          "nobody unheard is said so");
+}
+
 int main(int argc, char **argv)
 {
     const char *path = argc > 1 ? argv[1] : getenv("XMIP_RUNTIME_LIBRARY");
@@ -467,6 +502,7 @@ int main(int argc, char **argv)
         fprintf(stderr, "FAILED. %s does not export section 11.\n", path);
         return 1;
     }
+    a_party_no_policy_allows_is_refused_then_allowed();
     a_subscriber_is_a_party();
     a_subscription_drains_what_it_matches();
     a_drained_event_arrives_within_a_millisecond();

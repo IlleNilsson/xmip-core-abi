@@ -12,19 +12,26 @@ namespace Xmip.Surface.Test;
 /// </summary>
 public sealed class EventSubscriptionSurfaceTest
 {
+    private static readonly TestCluster Cluster = TestCluster.Read();
+
+    // The test cluster's receiving and sending nodes, by what each declares.
+    private static readonly string Receiver = Cluster.WithRole("receiving");
+    private static readonly string Sender = Cluster.WithRole("sending");
+    private static readonly string Sending = $"{Cluster.Scope}/node/{Sender}";
+
     private static string Published(string orders)
     {
-        return "node = \"xmip:///CT\"\n"
+        return $"node = \"{Cluster.Scope}\"\n"
             + (orders.Length > 0 ? $"orders = '{orders}'\n" : string.Empty)
-            + Entry("alpha", 1, "every Event", "active", 3, "xmip:///CT/node/alpha")
-            + Entry("gamma", 2, "every Event ending failure", "paused", 9, "xmip:///CT/node/gamma")
-            + Entry("gamma", 4, "se.xmip.send.failure", "active", 1, "xmip:///CT");
+            + Entry(Receiver, 1, "every Event", "active", 3, $"{Cluster.Scope}/node/{Receiver}")
+            + Entry(Sender, 2, "every Event ending failure", "paused", 9, Sending)
+            + Entry(Sender, 4, "se.xmip.send.failure", "active", 1, Cluster.Scope);
     }
 
     private static string Entry(
         string node, int id, string action, string state, int queued, string scope)
     {
-        return $"[[event_subscriptions]]\nnode = \"xmip:///CT/node/{node}\"\nid = {id}\n"
+        return $"[[event_subscriptions]]\nnode = \"{Cluster.Scope}/node/{node}\"\nid = {id}\n"
             + Named(id)
             + $"party = \"0199a0a0-0000-7000-8000-00000000000{id}\"\n"
             + $"action = \"{action}\"\nscope = \"{scope}\"\n"
@@ -67,8 +74,8 @@ public sealed class EventSubscriptionSurfaceTest
             EventSubscriptionOperation resumed = surface.Act(held, EventSubscriptionAct.Resume, "ilian");
 
             Assert.True(resumed.Applied, resumed.Result);
-            Assert.Contains("left for gamma", resumed.Result, StringComparison.Ordinal);
-            Assert.Single(Directory.GetFiles(Path.Combine(orders, "gamma"), "*.toml"));
+            Assert.Contains($"left for {Sender}", resumed.Result, StringComparison.Ordinal);
+            Assert.Single(Directory.GetFiles(Path.Combine(orders, Sender), "*.toml"));
         }
         finally
         {
@@ -116,11 +123,11 @@ public sealed class EventSubscriptionSurfaceTest
             Assert.Equal([4ul, 2ul, 1ul], new EventSubscriptionQuery().Apply(all).Select(s => s.Id));
             Assert.Equal(
                 [4ul, 2ul],
-                new EventSubscriptionQuery { Location = "xmip:///CT/node/gamma" }.Apply(all)
+                new EventSubscriptionQuery { Location = Sending }.Apply(all)
                     .Select(s => s.Id));
             Assert.Equal(
                 [4ul],
-                new EventSubscriptionQuery { Location = "xmip:///CT/node/gamma", Id = 4 }.Apply(all)
+                new EventSubscriptionQuery { Location = Sending, Id = 4 }.Apply(all)
                     .Select(s => s.Id));
             Assert.Equal(
                 [2ul, 1ul, 4ul],
@@ -128,9 +135,10 @@ public sealed class EventSubscriptionSurfaceTest
                     .Select(s => s.Id));
             Assert.Equal(
                 [1ul],
-                new EventSubscriptionQuery { Pattern = "*/alpha" }.Apply(all).Select(s => s.Id));
-            Assert.Equal("CT", EventSubscriptionQuery.Cluster(all[0]));
-            Assert.Equal("alpha", EventSubscriptionQuery.NodeName(all[0]));
+                new EventSubscriptionQuery { Pattern = $"*/{Receiver}" }.Apply(all)
+                    .Select(s => s.Id));
+            Assert.Equal(Cluster.Name, EventSubscriptionQuery.Cluster(all[0]));
+            Assert.Equal(Receiver, EventSubscriptionQuery.NodeName(all[0]));
 
             ArgumentException refused = Assert.Throws<ArgumentException>(
                 () => new EventSubscriptionQuery { Sort = "mood" }.Apply(all));

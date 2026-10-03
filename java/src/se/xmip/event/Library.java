@@ -19,6 +19,7 @@ import java.lang.invoke.MethodType;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 /**
  * The runtime's library, loaded by path, and xmip_operate.h section 11's six
@@ -33,6 +34,9 @@ public final class Library implements AutoCloseable {
     public static final String LISTEN_ENTRYPOINT = "xmip_event_listen_v1";
     public static final String UNSUBSCRIBE_ENTRYPOINT = "xmip_event_unsubscribe_v1";
     public static final String PUBLISH_ENTRYPOINT = "xmip_event_publish_v1";
+    public static final String AUTHORIZE_ENTRYPOINT = "xmip_event_authorize_v1";
+    public static final String BATCH_UNHEARD_ENTRYPOINT = "xmip_event_batch_unheard_v1";
+    public static final String UNHEARD_ENTRYPOINT = "xmip_event_unheard_v1";
 
     /** {@code XMIP_OK} and {@code XMIP_E_TIMEOUT}, xmip_module.h section 3. */
     static final int OK = 0;
@@ -40,6 +44,8 @@ public final class Library implements AutoCloseable {
 
     private static final FunctionDescriptor CALLBACK =
             FunctionDescriptor.ofVoid(ADDRESS, ADDRESS);
+    private static final FunctionDescriptor DECIDE = FunctionDescriptor.of(JAVA_INT, ADDRESS,
+            Layout.STR, Layout.STR, Layout.STR, Layout.STR, Layout.STR);
 
     private final Arena loaded;
     private final Linker linker = Linker.nativeLinker();
@@ -49,6 +55,11 @@ public final class Library implements AutoCloseable {
     private final MethodHandle listen;
     private final MethodHandle unsubscribe;
     private final MethodHandle publish;
+    private final MethodHandle authorize;
+    /** The policy's upcall, alive until it is replaced. */
+    private Arena policy;
+    private final MethodHandle batchUnheard;
+    private final MethodHandle unheard;
 
     private Library(Path path) {
         loaded = Arena.ofShared();
@@ -65,6 +76,12 @@ public final class Library implements AutoCloseable {
         unsubscribe = bind(lookup, UNSUBSCRIBE_ENTRYPOINT, FunctionDescriptor.ofVoid(ADDRESS));
         publish = bind(lookup, PUBLISH_ENTRYPOINT,
                 FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS));
+        authorize = bind(lookup, AUTHORIZE_ENTRYPOINT,
+                FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS));
+        batchUnheard = bind(lookup, BATCH_UNHEARD_ENTRYPOINT,
+                FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS, JAVA_LONG, ADDRESS));
+        unheard = bind(lookup, UNHEARD_ENTRYPOINT,
+                FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_LONG, ADDRESS));
     }
 
     /** Load the runtime's library at {@code path}. */
@@ -97,6 +114,105 @@ public final class Library implements AutoCloseable {
     public EventSubscription listen(String program, String directory, String subscriber,
             Filter filter, long capacity, Consumer<Event> callback) {
         return open(program, directory, subscriber, filter, capacity, callback);
+    }
+
+    /** One attempt to subscribe, as the program's policy is asked of it. */
+    public record Asked(String party, String mechanism, String value, String scope,
+            String type) {
+    }
+
+    /**
+     * Hand this process's hub {@code decide} as its policy of who may
+     * subscribe: it answers {@code TRUE} (allow), {@code FALSE} (deny) or
+     * {@code null} (no opinion), and nothing having an opinion is a refusal.
+     * It replaces the policy handed before; {@code null} hands none. An
+     * exception it throws is no opinion.
+     */
+    public synchronized void authorizeBy(Function<Asked, Boolean> decide) {
+        Arena next = decide == null ? null : Arena.ofShared();
+        try {
+            MemorySegment stub = MemorySegment.NULL;
+            if (decide != null) {
+                MethodHandle asked = MethodHandles.lookup().findStatic(Library.class, "decided",
+                        MethodType.methodType(int.class, Function.class, MemorySegment.class,
+                                MemorySegment.class, MemorySegment.class, MemorySegment.class,
+                                MemorySegment.class, MemorySegment.class)).bindTo(decide);
+                stub = linker.upcallStub(asked, DECIDE, next);
+            }
+            int status = (int) authorize.invokeExact(stub, MemorySegment.NULL);
+            if (status != OK) {
+                throw new EventException(status, "");
+            }
+        } catch (EventException | Error failed) {
+            closeQuietly(next);
+            throw failed;
+        } catch (Throwable failed) {
+            closeQuietly(next);
+            throw new IllegalStateException(failed);
+        }
+        closeQuietly(policy);
+        policy = next;
+    }
+
+    /** The policy's upcall: one attempt, read, decided. */
+    @SuppressWarnings("unused")
+    private static int decided(Function<Asked, Boolean> decide, MemorySegment context,
+            MemorySegment party, MemorySegment mechanism, MemorySegment value,
+            MemorySegment scope, MemorySegment type) {
+        try {
+            Boolean said = decide.apply(new Asked(Layout.text(party, 0),
+                    Layout.text(mechanism, 0), Layout.text(value, 0), Layout.text(scope, 0),
+                    Layout.text(type, 0)));
+            return said == null ? 0 : said ? 1 : -1;
+        } catch (Throwable ignored) {
+            return 0;
+        }
+    }
+
+    /**
+     * The members of the cluster this process's hub does not hear now, as
+     * the header writes them: {@code {"unheard":[{"by","node",
+     * "since_unix_nanos","why","said"}]}}. What a listening subscription,
+     * which is never drained, asks.
+     */
+    public String unheard() {
+        return written((out, cap, len) -> (int) unheard.invokeExact(out, cap, len));
+    }
+
+    /** Who was not heard when {@code batch} was drained, as the header writes it. */
+    String batchUnheard(MemorySegment batch) {
+        return written((out, cap, len) -> (int) batchUnheard.invokeExact(batch, out, cap, len));
+    }
+
+    /** A call that writes JSON into a buffer. */
+    private interface Writer {
+        int write(MemorySegment out, long cap, MemorySegment len) throws Throwable;
+    }
+
+    /** What {@code writer} wrote, asked again with room where it did not fit. */
+    private static String written(Writer writer) {
+        long size = 4096;
+        while (true) {
+            try (Arena arena = Arena.ofConfined()) {
+                MemorySegment out = arena.allocate(size, 1);
+                MemorySegment len = arena.allocate(JAVA_LONG);
+                int status = writer.write(out, size, len);
+                if (status != OK) {
+                    throw new EventException(status, "");
+                }
+                long length = len.get(JAVA_LONG, 0);
+                if (length <= size) {
+                    byte[] text = new byte[(int) length];
+                    MemorySegment.copy(out, JAVA_BYTE, 0, text, 0, text.length);
+                    return new String(text, StandardCharsets.UTF_8);
+                }
+                size = length;
+            } catch (EventException | Error failed) {
+                throw failed;
+            } catch (Throwable failed) {
+                throw new IllegalStateException(failed);
+            }
+        }
     }
 
     /** Hand {@code event} to every matching subscription; how many queues took it. */

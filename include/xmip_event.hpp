@@ -117,7 +117,7 @@ struct Draft {
     std::vector<std::pair<std::string_view, std::string_view>> diagnostics;
 };
 
-// The six symbols of section 11, resolved once.
+// The symbols of section 11 a subscriber calls, resolved once.
 struct Symbols {
     XmipEventSubscribeFn subscribe = nullptr;
     XmipEventNextFn next = nullptr;
@@ -125,7 +125,29 @@ struct Symbols {
     XmipEventListenFn listen = nullptr;
     XmipEventUnsubscribeFn unsubscribe = nullptr;
     XmipEventPublishFn publish = nullptr;
+    XmipEventAuthorizeFn authorize = nullptr;
+    XmipEventBatchUnheardFn batch_unheard = nullptr;
+    XmipEventUnheardFn unheard = nullptr;
 };
+
+// What a call that writes JSON into a buffer wrote, asked again with room
+// where the first buffer was too small.
+template <typename Write> std::string written(Write write) {
+    std::string out(4096, '\0');
+    for (;;) {
+        std::size_t length = 0;
+        XmipStatus status =
+            write(reinterpret_cast<uint8_t *>(out.data()), out.size(), &length);
+        if (status != XMIP_OK) {
+            throw Error(status, "");
+        }
+        if (length <= out.size()) {
+            out.resize(length);
+            return out;
+        }
+        out.assign(length, '\0');
+    }
+}
 
 // A drained batch; frees itself, and every EventView of it with it.
 class Batch {
@@ -153,6 +175,14 @@ public:
     EventView operator[](std::size_t index) const noexcept { return EventView(events_[index]); }
     // How many Events a full queue refused since the last drain.
     uint64_t refused() const noexcept { return refused_; }
+    // Who was not heard when it was drained, as the header writes it:
+    // {"changed":..,"unheard":[{"by","node","since_unix_nanos","why","said"}]}.
+    // A member of the cluster whose Events are not among any delivered.
+    std::string unheard() const {
+        return written([this](uint8_t *out, std::size_t cap, std::size_t *length) {
+            return symbols_->batch_unheard(batch_, out, cap, length);
+        });
+    }
 
 private:
     void release() noexcept {
@@ -169,6 +199,11 @@ private:
 };
 
 using Callback = std::function<void(const EventView &)>;
+
+// The program's policy of who may subscribe: the attempt's Party, mechanism,
+// value, scope and Event type, answered with an XmipEventDecision.
+using Decide = std::function<int32_t(std::string_view, std::string_view, std::string_view,
+                                     std::string_view, std::string_view)>;
 
 // A subscription, drained or listening; unsubscribes when it goes.
 class EventSubscription {
@@ -238,6 +273,9 @@ public:
         resolve(symbols_.listen, XMIP_EVENT_LISTEN_ENTRYPOINT);
         resolve(symbols_.unsubscribe, XMIP_EVENT_UNSUBSCRIBE_ENTRYPOINT);
         resolve(symbols_.publish, XMIP_EVENT_PUBLISH_ENTRYPOINT);
+        resolve(symbols_.authorize, XMIP_EVENT_AUTHORIZE_ENTRYPOINT);
+        resolve(symbols_.batch_unheard, XMIP_EVENT_BATCH_UNHEARD_ENTRYPOINT);
+        resolve(symbols_.unheard, XMIP_EVENT_UNHEARD_ENTRYPOINT);
     }
     Library(const Library &) = delete;
     Library &operator=(const Library &) = delete;
@@ -256,6 +294,28 @@ public:
                         std::size_t capacity = 0) const {
         return open(program, directory, subscriber, filter, capacity,
                     std::make_unique<Callback>(std::move(callback)));
+    }
+
+    // Hand this process's hub the program's policy of who may subscribe:
+    // decide(party, mechanism, value, scope, type) answers XMIP_EVENT_ALLOW,
+    // XMIP_EVENT_DENY or XMIP_EVENT_NO_OPINION, and nothing having an
+    // opinion is a refusal. It replaces the policy handed before; being in
+    // the process admits nobody. The policy lives as long as this Library.
+    void authorize_by(Decide decide) {
+        auto held = std::make_unique<Decide>(std::move(decide));
+        XmipStatus status = symbols_.authorize(&Library::decided, held.get());
+        if (status != XMIP_OK) {
+            throw Error(status, "");
+        }
+        policy_ = std::move(held);
+    }
+
+    // Who this process's hub does not hear now, as the header writes it:
+    // {"unheard":[...]}. What a listening subscription asks.
+    std::string unheard() const {
+        return written([this](uint8_t *out, std::size_t cap, std::size_t *length) {
+            return symbols_.unheard(out, cap, length);
+        });
     }
 
     // Hand an Event to every matching subscription; how many queues took it.
@@ -317,6 +377,20 @@ private:
         }
     }
 
+    static int32_t decided(void *context, XmipStr party, XmipStr mechanism, XmipStr value,
+                           XmipScope scope, XmipStr type) {
+        try {
+            return (*static_cast<Decide *>(context))(view(party), view(mechanism), view(value),
+                                                     view(scope), view(type));
+        } catch (...) {
+            return XMIP_EVENT_NO_OPINION;
+        }
+    }
+
+    static std::string_view view(XmipStr text) {
+        return std::string_view(reinterpret_cast<const char *>(text.ptr), text.len);
+    }
+
     static void trampoline(void *context, const XmipEvent *event) {
         (*static_cast<Callback *>(context))(EventView(*event));
     }
@@ -352,6 +426,7 @@ private:
         return EventSubscription(&symbols_, handle, std::move(callback));
     }
 
+    std::unique_ptr<Decide> policy_;
     void *handle_ = nullptr;
     Symbols symbols_;
 };

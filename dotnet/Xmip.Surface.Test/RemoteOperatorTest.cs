@@ -1,7 +1,4 @@
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using Xmip.Surface.Relay;
 
 namespace Xmip.Surface.Test;
@@ -13,25 +10,30 @@ namespace Xmip.Surface.Test;
 /// host that is not there is said so (ADR-0052, amendment 2026-09-15). Over
 /// TLS both ends present a certificate and check the other's, and a
 /// certificate the other end's anchors do not reach is refused (ADR-0063
-/// clause 1).
+/// clause 1). What an act across the hub comes to is <see cref="SurfaceHubTest"/>'s.
 /// </summary>
 public sealed class RemoteOperatorTest
 {
+    private static readonly TestCluster Cluster = TestCluster.Read();
+
     [Fact]
     public async Task SaysWhatTheHostsRunWasStartedWith()
     {
         IOperatorSurface local = new SnapshotOperator(
             Path.Combine(AppContext.BaseDirectory, "Fixture", "cluster.toml"));
-        await using WebApplication host = await Serve(local).ConfigureAwait(true);
+        await using WebApplication host = await TestHost.Serve(local).ConfigureAwait(true);
         using RemoteOperator remote = new(new Uri(host.Urls.First()));
+        string receiver = Cluster.WithRole("receiving");
+        string processor = Cluster.WithRole("processing");
 
         Assert.True(remote.Connect(), remote.Reason);
         Assert.Equal(
-            "RoundTrip · C1 · nodes alpha=receiving beta=processing+sending gamma=sending · "
-            + "online alpha · realistic",
+            $"RoundTrip · {Cluster.Name} · nodes {receiver}=receiving "
+            + $"{processor}=processing+sending {Cluster.WithRole("sending")}=sending · "
+            + $"online {receiver} · realistic",
             remote.Run().Line());
         Assert.Equal(
-            ["processing", "sending"], ((IOperatorSurface)remote).Capability("beta").Roles);
+            ["processing", "sending"], ((IOperatorSurface)remote).Capability(processor).Roles);
         Assert.Equal(
             local.Topology().Nodes.Select(node => node.Kind),
             remote.Topology().Nodes.Select(node => node.Kind));
@@ -47,22 +49,21 @@ public sealed class RemoteOperatorTest
         try
         {
             IOperatorSurface local = new SnapshotOperator(copy);
-            await using WebApplication host = await Serve(local).ConfigureAwait(true);
+            await using WebApplication host = await TestHost.Serve(local).ConfigureAwait(true);
             using RemoteOperator remoteHost = new(new Uri(host.Urls.First()));
             IOperatorSurface remote = remoteHost;
 
             Assert.True(remoteHost.Connect(), remoteHost.Reason);
             Assert.Equal($"REMOTE — {remoteHost.Host}", remote.Source);
             Assert.Equal(local.Health(ScopeTree.Root), remote.Health(ScopeTree.Root));
+            string sending = ScopeTree.Root + Cluster.WithRole("sending");
             Assert.Equal(
-                local.Health("xmip:///edge-02").Select(record => record.Scope),
-                remote.Health("xmip:///edge-02").Select(record => record.Scope));
+                local.Health(sending).Select(record => record.Scope),
+                remote.Health(sending).Select(record => record.Scope));
             Assert.Equal(
                 local.Figures(ScopeTree.Root) with { Observed = null },
                 remote.Figures(ScopeTree.Root) with { Observed = null });
             Assert.Equal(local.Topology().Source, remote.Topology().Source);
-            Assert.Equal(local.PauseScope("xmip:///edge-01", "test"),
-                remote.PauseScope("xmip:///edge-01", "test"));
 
             using CancellationTokenSource patience = new(TimeSpan.FromSeconds(30));
             await using IAsyncEnumerator<SurfaceChange> feed =
@@ -89,84 +90,6 @@ public sealed class RemoteOperatorTest
         finally
         {
             File.Delete(copy);
-        }
-    }
-
-    [Fact]
-    public async Task ListsAndActsOnTheHostsEventSubscriptionsAsTheHostDoes()
-    {
-        string copy = Path.Combine(
-            Path.GetTempPath(), $"xmip-remote-{Guid.NewGuid():n}-snapshot.toml");
-        string orders = Path.Combine(Path.GetTempPath(), $"xmip-remote-orders-{Guid.NewGuid():n}");
-        File.WriteAllText(
-            copy,
-            $"node = \"xmip:///CT\"\norders = '{orders}'\n[[event_subscriptions]]\n"
-            + "node = \"xmip:///CT/node/alpha\"\nid = 7\nsubscriber = \"p\"\nstate = \"active\"\n");
-
-        try
-        {
-            IOperatorSurface local = new SnapshotOperator(copy);
-            await using WebApplication host = await Serve(local).ConfigureAwait(true);
-            using RemoteOperator remoteHost = new(new Uri(host.Urls.First()));
-            IOperatorSurface remote = remoteHost;
-
-            Assert.True(remoteHost.Connect(), remoteHost.Reason);
-            Abi.Operate.EventSubscriptionRecord held = Assert.Single(
-                remote.EventSubscriptions().EventSubscriptions);
-            Assert.Equal(local.EventSubscriptions().EventSubscriptions[0], held);
-
-            EventSubscriptionOperation paused = remote.Act(held, EventSubscriptionAct.Pause, "ilian");
-
-            Assert.True(paused.Applied, paused.Result);
-            Assert.Equal(EventSubscriptionAct.Pause, paused.Act);
-            Assert.Single(Directory.GetFiles(Path.Combine(orders, "alpha"), "*.toml"));
-        }
-        finally
-        {
-            File.Delete(copy);
-            if (Directory.Exists(orders))
-            {
-                Directory.Delete(orders, recursive: true);
-            }
-        }
-    }
-
-    [Fact]
-    public async Task ListsAndPausesTheHostsSubscriptionsAsTheHostDoes()
-    {
-        string copy = Path.Combine(
-            Path.GetTempPath(), $"xmip-remote-{Guid.NewGuid():n}-snapshot.toml");
-        string orders = Path.Combine(Path.GetTempPath(), $"xmip-remote-orders-{Guid.NewGuid():n}");
-        File.WriteAllText(
-            copy,
-            $"node = \"xmip:///CT\"\norders = '{orders}'\n[[subscriptions]]\n"
-            + "node = \"xmip:///CT/node/beta\"\nname = \"structured\"\nstate = \"active\"\n");
-
-        try
-        {
-            IOperatorSurface local = new SnapshotOperator(copy);
-            await using WebApplication host = await Serve(local).ConfigureAwait(true);
-            using RemoteOperator remoteHost = new(new Uri(host.Urls.First()));
-            IOperatorSurface remote = remoteHost;
-
-            Assert.True(remoteHost.Connect(), remoteHost.Reason);
-            Abi.Operate.SubscriptionRecord held = Assert.Single(
-                remote.Subscriptions().Subscriptions);
-            Assert.Equal(local.Subscriptions().Subscriptions[0], held);
-
-            SubscriptionOperation paused = remote.Act(held, SubscriptionAct.Pause, "ilian");
-
-            Assert.True(paused.Applied, paused.Result);
-            Assert.Equal(SubscriptionAct.Pause, paused.Act);
-            Assert.Single(Directory.GetFiles(Path.Combine(orders, "beta"), "*.toml"));
-        }
-        finally
-        {
-            File.Delete(copy);
-            if (Directory.Exists(orders))
-            {
-                Directory.Delete(orders, recursive: true);
-            }
         }
     }
 
@@ -199,10 +122,11 @@ public sealed class RemoteOperatorTest
         SnapshotOperator local = Fixture();
         List<string> refused = [];
         await using WebApplication host =
-            await Serve(local, Tls(authority, authority.Server()), refused.Add)
+            await TestHost.Serve(
+                    local, TestHost.Tls(authority, authority.Server()), refused.Add)
                 .ConfigureAwait(true);
         using RemoteOperator remote = new(
-            new Uri(host.Urls.First()), Tls(authority, authority.Client()));
+            new Uri(host.Urls.First()), TestHost.Tls(authority, authority.Client()));
 
         Assert.StartsWith("https://127.0.0.1:", host.Urls.First(), StringComparison.Ordinal);
         Assert.True(remote.Connect(), remote.Reason);
@@ -218,7 +142,8 @@ public sealed class RemoteOperatorTest
         SnapshotOperator local = Fixture();
         List<string> refused = [];
         await using WebApplication host =
-            await Serve(local, Tls(authority, authority.Server()), refused.Add)
+            await TestHost.Serve(
+                    local, TestHost.Tls(authority, authority.Server()), refused.Add)
                 .ConfigureAwait(true);
 
         // Trusts the host, and presents a certificate another authority issued.
@@ -237,7 +162,8 @@ public sealed class RemoteOperatorTest
         using TestAuthority stranger = new("expected");
         SnapshotOperator local = Fixture();
         await using WebApplication host =
-            await Serve(local, Tls(authority, authority.Server())).ConfigureAwait(true);
+            await TestHost.Serve(local, TestHost.Tls(authority, authority.Server()))
+                .ConfigureAwait(true);
         (string certificate, string privateKey) = authority.Client();
         using RemoteOperator remote = new(
             new Uri(host.Urls.First()),
@@ -255,7 +181,8 @@ public sealed class RemoteOperatorTest
         SnapshotOperator local = Fixture();
         List<string> refused = [];
         await using WebApplication host =
-            await Serve(local, Tls(authority, authority.Server()), refused.Add)
+            await TestHost.Serve(
+                    local, TestHost.Tls(authority, authority.Server()), refused.Add)
                 .ConfigureAwait(true);
         using RemoteOperator remote = new(
             new Uri(host.Urls.First()), SurfaceTls.Load(null, null, authority.Anchor));
@@ -279,33 +206,5 @@ public sealed class RemoteOperatorTest
     {
         return new SnapshotOperator(
             Path.Combine(AppContext.BaseDirectory, "Fixture", "snapshot.toml"));
-    }
-
-    /// <summary>What a host or a surface presents and trusts: a pair the
-    /// authority issued, and its anchor.</summary>
-    private static SurfaceTls Tls(TestAuthority authority, (string Certificate, string Key) pair)
-    {
-        return SurfaceTls.Load(pair.Certificate, pair.Key, authority.Anchor);
-    }
-
-    /// <summary>A web host over <paramref name="surface"/>, serving the hub
-    /// on a loopback port of the system's choosing: plain where
-    /// <paramref name="tls"/> is not given — loopback, the one exception —
-    /// and HTTPS with it, as the web host binds it.</summary>
-    private static async Task<WebApplication> Serve(
-        IOperatorSurface surface, SurfaceTls? tls = null, Action<string>? refused = null)
-    {
-        WebApplicationBuilder builder = WebApplication.CreateBuilder();
-        builder.WebHost.UseUrls(tls is null ? "http://127.0.0.1:0" : "https://127.0.0.1:0");
-        builder.WebHost.UseXmipTls(tls ?? SurfaceTls.None, refused);
-        builder.Logging.ClearProviders();
-        builder.Services.AddSingleton(surface);
-        builder.Services.AddXmipSurfaceRelay();
-
-        WebApplication host = builder.Build();
-        host.MapXmipSurfaceHub(refused);
-        await host.StartAsync().ConfigureAwait(false);
-
-        return host;
     }
 }

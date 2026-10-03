@@ -792,44 +792,50 @@ typedef XmipStatus (*XmipAuditReadFn)(XmipStr directory,
 #define XMIP_EVENT_SOURCE_UNREGISTERED "The Xmip event source is not registered and registering it needs elevation once (Install-XmipPrerequisite does it), so this is written under the .NET Runtime source."
 
 /* ===================================================================== */
-/* 10. An Xmip Application, read and edited for a designer               */
+/* 10. The cluster's xmip.toml, read and edited for the designer         */
 /* ===================================================================== */
 
 /*
- * A developer draws an Xmip Application's routes in VS Code (ADR-0064), and
- * the designer holds no rule: its language server asks here, and each export
- * is a thin forwarder into xmip-core-configure, where the Application, its
- * filters and its edits are read. Pure like section 7: no handle, any
- * thread, before any node. Validating an Application is xmip_validate_v1's,
- * which reads either document.
+ * A developer and an operator work on one xmip.toml per cluster, and the
+ * VS Code designer is a view of its sections, artifact by artifact
+ * (ADR-0064, amendment 2026-10-03). The designer holds no rule: its language
+ * server asks here, and each export is a thin forwarder into
+ * xmip-core-configure, where the file, its views, an Xmip Application's
+ * routes, its filters and every edit are read. Pure like section 7: no
+ * handle, any thread, before any node. Validating the file is
+ * xmip_validate_v1's, node by node.
  *
  * One shape for the four. input is the text the export reads; argument is
- * the edit xmip_application_edit_v1 makes and empty for the others. The
- * answer is written into out as UTF-8, its true byte length in out_len
- * whether or not it fit, as xmip_validate_v1 writes its report. XMIP_OK with
- * the answer; XMIP_E_INVALID with the refusal, one sentence, in out;
+ * the edit xmip_cluster_edit_v1 makes and empty for the others. The answer
+ * is written into out as UTF-8, its true byte length in out_len whether or
+ * not it fit, as xmip_validate_v1 writes its report. XMIP_OK with the
+ * answer; XMIP_E_INVALID with the refusal, one sentence, in out;
  * XMIP_E_MALFORMED when input or argument is not UTF-8.
  *
  * What crosses is JSON, in memory only (ADR-0031 clause 2):
- *   xmip_application_routes_v1  an Application in; its routes as a graph
- *                               out: nodes (id, kind, name, column, target,
- *                               a Subscription's filter and summary),
- *                               edges (from, to, kind), problems, and the
- *                               operators and kinds a filter row offers.
- *   xmip_filter_structure_v1    a filter's text in; its rows and groups out.
- *   xmip_filter_text_v1         rows and groups in; the filter's canonical
- *                               text out, which reads back byte for byte.
- *   xmip_application_edit_v1    an Application in, an edit as argument; the
- *                               edited Application's text out, everything
- *                               the edit does not touch as it was.
+ *   xmip_cluster_views_v1     a cluster's xmip.toml in; one view per
+ *                             artifact kind out (kind, title, defined, note,
+ *                             entries, places): each entry's section path,
+ *                             name, scope and fields, and an Xmip
+ *                             Application's routes as a graph — nodes (id,
+ *                             kind, name, column, target, a Subscription's
+ *                             filter and summary), edges (from, to, kind),
+ *                             problems, and the operators and kinds a filter
+ *                             row offers.
+ *   xmip_filter_structure_v1  a filter's text in; its rows and groups out.
+ *   xmip_filter_text_v1       rows and groups in; the filter's canonical
+ *                             text out, which reads back byte for byte.
+ *   xmip_cluster_edit_v1      a cluster's xmip.toml in, an edit as
+ *                             argument; the edited text out, everything the
+ *                             edit does not touch as it was.
  */
 typedef XmipStatus (*XmipDesignFn)(XmipStr input, XmipStr argument,
                                    uint8_t *out, size_t cap, size_t *out_len);
 
-#define XMIP_APPLICATION_ROUTES_ENTRYPOINT "xmip_application_routes_v1"
-#define XMIP_FILTER_STRUCTURE_ENTRYPOINT   "xmip_filter_structure_v1"
-#define XMIP_FILTER_TEXT_ENTRYPOINT        "xmip_filter_text_v1"
-#define XMIP_APPLICATION_EDIT_ENTRYPOINT   "xmip_application_edit_v1"
+#define XMIP_CLUSTER_VIEWS_ENTRYPOINT    "xmip_cluster_views_v1"
+#define XMIP_FILTER_STRUCTURE_ENTRYPOINT "xmip_filter_structure_v1"
+#define XMIP_FILTER_TEXT_ENTRYPOINT      "xmip_filter_text_v1"
+#define XMIP_CLUSTER_EDIT_ENTRYPOINT     "xmip_cluster_edit_v1"
 
 /* ===================================================================== */
 /* 11. Events, subscribed                                                */
@@ -846,7 +852,8 @@ typedef XmipStatus (*XmipDesignFn)(XmipStr input, XmipStr argument,
  * A subscriber is a Party: subscriber is the Party's UUID, and the program
  * that loaded this library is its identity - the operating system vouches
  * for a caller in this process, and the authorization gate decides what it
- * may see. program and directory say where its subscription, its deliveries
+ * may see: being in this process admits it to nothing
+ * (xmip_event_authorize_v1 below). program and directory say where its subscription, its deliveries
  * and its refusals are audited, as section 9's do (empty directory: the
  * capability decides). A refused subscription is XMIP_E_AUTH, *out NULL,
  * with the gate's sentence in said as xmip_validate_v1 writes its report;
@@ -975,6 +982,58 @@ typedef XmipStatus (*XmipEventPublishFn)(const XmipEvent *event, size_t *out_del
 #define XMIP_EVENT_PUBLISH_ENTRYPOINT     "xmip_event_publish_v1"
 
 /*
+ * Who may subscribe (ADR-0065, amendment 2026-09-26): a program in this
+ * process is admitted to nothing for being here, and who may subscribe is a
+ * policy and nothing beside it. The program hosting this library hands the
+ * process's hub its policy with xmip_event_authorize_v1, as a node hands its
+ * own as it starts: decide is asked of each attempt to subscribe - once per
+ * Event type the filter names - with the accountable identity's Party UUID
+ * (empty where it resolved to none), mechanism and value, and the attempt's
+ * artifact (the scope the filter reaches) and Contract (the Event type,
+ * empty for every type), and answers XMIP_EVENT_ALLOW, XMIP_EVENT_DENY or
+ * XMIP_EVENT_NO_OPINION. It replaces the policy handed before; a null decide
+ * hands none. Nothing having an opinion is a refusal: until a policy allows,
+ * every subscription is XMIP_E_AUTH. decide is called with context, on the
+ * subscribing thread, until it is replaced; it must be safe to call from any
+ * thread. XMIP_OK.
+ *
+ * Nothing missing is silent (ADR-0065, amendment 2026-10-02). A subscriber
+ * on any node hears the Events of every node of the cluster; a member this
+ * node cannot hear now is unheard until its link is made again, and its
+ * Events meanwhile are not among any delivered. Every batch says who:
+ * xmip_event_batch_unheard_v1 writes, as JSON in memory, the same shape the
+ * subscriptions list's "unheard" has, with "changed" true when the members
+ * not heard changed since the drain before -
+ *
+ *   {"changed":true,"unheard":[{"by","node","since_unix_nanos","why","said"}]}
+ *
+ * by the node that does not hear, node the member, since_unix_nanos since
+ * when, why in words, and said the one line every surface shows: "not
+ * hearing <node> since <time>: <why>". A change wakes a waiting
+ * xmip_event_next_v1 with XMIP_OK and a batch of no Events, so a drained
+ * subscriber learns of it at once. A listening subscription, which has no
+ * batch, asks xmip_event_unheard_v1, the hub's list without "changed".
+ * Both write into out, out_len its true length whether or not it fit;
+ * XMIP_OK, or XMIP_E_INVALID for no batch.
+ */
+typedef enum {
+    XMIP_EVENT_DENY       = -1,
+    XMIP_EVENT_NO_OPINION = 0,
+    XMIP_EVENT_ALLOW      = 1
+} XmipEventDecision;
+
+typedef int32_t (*XmipEventAuthorizerFn)(void *context, XmipStr party, XmipStr mechanism,
+                                         XmipStr value, XmipScope artifact, XmipStr contract);
+typedef XmipStatus (*XmipEventAuthorizeFn)(XmipEventAuthorizerFn decide, void *context);
+typedef XmipStatus (*XmipEventBatchUnheardFn)(const XmipEventBatch *batch, uint8_t *out,
+                                              size_t cap, size_t *out_len);
+typedef XmipStatus (*XmipEventUnheardFn)(uint8_t *out, size_t cap, size_t *out_len);
+
+#define XMIP_EVENT_AUTHORIZE_ENTRYPOINT     "xmip_event_authorize_v1"
+#define XMIP_EVENT_BATCH_UNHEARD_ENTRYPOINT "xmip_event_batch_unheard_v1"
+#define XMIP_EVENT_UNHEARD_ENTRYPOINT       "xmip_event_unheard_v1"
+
+/*
  * What an operator lists and does (ADR-0065, amendment 2026-09-29): every
  * Event subscription a hub holds, and pause, resume and remove on one of
  * them. Thin forwarders into xmip-core-event, pure like section 7: no
@@ -989,7 +1048,8 @@ typedef XmipStatus (*XmipEventPublishFn)(const XmipEvent *event, size_t *out_del
  *   {"orders":"<where acts are left, empty for none>",
  *    "event_subscriptions":[{"node","id","subscriber","party","action","scope",
  *                            "state","paused","queued","capacity","delivered",
- *                            "missed","since_unix_nanos"}]}
+ *                            "missed","since_unix_nanos"}],
+ *    "unheard":[{"by","node","since_unix_nanos","why","said"}]}
  *
  * node is the scope of the node whose hub holds it and id its number there,
  * the two naming it; subscriber is the name the Party was declared with,
@@ -998,7 +1058,11 @@ typedef XmipStatus (*XmipEventPublishFn)(const XmipEvent *event, size_t *out_del
  * what its filter reaches; state active or paused, and paused true when it
  * is, so no reader keeps the words; queued, capacity,
  * delivered and missed its queue's counts, missed being what a full queue
- * refused since it was made.
+ * refused since it was made. unheard is every member of the cluster a node
+ * does not hear now (above, xmip_event_batch_unheard_v1): an Event
+ * subscription there hears every other node's Events but those. The links
+ * that carry Events between nodes are the cluster's, never listed and never
+ * acted on.
  *
  * xmip_event_subscriptions_v1 lists this process's hub, each entry at node,
  * the scope the caller says this process publishes at; orders is empty.
@@ -1150,8 +1214,9 @@ typedef XmipStatus (*XmipProcessDeclarationsFn)(XmipStr directory, uint8_t *out,
  *
  * node is the scope of the node that routes by it and name its configured
  * name, the two naming it; application the Xmip Application that draws it,
- * file the file that Application was read from and configuration its
- * [[subscriptions]] entry there as the file says it; filter what it
+ * file the node configuration that Application is a section of and
+ * configuration its [[xmip_applications.subscriptions]] entry there as the
+ * file says it; filter what it
  * subscribes to, as configured; destination where it leads, in words; state
  * active or paused, paused true when it is, and by who paused it; picked_up
  * what it picked up since the node started and held what it holds now;
@@ -1175,8 +1240,9 @@ typedef XmipStatus (*XmipProcessDeclarationsFn)(XmipStr directory, uint8_t *out,
  * A surface reading a publication touches no node. Where the publication
  * says where its publisher takes orders, xmip_order_v1 leaves act on the
  * noun called target of the node at node there - noun subscription with a
- * Subscription's name, or event-subscription with an Event subscription's
- * number - for the node to take at its next look and apply as above; said
+ * Subscription's name, event-subscription with an Event subscription's
+ * number, or dead-message with a Message's identifier and the act replay
+ * (section 15) - for the node to take at its next look and apply; said
  * holds the file written. XMIP_OK; XMIP_E_INVALID with the refusal for an
  * empty orders, a node that names no node, a noun that is no noun, or an
  * act the noun does not take; XMIP_E_IO with the reason when it could not
@@ -1201,6 +1267,68 @@ typedef XmipStatus (*XmipOrderFn)(XmipStr orders, XmipScope node, XmipStr noun,
 #define XMIP_SUBSCRIPTION_ACT_ENTRYPOINT          "xmip_subscription_act_v1"
 #define XMIP_PUBLICATION_SUBSCRIPTIONS_ENTRYPOINT "xmip_publication_subscriptions_v1"
 #define XMIP_ORDER_ENTRYPOINT                     "xmip_order_v1"
+
+/*
+ * 15. A node's Dead Message Queue (ADR-0052, amendment 2026-10-01).
+ *
+ * An accepted Message that no Subscription matched is kept in the Ledger
+ * with its entry in its node's Dead Message Queue: its receive context, what
+ * its gates concluded, its promoted properties and every Subscription's
+ * reason for declining, written with the Message in one write. It is not a
+ * dead letter queue: a failed Journey never goes there. An Operator replays
+ * one once a Subscription is added or fixed: its promoted properties are
+ * routed against the node's Subscriptions of now, a Journey opened for each
+ * match and held in its Subscription's queue, and the entry taken out, in
+ * one write, once. A Message that still matches nothing stays.
+ *
+ * A list is JSON, written into out as UTF-8, its true byte length in out_len
+ * whether or not it fit:
+ *
+ *   {"orders":"<where acts are left, empty for none>",
+ *    "dead_messages":[{"node","message","sequence","location",
+ *                      "received_unix_nanos","validation","promoted",
+ *                      "declines"}]}
+ *
+ * node is the scope of the node whose queue keeps it; message the Message's
+ * identifier, what a Replay names; sequence its place, oldest lowest;
+ * location the Receive Location it arrived at; received_unix_nanos when;
+ * validation, promoted and declines arrays of [name, value] pairs - each
+ * gate and its verdict in the order they ran, each promoted property by
+ * name, each Subscription and why it declined in the order asked. A node
+ * lists its oldest hundred.
+ *
+ * xmip_dead_messages_v1 lists the Dead Message Queues of every node running
+ * in this process at or beneath node (empty: every one); orders is empty.
+ * XMIP_OK; XMIP_E_MALFORMED when node is not UTF-8.
+ *
+ * xmip_dead_message_replay_v1 replays the Message message from the Dead
+ * Message Queue of the node at node in this process, by who. XMIP_OK with
+ * what came of it in said, one sentence - also for a Message replayed
+ * already, which is not replayed twice; XMIP_E_NOT_FOUND with the refusal,
+ * opening REFUSED, when that node does not run here, its queue never kept
+ * such a Message, or it still matches no Subscription; XMIP_E_IO, opening
+ * FAILED, when Xmip Storage did not answer and nothing changed.
+ *
+ * xmip_publication_dead_messages_v1 lists what a read publication (section
+ * 8) carries, orders as it says. XMIP_E_INVALID for no handle.
+ *
+ * A surface over a publication replays through section 14's xmip_order_v1,
+ * noun dead-message, target the Message's identifier, act replay.
+ *
+ * Optional symbols, as section 7's are; XMIP_OPERATE_VERSION is unchanged.
+ */
+typedef XmipStatus (*XmipDeadMessagesFn)(XmipScope node, uint8_t *out, size_t cap,
+                                         size_t *out_len);
+typedef XmipStatus (*XmipDeadMessageReplayFn)(XmipScope node, XmipStr message, XmipStr who,
+                                              uint8_t *said, size_t said_cap,
+                                              size_t *said_len);
+typedef XmipStatus (*XmipPublicationDeadMessagesFn)(const XmipPublication *publication,
+                                                    uint8_t *out, size_t cap,
+                                                    size_t *out_len);
+
+#define XMIP_DEAD_MESSAGES_ENTRYPOINT             "xmip_dead_messages_v1"
+#define XMIP_DEAD_MESSAGE_REPLAY_ENTRYPOINT       "xmip_dead_message_replay_v1"
+#define XMIP_PUBLICATION_DEAD_MESSAGES_ENTRYPOINT "xmip_publication_dead_messages_v1"
 
 #ifdef __cplusplus
 }

@@ -2,9 +2,11 @@
 /* Copyright the Xmip authors. */
 
 /*
- * xmip_event_library.h - the runtime's library loaded by path, and the six
- * symbols of xmip_operate.h section 11 looked up once by the names the
- * header gives them.
+ * xmip_event_library.h - the runtime's library loaded by path, and the
+ * symbols of xmip_operate.h section 11 a subscriber calls, looked up once by
+ * the names the header gives them: subscribing, draining, listening,
+ * publishing, handing the hub the program's policy of who may subscribe
+ * (being in the process admits nobody), and who in the cluster is not heard.
  *
  * Loading is all this does. Which Events a filter matches, whether a
  * subscriber may see them, the queue and the audit are the runtime's
@@ -35,6 +37,9 @@ typedef struct {
     XmipEventListenFn      listen;
     XmipEventUnsubscribeFn unsubscribe;
     XmipEventPublishFn     publish;
+    XmipEventAuthorizeFn    authorize;
+    XmipEventBatchUnheardFn batch_unheard;
+    XmipEventUnheardFn      unheard;
 } XmipEventLibrary;
 
 /* A borrowed XmipStr over a null-terminated C string. */
@@ -93,8 +98,14 @@ static inline XmipStatus xmip_event_library_open(const char *path, XmipEventLibr
     library->unsubscribe = (XmipEventUnsubscribeFn)xmip_event_symbol(
         h, XMIP_EVENT_UNSUBSCRIBE_ENTRYPOINT);
     library->publish = (XmipEventPublishFn)xmip_event_symbol(h, XMIP_EVENT_PUBLISH_ENTRYPOINT);
+    library->authorize = (XmipEventAuthorizeFn)xmip_event_symbol(
+        h, XMIP_EVENT_AUTHORIZE_ENTRYPOINT);
+    library->batch_unheard = (XmipEventBatchUnheardFn)xmip_event_symbol(
+        h, XMIP_EVENT_BATCH_UNHEARD_ENTRYPOINT);
+    library->unheard = (XmipEventUnheardFn)xmip_event_symbol(h, XMIP_EVENT_UNHEARD_ENTRYPOINT);
     if (!library->subscribe || !library->next || !library->batch_free || !library->listen
-        || !library->unsubscribe || !library->publish) {
+        || !library->unsubscribe || !library->publish || !library->authorize
+        || !library->batch_unheard || !library->unheard) {
         xmip_event_library_close(library);
         return XMIP_E_NOT_FOUND;
     }

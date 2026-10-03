@@ -1,3 +1,5 @@
+using System.Net;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.SignalR;
 using Xmip.Abi.Operate;
 
@@ -10,14 +12,24 @@ namespace Xmip.Surface.Relay;
 /// Changes are not asked for here; <see cref="SurfaceRelay"/> pushes them.
 /// </summary>
 /// <remarks>
-/// The two acts cross the wire as they cross the desktop. Who asked is what
-/// the caller said, until the role gate ADR-0009 queues makes it what the
-/// directory proved.
+/// Every act goes through <see cref="GatedOperator"/>, the one role check
+/// (ADR-0009, amendment 2026-10-03): it is taken only where the host's
+/// assigned role may act, and as the identity the connection proved — the
+/// subject of the client certificate the TLS handshake checked against the
+/// host's anchors (<see cref="SurfaceBinding.UseXmipTls"/>). No act takes a
+/// name from the caller. Over loopback without a certificate the act is the
+/// operating system user the host runs as, since only someone logged on to
+/// the machine reaches loopback; from anywhere else without one, it is
+/// refused. Every act, taken or refused, is audited (ADR-0062).
 /// </remarks>
-public sealed class SurfaceHub(IOperatorSurface surface) : Hub
+public sealed class SurfaceHub(IOperatorSurface surface, RoleContext role, ProgramAudit audit)
+    : Hub
 {
     /// <summary>Where a web host maps this hub.</summary>
     public const string Path = RemoteOperator.HubPath;
+
+    // What the gate is handed as the caller's word, which it does not read.
+    private const string Unread = "";
 
     /// <summary>Where the host's records come from.</summary>
     public string Source()
@@ -62,12 +74,12 @@ public sealed class SurfaceHub(IOperatorSurface surface) : Hub
         return surface.Subscriptions();
     }
 
-    /// <summary>Pause or resume one Subscription, by who the caller said.
-    /// There is no remove.</summary>
+    /// <summary>Pause or resume one Subscription, as the proven caller, where
+    /// the host's role may act. There is no remove.</summary>
     public SubscriptionOperation ActOnSubscription(
-        SubscriptionRecord subscription, SubscriptionAct act, string who)
+        SubscriptionRecord subscription, SubscriptionAct act)
     {
-        return surface.Act(subscription, act, who);
+        return Acting().Act(subscription, act, Unread);
     }
 
     /// <summary>The Event subscriptions the host's surface lists.</summary>
@@ -76,23 +88,51 @@ public sealed class SurfaceHub(IOperatorSurface surface) : Hub
         return surface.EventSubscriptions();
     }
 
-    /// <summary>Pause, resume or remove one Event subscription, by who the
-    /// caller said.</summary>
+    /// <summary>Pause, resume or remove one Event subscription, as the proven
+    /// caller, where the host's role may act.</summary>
     public EventSubscriptionOperation ActOnEventSubscription(
-        EventSubscriptionRecord subscription, EventSubscriptionAct act, string who)
+        EventSubscriptionRecord subscription, EventSubscriptionAct act)
     {
-        return surface.Act(subscription, act, who);
+        return Acting().Act(subscription, act, Unread);
     }
 
-    /// <summary>Pause everything at and beneath a scope.</summary>
-    public string Pause(string scope, string who)
+    /// <summary>What the Dead Message Queues the host's surface lists
+    /// keep.</summary>
+    public DeadMessageList DeadMessages()
     {
-        return surface.PauseScope(scope, who);
+        return surface.DeadMessages();
     }
 
-    /// <summary>Resume everything at and beneath a scope.</summary>
+    /// <summary>Replay one Message from a Dead Message Queue, as the proven
+    /// caller, where the host's role may act.</summary>
+    public DeadMessageOperation ActOnDeadMessage(DeadMessageRecord message, DeadMessageAct act)
+    {
+        return Acting().Act(message, act, Unread);
+    }
+
+    /// <summary>Pause everything at and beneath a scope, as the proven
+    /// caller, where the host's role may act.</summary>
+    public string Pause(string scope)
+    {
+        return Acting().PauseScope(scope, Unread);
+    }
+
+    /// <summary>Resume everything at and beneath a scope, as the proven
+    /// caller, where the host's role may act.</summary>
     public string Resume(string scope)
     {
-        return surface.ResumeScope(scope);
+        return Acting().ResumeScope(scope);
+    }
+
+    /// <summary>The host's surface behind the one role check, for the
+    /// identity this connection proved, by <see cref="GatedOperator.Proven"/>.</summary>
+    private GatedOperator Acting()
+    {
+        ConnectionInfo? connection = Context.GetHttpContext()?.Connection;
+        string? proven = GatedOperator.Proven(
+            connection?.ClientCertificate?.Subject,
+            connection?.RemoteIpAddress is { } from && IPAddress.IsLoopback(from));
+
+        return new GatedOperator(surface, role.Role, proven, audit);
     }
 }

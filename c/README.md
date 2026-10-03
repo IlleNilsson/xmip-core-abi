@@ -3,15 +3,16 @@
 `include/xmip_operate.h` section 11 is the C binding: a program includes the
 header, loads the runtime's library (`xmip_core_runtime.dll`,
 `libxmip_core_runtime.so` or `libxmip_core_runtime.dylib`) and looks up the
-six `XMIP_EVENT_*_ENTRYPOINT` symbols by name (ADR-0065). Which Events a
-filter matches, whether a subscriber may see them, the queue and the audit
-are the runtime's; nothing here decides any of it.
+nine `XMIP_EVENT_*_ENTRYPOINT` symbols a subscriber calls by name
+(ADR-0065). Which Events a filter matches, whether a subscriber may see them,
+the queue and the audit are the runtime's; nothing here decides any of it.
+Being in the process admits a subscriber to nothing (ADR-0065, amendment 2026-09-26): the program hands the hub its policy of who may subscribe, a callback answering allow, deny or no opinion, with `xmip_event_authorize_v1`, as a node hands its own as it starts. Every drain says who in the cluster is not heard now (`xmip_event_batch_unheard_v1`, JSON; amendment 2026-10-02), and a change wakes a waiting drain with no Event; a listening subscription asks `xmip_event_unheard_v1`.
 
 | File | What it is |
 | --- | --- |
-| `xmip_event_library.h` | Loads the library by path (`LoadLibraryA` on Windows, `dlopen` elsewhere) and resolves the six symbols into an `XmipEventLibrary`. |
+| `xmip_event_library.h` | Loads the library by path (`LoadLibraryA` on Windows, `dlopen` elsewhere) and resolves the nine symbols into an `XmipEventLibrary`: `subscribe`, `next`, `batch_free`, `listen`, `unsubscribe`, `publish`, `authorize`, `batch_unheard` and `unheard`. |
 | `xmip_event_example.c` | A small program: subscribe, publish, drain, print, free, unsubscribe. |
-| `xmip_event_test.c` | The test: drains what it matches, is called back, and holds publish to receive to a millisecond. |
+| `xmip_event_test.c` | The test: a Party no policy allows is refused, then allowed by the test's policy; drains what it matches, is called back, and holds publish to receive to a millisecond. |
 
 ## Use
 
@@ -22,7 +23,7 @@ XmipEventLibrary xmip;
 xmip_event_library_open("xmip_core_runtime.dll", &xmip);
 
 XmipEventFilter filter = {0};              /* every empty list is any */
-filter.scope = xmip_str("xmip:///cluster-a");
+filter.scope = xmip_str("xmip:///C1");
 XmipEventSubscription *subscription = NULL;
 uint8_t said[512];
 size_t said_len = 0;

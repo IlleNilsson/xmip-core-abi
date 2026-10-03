@@ -7,9 +7,9 @@ them, the queue and the audit are the runtime's.
 
 | Type | What it is |
 | --- | --- |
-| `Library` | Loads the runtime's library by path and looks up the six entrypoints once; `subscribe`, `listen`, `publish`. |
+| `Library` | Loads the runtime's library by path and looks up the entrypoints a subscriber calls once; `subscribe`, `listen`, `publish`; `authorizeBy` hands the hub the program's policy of who may subscribe — being in the process admits nobody (ADR-0065, amendment 2026-09-26) — and `unheard` is who in the cluster the process's hub does not hear now, as the header's JSON. |
 | `EventSubscription` | `next(timeout, max)` drains; `close()` unsubscribes. |
-| `Event`, `Filter`, `Delivery` | The header's `XmipEvent`, `XmipEventFilter` and one drain, copied into Java. |
+| `Event`, `Filter`, `Delivery` | The header's `XmipEvent`, `XmipEventFilter` and one drain, copied into Java; a `Delivery` carries who was not heard when it was drained, as the header's JSON (amendment 2026-10-02). |
 | `Action`, `Outcome` | `XmipAction` and `XmipOutcome` with the header's numbers. |
 | `EventException` | Any status other than `XMIP_OK`, with the gate's sentence when a subscription is refused. |
 
@@ -33,7 +33,7 @@ where `size_t` is a Java `long`.
 try (Library xmip = Library.load(Path.of("xmip_core_runtime.dll"));
      EventSubscription subscription = xmip.subscribe("my-program", "/var/log/my-program",
              "0198a3c4-0000-7000-8000-000000000042",
-             new Filter(List.of(), List.of(Outcome.FAILURE), "xmip:///cluster-a", ""), 0)) {
+             new Filter(List.of(), List.of(Outcome.FAILURE), "xmip:///C1", ""), 0)) {
     subscription.next(Duration.ofSeconds(1), 64)
             .ifPresent(delivery -> delivery.events().forEach(System.out::println));
 }

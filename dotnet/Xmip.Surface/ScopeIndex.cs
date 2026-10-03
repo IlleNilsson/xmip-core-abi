@@ -18,14 +18,14 @@ public sealed class ScopeIndex
         Counted.Bytes, Counted.Retrying, Counted.Failed,
     ];
 
-    private readonly Dictionary<string, Entry> entries;
+    private readonly Dictionary<string, ScopeEntry> entries;
 
     private readonly Dictionary<string, HealthRecord> stages;
 
     private readonly Dictionary<string, NodeCapability> declared;
 
     private ScopeIndex(
-        Dictionary<string, Entry> entries,
+        Dictionary<string, ScopeEntry> entries,
         Dictionary<string, HealthRecord> stages,
         Dictionary<string, NodeCapability> declared,
         ulong revision,
@@ -51,7 +51,7 @@ public sealed class ScopeIndex
 
     /// <summary>How many leaves the publication holds.</summary>
     public int Leaves =>
-        entries.TryGetValue(ScopeTree.Root, out Entry? root) ? root.Leaves.Count : 0;
+        entries.TryGetValue(ScopeTree.Root, out ScopeEntry? root) ? root.Leaves.Count : 0;
 
     /// <summary>How many scopes it holds altogether, the branches and the root
     /// included — what a pattern is matched against.</summary>
@@ -69,64 +69,51 @@ public sealed class ScopeIndex
     }
 
     /// <summary>Build the tree from what a publication holds, in one pass.</summary>
+    /// <remarks>The records are walked in the runtime's worst-first order, so
+    /// a scope's first leaf is its worst and its leaves come in the order
+    /// <see cref="Health"/> answers in; every scope's children are ordered in
+    /// one call (observe::Standing sorts stably). Until 2026-10-03 that was a
+    /// map lookup per leaf and a call per scope.</remarks>
     public static ScopeIndex Build(
         IEnumerable<HealthRecord> records, IEnumerable<Count> counts, ulong revision, string source)
     {
-        Dictionary<string, Entry> entries = [with(StringComparer.Ordinal)];
+        Dictionary<string, ScopeEntry> entries = [with(StringComparer.Ordinal)];
         Dictionary<string, HealthRecord> stages = [with(StringComparer.Ordinal)];
         Dictionary<string, NodeCapability> declared = [with(StringComparer.Ordinal)];
         DateTimeOffset? observed = null;
-
-        // The whole publication in the runtime's worst-first order, asked once:
-        // every "which is worse" below is a lookup of where the runtime put a
-        // record, never an order written here (observe::Standing).
         HealthRecord[] published = [.. records];
-        Dictionary<HealthRecord, int> rank = [with(ReferenceEqualityComparer.Instance)];
-        int[] order = RuntimeLibrary.Rules.WorstFirst(published);
+        ScopeEntry root = new(ScopeTree.Root, "cluster", null);
+        entries[root.Scope] = root;
 
-        for (int at = 0; at < order.Length; at++)
-        {
-            rank[published[order[at]]] = at;
-        }
-
-        HealthRecord? Worse(HealthRecord? now, HealthRecord candidate)
-        {
-            return now is null || rank[candidate] < rank[now] ? candidate : now;
-        }
-
-        Entry root = Reach(entries, ScopeTree.Root, ScopeTree.Root, "cluster");
-
+        // What a node declared is what its last capability record said.
         foreach (HealthRecord record in published)
         {
-            string[] parts = ScopeTree.Parts(record.Scope);
-
             if (NodeCapability.Declared(record.Scope, record.Evidence) is { Said: true } said)
             {
                 declared[said.Node] = said;
             }
+        }
 
-            Entry entry = root;
-            entry.Leaves.Add(record);
-            entry.Worst = Worse(entry.Worst, record);
+        // Worst first, as the runtime orders it, asked once (observe::Standing).
+        foreach (int at in RuntimeLibrary.Rules.WorstFirst(published))
+        {
+            HealthRecord record = published[at];
+            ScopeEntry entry = root.Holding(record);
 
-            foreach ((string scope, string label) in Ancestry(parts))
+            foreach (ScopeEntry beneath in Ancestry(entries, root, ScopeTree.Parts(record.Scope)))
             {
-                entry = Reach(entries, scope, entry.Scope, label);
-                entry.Leaves.Add(record);
-                entry.Worst = Worse(entry.Worst, record);
+                entry = beneath.Holding(record);
             }
 
-            // The stage a record is on is observe's reading, so a node called
-            // send is no stage (ScopeTree.Stage, open problem 25, row q).
-            string stage = ScopeTree.Stage(record.Scope);
+            entry.Owning(record, at);
 
-            if (stage.Length > 0)
+            // The stage a record is on is observe's reading of its scope, so a
+            // node called send is no stage (ScopeTree.Stage, open problem 25,
+            // row q); the record's own scope read it when it was reached.
+            if (entry.Stage.Length > 0)
             {
-                stages[stage] = Worse(
-                    stages.TryGetValue(stage, out HealthRecord? held) ? held : null, record)!;
+                stages.TryAdd(entry.Stage, record);
             }
-
-            entry.Own = record;
         }
 
         foreach (Count count in counts)
@@ -140,9 +127,8 @@ public sealed class ScopeIndex
 
             root.Sums[kind] = (root.Sums[kind] ?? 0) + count.Value;
 
-            foreach ((string scope, string label) in Ancestry(ScopeTree.Parts(count.Scope)))
+            foreach (ScopeEntry entry in Ancestry(entries, root, ScopeTree.Parts(count.Scope)))
             {
-                Entry entry = Reach(entries, scope, ScopeTree.Parent(scope), label);
                 entry.Sums[kind] = (entry.Sums[kind] ?? 0) + count.Value;
             }
 
@@ -152,17 +138,7 @@ public sealed class ScopeIndex
             }
         }
 
-        foreach (Entry entry in entries.Values)
-        {
-            if (entry.Children.Count > 1)
-            {
-                List<Entry> ordered = [.. ScopeTree.WorstFirst(entry.Children, Standing)];
-                entry.Children.Clear();
-                entry.Children.AddRange(ordered);
-            }
-
-            entry.Rank = rank;
-        }
+        Order(entries.Values);
 
         return new ScopeIndex(entries, stages, declared, revision, source, observed);
     }
@@ -211,32 +187,34 @@ public sealed class ScopeIndex
     /// within a mood, then by scope — the order every surface answers in.</summary>
     public IReadOnlyList<HealthRecord> Health(string scope)
     {
-        return entries.TryGetValue(Normal(scope), out Entry? entry) ? entry.Sorted() : [];
+        return entries.TryGetValue(Normal(scope), out ScopeEntry? entry)
+            ? entry.Leaves.AsReadOnly()
+            : [];
     }
 
     /// <summary>The record at exactly this scope: a Location's own verdict.</summary>
     public HealthRecord? Own(string scope)
     {
-        return entries.TryGetValue(Normal(scope), out Entry? entry) ? entry.Own : null;
+        return entries.TryGetValue(Normal(scope), out ScopeEntry? entry) ? entry.Own : null;
     }
 
     /// <summary>The worst leaf at or beneath a scope.</summary>
     public HealthRecord? Worst(string scope)
     {
-        return entries.TryGetValue(Normal(scope), out Entry? entry) ? entry.Worst : null;
+        return entries.TryGetValue(Normal(scope), out ScopeEntry? entry) ? entry.Worst : null;
     }
 
     /// <summary>The rolled-up mood at a scope (ADR-0041): a leaf's own mood, a
     /// parent's Fine or Holding. Null when nothing is recorded there.</summary>
     public HealthState? Rollup(string scope)
     {
-        return entries.TryGetValue(Normal(scope), out Entry? entry) ? entry.Mood : null;
+        return entries.TryGetValue(Normal(scope), out ScopeEntry? entry) ? entry.Mood : null;
     }
 
     /// <summary>The six figures at a scope, summed over everything beneath.</summary>
     public Figures Figures(string scope)
     {
-        return entries.TryGetValue(Normal(scope), out Entry? entry)
+        return entries.TryGetValue(Normal(scope), out ScopeEntry? entry)
             ? new Figures(
                 scope,
                 entry.Sums[0], entry.Sums[1], entry.Sums[2],
@@ -251,7 +229,7 @@ public sealed class ScopeIndex
     {
         int kind = Array.IndexOf(Kinds, counted);
 
-        if (kind < 0 || !entries.TryGetValue(Normal(scope), out Entry? entry)
+        if (kind < 0 || !entries.TryGetValue(Normal(scope), out ScopeEntry? entry)
             || entry.Sums[kind] is not { } value)
         {
             return null;
@@ -266,7 +244,7 @@ public sealed class ScopeIndex
     /// nothing deeper is a leaf with its own mood; anything deeper rolls up.</summary>
     public IReadOnlyList<Branch> Branches(string scope)
     {
-        return entries.TryGetValue(Normal(scope), out Entry? entry)
+        return entries.TryGetValue(Normal(scope), out ScopeEntry? entry)
             ? [.. entry.Children.Select(child => child.Branch)]
             : [];
     }
@@ -290,7 +268,7 @@ public sealed class ScopeIndex
     /// <summary>The first segment beneath the root of every scope: the nodes.</summary>
     public IReadOnlyList<string> Nodes()
     {
-        return entries.TryGetValue(ScopeTree.Root, out Entry? root)
+        return entries.TryGetValue(ScopeTree.Root, out ScopeEntry? root)
             ? [.. root.Children.Select(child => child.Label).Order(StringComparer.Ordinal)]
             : [];
     }
@@ -300,100 +278,59 @@ public sealed class ScopeIndex
         return scope == ScopeTree.Root ? scope : ScopeTree.Join(ScopeTree.Parts(scope));
     }
 
-    private static Entry Reach(
-        Dictionary<string, Entry> entries, string scope, string parent, string label)
-    {
-        if (entries.TryGetValue(scope, out Entry? entry))
-        {
-            return entry;
-        }
-
-        entry = new Entry(scope, label);
-        entries[scope] = entry;
-
-        if (scope != ScopeTree.Root && entries.TryGetValue(parent, out Entry? above))
-        {
-            above.Children.Add(entry);
-
-            // Where a stage begins: on one, beneath one on none (ScopeTree.Stage).
-            entry.Stage = ScopeTree.Stage(scope);
-            entry.BeginsStage = entry.Stage.Length > 0 && above.Stage.Length == 0;
-        }
-
-        return entry;
-    }
-
     /// <summary>Every scope from the first segment down to the scope itself,
-    /// each with its label.</summary>
-    private static IEnumerable<(string Scope, string Label)> Ancestry(string[] parts)
+    /// made beneath the one above it the first time; a string only when new.</summary>
+    private static List<ScopeEntry> Ancestry(
+        Dictionary<string, ScopeEntry> entries, ScopeEntry root, string[] parts)
     {
-        string built = ScopeTree.Root;
+        Dictionary<string, ScopeEntry>.AlternateLookup<ReadOnlySpan<char>> lookup =
+            entries.GetAlternateLookup<ReadOnlySpan<char>>();
+        int length = ScopeTree.Root.Length + parts.Sum(part => part.Length + 1);
+        char[] built = new char[length];
+        ScopeTree.Root.CopyTo(built);
+        int end = ScopeTree.Root.Length;
+        List<ScopeEntry> reached = [with(parts.Length)];
+        ScopeEntry above = root;
 
         for (int depth = 0; depth < parts.Length; depth++)
         {
-            built = depth == 0 ? built + parts[0] : built + "/" + parts[depth];
-            yield return (built, parts[depth]);
+            if (depth > 0)
+            {
+                built[end++] = '/';
+            }
+
+            parts[depth].CopyTo(built.AsSpan(end));
+            end += parts[depth].Length;
+            ReadOnlySpan<char> scope = built.AsSpan(0, end);
+
+            if (!lookup.TryGetValue(scope, out ScopeEntry? entry))
+            {
+                entry = new ScopeEntry(scope.ToString(), parts[depth], above);
+                entries[entry.Scope] = entry;
+            }
+
+            reached.Add(entry);
+            above = entry;
         }
+
+        return reached;
     }
 
-    /// <summary>An entry as the record it stands as in the worst-first order:
-    /// its worst leaf's mood and severity under its own label, and an entry
-    /// with nothing beneath it as a Fine one.</summary>
-    private static HealthRecord Standing(Entry entry)
+    /// <summary>Every scope's children worst first, in one call to the
+    /// runtime for all of them.</summary>
+    private static void Order(IEnumerable<ScopeEntry> all)
     {
-        return new HealthRecord(
-            entry.Label,
-            entry.Worst?.State ?? HealthState.Fine,
-            entry.Worst?.Severity ?? 0,
-            string.Empty,
-            default);
-    }
+        ScopeEntry[] parents = [.. all.Where(entry => entry.Children.Count > 1)];
+        ScopeEntry[] children = [.. parents.SelectMany(entry => entry.Children)];
 
-    /// <summary>One scope in the tree and everything the tree knows about it.</summary>
-    private sealed class Entry(string scope, string label)
-    {
-        private IReadOnlyList<HealthRecord>? sorted;
-
-        public string Scope { get; } = scope;
-
-        public string Label { get; } = label;
-
-        public string Stage { get; set; } = string.Empty;
-        public bool BeginsStage { get; set; }
-
-        public List<HealthRecord> Leaves { get; } = [];
-
-        public List<Entry> Children { get; } = [];
-
-        public HealthRecord? Worst { get; set; }
-
-        public HealthRecord? Own { get; set; }
-
-        /// <summary>Where the runtime put each record of the publication in
-        /// its worst-first order.</summary>
-        public Dictionary<HealthRecord, int> Rank { get; set; } = [];
-
-        public ulong?[] Sums { get; } = new ulong?[6];
-
-        public bool IsLeaf => Children.Count == 0;
-
-        public HealthState? Mood =>
-            Worst is null ? null : IsLeaf ? Worst.State : ScopeTree.Rolled(Worst.State);
-
-        public Branch Branch => new(
-            Scope,
-            Label,
-            Mood ?? HealthState.Fine,
-            IsLeaf,
-            Leaves.Count,
-            Worst ?? new HealthRecord(
-                Scope, HealthState.Fine, 0, string.Empty, DateTimeOffset.MinValue));
-
-        public IReadOnlyList<HealthRecord> Sorted()
+        foreach (ScopeEntry parent in parents)
         {
-            sorted ??= [.. Leaves.OrderBy(leaf => Rank[leaf])];
+            parent.Children.Clear();
+        }
 
-            return sorted;
+        foreach (ScopeEntry child in ScopeTree.WorstFirst(children, child => child.Standing))
+        {
+            child.Parent!.Children.Add(child);
         }
     }
 }

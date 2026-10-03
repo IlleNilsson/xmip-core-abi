@@ -17,17 +17,24 @@ public sealed class DrillTest
     private static readonly string Fixture =
         Path.Combine(AppContext.BaseDirectory, "Fixture", "cluster.toml");
 
+    private static readonly TestCluster Test = TestCluster.Read();
+
+    // The cluster and the fixture's nodes as scopes, by what each declares.
+    private static readonly string Cluster = Test.Scope;
+    private static readonly string Receiving = $"{Cluster}/node/{Test.WithRole("receiving")}";
+    private static readonly string Sending = $"{Cluster}/node/{Test.WithRole("sending")}";
+
     [Fact]
     public void TheDrillStartsAtTheClusterAndAnEmptyScopeIsIt()
     {
         IOperatorSurface surface = new SnapshotOperator(Fixture);
 
-        Assert.Equal("xmip:///C1", surface.Root());
+        Assert.Equal(Cluster, surface.Root());
         Assert.Equal(
-            ["xmip:///C1"],
+            [Cluster],
             ScopeSelection.Of(surface, string.Empty, out _)!.Scopes);
         Assert.Equal(
-            ["xmip:///C1/node"],
+            [$"{Cluster}/node"],
             surface.Children(surface.Root())
                 .Select(item => item.Scope));
     }
@@ -38,9 +45,9 @@ public sealed class DrillTest
         IOperatorSurface surface = new SnapshotOperator(Fixture);
         ScopeIndex index = surface.Index();
 
-        Assert.Equal(["xmip:///C1/node/alpha/receive"], index.StageScopes("receive"));
+        Assert.Equal([$"{Receiving}/receive"], index.StageScopes("receive"));
         Assert.Equal(
-            ["xmip:///C1/node/alpha/receive/file", "xmip:///C1/node/alpha/receive/tcp"],
+            [$"{Receiving}/receive/file", $"{Receiving}/receive/tcp"],
             surface.Locations("receive"));
         Assert.Equal(2, surface.Locations("send").Count);
         Assert.Equal(6UL, surface.Stage("receive").Streams);
@@ -52,28 +59,28 @@ public sealed class DrillTest
     [Fact]
     public void ALocationsOwnVerdictIsNotLostBehindWhatIsBeneathIt()
     {
-        // 2026-09-26, C1: gamma's dns/regex Send Location was Done, its identity
-        // step beneath it fine, and the drill's last step showed only the
-        // fine step.
+        // 2026-09-26: a sending node's dns/regex Send Location was Done, its
+        // identity step beneath it fine, and the drill's last step showed only
+        // the fine step.
         string path = Path.Combine(Path.GetTempPath(), $"xmip-drill-{Guid.NewGuid():N}.toml");
-        File.WriteAllText(path, """
-            node = "xmip:///C1"
+        File.WriteAllText(path, $$"""
+            node = "{{Cluster}}"
             [[records]]
-            scope = "xmip:///C1/node/gamma/send/dns/regex"
+            scope = "{{Sending}}/send/dns/regex"
             state = "done"
             severity = 90
             evidence = "no port was free"
             [[records]]
-            scope = "xmip:///C1/node/gamma/send/dns/regex/identity"
+            scope = "{{Sending}}/send/dns/regex/identity"
             state = "fine"
             """);
         IOperatorSurface surface = new SnapshotOperator(path);
-        const string Location = "xmip:///C1/node/gamma/send/dns/regex";
+        string location = $"{Sending}/send/dns/regex";
 
-        Assert.Equal("no port was free", surface.Index().Own(Location)?.Evidence);
-        Assert.Equal(["identity"], surface.Index().Branches(Location).Select(b => b.Label));
-        Assert.Equal(Location, surface.Describe(Location).Worst);
-        Assert.Equal(Location, surface.Describe("xmip:///C1").Worst);
+        Assert.Equal("no port was free", surface.Index().Own(location)?.Evidence);
+        Assert.Equal(["identity"], surface.Index().Branches(location).Select(b => b.Label));
+        Assert.Equal(location, surface.Describe(location).Worst);
+        Assert.Equal(location, surface.Describe(Cluster).Worst);
         File.Delete(path);
     }
 
@@ -83,29 +90,29 @@ public sealed class DrillTest
         // 2026-09-26: the Receive card said 96,968 Streams, of which a few
         // thousand were received; the rest were the daily backlog's drain.
         string path = Path.Combine(Path.GetTempPath(), $"xmip-drill-{Guid.NewGuid():N}.toml");
-        File.WriteAllText(path, """
-            node = "xmip:///C1"
+        File.WriteAllText(path, $$"""
+            node = "{{Cluster}}"
             [[records]]
-            scope = "xmip:///C1/node/alpha/receive/http/json"
+            scope = "{{Receiving}}/receive/http/json"
             state = "fine"
             [[records]]
-            scope = "xmip:///C1/node/alpha/daily-backlog/drain"
+            scope = "{{Receiving}}/daily-backlog/drain"
             state = "fine"
             [[counts]]
             counted = "streams"
             value = 3
-            scope = "xmip:///C1/node/alpha/receive"
+            scope = "{{Receiving}}/receive"
             [[counts]]
             counted = "streams"
             value = 900
-            scope = "xmip:///C1/node/alpha/daily-backlog"
+            scope = "{{Receiving}}/daily-backlog"
             """);
         IOperatorSurface surface = new SnapshotOperator(path);
 
-        Assert.Equal(903UL, surface.Figures("xmip:///C1").Streams);
+        Assert.Equal(903UL, surface.Figures(Cluster).Streams);
         Assert.Equal(3UL, surface.Stage("receive").Streams);
         Assert.Equal(3UL, surface.MessagePath().Streams);
-        Assert.Equal(3UL, surface.Figures("xmip:///C1/node/alpha/receive").Streams);
+        Assert.Equal(3UL, surface.Figures($"{Receiving}/receive").Streams);
         File.Delete(path);
     }
 
@@ -116,26 +123,26 @@ public sealed class DrillTest
         // stage showed a dash for every figure on every surface.
         IOperatorSurface surface = new SnapshotOperator(Fixture);
 
-        Assert.Equal(6UL, surface.Figures("xmip:///C1/node/alpha").Streams);
+        Assert.Equal(6UL, surface.Figures(Receiving).Streams);
 
         // As old as the publication says, never "now": a stalled publisher is
         // not an idle estate (ADR-0027 clause 6).
         Assert.Equal(
             DateTimeOffset.UnixEpoch.AddTicks(1789111688000000000 / 100),
-            surface.Figures("xmip:///C1/node/alpha").Observed);
-        Assert.Equal(5UL, surface.Figures("xmip:///C1/node/gamma/send").Messages);
-        Assert.Null(surface.Figures("xmip:///C1/node/gamma").Streams);
+            surface.Figures(Receiving).Observed);
+        Assert.Equal(5UL, surface.Figures($"{Sending}/send").Messages);
+        Assert.Null(surface.Figures(Sending).Streams);
     }
 
     [Fact]
     public void EveryRowNamesTheLeafThatExplainsItSoTheNextStepIsOnTheRow()
     {
         IOperatorSurface surface = new SnapshotOperator(Fixture);
-        const string Leaf = "xmip:///C1/node/gamma/send/tcp/json";
+        string worst = $"{Sending}/send/tcp/json";
 
-        ScopeItem cluster = surface.Describe("xmip:///C1");
+        ScopeItem cluster = surface.Describe(Cluster);
         Assert.Equal(HealthState.Holding, cluster.Health);
-        Assert.Equal(Leaf, cluster.Worst);
+        Assert.Equal(worst, cluster.Worst);
         Assert.True(cluster.Troubled);
 
         // Step by step: each level's worst row is on the way to the leaf.
@@ -144,14 +151,14 @@ public sealed class DrillTest
         while (surface.Children(at) is { Count: > 0 } children)
         {
             ScopeItem next = children[0];
-            Assert.Equal(Leaf, next.Worst);
+            Assert.Equal(worst, next.Worst);
             at = next.Scope;
         }
 
-        Assert.Equal(Leaf, at);
+        Assert.Equal(worst, at);
         ScopeItem leaf = surface.Describe(at);
         Assert.False(leaf.IsContainer);
         Assert.Equal("2/3 rounds passed, 1 failed", leaf.Evidence);
-        Assert.Equal("node/gamma/send/tcp/json", leaf.Name);
+        Assert.Equal($"node/{Test.WithRole("sending")}/send/tcp/json", leaf.Name);
     }
 }

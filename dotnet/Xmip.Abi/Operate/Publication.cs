@@ -19,6 +19,9 @@ namespace Xmip.Abi.Operate;
 /// <param name="EventSubscriptions">The Event subscriptions its nodes hold, and
 /// where its publisher takes an act on one (ADR-0065, amendment
 /// 2026-09-29).</param>
+/// <param name="DeadMessages">What its nodes' Dead Message Queues keep, the
+/// oldest of each, and where its publisher takes a Replay (ADR-0052,
+/// amendment 2026-10-01).</param>
 public sealed record Publication(
     string Source,
     string Node,
@@ -27,7 +30,8 @@ public sealed record Publication(
     TopologySnapshot? Topology,
     PublishedRun? Run,
     SubscriptionList Subscriptions,
-    EventSubscriptionList EventSubscriptions);
+    EventSubscriptionList EventSubscriptions,
+    DeadMessageList DeadMessages);
 
 /// <summary>What a run was started with, as a publication says it under
 /// <c>[run]</c>: <c>observe::Run</c>.</summary>

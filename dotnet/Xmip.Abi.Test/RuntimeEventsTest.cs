@@ -16,6 +16,16 @@ public sealed class RuntimeEventsTest
     /// <summary>A Party's UUID, as a subscriber in this process is.</summary>
     internal const string Party = "0198a3c4-0000-7000-8000-000000000042";
 
+    /// <summary>The Party the Event feed's tests subscribe as.</summary>
+    internal const string FeedParty = "0198a3c4-0000-7000-8000-000000000043";
+
+    /// <summary>The policy the tests hand the hub: their Parties, and no
+    /// opinion on anyone else.</summary>
+    internal static bool? Allowed(EventAuthorization asked)
+    {
+        return asked.Party is Party or FeedParty ? true : null;
+    }
+
     private static RuntimeEvents Events => RuntimeRulesTest.Rules.Events;
 
     [Fact]
@@ -26,6 +36,28 @@ public sealed class RuntimeEventsTest
         // Thirteen strings of 16 bytes, a time, two enums, a pointer and a length.
         Assert.Equal(192, Marshal.SizeOf<XmipEvent>());
         Assert.Equal(64, Marshal.SizeOf<XmipEventFilter>());
+    }
+
+    [Fact]
+    public void APartyThePolicyDoesNotAllowIsRefusedAndNobodyUnheardIsSaidSo()
+    {
+        using Audited audited = new();
+
+        // A Party the policy has no opinion on, in this very process.
+        UnauthorizedAccessException refused = Assert.Throws<UnauthorizedAccessException>(
+            () => Events.Subscribe(
+                "Xmip.Abi.Test", audited.Directory, "0198a3c4-0000-7000-8000-0000000000ff"));
+        Assert.Contains("no policy had an opinion", refused.Message, StringComparison.Ordinal);
+
+        using EventSubscription subscription = Events.Subscribe(
+            "Xmip.Abi.Test", audited.Directory, Party, new EventFilter { Scope = audited.Scope });
+        Assert.Equal(1, Events.Publish(audited.Raised(EventOutcome.Failure)));
+
+        EventDelivery delivery = subscription.Next(TimeSpan.FromSeconds(5), 8);
+        Assert.Single(delivery.Events);
+        Assert.Empty(delivery.Unheard);
+        Assert.False(delivery.UnheardChanged);
+        Assert.Empty(Events.Unheard());
     }
 
     [Fact]
@@ -41,7 +73,7 @@ public sealed class RuntimeEventsTest
             Type = "se.xmip.receive.failure",
             Action = EventAction.Receive,
             Outcome = EventOutcome.Failure,
-            Scope = audited.Scope + "/node/n/receive/orders",
+            Scope = audited.Node + "/receive/orders",
             Journey = "0198a3c4-0000-7000-8000-000000000001",
             Endpoint = "tcp://0.0.0.0:5000",
             Artifact = "orders",
@@ -58,7 +90,7 @@ public sealed class RuntimeEventsTest
         Assert.Equal("se.xmip.receive.failure", heard.Type);
         Assert.Equal(EventAction.Receive, heard.Action);
         Assert.Equal(EventOutcome.Failure, heard.Outcome);
-        Assert.Equal(audited.Scope + "/node/n/receive/orders", heard.Scope);
+        Assert.Equal(audited.Node + "/receive/orders", heard.Scope);
         Assert.Equal("0198a3c4-0000-7000-8000-000000000001", heard.Journey);
         Assert.Equal("orders", heard.Artifact);
         Assert.Equal(string.Empty, heard.Message);
@@ -166,7 +198,12 @@ internal sealed class Audited : IDisposable
     public string Directory { get; } =
         Path.Combine(Path.GetTempPath(), $"xmip-abi-event-{Guid.NewGuid():n}");
 
-    public string Scope { get; } = $"xmip:///abi-event-{Guid.NewGuid():n}";
+    private static readonly TestCluster Cluster = TestCluster.Read();
+
+    public string Scope { get; } = $"{Cluster.Scope}/abi-event-{Guid.NewGuid():n}";
+
+    /// <summary>The test cluster's receiving node beneath this test's scope.</summary>
+    public string Node => $"{Scope}/node/{Cluster.WithRole("receiving")}";
 
     /// <summary>An Event at this test's scope, ending in
     /// <paramref name="outcome"/>.</summary>
@@ -184,7 +221,7 @@ internal sealed class Audited : IDisposable
             Type = "se.xmip.process.test",
             Action = EventAction.Process,
             Outcome = outcome,
-            Scope = Scope + "/node/n",
+            Scope = Node,
             Diagnostics = diagnostics,
         };
     }
