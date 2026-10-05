@@ -275,6 +275,16 @@ public static class OperateAbi
     /// (runtime-model.md section 13; ADR-0013).</summary>
     public const string JourneyActEntrypoint = "xmip_journey_act_v1";
 
+    /// <summary>The Journeys that failed at the Send Ports of the nodes
+    /// running in this process, read from Xmip Storage a page at a time:
+    /// section 16.</summary>
+    public const string FailedJourneysEntrypoint = "xmip_failed_journeys_v1";
+
+    /// <summary>The Journeys that failed a read publication carries: section
+    /// 16 over section 8's handle.</summary>
+    public const string PublicationFailedJourneysEntrypoint =
+        "xmip_publication_failed_journeys_v1";
+
     /// <summary>The technologies the runtime carries and the settings each
     /// declares: section 12 (ADR-0064, amendment 2026-09-26).</summary>
     public const string TechnologyCatalogueEntrypoint = "xmip_technology_catalogue_v1";

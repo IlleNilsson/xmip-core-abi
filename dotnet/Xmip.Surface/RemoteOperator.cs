@@ -25,6 +25,15 @@ namespace Xmip.Surface;
 /// refusal is the <see cref="Reason"/>.
 /// </remarks>
 /// <remarks>
+/// A lost host is told too: when the connection closes, every watch is told
+/// at once, with a <see cref="Source"/> that says the host is unreachable and
+/// why, and every answer is empty until it is back — never the publication
+/// held from before (ADR-0052: a host that cannot be reached reports
+/// nothing). While anything watches, the connection is tried again on
+/// <see cref="Retry"/>'s schedule, whether it was lost or never made, and a
+/// watch is told the moment it is made again.
+/// </remarks>
+/// <remarks>
 /// The wire is JSON, which the estate reserves for memory and the wire; the
 /// records are the binding's, so a remote answer has the shape a local one
 /// has. A host that cannot be reached is said so in <see cref="Source"/> and
@@ -45,6 +54,18 @@ public sealed class RemoteOperator : IOperatorSurface, IDisposable
     /// <summary>How long a call waits for the host before it is unreachable.</summary>
     private static readonly TimeSpan Patience = TimeSpan.FromSeconds(5);
 
+    /// <summary>How long a watch waits before each try to reach a host it
+    /// lost or never reached, the last repeated for as long as it watches:
+    /// SignalR's own reconnect schedule, which here never gives up.</summary>
+    public static readonly IReadOnlyList<TimeSpan> Retry =
+    [
+        TimeSpan.Zero, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(30),
+    ];
+
+    private readonly IReadOnlyList<TimeSpan> retry;
+
+    private readonly CancellationTokenSource ending = new();
+
     private readonly HubConnection connection;
 
     private readonly List<Channel<SurfaceChange>> watchers = [];
@@ -56,6 +77,10 @@ public sealed class RemoteOperator : IOperatorSurface, IDisposable
     private ulong told;
 
     private string? refusal;
+
+    // 1 while a watch is trying to reach the host again; an answer asked
+    // meanwhile says unreachable at once rather than wait on a second try.
+    private int recovering;
 
     /// <summary>Whether <paramref name="url"/> names a web host: an absolute
     /// http or https address, which is what a hub is reached at.</summary>
@@ -82,22 +107,26 @@ public sealed class RemoteOperator : IOperatorSurface, IDisposable
     /// presenting and trusting what <paramref name="tls"/> holds — nothing
     /// and the operating system's anchors where it is not given.</summary>
     public RemoteOperator(Uri host, SurfaceTls? tls = null)
+        : this(host, tls, Retry)
+    {
+    }
+
+    /// <summary>The same, trying a lost host again on <paramref name="retry"/>'s
+    /// schedule: what a test shortens.</summary>
+    internal RemoteOperator(Uri host, SurfaceTls? tls, IReadOnlyList<TimeSpan> retry)
     {
         ArgumentNullException.ThrowIfNull(host);
+        ArgumentNullException.ThrowIfNull(retry);
 
         Host = host;
         Hub = new Uri(host, HubPath);
         Tls = tls ?? SurfaceTls.None;
+        this.retry = retry.Count > 0 ? retry : Retry;
         connection = new HubConnectionBuilder()
             .WithUrl(Hub, Guard)
-            .WithAutomaticReconnect()
             .Build();
         connection.On<SurfaceChange>(ChangedMessage, Announce);
-        connection.Reconnected += _ =>
-        {
-            Announce(SurfaceChange.Initial(Source));
-            return Task.CompletedTask;
-        };
+        connection.Closed += Lost;
     }
 
     /// <summary>The web host this surface follows.</summary>
@@ -124,8 +153,16 @@ public sealed class RemoteOperator : IOperatorSurface, IDisposable
     };
 
     /// <summary>Connect, or say why not in <see cref="Reason"/>. Every answer
-    /// connects first; a caller that wants to know before asking calls this.</summary>
+    /// connects first; a caller that wants to know before asking calls this.
+    /// While a watch is trying the host again, it says so without a second
+    /// try of its own.</summary>
     public bool Connect()
+    {
+        return IsConnected || (Volatile.Read(ref recovering) == 0 && Reach());
+    }
+
+    // One try at the host, one at a time.
+    private bool Reach()
     {
         if (IsConnected)
         {
@@ -182,6 +219,13 @@ public sealed class RemoteOperator : IOperatorSurface, IDisposable
     /// </summary>
     public ScopeIndex Index()
     {
+        // Unreachable, the answer is nothing, said so; what was held from
+        // before the host was lost is never handed out as if current.
+        if (!Connect())
+        {
+            return ScopeIndex.Build([], [], 0, Source);
+        }
+
         ulong revision = Volatile.Read(ref told);
 
         lock (gate)
@@ -269,6 +313,13 @@ public sealed class RemoteOperator : IOperatorSurface, IDisposable
     }
 
     /// <inheritdoc />
+    public FailedJourneyList FailedJourneys(string scope, ulong from = 0, uint most = 0)
+    {
+        return Ask<FailedJourneyList>("FailedJourneys", scope, from, most)
+            ?? FailedJourneyList.Empty;
+    }
+
+    /// <inheritdoc />
     public JourneyOperation Act(string scope, string journey, JourneyAct act, string who)
     {
         return Ask<JourneyOperation>("ActOnJourney", scope, journey, act)
@@ -301,7 +352,11 @@ public sealed class RemoteOperator : IOperatorSurface, IDisposable
 
         try
         {
-            Connect();
+            if (!Connect())
+            {
+                Recover();
+            }
+
             yield return SurfaceChange.Initial(Source);
 
             while (true)
@@ -341,6 +396,8 @@ public sealed class RemoteOperator : IOperatorSurface, IDisposable
     /// <inheritdoc />
     public void Dispose()
     {
+        ending.Cancel();
+
         lock (gate)
         {
             foreach (Channel<SurfaceChange> watcher in watchers)
@@ -350,6 +407,7 @@ public sealed class RemoteOperator : IOperatorSurface, IDisposable
         }
 
         connection.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        ending.Dispose();
     }
 
     /// <summary>
@@ -391,6 +449,76 @@ public sealed class RemoteOperator : IOperatorSurface, IDisposable
 
         refusal = reason;
         return false;
+    }
+
+    // The connection closed: every watch is told now, with the host said
+    // unreachable and why, and the host is tried again while anything
+    // watches. A close this side asked for is no loss.
+    private Task Lost(Exception? failure)
+    {
+        if (ending.IsCancellationRequested)
+        {
+            return Task.CompletedTask;
+        }
+
+        Reason = failure is null ? "the host closed the connection" : $"lost: {failure.Message}";
+        Announce(SurfaceChange.Initial(Source));
+        Recover();
+        return Task.CompletedTask;
+    }
+
+    // Try the host again on the retry schedule, one recovery at a time, for
+    // as long as anything watches. Nothing can tell this side that a host
+    // which is not there is back, so this is the one place a surface asks
+    // rather than is told; the moment the host answers, every watch is told.
+    private void Recover()
+    {
+        if (Interlocked.Exchange(ref recovering, 1) == 1)
+        {
+            return;
+        }
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                for (int attempt = 0; Watched(); attempt++)
+                {
+                    await Task.Delay(retry[Math.Min(attempt, retry.Count - 1)], ending.Token)
+                        .ConfigureAwait(false);
+
+                    if (Reach())
+                    {
+                        Interlocked.Exchange(ref recovering, 0);
+                        Announce(SurfaceChange.Initial(Source));
+                        return;
+                    }
+                }
+            }
+            catch (Exception stopped) when (stopped is OperationCanceledException
+                or ObjectDisposedException)
+            {
+                // Disposed: nothing watches any more.
+                Interlocked.Exchange(ref recovering, 0);
+                return;
+            }
+
+            Interlocked.Exchange(ref recovering, 0);
+
+            // A watch begun as this one gave up found it still running.
+            if (Watched() && !IsConnected)
+            {
+                Recover();
+            }
+        });
+    }
+
+    private bool Watched()
+    {
+        lock (gate)
+        {
+            return watchers.Count > 0;
+        }
     }
 
     private void Announce(SurfaceChange change)

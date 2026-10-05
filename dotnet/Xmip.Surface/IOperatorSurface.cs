@@ -314,6 +314,23 @@ public interface IOperatorSurface
             scope, journey, act, $"{Source} does not act on Journeys");
     }
 
+    /// <summary>
+    /// The Journeys that failed at the Send Ports at or beneath
+    /// <paramref name="scope"/> — a cluster, a node, or one Send Port's
+    /// scope — each Port's count and its Journeys, oldest first, read from
+    /// the place <paramref name="from"/> on, at most <paramref name="most"/>
+    /// of each Port (0: a hundred), and where an act is left when this
+    /// surface reads a publication (runtime-model.md section 13). In the
+    /// process that runs the node they are read from Xmip Storage a page at
+    /// a time, each Port naming where its next page reads from; a
+    /// publication carries the oldest hundred of each. None where this
+    /// surface cannot list them.
+    /// </summary>
+    public FailedJourneyList FailedJourneys(string scope, ulong from = 0, uint most = 0)
+    {
+        return FailedJourneyList.Empty;
+    }
+
     /// <summary>Pause everything at and beneath a scope, by <paramref name="who"/>.
     /// The first operation that acts rather than reads. Returns what the runtime
     /// said, for the operator to see.</summary>

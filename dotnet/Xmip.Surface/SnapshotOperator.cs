@@ -261,6 +261,27 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
         return new DeadMessageOperation(message.Node, message.Message, act, left, said);
     }
 
+    /// <inheritdoc />
+    /// <remarks>What the publication carries: each Port's count and its
+    /// oldest hundred; <paramref name="from"/> and <paramref name="most"/>
+    /// page within them.</remarks>
+    public FailedJourneyList FailedJourneys(string scope, ulong from = 0, uint most = 0)
+    {
+        FailedJourneyList within = JourneyOperation.Within(Read().FailedJourneys, scope);
+        int take = most == 0 ? int.MaxValue : (int)Math.Min(most, int.MaxValue);
+
+        return within with
+        {
+            Ports =
+            [
+                .. within.Ports.Select(port => port with
+                {
+                    Journeys = [.. port.Journeys.Where(j => j.Sequence >= from).Take(take)],
+                }),
+            ],
+        };
+    }
+
     /// <inheritdoc cref="IOperatorSurface.Act(string, string, JourneyAct, string)" />
     /// <remarks>A snapshot touches no node. Where its publication says where
     /// its publisher takes orders — one place for every noun — the act is
@@ -307,7 +328,8 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
         string Root,
         SubscriptionList Subscriptions,
         EventSubscriptionList EventSubscriptions,
-        DeadMessageList DeadMessages)
+        DeadMessageList DeadMessages,
+        FailedJourneyList FailedJourneys)
     {
         public static Reading Nothing(string source)
         {
@@ -318,7 +340,8 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
                 ScopeTree.Root,
                 SubscriptionList.Empty,
                 EventSubscriptionList.Empty,
-                DeadMessageList.Empty);
+                DeadMessageList.Empty,
+                FailedJourneyList.Empty);
         }
     }
 
@@ -412,6 +435,7 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
             read.Node.Length > 0 ? read.Node : ScopeTree.Root,
             read.Subscriptions,
             read.EventSubscriptions,
-            read.DeadMessages);
+            read.DeadMessages,
+            read.FailedJourneys);
     }
 }

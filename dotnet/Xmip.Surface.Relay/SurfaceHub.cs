@@ -110,6 +110,13 @@ public sealed class SurfaceHub(IOperatorSurface surface, RoleContext role, Progr
         return Acting().Act(message, act, Unread);
     }
 
+    /// <summary>The Journeys that failed at the Send Ports at or beneath
+    /// <paramref name="scope"/>, as the host's surface lists them.</summary>
+    public FailedJourneyList FailedJourneys(string scope, ulong from, uint most)
+    {
+        return surface.FailedJourneys(scope, from, most);
+    }
+
     /// <summary>Retry or Dismiss a Journey that failed, sent by the node at
     /// or above <paramref name="scope"/>, as the proven caller, where the
     /// host's role may act.</summary>

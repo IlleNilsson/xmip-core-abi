@@ -1,3 +1,5 @@
+using System.Net;
+using System.Net.Sockets;
 using Microsoft.AspNetCore.Builder;
 using Xmip.Surface.Relay;
 
@@ -106,6 +108,68 @@ public sealed class RemoteOperatorTest
         Assert.Null(remote.Measure(ScopeTree.Root, Abi.Operate.Counted.Streams));
     }
 
+    /// <summary>
+    /// A watch begun while the host is not there is told it is unreachable,
+    /// answers nothing, and is told again the moment the host comes up —
+    /// without anyone asking (ADR-0052, amendment 2026-09-15).
+    /// </summary>
+    [Fact]
+    public async Task AWatchBegunBeforeTheHostIsToldWhenItComesUp()
+    {
+        Uri address = FreeAddress();
+        using RemoteOperator remote = new(address, null, Quick);
+        IOperatorSurface surface = remote;
+        using CancellationTokenSource patience = new(TimeSpan.FromSeconds(30));
+        await using IAsyncEnumerator<SurfaceChange> feed =
+            surface.WatchAsync(patience.Token).GetAsyncEnumerator(patience.Token);
+
+        Assert.True(await feed.MoveNextAsync().ConfigureAwait(true));
+        Assert.Contains(" unreachable: ", feed.Current.Source, StringComparison.Ordinal);
+        Assert.Empty(surface.Health(ScopeTree.Root));
+
+        SnapshotOperator local = Fixture();
+        await using WebApplication host = await TestHost.Serve(local, url: Bare(address))
+            .ConfigureAwait(true);
+
+        Assert.Equal($"REMOTE — {remote.Host}", await Next(feed, Connected).ConfigureAwait(true));
+        Assert.Equal(local.Health(ScopeTree.Root), surface.Health(ScopeTree.Root));
+    }
+
+    /// <summary>
+    /// A host lost is told at once, and from then on nothing it published
+    /// before is answered as if current; the host back is told again.
+    /// </summary>
+    [Fact]
+    public async Task AHostLostIsToldAndItsLastPublicationIsNotAnsweredAsCurrent()
+    {
+        Uri address = FreeAddress();
+        SnapshotOperator local = Fixture();
+        WebApplication host = await TestHost.Serve(local, url: Bare(address)).ConfigureAwait(true);
+        using RemoteOperator remote = new(address, null, Quick);
+        IOperatorSurface surface = remote;
+        using CancellationTokenSource patience = new(TimeSpan.FromSeconds(30));
+        await using IAsyncEnumerator<SurfaceChange> feed =
+            surface.WatchAsync(patience.Token).GetAsyncEnumerator(patience.Token);
+
+        Assert.True(await feed.MoveNextAsync().ConfigureAwait(true));
+        Assert.Equal($"REMOTE — {remote.Host}", feed.Current.Source);
+        Assert.NotEmpty(surface.Health(ScopeTree.Root));
+
+        await host.StopAsync().ConfigureAwait(true);
+        await host.DisposeAsync().ConfigureAwait(true);
+
+        string lost = await Next(feed, source => !Connected(source)).ConfigureAwait(true);
+        Assert.Contains(" unreachable: ", lost, StringComparison.Ordinal);
+        Assert.Empty(surface.Health(ScopeTree.Root));
+        Assert.Equal(lost, surface.Source);
+
+        await using WebApplication again = await TestHost.Serve(local, url: Bare(address))
+            .ConfigureAwait(true);
+
+        Assert.Equal($"REMOTE — {remote.Host}", await Next(feed, Connected).ConfigureAwait(true));
+        Assert.Equal(local.Health(ScopeTree.Root), surface.Health(ScopeTree.Root));
+    }
+
     [Fact]
     public void TheHubIsWhereTheClientLooks()
     {
@@ -199,6 +263,46 @@ public sealed class RemoteOperatorTest
         Assert.False(remote.Connect());
         Assert.StartsWith("REFUSED. 192.0.2.1 is plain http beyond this machine", remote.Reason,
             StringComparison.Ordinal);
+    }
+
+    /// <summary>A retry schedule a test waits on in milliseconds.</summary>
+    private static readonly TimeSpan[] Quick = [TimeSpan.FromMilliseconds(20)];
+
+    /// <summary>A loopback address no host serves yet.</summary>
+    private static Uri FreeAddress()
+    {
+        TcpListener probe = new(IPAddress.Loopback, 0);
+        probe.Start();
+        int port = ((IPEndPoint)probe.LocalEndpoint).Port;
+        probe.Stop();
+        return new Uri($"http://127.0.0.1:{port}");
+    }
+
+    /// <summary>The address as a host binds it, without the trailing slash.</summary>
+    private static string Bare(Uri address)
+    {
+        return address.GetLeftPart(UriPartial.Authority);
+    }
+
+    private static bool Connected(string source)
+    {
+        return !source.Contains(" unreachable: ", StringComparison.Ordinal);
+    }
+
+    /// <summary>The source of the next notice that <paramref name="wanted"/>
+    /// takes, skipping the others.</summary>
+    private static async Task<string> Next(
+        IAsyncEnumerator<SurfaceChange> feed, Func<string, bool> wanted)
+    {
+        while (await feed.MoveNextAsync().ConfigureAwait(false))
+        {
+            if (wanted(feed.Current.Source))
+            {
+                return feed.Current.Source;
+            }
+        }
+
+        throw new InvalidOperationException("the watch ended before the notice came");
     }
 
     /// <summary>The snapshot fixture, as the surface a host serves.</summary>

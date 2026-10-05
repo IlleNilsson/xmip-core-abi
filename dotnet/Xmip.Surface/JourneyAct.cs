@@ -1,3 +1,5 @@
+using Xmip.Abi.Operate;
+
 namespace Xmip.Surface;
 
 /// <summary>
@@ -35,6 +37,53 @@ public sealed record JourneyOperation(
     public static string Word(JourneyAct act)
     {
         return act.ToString().ToLowerInvariant();
+    }
+
+    /// <summary>
+    /// The node and the Send Port a scope names: the node it is on
+    /// (<see cref="ScopeTree.NodeScope"/>) and the segment after its stage,
+    /// where it is that deep — empty for each it does not name.
+    /// </summary>
+    public static (string Node, string Port) PortAt(string scope)
+    {
+        ArgumentNullException.ThrowIfNull(scope);
+
+        string node = ScopeTree.NodeScope(scope);
+
+        if (node.Length == 0 || ScopeTree.Stage(scope).Length == 0)
+        {
+            return (node, string.Empty);
+        }
+
+        int depth = ScopeTree.Parts(node).Length;
+
+        return (node, ScopeTree.Segment(scope, depth + 1));
+    }
+
+    /// <summary>
+    /// What of <paramref name="failed"/> lies at or beneath
+    /// <paramref name="scope"/>: every Port of its node, or the one Port it
+    /// names, or every Port of the nodes beneath a scope on no node.
+    /// </summary>
+    public static FailedJourneyList Within(FailedJourneyList failed, string scope)
+    {
+        ArgumentNullException.ThrowIfNull(failed);
+        ArgumentNullException.ThrowIfNull(scope);
+
+        (string node, string port) = PortAt(scope);
+
+        return failed with
+        {
+            Ports =
+            [
+                .. failed.Ports.Where(at =>
+                    (node.Length == 0
+                        ? ScopeTree.Beneath(at.Node, scope)
+                        : string.Equals(at.Node, node, StringComparison.Ordinal))
+                    && (port.Length == 0
+                        || string.Equals(at.SendPort, port, StringComparison.Ordinal))),
+            ],
+        };
     }
 
     /// <summary>The act not taken, and why.</summary>

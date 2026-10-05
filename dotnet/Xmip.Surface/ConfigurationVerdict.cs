@@ -41,9 +41,9 @@ public sealed record ConfigurationVerdict(
         return new(path, answer.Status, answer.Problems, English.Validated(path, answer));
     }
 
-    /// <summary>The runtime's answer to a start, with the sentence.</summary>
-    public static ConfigurationVerdict Started(string path, XmipStatus status)
+    /// <summary>The runtime's answer to a plan, with the sentence.</summary>
+    public static ConfigurationVerdict Planned(string path, XmipStatus status)
     {
-        return new(path, status, [], English.Started(path, status));
+        return new(path, status, [], English.Planned(path, status));
     }
 }

@@ -86,16 +86,18 @@ public sealed class EnglishTest
     }
 
     [Fact]
-    public void StartingSaysWhatTheRuntimeAnswered()
+    public void PlanningSaysWhatTheRuntimeAnsweredAndThatNothingRuns()
     {
-        Assert.Equal("started xmip.toml", English.Started("xmip.toml", XmipStatus.Ok));
+        Assert.Equal(
+            "planned xmip.toml: validated and published, not running",
+            English.Planned("xmip.toml", XmipStatus.Ok));
         Assert.Contains(
             OperateAbi.StartEntrypoint,
-            English.Started("xmip.toml", XmipStatus.Unsupported),
+            English.Planned("xmip.toml", XmipStatus.Unsupported),
             StringComparison.Ordinal);
         Assert.StartsWith(
             "xmip.toml refused: ",
-            English.Started("xmip.toml", XmipStatus.Invalid),
+            English.Planned("xmip.toml", XmipStatus.Invalid),
             StringComparison.Ordinal);
     }
 
