@@ -18,17 +18,20 @@ internal static class TestHost
     /// loopback, the one exception — and HTTPS with it, as the web host binds
     /// it. It runs as <paramref name="role"/>, Observer where none is given,
     /// and audits into <paramref name="audit"/>, a directory of its own where
-    /// none is given.
+    /// none is given. At <paramref name="url"/> where given: a host served
+    /// again where one stopped.
     /// </summary>
     public static async Task<WebApplication> Serve(
         IOperatorSurface surface,
         SurfaceTls? tls = null,
         Action<string>? refused = null,
         Role role = Role.Observer,
-        string? audit = null)
+        string? audit = null,
+        string? url = null)
     {
         WebApplicationBuilder builder = WebApplication.CreateBuilder();
-        builder.WebHost.UseUrls(tls is null ? "http://127.0.0.1:0" : "https://127.0.0.1:0");
+        builder.WebHost.UseUrls(
+            url ?? (tls is null ? "http://127.0.0.1:0" : "https://127.0.0.1:0"));
         builder.WebHost.UseXmipTls(tls ?? SurfaceTls.None, refused);
         builder.Logging.ClearProviders();
         builder.Services.AddSingleton(surface);

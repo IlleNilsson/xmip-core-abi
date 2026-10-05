@@ -37,11 +37,13 @@ public sealed class ConfigurationVerdictTest
     }
 
     [Fact]
-    public void AStartIsOkOnlyWhenTheRuntimeSaidOk()
+    public void APlanIsOkOnlyWhenTheRuntimeSaidOk()
     {
-        Assert.True(ConfigurationVerdict.Started(Toml, XmipStatus.Ok).Ok);
-        Assert.False(ConfigurationVerdict.Started(Toml, XmipStatus.Invalid).Ok);
-        Assert.Equal($"started {Toml}", ConfigurationVerdict.Started(Toml, XmipStatus.Ok).Said);
+        Assert.True(ConfigurationVerdict.Planned(Toml, XmipStatus.Ok).Ok);
+        Assert.False(ConfigurationVerdict.Planned(Toml, XmipStatus.Invalid).Ok);
+        Assert.Equal(
+            $"planned {Toml}: validated and published, not running",
+            ConfigurationVerdict.Planned(Toml, XmipStatus.Ok).Said);
     }
 
     [Fact]
@@ -65,10 +67,10 @@ public sealed class ConfigurationVerdictTest
         using NativeOperator surface = new(nowhere);
 
         ConfigurationVerdict validated = surface.Validate(Toml);
-        ConfigurationVerdict started = surface.Start(Toml);
+        ConfigurationVerdict planned = surface.Plan(Toml);
 
         Assert.Equal(XmipStatus.Unavailable, validated.Status);
-        Assert.Equal(XmipStatus.Unavailable, started.Status);
+        Assert.Equal(XmipStatus.Unavailable, planned.Status);
         Assert.StartsWith("no runtime loaded: ", validated.Said, StringComparison.Ordinal);
     }
 }

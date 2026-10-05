@@ -206,6 +206,12 @@ public sealed class GatedOperator(
     }
 
     /// <inheritdoc />
+    public FailedJourneyList FailedJourneys(string scope, ulong from = 0, uint most = 0)
+    {
+        return inner.FailedJourneys(scope, from, most);
+    }
+
+    /// <inheritdoc />
     public JourneyOperation Act(string scope, string journey, JourneyAct act, string who)
     {
         ArgumentNullException.ThrowIfNull(scope);

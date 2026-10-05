@@ -1343,15 +1343,44 @@ typedef XmipStatus (*XmipPublicationDeadMessagesFn)(const XmipPublication *publi
 #define XMIP_PUBLICATION_DEAD_MESSAGES_ENTRYPOINT "xmip_publication_dead_messages_v1"
 
 /*
- * 16. A Journey that failed: Retry and Dismiss (runtime-model.md section 13;
- * ADR-0013, amendment 2026-08-26).
+ * 16. The Journeys that failed, listed; Retry and Dismiss (runtime-model.md
+ * section 13; ADR-0013, amendment 2026-08-26).
  *
  * A Journey leads to one Send Port - a Send Port Group's Journeys are one per
  * Port - and when every Send Location of its Port failed its tries it is
  * written Failed, with why, and waits in its Port's queue for an operator.
  * A node's publication carries, at <node>/send/<Port>, what the Port sent,
- * what failed, and the last Journey that failed with why: the identifier an
- * act names.
+ * what failed, how many failed wait in its queue, and the last Journey that
+ * failed with why; and beside its records, for each Port with any waiting,
+ * how many and the oldest hundred with why: the identifiers an act names.
+ * A Journey that failed before the node restarted, or on another node
+ * sending the Port, is among them once the node's scan has read it.
+ *
+ * A list is JSON, written into out as UTF-8, its true byte length in out_len
+ * whether or not it fit:
+ *
+ *   {"orders":"<where acts are left, empty for none>",
+ *    "failed_journeys":[{"node","send_port","count","next",
+ *                        "journeys":[{"journey","sequence","reason"}]}]}
+ *
+ * node is the scope of the node that sends the Port and send_port its
+ * configured name; count how many failed Journeys the node knows wait in its
+ * queue; journeys those listed, oldest first - journey the identifier an act
+ * names, sequence its place in the queue, reason why it failed, in words;
+ * next the place the next page reads from, or null where the queue was read
+ * to its end or the list is a publication's.
+ *
+ * xmip_failed_journeys_v1 lists, for every node running in this process at
+ * or beneath node (empty: every one), the Journeys that failed at its Send
+ * Port port (empty: every Port it sends), read from Xmip Storage from the
+ * place from on (0: the oldest), at most most of each Port (0: a hundred);
+ * a page reads at most 1024 entries of a queue, so a page may hold fewer
+ * than most and still name a next. orders is empty. XMIP_OK; XMIP_E_MALFORMED
+ * when node or port is not UTF-8; XMIP_E_IO with the reason, opening FAILED,
+ * when Xmip Storage did not answer.
+ *
+ * xmip_publication_failed_journeys_v1 lists what a read publication (section
+ * 8) carries, orders as it says, next null. XMIP_E_INVALID for no handle.
  *
  * xmip_journey_act_v1 applies act - retry or dismiss, exact - to the Journey
  * journey (its identifier) sent by the node at node in this process, by who.
@@ -1378,7 +1407,16 @@ typedef XmipStatus (*XmipJourneyActFn)(XmipScope node, XmipStr journey, XmipStr 
                                        XmipStr who, uint8_t *said, size_t said_cap,
                                        size_t *said_len);
 
-#define XMIP_JOURNEY_ACT_ENTRYPOINT "xmip_journey_act_v1"
+typedef XmipStatus (*XmipFailedJourneysFn)(XmipScope node, XmipStr port, uint64_t from,
+                                           uint32_t most, uint8_t *out, size_t cap,
+                                           size_t *out_len);
+typedef XmipStatus (*XmipPublicationFailedJourneysFn)(const XmipPublication *publication,
+                                                      uint8_t *out, size_t cap,
+                                                      size_t *out_len);
+
+#define XMIP_JOURNEY_ACT_ENTRYPOINT                 "xmip_journey_act_v1"
+#define XMIP_FAILED_JOURNEYS_ENTRYPOINT             "xmip_failed_journeys_v1"
+#define XMIP_PUBLICATION_FAILED_JOURNEYS_ENTRYPOINT "xmip_publication_failed_journeys_v1"
 
 #ifdef __cplusplus
 }

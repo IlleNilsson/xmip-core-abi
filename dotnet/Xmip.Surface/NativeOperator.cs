@@ -48,15 +48,16 @@ public sealed class NativeOperator : IOperatorSurface, IDisposable
     public string Source => Runtime() is { } runtime ? runtime.Source : $"NATIVE — {_reason}";
 
     /// <summary>
-    /// Start a node from its configuration file — as far as the runtime can
-    /// today, which is read, build, validate and plan. Returns what the
-    /// runtime said, as the record and the sentence. The table's next read
-    /// shows the result either way.
+    /// Plan a node from its configuration file through <c>xmip_start_v1</c>:
+    /// read, build, validate and publish the plan. Nothing is loaded and
+    /// nothing runs — a node runs in the program that links its technologies.
+    /// Returns what the runtime said, as the record and the sentence. The
+    /// table's next read shows the plan either way.
     /// </summary>
-    public ConfigurationVerdict Start(string configurationPath)
+    public ConfigurationVerdict Plan(string configurationPath)
     {
         return Runtime() is { } runtime
-            ? ConfigurationVerdict.Started(configurationPath, runtime.Start(configurationPath))
+            ? ConfigurationVerdict.Planned(configurationPath, runtime.Start(configurationPath))
             : ConfigurationVerdict.NotLoaded(configurationPath, _reason);
     }
 
@@ -298,6 +299,24 @@ public sealed class NativeOperator : IOperatorSurface, IDisposable
 
         return new DeadMessageOperation(
             message.Node, message.Message, act, status == XmipStatus.Ok, said);
+    }
+
+    /// <inheritdoc />
+    /// <remarks>Read from Xmip Storage by the node running in this process,
+    /// a page at a time.</remarks>
+    public FailedJourneyList FailedJourneys(string scope, ulong from = 0, uint most = 0)
+    {
+        ArgumentNullException.ThrowIfNull(scope);
+
+        if (Runtime() is null)
+        {
+            return FailedJourneyList.Empty;
+        }
+
+        (string node, string port) = JourneyOperation.PortAt(scope);
+
+        return RuntimeLibrary.Rules.Journeys.Failed(
+            node.Length > 0 ? node : scope, port, from, most);
     }
 
     /// <inheritdoc />

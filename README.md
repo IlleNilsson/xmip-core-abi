@@ -101,8 +101,14 @@ carries its own `DeadMessages`, and a Replay over one is `Order` on the noun
 `dead-message`. Section 16 — a Journey that failed (runtime-model.md section
 13; ADR-0013) — is `RuntimeRules.Journeys` (`RuntimeJourneys`): `Act`, retry
 or dismiss one by its node and identifier, by who acts; over a publication
-it is `Order` on the noun `journey`. There is no list: a node publishes, at
-its Send Port's scope, the last Journey that failed there and why.
+it is `Order` on the noun `journey` — and `Failed`, the `FailedJourneyList`
+of every Journey that failed at the Send Ports of the nodes running in the
+process, each Port's `FailedJourneyPort` with its count, the place its next
+page reads from and its `FailedJourneyRecord`s, read from Xmip Storage a page
+at a time; a `Publication` carries its own `FailedJourneys`, each Port's
+count and oldest hundred. `Xmip.Surface` lists them through
+`IOperatorSurface.FailedJourneys` at a cluster, a node or one Send Port's
+scope (`JourneyOperation.PortAt`, `JourneyOperation.Within`).
 Section 10 — the
 cluster's `xmip.toml` read, edited and sliced — is `RuntimeRules.Design`
 (`RuntimeDesign`): `TryViews`, `TryEdit`, `TrySlices`, `TryFilterStructure`
@@ -137,7 +143,15 @@ faces over it.
   snapshot and `RemoteOperator` over a web host's surface hub on another
   machine — and `ClusterSurfaces`, the set a face holds when more than one
   cluster is published: one surface per cluster, and nothing added across them
-  (ADR-0052, amendment 2026-09-20). A snapshot is read once per change: a
+  (ADR-0052, amendment 2026-09-20). `NativeOperator.Plan` hands a node's
+  file to `xmip_start_v1`, which reads, validates and publishes its plan and
+  runs nothing; its sentence says *planned … not running*. A host that
+  `RemoteOperator` loses is told at once to every watch, with a `Source` that
+  says it is unreachable and why, and every answer is empty until it is back
+  — never the publication held from before; while anything watches, the host
+  is tried again on `RemoteOperator.Retry` (SignalR's 0, 2, 10, 30 seconds,
+  the last repeated), whether it was lost or never reached, and every watch
+  is told the moment it answers (`RemoteOperatorTest`). A snapshot is read once per change: a
   followed `SnapshotOperator` reads each publication before its change feed
   announces it, and answers every question from that reading without touching
   the file; `SurfaceChoice.OpenAll` follows every snapshot it opens

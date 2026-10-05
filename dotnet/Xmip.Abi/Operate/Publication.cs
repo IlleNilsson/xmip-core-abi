@@ -22,6 +22,9 @@ namespace Xmip.Abi.Operate;
 /// <param name="DeadMessages">What its nodes' Dead Message Queues keep, the
 /// oldest of each, and where its publisher takes a Replay (ADR-0052,
 /// amendment 2026-10-01).</param>
+/// <param name="FailedJourneys">The Journeys that failed at its nodes' Send
+/// Ports, how many at each and the oldest, and where its publisher takes an
+/// act on one (runtime-model.md section 13).</param>
 public sealed record Publication(
     string Source,
     string Node,
@@ -31,7 +34,8 @@ public sealed record Publication(
     PublishedRun? Run,
     SubscriptionList Subscriptions,
     EventSubscriptionList EventSubscriptions,
-    DeadMessageList DeadMessages);
+    DeadMessageList DeadMessages,
+    FailedJourneyList FailedJourneys);
 
 /// <summary>What a run was started with, as a publication says it under
 /// <c>[run]</c>: <c>observe::Run</c>.</summary>

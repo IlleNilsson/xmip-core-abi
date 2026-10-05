@@ -333,13 +333,14 @@ public static class English
         };
     }
 
-    /// <summary>What the runtime said when asked to start a node from a saved
-    /// configuration.</summary>
-    public static string Started(string configurationPath, XmipStatus status)
+    /// <summary>What the runtime said when asked to plan a node from a saved
+    /// configuration: read, validated and its plan published — nothing runs
+    /// (<c>xmip_start_v1</c>), which the sentence says.</summary>
+    public static string Planned(string configurationPath, XmipStatus status)
     {
         return status switch
         {
-            XmipStatus.Ok => $"started {configurationPath}",
+            XmipStatus.Ok => $"planned {configurationPath}: validated and published, not running",
             XmipStatus.Unsupported =>
                 $"this runtime does not export {OperateAbi.StartEntrypoint}",
             _ => $"{configurationPath} refused: {status.Explain()}; the health tree says why",
