@@ -175,6 +175,27 @@ public static class OperateAbi
         "The Xmip event source is not registered and registering it needs elevation once " +
         "(Install-XmipPrerequisite does it), so this is written under the .NET Runtime source.";
 
+    /// <summary>A cluster's <c>xmip.toml</c>, one view per artifact kind:
+    /// section 10, forwarded to <c>configure::views::Views::of</c>.</summary>
+    public const string ClusterViewsEntrypoint = "xmip_cluster_views_v1";
+
+    /// <summary>A filter's text as rows and groups: section 10,
+    /// <c>configure::filter::structure</c>.</summary>
+    public const string FilterStructureEntrypoint = "xmip_filter_structure_v1";
+
+    /// <summary>Rows and groups as a filter's canonical text: section 10,
+    /// <c>configure::filter::text</c>.</summary>
+    public const string FilterTextEntrypoint = "xmip_filter_text_v1";
+
+    /// <summary>A cluster's <c>xmip.toml</c> with one edit made: section 10,
+    /// <c>configure::view_edit::apply</c>.</summary>
+    public const string ClusterEditEntrypoint = "xmip_cluster_edit_v1";
+
+    /// <summary>Each node's document, sliced from a cluster's
+    /// <c>xmip.toml</c> by the one slicing: section 10,
+    /// <c>configure::slices</c> (ADR-0031, amendment 2026-10-05).</summary>
+    public const string ClusterSlicesEntrypoint = "xmip_cluster_slices_v1";
+
     /// <summary>Subscribe to the process's Events with a filter: section 11,
     /// forwarded to <c>xmip-core-event</c>'s <c>Hub::subscribe</c>
     /// (ADR-0065).</summary>
@@ -233,9 +254,9 @@ public static class OperateAbi
     /// over section 8's handle.</summary>
     public const string PublicationSubscriptionsEntrypoint = "xmip_publication_subscriptions_v1";
 
-    /// <summary>An act on a Subscription, an Event subscription or a Message
-    /// in a Dead Message Queue left for a node read through its publication:
-    /// section 14, <c>observe::Order::leave</c>.</summary>
+    /// <summary>An act on a Subscription, an Event subscription, a Message
+    /// in a Dead Message Queue or a Journey that failed, left for a node read
+    /// through its publication: section 14, <c>observe::Order::leave</c>.</summary>
     public const string OrderEntrypoint = "xmip_order_v1";
 
     /// <summary>The Dead Message Queues of every node running in this
@@ -249,6 +270,10 @@ public static class OperateAbi
     /// <summary>The Dead Message Queue entries a read publication carries:
     /// section 15 over section 8's handle.</summary>
     public const string PublicationDeadMessagesEntrypoint = "xmip_publication_dead_messages_v1";
+
+    /// <summary>Retry or Dismiss a Journey that failed: section 16
+    /// (runtime-model.md section 13; ADR-0013).</summary>
+    public const string JourneyActEntrypoint = "xmip_journey_act_v1";
 
     /// <summary>The technologies the runtime carries and the settings each
     /// declares: section 12 (ADR-0064, amendment 2026-09-26).</summary>

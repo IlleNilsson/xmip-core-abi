@@ -269,6 +269,13 @@ public sealed class RemoteOperator : IOperatorSurface, IDisposable
     }
 
     /// <inheritdoc />
+    public JourneyOperation Act(string scope, string journey, JourneyAct act, string who)
+    {
+        return Ask<JourneyOperation>("ActOnJourney", scope, journey, act)
+            ?? JourneyOperation.Declined(scope, journey, act, Source);
+    }
+
+    /// <inheritdoc />
     public string PauseScope(string scope, string who)
     {
         return Ask<string>("Pause", scope) ?? Source;

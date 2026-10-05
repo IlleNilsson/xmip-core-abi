@@ -261,6 +261,25 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
         return new DeadMessageOperation(message.Node, message.Message, act, left, said);
     }
 
+    /// <inheritdoc cref="IOperatorSurface.Act(string, string, JourneyAct, string)" />
+    /// <remarks>A snapshot touches no node. Where its publication says where
+    /// its publisher takes orders — one place for every noun — the act is
+    /// left there for the node that sends the Journey's Send Port, which takes
+    /// it at its next look and publishes what came of it
+    /// (<c>observe::Order</c>, runtime-model.md section 13); where it says
+    /// nowhere, the act is declined.</remarks>
+    public JourneyOperation Act(string scope, string journey, JourneyAct act, string who)
+    {
+        return JourneyOperation.OnNode(scope, journey, act, node =>
+        {
+            (bool left, string said) = SnapshotOrder.Leave(
+                Read().DeadMessages.Orders, node, JourneyOperation.Noun, journey,
+                JourneyOperation.Word(act), who, $"the Journey {journey}");
+
+            return new JourneyOperation(node, journey, act, left, said);
+        });
+    }
+
     /// <inheritdoc />
     public string PauseScope(string scope, string who)
     {

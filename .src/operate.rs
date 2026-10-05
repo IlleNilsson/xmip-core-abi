@@ -311,6 +311,7 @@ pub mod catalogue;
 pub mod dead_message;
 pub mod design;
 pub mod event;
+pub mod journey;
 pub mod process;
 pub mod publication;
 pub mod subscription;
@@ -455,6 +456,10 @@ mod tests {
             (
                 "XMIP_CLUSTER_EDIT_ENTRYPOINT",
                 design::CLUSTER_EDIT_ENTRYPOINT,
+            ),
+            (
+                "XMIP_CLUSTER_SLICES_ENTRYPOINT",
+                design::CLUSTER_SLICES_ENTRYPOINT,
             ),
             (
                 "XMIP_PROCESS_DECLARE_ENTRYPOINT",

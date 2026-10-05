@@ -63,6 +63,11 @@ public sealed class OperateAbiTest
     [InlineData("XMIP_AUDIT_READ_ENTRYPOINT", OperateAbi.AuditReadEntrypoint)]
     [InlineData("XMIP_EVENT_SOURCE", OperateAbi.EventSource)]
     [InlineData("XMIP_EVENT_SOURCE_UNREGISTERED", OperateAbi.EventSourceUnregistered)]
+    [InlineData("XMIP_CLUSTER_VIEWS_ENTRYPOINT", OperateAbi.ClusterViewsEntrypoint)]
+    [InlineData("XMIP_FILTER_STRUCTURE_ENTRYPOINT", OperateAbi.FilterStructureEntrypoint)]
+    [InlineData("XMIP_FILTER_TEXT_ENTRYPOINT", OperateAbi.FilterTextEntrypoint)]
+    [InlineData("XMIP_CLUSTER_EDIT_ENTRYPOINT", OperateAbi.ClusterEditEntrypoint)]
+    [InlineData("XMIP_CLUSTER_SLICES_ENTRYPOINT", OperateAbi.ClusterSlicesEntrypoint)]
     [InlineData("XMIP_EVENT_SUBSCRIBE_ENTRYPOINT", OperateAbi.EventSubscribeEntrypoint)]
     [InlineData("XMIP_EVENT_NEXT_ENTRYPOINT", OperateAbi.EventNextEntrypoint)]
     [InlineData("XMIP_EVENT_BATCH_FREE_ENTRYPOINT", OperateAbi.EventBatchFreeEntrypoint)]
@@ -89,6 +94,7 @@ public sealed class OperateAbiTest
     [InlineData("XMIP_DEAD_MESSAGE_REPLAY_ENTRYPOINT", OperateAbi.DeadMessageReplayEntrypoint)]
     [InlineData(
         "XMIP_PUBLICATION_DEAD_MESSAGES_ENTRYPOINT", OperateAbi.PublicationDeadMessagesEntrypoint)]
+    [InlineData("XMIP_JOURNEY_ACT_ENTRYPOINT", OperateAbi.JourneyActEntrypoint)]
     [InlineData(
         "XMIP_TECHNOLOGY_CATALOGUE_ENTRYPOINT", OperateAbi.TechnologyCatalogueEntrypoint)]
     [InlineData("XMIP_PROCESS_DECLARE_ENTRYPOINT", OperateAbi.ProcessDeclareEntrypoint)]

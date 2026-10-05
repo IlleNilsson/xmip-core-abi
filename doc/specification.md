@@ -530,6 +530,25 @@ noun `dead-message`, act `replay`. The Rust mirror is
 `.src/operate/dead_message.rs`; .NET binds the first two as
 `RuntimeDeadMessages` and the third in `PublicationReader`.
 
+Section 16 is a Journey that failed (runtime-model.md section 13; ADR-0013,
+amendment 2026-08-26): a Journey leads to one Send Port, and when every Send
+Location of its Port failed its tries it is written Failed, with why, and
+waits in its Port's queue for an Operator. A node's publication carries, at
+`<node>/send/<Port>`, what the Port sent, what failed and the last Journey
+that failed there with why: the identifier an act names. There is no list of
+failed Journeys. `xmip_journey_act_v1` applies `retry` or `dismiss`, exact,
+to one by its node and identifier, by who acts: Retry writes it Active, its
+tries begun anew, and sends it again from the end of its Port's queue — or
+from its place, where it blocks a Sequential Send Port; Dismiss writes it
+Dismissed, terminal, its history, Message and Stream kept, and takes it out
+of the queue. Each is one write under a claim, audited with who acted, as
+`journey.retry` or `journey.dismiss`. A node not running here, no such
+Journey, one that has not failed, or a node that does not send its Port is
+refused in words, opening REFUSED; a word that is no act on a Journey is
+invalid. A surface over a publication acts through section 14's
+`xmip_order_v1`, noun `journey`, act `retry` or `dismiss`. The Rust mirror is
+`.src/operate/journey.rs`; .NET binds it as `RuntimeJourneys`.
+
 Section 9 is a program's audit record (ADR-0062): `xmip_audit_v1` hands one
 to `xmip-core-audit`, and since 2026-09-29 `xmip_audit_read_v1` answers, as
 JSON in memory, the records an audit query asks for — who (a location and

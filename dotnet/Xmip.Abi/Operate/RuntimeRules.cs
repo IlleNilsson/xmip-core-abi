@@ -20,7 +20,9 @@ namespace Xmip.Abi.Operate;
 /// library forwards each, and this binds each once for every .NET surface
 /// (ADR-0052 and ADR-0027, amendments 2026-09-24). Section 8, a publication
 /// read by the runtime, is <see cref="Publications"/>; section 9, a
-/// program's audit record, is <see cref="Audit"/>; section 11, Events
+/// program's audit record, is <see cref="Audit"/>; section 10, the
+/// cluster's <c>xmip.toml</c> read, edited and sliced, is
+/// <see cref="Design"/>; section 11, Events
 /// subscribed, is <see cref="Events"/>; section 12, the technologies the
 /// runtime carries, is <see cref="Catalogue"/>; section 13, a System
 /// Process declared, is <see cref="Processes"/>.
@@ -106,12 +108,14 @@ public sealed unsafe class RuntimeRules
             Export(library, OperateAbi.CapabilityEntryEntrypoint);
         Publications = new PublicationReader(library);
         Audit = new RuntimeAudit(library);
+        Design = new RuntimeDesign(library);
         Events = new RuntimeEvents(library);
         Catalogue = new RuntimeCatalogue(library);
         Processes = new RuntimeProcesses(library);
         EventSubscriptions = new RuntimeEventSubscriptions(library);
         Subscriptions = new RuntimeSubscriptions(library);
         DeadMessages = new RuntimeDeadMessages(library);
+        Journeys = new RuntimeJourneys(library);
 
         delegate* unmanaged[Cdecl]<XmipStr*, nuint, nuint*, int> words =
             (delegate* unmanaged[Cdecl]<XmipStr*, nuint, nuint*, int>)
@@ -132,6 +136,11 @@ public sealed unsafe class RuntimeRules
     /// <summary>Section 9: a program's audit record, recorded by the audit
     /// capability (ADR-0062).</summary>
     public RuntimeAudit Audit { get; }
+
+    /// <summary>Section 10: the cluster's <c>xmip.toml</c> read, edited and
+    /// sliced (ADR-0064, amendment 2026-10-03; ADR-0031, amendment
+    /// 2026-10-05).</summary>
+    public RuntimeDesign Design { get; }
 
     /// <summary>Section 11: Events, subscribed from .NET and published into
     /// this process (ADR-0065).</summary>
@@ -160,6 +169,11 @@ public sealed unsafe class RuntimeRules
     /// amendment 2026-10-01).</summary>
     public RuntimeDeadMessages DeadMessages { get; }
 
+    /// <summary>Section 16: Retry and Dismiss on a Journey that failed, sent
+    /// by a node running in this process (runtime-model.md section 13;
+    /// ADR-0013).</summary>
+    public RuntimeJourneys Journeys { get; }
+
     /// <summary>The stage words, in message-path order — the segments a
     /// scope names a stage by: <c>node::Stage::WORDS</c>, read once when the
     /// library loads.</summary>
@@ -170,9 +184,9 @@ public sealed unsafe class RuntimeRules
     /// (ADR-0056, amendment 2026-10-01).</summary>
     public IReadOnlyList<string> RoleWords { get; }
 
-    /// <summary>Section 7's, section 8's, section 9's, section 11's, section
-    /// 12's, section 13's, section 14's and section 15's symbols, each of
-    /// which a runtime must export.</summary>
+    /// <summary>Section 7's, section 8's, section 9's, section 10's, section
+    /// 11's, section 12's, section 13's, section 14's, section 15's and
+    /// section 16's symbols, each of which a runtime must export.</summary>
     public static IReadOnlyList<string> Entrypoints { get; } =
     [
         OperateAbi.HealthRolledEntrypoint,
@@ -184,12 +198,14 @@ public sealed unsafe class RuntimeRules
         OperateAbi.CapabilityEntryEntrypoint,
         .. PublicationReader.Entrypoints,
         .. RuntimeAudit.Entrypoints,
+        .. RuntimeDesign.Entrypoints,
         .. RuntimeEvents.Entrypoints,
         .. RuntimeCatalogue.Entrypoints,
         .. RuntimeProcesses.Entrypoints,
         .. RuntimeEventSubscriptions.Entrypoints,
         .. RuntimeSubscriptions.Entrypoints,
         .. RuntimeDeadMessages.Entrypoints,
+        .. RuntimeJourneys.Entrypoints,
         OperateAbi.ScopeContainsEntrypoint,
         OperateAbi.ScopeMatchesEntrypoint,
         OperateAbi.RunShownEntrypoint,

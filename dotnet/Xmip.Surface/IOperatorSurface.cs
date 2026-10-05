@@ -297,6 +297,23 @@ public interface IOperatorSurface
             message, act, $"{Source} does not replay from a Dead Message Queue");
     }
 
+    /// <summary>
+    /// Retry or Dismiss the Journey <paramref name="journey"/> that failed,
+    /// sent by the node at <paramref name="scope"/> — the node, or the Send
+    /// Port's scope beneath it, where the node publishes the last Journey that
+    /// failed there — by <paramref name="who"/>, and say what came of it
+    /// (runtime-model.md section 13; ADR-0013). Who may act is decided by role
+    /// (ADR-0009): by the screen in its own process, and by
+    /// <see cref="GatedOperator"/> for an act from elsewhere; the node applies
+    /// what reaches it and audits it. The default declines: this surface
+    /// reaches no node.
+    /// </summary>
+    public JourneyOperation Act(string scope, string journey, JourneyAct act, string who)
+    {
+        return JourneyOperation.Declined(
+            scope, journey, act, $"{Source} does not act on Journeys");
+    }
+
     /// <summary>Pause everything at and beneath a scope, by <paramref name="who"/>.
     /// The first operation that acts rather than reads. Returns what the runtime
     /// said, for the operator to see.</summary>

@@ -8,7 +8,8 @@ namespace Xmip.Surface;
 /// reaches a host from elsewhere passes. It reads as <paramref name="inner"/>
 /// reads; each act — pause and resume a scope, pause and resume a
 /// Subscription, pause, resume and remove an Event subscription, replay a
-/// Message from a Dead Message Queue — is refused
+/// Message from a Dead Message Queue, retry or dismiss a Journey that
+/// failed — is refused
 /// in words, and nothing reaches <paramref name="inner"/>, unless
 /// <paramref name="who"/> was proven and <paramref name="role"/> may operate.
 /// Every act, taken or refused, is audited (ADR-0062).
@@ -202,6 +203,19 @@ public sealed class GatedOperator(
         return Admits(DeadMessageOperation.Word(act), target, out string proven, out string refused)
             ? inner.Act(message, act, proven)
             : DeadMessageOperation.Declined(message, act, refused);
+    }
+
+    /// <inheritdoc />
+    public JourneyOperation Act(string scope, string journey, JourneyAct act, string who)
+    {
+        ArgumentNullException.ThrowIfNull(scope);
+        ArgumentNullException.ThrowIfNull(journey);
+
+        string target = $"the Journey {journey} sent at {scope}";
+
+        return Admits(JourneyOperation.Word(act), target, out string proven, out string refused)
+            ? inner.Act(scope, journey, act, proven)
+            : JourneyOperation.Declined(scope, journey, act, refused);
     }
 
     /// <inheritdoc />

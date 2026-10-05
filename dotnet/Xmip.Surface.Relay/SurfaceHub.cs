@@ -110,6 +110,14 @@ public sealed class SurfaceHub(IOperatorSurface surface, RoleContext role, Progr
         return Acting().Act(message, act, Unread);
     }
 
+    /// <summary>Retry or Dismiss a Journey that failed, sent by the node at
+    /// or above <paramref name="scope"/>, as the proven caller, where the
+    /// host's role may act.</summary>
+    public JourneyOperation ActOnJourney(string scope, string journey, JourneyAct act)
+    {
+        return Acting().Act(scope, journey, act, Unread);
+    }
+
     /// <summary>Pause everything at and beneath a scope, as the proven
     /// caller, where the host's role may act.</summary>
     public string Pause(string scope)
