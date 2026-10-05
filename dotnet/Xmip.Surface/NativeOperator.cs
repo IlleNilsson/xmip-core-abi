@@ -301,6 +301,20 @@ public sealed class NativeOperator : IOperatorSurface, IDisposable
     }
 
     /// <inheritdoc />
+    public JourneyOperation Act(string scope, string journey, JourneyAct act, string who)
+    {
+        return Runtime() is null
+            ? JourneyOperation.Declined(scope, journey, act, NotLoaded())
+            : JourneyOperation.OnNode(scope, journey, act, node =>
+            {
+                XmipStatus status = RuntimeLibrary.Rules.Journeys.Act(
+                    node, journey, JourneyOperation.Word(act), who, out string said);
+
+                return new JourneyOperation(node, journey, act, status == XmipStatus.Ok, said);
+            });
+    }
+
+    /// <inheritdoc />
     public ScopeOperation Control(string scope, ScopeAction action, string who)
     {
         if (Runtime() is not { } runtime)

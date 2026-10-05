@@ -73,6 +73,31 @@ public static class ScopeTree
         return RuntimeLibrary.Rules.Node(scope).Node;
     }
 
+    /// <summary>The scope of the node a thing runs on: <paramref name="scope"/>
+    /// or the highest scope above it on the same node —
+    /// <c>xmip:///&lt;cluster&gt;/node/&lt;node&gt;</c> for
+    /// <c>xmip:///&lt;cluster&gt;/node/&lt;node&gt;/send/&lt;Port&gt;</c> — by
+    /// <see cref="Node"/> and <see cref="Parent"/>; empty for a scope on no
+    /// node.</summary>
+    public static string NodeScope(string scope)
+    {
+        string node = Node(scope);
+
+        if (node.Length == 0)
+        {
+            return string.Empty;
+        }
+
+        string at = scope;
+
+        for (string up = Parent(at); up != at && Node(up) == node; up = Parent(at))
+        {
+            at = up;
+        }
+
+        return at;
+    }
+
     /// <summary>The three stages of the message path, in the order an operator
     /// reads them: <c>node::Stage::WORDS</c>, called in the runtime.</summary>
     public static IReadOnlyList<string> Stages => RuntimeLibrary.Rules.StageWords;

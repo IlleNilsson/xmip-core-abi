@@ -5,7 +5,8 @@ namespace Xmip.Surface;
 /// <summary>
 /// An act a <see cref="SnapshotOperator"/> leaves for a node it reads
 /// through its publication: one order for every noun — a Subscription, an
-/// Event subscription, a Message in a Dead Message Queue — through
+/// Event subscription, a Message in a Dead Message Queue, a Journey that
+/// failed — through
 /// <c>xmip_order_v1</c> (<c>observe::Order</c>), and the one sentence every
 /// surface says when it was left.
 /// </summary>

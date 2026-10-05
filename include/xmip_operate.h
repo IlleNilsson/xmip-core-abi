@@ -792,7 +792,7 @@ typedef XmipStatus (*XmipAuditReadFn)(XmipStr directory,
 #define XMIP_EVENT_SOURCE_UNREGISTERED "The Xmip event source is not registered and registering it needs elevation once (Install-XmipPrerequisite does it), so this is written under the .NET Runtime source."
 
 /* ===================================================================== */
-/* 10. The cluster's xmip.toml, read and edited for the designer         */
+/* 10. The cluster's xmip.toml, read, edited and sliced                  */
 /* ===================================================================== */
 
 /*
@@ -801,12 +801,15 @@ typedef XmipStatus (*XmipAuditReadFn)(XmipStr directory,
  * (ADR-0064, amendment 2026-10-03). The designer holds no rule: its language
  * server asks here, and each export is a thin forwarder into
  * xmip-core-configure, where the file, its views, an Xmip Application's
- * routes, its filters and every edit are read. Pure like section 7: no
- * handle, any thread, before any node. Validating the file is
- * xmip_validate_v1's, node by node.
+ * routes, its filters, every edit and the one slicing are read. The
+ * Operation Desktop's Configure page asks the same five (ADR-0031,
+ * amendment 2026-10-05: only the cluster's xmip.toml is edited, and saving
+ * it slices it for each node). Pure like section 7: no handle, any thread,
+ * before any node. Validating the file is xmip_validate_v1's, node by node.
  *
- * One shape for the four. input is the text the export reads; argument is
- * the edit xmip_cluster_edit_v1 makes and empty for the others. The answer
+ * One shape for the five. input is the text the export reads; argument is
+ * the edit xmip_cluster_edit_v1 makes, the node xmip_cluster_slices_v1
+ * slices for (empty: every node), and empty for the others. The answer
  * is written into out as UTF-8, its true byte length in out_len whether or
  * not it fit, as xmip_validate_v1 writes its report. XMIP_OK with the
  * answer; XMIP_E_INVALID with the refusal, one sentence, in out;
@@ -821,13 +824,20 @@ typedef XmipStatus (*XmipAuditReadFn)(XmipStr directory,
  *                             kind, name, column, target, a Subscription's
  *                             filter and summary), edges (from, to, kind),
  *                             problems, and the operators and kinds a filter
- *                             row offers.
+ *                             row offers; and document, "cluster" where the
+ *                             text declares its nodes, "node" where it is a
+ *                             node's own document, which no tool edits.
  *   xmip_filter_structure_v1  a filter's text in; its rows and groups out.
  *   xmip_filter_text_v1       rows and groups in; the filter's canonical
  *                             text out, which reads back byte for byte.
  *   xmip_cluster_edit_v1      a cluster's xmip.toml in, an edit as
  *                             argument; the edited text out, everything the
  *                             edit does not touch as it was.
+ *   xmip_cluster_slices_v1    a cluster's xmip.toml in, a node's name or
+ *                             empty as argument; out
+ *                             {"slices":[{"node","text"}]}, each node's
+ *                             configuration document as configure::slice
+ *                             writes it, in the order of the node names.
  */
 typedef XmipStatus (*XmipDesignFn)(XmipStr input, XmipStr argument,
                                    uint8_t *out, size_t cap, size_t *out_len);
@@ -836,6 +846,7 @@ typedef XmipStatus (*XmipDesignFn)(XmipStr input, XmipStr argument,
 #define XMIP_FILTER_STRUCTURE_ENTRYPOINT "xmip_filter_structure_v1"
 #define XMIP_FILTER_TEXT_ENTRYPOINT      "xmip_filter_text_v1"
 #define XMIP_CLUSTER_EDIT_ENTRYPOINT     "xmip_cluster_edit_v1"
+#define XMIP_CLUSTER_SLICES_ENTRYPOINT   "xmip_cluster_slices_v1"
 
 /* ===================================================================== */
 /* 11. Events, subscribed                                                */
@@ -1241,8 +1252,9 @@ typedef XmipStatus (*XmipProcessDeclarationsFn)(XmipStr directory, uint8_t *out,
  * says where its publisher takes orders, xmip_order_v1 leaves act on the
  * noun called target of the node at node there - noun subscription with a
  * Subscription's name, event-subscription with an Event subscription's
- * number, or dead-message with a Message's identifier and the act replay
- * (section 15) - for the node to take at its next look and apply; said
+ * number, dead-message with a Message's identifier and the act replay
+ * (section 15), or journey with a Journey's identifier and the act retry or
+ * dismiss (section 16) - for the node to take at its next look and apply; said
  * holds the file written. XMIP_OK; XMIP_E_INVALID with the refusal for an
  * empty orders, a node that names no node, a noun that is no noun, or an
  * act the noun does not take; XMIP_E_IO with the reason when it could not
@@ -1329,6 +1341,44 @@ typedef XmipStatus (*XmipPublicationDeadMessagesFn)(const XmipPublication *publi
 #define XMIP_DEAD_MESSAGES_ENTRYPOINT             "xmip_dead_messages_v1"
 #define XMIP_DEAD_MESSAGE_REPLAY_ENTRYPOINT       "xmip_dead_message_replay_v1"
 #define XMIP_PUBLICATION_DEAD_MESSAGES_ENTRYPOINT "xmip_publication_dead_messages_v1"
+
+/*
+ * 16. A Journey that failed: Retry and Dismiss (runtime-model.md section 13;
+ * ADR-0013, amendment 2026-08-26).
+ *
+ * A Journey leads to one Send Port - a Send Port Group's Journeys are one per
+ * Port - and when every Send Location of its Port failed its tries it is
+ * written Failed, with why, and waits in its Port's queue for an operator.
+ * A node's publication carries, at <node>/send/<Port>, what the Port sent,
+ * what failed, and the last Journey that failed with why: the identifier an
+ * act names.
+ *
+ * xmip_journey_act_v1 applies act - retry or dismiss, exact - to the Journey
+ * journey (its identifier) sent by the node at node in this process, by who.
+ * Retry writes it Active, its tries begun anew, and moves it to the end of
+ * its Send Port's queue, from where it is sent again; where it blocks a
+ * Sequential Send Port it keeps its place. Dismiss writes it Dismissed -
+ * terminal, its history, Message and Stream kept - and takes it out of the
+ * queue, so a Sequential Port's next of its order key goes. Each is one
+ * write under a claim, audited with who acted. XMIP_OK with what came of it
+ * in said, one sentence - also for a Journey dismissed already; XMIP_E_NOT_FOUND
+ * with the refusal, opening REFUSED, when that node does not run here, the
+ * Ledger holds no such Journey, it has not failed, or that node does not
+ * send its Send Port; XMIP_E_INVALID with the refusal for a word that is no
+ * act on a Journey; XMIP_E_IO, opening FAILED, when Xmip Storage did not
+ * answer or take it and nothing changed.
+ *
+ * A surface over a publication acts through section 14's xmip_order_v1,
+ * noun journey, target the Journey's identifier, act retry or dismiss. Who
+ * may act is the surface's to decide by role.
+ *
+ * Optional symbols, as section 7's are; XMIP_OPERATE_VERSION is unchanged.
+ */
+typedef XmipStatus (*XmipJourneyActFn)(XmipScope node, XmipStr journey, XmipStr act,
+                                       XmipStr who, uint8_t *said, size_t said_cap,
+                                       size_t *said_len);
+
+#define XMIP_JOURNEY_ACT_ENTRYPOINT "xmip_journey_act_v1"
 
 #ifdef __cplusplus
 }

@@ -109,8 +109,8 @@ public sealed unsafe class RuntimeSubscriptions
 
     /// <summary>
     /// Leave <paramref name="act"/> on the <paramref name="noun"/> —
-    /// <c>subscription</c>, <c>event-subscription</c> or
-    /// <c>dead-message</c> (section 15) — called
+    /// <c>subscription</c>, <c>event-subscription</c>, <c>dead-message</c>
+    /// (section 15) or <c>journey</c> (section 16) — called
     /// <paramref name="target"/> of the node at <paramref name="node"/> in
     /// <paramref name="orders"/>, the place its publication names, for the
     /// node to take at its next look. <see cref="XmipStatus.Ok"/> with the

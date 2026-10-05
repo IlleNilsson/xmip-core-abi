@@ -14,9 +14,11 @@ operate types, section 6's start and validate shapes, section
 7's rule exports (`operate::rule`), section 8's publication reader
 (`operate::publication`), section 9's audit record (`operate::audit`,
 with `XMIP_EVENT_SOURCE`, the Windows Event Log source, ADR-0062) and section
-10's four designer exports (`operate::design`: an Xmip Application's routes,
-a filter's structure and text, an edit — ADR-0064), which the VS Code
-extension's language server calls and no .NET surface binds yet, and section
+10's five exports over the cluster's `xmip.toml` (`operate::design`: its
+views, an Xmip Application's routes among them, a filter's structure and
+text, an edit, and each node's slice — ADR-0064; ADR-0031, amendment
+2026-10-05), which the VS Code extension's language server calls and
+`RuntimeRules.Design` binds for the Operation Desktop, and section
 12's technology catalogue (`operate::catalogue`: the technologies a runtime
 carries and the settings each declares, ADR-0064 amendment 2026-09-26),
 which the language server calls and `RuntimeRules.Catalogue` binds, and section
@@ -96,8 +98,17 @@ is `RuntimeRules.DeadMessages` (`RuntimeDeadMessages`): `Standing`, the
 keeps, each with its gate verdicts, promoted properties and declines as name
 and value pairs, and `Replay`, one by its node and Message; a `Publication`
 carries its own `DeadMessages`, and a Replay over one is `Order` on the noun
-`dead-message`.
-Section 12 — the
+`dead-message`. Section 16 — a Journey that failed (runtime-model.md section
+13; ADR-0013) — is `RuntimeRules.Journeys` (`RuntimeJourneys`): `Act`, retry
+or dismiss one by its node and identifier, by who acts; over a publication
+it is `Order` on the noun `journey`. There is no list: a node publishes, at
+its Send Port's scope, the last Journey that failed there and why.
+Section 10 — the
+cluster's `xmip.toml` read, edited and sliced — is `RuntimeRules.Design`
+(`RuntimeDesign`): `TryViews`, `TryEdit`, `TrySlices`, `TryFilterStructure`
+and `TryFilterText`, each the header's JSON or text, or the runtime's
+refusal; `Xmip.Surface` reads them as `ConfigurationViews`, `ClusterEdit` and
+`NodeSlice`, which the desktop's Configure page draws and sends. Section 12 — the
 technologies the runtime carries and what each declares a Location may set —
 is `RuntimeRules.Catalogue` (`RuntimeCatalogue`): `TryRead` brings back the
 header's JSON, every technology or the one named, for the desktop editor's
