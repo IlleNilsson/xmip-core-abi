@@ -36,11 +36,17 @@
     (RuntimeLibrary in Xmip.Surface), finds it. Section 7's rules are called
     in that library, never written here (ADR-0052, amendment 2026-09-24). In a
     checkout of this repository alone the glob matches nothing and nothing is
-    copied; a deployment puts its own runtime beside it.
+    copied; a deployment puts its own runtime beside it. Where CARGO_TARGET_DIR
+    names the estate's one shared build directory (Publish-XmipChange sets it),
+    the library is read from there.
   -->
+  <PropertyGroup>
+    <XmipRuntimeBuild Condition="'$(CARGO_TARGET_DIR)' != ''">$(CARGO_TARGET_DIR)/debug</XmipRuntimeBuild>
+    <XmipRuntimeBuild Condition="'$(CARGO_TARGET_DIR)' == ''">$(MSBuildThisFileDirectory)../../../../platform/runtime/target/debug</XmipRuntimeBuild>
+  </PropertyGroup>
   <ItemGroup>
-    <None Include="$(MSBuildThisFileDirectory)../../../../platform/runtime/target/debug/*xmip_core_runtime.*"
-          Exclude="$(MSBuildThisFileDirectory)../../../../platform/runtime/target/debug/*.rlib;$(MSBuildThisFileDirectory)../../../../platform/runtime/target/debug/*.d;$(MSBuildThisFileDirectory)../../../../platform/runtime/target/debug/*.pdb;$(MSBuildThisFileDirectory)../../../../platform/runtime/target/debug/*.exp;$(MSBuildThisFileDirectory)../../../../platform/runtime/target/debug/*.lib"
+    <None Include="$(XmipRuntimeBuild)/*xmip_core_runtime.*"
+          Exclude="$(XmipRuntimeBuild)/*.rlib;$(XmipRuntimeBuild)/*.d;$(XmipRuntimeBuild)/*.pdb;$(XmipRuntimeBuild)/*.exp;$(XmipRuntimeBuild)/*.lib"
           Link="%(Filename)%(Extension)"
           CopyToOutputDirectory="PreserveNewest"
           Visible="false" />
