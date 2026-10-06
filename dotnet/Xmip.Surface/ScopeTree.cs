@@ -138,7 +138,7 @@ public static class ScopeTree
     }
 
     /// <summary>What a thing configured at a stage is called — a receive
-    /// location, an xmip process, a send location: <c>node::Stage::location</c>,
+    /// location, a work process, a send location: <c>node::Stage::location</c>,
     /// called in the runtime. Null for a word that is no stage.</summary>
     public static string? Location(string stage)
     {
