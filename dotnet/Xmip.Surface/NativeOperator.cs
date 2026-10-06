@@ -310,7 +310,12 @@ public sealed class NativeOperator : IOperatorSurface, IDisposable
 
     /// <inheritdoc />
     /// <remarks>Read from Xmip Storage by the node running in this process,
-    /// a page at a time.</remarks>
+    /// a page at a time. The runtime lists every Send Port of every node
+    /// running here at or beneath the scope, a quiet one with a count of
+    /// none, so an answer with no Port in it is no answer: no node here
+    /// sends a Send Port there, and whether a Journey failed at one running
+    /// elsewhere is not known — <see cref="FailedJourneyList.Unlisted"/>,
+    /// never an authoritative none.</remarks>
     public FailedJourneyList FailedJourneys(string scope, ulong from = 0, uint most = 0)
     {
         ArgumentNullException.ThrowIfNull(scope);
@@ -321,11 +326,12 @@ public sealed class NativeOperator : IOperatorSurface, IDisposable
         }
 
         (string node, string port) = JourneyOperation.PortAt(scope);
-
-        return JourneyOperation.Read(
+        FailedJourneyList failed = JourneyOperation.Read(
             scope,
             () => RuntimeLibrary.Rules.Journeys.Failed(
                 node.Length > 0 ? node : scope, port, from, most));
+
+        return failed.Listed && failed.Ports.Count == 0 ? FailedJourneyList.Unlisted : failed;
     }
 
     /// <inheritdoc />
