@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -10,20 +11,56 @@ namespace Xmip.Surface.Relay;
 public static class SurfaceRelayExtensions
 {
     /// <summary>
-    /// SignalR and the relay that pushes the host's change feed. The hub acts
-    /// by the host's <see cref="RoleContext"/> — the one the host registered,
-    /// else the role <see cref="RoleContext.Assigned"/> reads from its
-    /// configuration — and audits every act through the host's
-    /// <see cref="ProgramAudit"/>, which the host registers (ADR-0062).
+    /// SignalR and the relay that pushes the host's change feed. The hub
+    /// grants each caller a role by the host's <see cref="RoleAssignment"/> —
+    /// the one the host registered, else the one its configuration states
+    /// (<see cref="RoleAssignment.From"/>) — and audits every act through the
+    /// host's <see cref="ProgramAudit"/>, which the host registers (ADR-0062).
     /// </summary>
     public static IServiceCollection AddXmipSurfaceRelay(this IServiceCollection services)
     {
-        services.TryAddSingleton(provider => new RoleContext(
-            RoleContext.Assigned(provider.GetRequiredService<IConfiguration>())));
+        services.TryAddSingleton(provider =>
+            RoleAssignment.From(provider.GetRequiredService<IConfiguration>()));
         services.AddSignalR();
         services.AddHostedService<SurfaceRelay>();
 
         return services;
+    }
+
+    /// <summary>
+    /// A browser's caller, per circuit (ADR-0009, amendment 2026-10-06): the
+    /// <see cref="RoleContext"/> every screen of the circuit reads and acts
+    /// by, the identity <see cref="UseXmipProvenCaller"/> proved for the
+    /// request that opened it and the role the host's
+    /// <see cref="RoleAssignment"/> grants it — never one role for the whole
+    /// host.
+    /// </summary>
+    public static IServiceCollection AddXmipProvenCaller(this IServiceCollection services)
+    {
+        services.TryAddSingleton(provider =>
+            RoleAssignment.From(provider.GetRequiredService<IConfiguration>()));
+        services.AddScoped(provider => ProvenCaller.Of(
+            provider.GetRequiredService<RoleAssignment>(),
+            provider.GetRequiredService<AuthenticationStateProvider>()));
+
+        return services;
+    }
+
+    /// <summary>
+    /// Every request's user is the caller it proved, by
+    /// <see cref="ProvenCaller.Prove"/>, before a page or a circuit reads it.
+    /// </summary>
+    public static WebApplication UseXmipProvenCaller(this WebApplication app)
+    {
+        ArgumentNullException.ThrowIfNull(app);
+
+        app.Use(async (context, next) =>
+        {
+            ProvenCaller.Prove(context);
+            await next(context).ConfigureAwait(false);
+        });
+
+        return app;
     }
 
     /// <summary>

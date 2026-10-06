@@ -3,31 +3,29 @@ using Xmip.Abi.Operate;
 namespace Xmip.Surface;
 
 /// <summary>
-/// A surface whose acts are taken only by a proven principal whose role may
-/// act (ADR-0009, amendment 2026-10-03): the one role check every act that
-/// reaches a host from elsewhere passes. It reads as <paramref name="inner"/>
-/// reads; each act — pause and resume a scope, pause and resume a
-/// Subscription, pause, resume and remove an Event subscription, replay a
-/// Message from a Dead Message Queue, retry or dismiss a Journey that
-/// failed — is refused
-/// in words, and nothing reaches <paramref name="inner"/>, unless
-/// <paramref name="who"/> was proven and <paramref name="role"/> may operate.
-/// Every act, taken or refused, is audited (ADR-0062).
+/// A surface whose acts are taken only by a proven caller whose role may act
+/// (ADR-0009, amendments 2026-10-03 and 2026-10-06): the one role check every
+/// act passes, from a browser, the desktop or another machine over the
+/// surface hub. It reads as <paramref name="inner"/> reads; each act — pause
+/// and resume a scope, pause and resume a Subscription, pause, resume and
+/// remove an Event subscription, replay a Message from a Dead Message Queue,
+/// retry or dismiss a Journey that failed — is refused in words, and nothing
+/// reaches <paramref name="inner"/>, unless <paramref name="caller"/> was
+/// proven and the role <see cref="RoleAssignment"/> granted them may operate.
+/// Every act, taken or refused, is audited as that caller (ADR-0062).
 /// </summary>
 /// <remarks>
 /// The <c>who</c> a caller passes to an act is not read: the act is
-/// <paramref name="who"/>'s, the identity the connection proved, by
+/// <paramref name="caller"/>'s, the identity the connection proved, by
 /// <see cref="Proven"/>: a client certificate's subject, else, on loopback,
 /// the operating system user the host runs as. Where nothing was proven,
-/// <paramref name="who"/> is null and every act is refused rather than taken
-/// on the caller's word.
+/// every act is refused rather than taken on the caller's word.
 /// </remarks>
 /// <param name="inner">The surface read and acted through.</param>
-/// <param name="role">The role the host runs as (<see cref="RoleContext.Assigned"/>).</param>
-/// <param name="who">The proven identity asking, or null.</param>
+/// <param name="caller">Who asks and the role they hold (<see cref="RoleAssignment.For"/>).</param>
 /// <param name="audit">Where every act, taken or refused, is recorded.</param>
 public sealed class GatedOperator(
-    IOperatorSurface inner, Role role, string? who, ProgramAudit audit) : IOperatorSurface
+    IOperatorSurface inner, RoleContext caller, ProgramAudit audit) : IOperatorSurface
 {
     /// <summary>The audit action every act through the gate records.</summary>
     public const string AuditAction = "act";
@@ -250,10 +248,14 @@ public sealed class GatedOperator(
             : new ScopeOperation(scope, action, false, refused);
     }
 
-    // The one check: a proven principal, and a role that may act. Audited
+    // The one check: a proven caller, and a role that may act. Audited
     // either way, with who, what, on what and the role it was judged by.
     private bool Admits(string act, string target, out string proven, out string refused)
     {
+        ArgumentNullException.ThrowIfNull(caller);
+
+        string? who = caller.Who;
+        Role role = caller.Role;
         proven = who ?? string.Empty;
         refused = who is null
             ? $"REFUSED. Nothing proved who asks to {act} {target}; an act is taken from "
@@ -261,7 +263,7 @@ public sealed class GatedOperator(
               + "own user on loopback — never from what the caller says (ADR-0009)"
             : role.MayOperate()
                 ? string.Empty
-                : $"REFUSED. {who} may not {act} {target}: this host runs as {role}, "
+                : $"REFUSED. {who} may not {act} {target}: {who} is {role}, "
                   + $"which {role.Describe()} (ADR-0009)";
         bool admitted = refused.Length == 0;
 

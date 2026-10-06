@@ -115,9 +115,11 @@ public sealed class JourneySurfaceTest : IDisposable
         ProgramAudit audit = new("Xmip.Surface.Test", Audit);
         SnapshotOperator inner = Over(Orders);
 
-        JourneyOperation observed = new GatedOperator(inner, Role.Observer, "operator", audit)
+        JourneyOperation observed = new GatedOperator(
+                inner, new RoleContext(Role.Observer, "operator"), audit)
             .Act(Port, Journey, JourneyAct.Retry, Claimed);
-        JourneyOperation unproven = new GatedOperator(inner, Role.Operator, null, audit)
+        JourneyOperation unproven = new GatedOperator(
+                inner, new RoleContext(Role.Operator, null), audit)
             .Act(Port, Journey, JourneyAct.Dismiss, Claimed);
 
         Assert.All([observed, unproven], refused =>
@@ -127,7 +129,8 @@ public sealed class JourneySurfaceTest : IDisposable
         });
         Assert.False(Directory.Exists(Orders));
 
-        JourneyOperation taken = new GatedOperator(inner, Role.Operator, "operator", audit)
+        JourneyOperation taken = new GatedOperator(
+                inner, new RoleContext(Role.Operator, "operator"), audit)
             .Act(Port, Journey, JourneyAct.Retry, Claimed);
 
         Assert.True(taken.Applied, taken.Result);

@@ -35,7 +35,7 @@ internal static class TestHost
         builder.WebHost.UseXmipTls(tls ?? SurfaceTls.None, refused);
         builder.Logging.ClearProviders();
         builder.Services.AddSingleton(surface);
-        builder.Services.AddSingleton(new RoleContext(role));
+        builder.Services.AddSingleton(new RoleAssignment(role, directory: null));
         builder.Services.AddSingleton(new ProgramAudit(
             "Xmip.Surface.Test",
             audit ?? Path.Combine(Path.GetTempPath(), $"xmip-hub-audit-{Guid.NewGuid():n}")));
@@ -46,6 +46,28 @@ internal static class TestHost
         await host.StartAsync().ConfigureAwait(false);
 
         return host;
+    }
+
+    /// <summary>
+    /// A snapshot of <paramref name="cluster"/> holding one Subscription on its
+    /// first node and one Event subscription on its last, written in
+    /// <paramref name="directory"/>, whose publisher takes orders in
+    /// <paramref name="orders"/>: what the tests that act through the gate act on.
+    /// </summary>
+    public static SnapshotOperator Acting(TestCluster cluster, string directory, string orders)
+    {
+        ArgumentNullException.ThrowIfNull(cluster);
+
+        string snapshot = Path.Combine(directory, "snapshot.toml");
+        File.WriteAllText(
+            snapshot,
+            $"node = \"{cluster.Scope}\"\norders = '{orders}'\n"
+            + $"[[subscriptions]]\nnode = \"{cluster.NodeScope(0)}\"\nname = \"routed\"\n"
+            + "state = \"active\"\n"
+            + $"[[event_subscriptions]]\nnode = \"{cluster.NodeScope(cluster.Nodes.Count - 1)}\"\n"
+            + "id = 7\nsubscriber = \"p\"\nstate = \"active\"\n");
+
+        return new SnapshotOperator(snapshot);
     }
 
     /// <summary>What a host or a surface presents and trusts: a pair the
