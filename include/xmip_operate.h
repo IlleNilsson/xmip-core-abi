@@ -1351,8 +1351,11 @@ typedef XmipStatus (*XmipPublicationDeadMessagesFn)(const XmipPublication *publi
  * written Failed, with why, and waits in its Port's queue for an operator.
  * A node's publication carries, at <node>/send/<Port>, what the Port sent,
  * what failed, how many failed wait in its queue, and the last Journey that
- * failed with why; and beside its records, for each Port with any waiting,
- * how many and the oldest hundred with why: the identifiers an act names.
+ * failed with why - Done while any waits, Fine once none does; and beside
+ * its records, for every Port it sends, how many wait now (zero where none),
+ * whether one blocks its sequence, and the oldest hundred with why: the
+ * identifiers an act names; apart from them the last that failed there
+ * since the node started, as history.
  * A Journey that failed before the node restarted, or on another node
  * sending the Port, is among them once the node's scan has read it.
  *
@@ -1360,15 +1363,20 @@ typedef XmipStatus (*XmipPublicationDeadMessagesFn)(const XmipPublication *publi
  * whether or not it fit:
  *
  *   {"orders":"<where acts are left, empty for none>",
- *    "failed_journeys":[{"node","send_port","count","next",
- *                        "journeys":[{"journey","sequence","reason"}]}]}
+ *    "failed_journeys":[{"node","send_port","count","blocked","next",
+ *                        "journeys":[{"journey","sequence","reason"}],
+ *                        "last_failure":{"journey","reason"}|null}]}
  *
  * node is the scope of the node that sends the Port and send_port its
  * configured name; count how many failed Journeys the node knows wait in its
- * queue; journeys those listed, oldest first - journey the identifier an act
- * names, sequence its place in the queue, reason why it failed, in words;
- * next the place the next page reads from, or null where the queue was read
- * to its end or the list is a publication's.
+ * queue now, zero where none; blocked whether one of them blocks a
+ * Sequential Port's sequence now; journeys those listed, oldest first -
+ * journey the identifier an act names, sequence its place in the queue,
+ * reason why it failed, in words; next the place the next page reads from,
+ * or null where the queue was read to its end or the list is a
+ * publication's; last_failure the last Journey that failed at the Port
+ * since its node started, and why - history, which may since have been
+ * retried or dismissed - or null where none has.
  *
  * xmip_failed_journeys_v1 lists, for every node running in this process at
  * or beneath node (empty: every one), the Journeys that failed at its Send

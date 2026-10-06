@@ -103,12 +103,15 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
         [EnumeratorCancellation] CancellationToken stop = default)
     {
         string fullPath = System.IO.Path.GetFullPath(Path);
-        string? directory = System.IO.Path.GetDirectoryName(fullPath);
+        string directory = System.IO.Path.GetDirectoryName(fullPath) ?? fullPath;
 
-        if (directory is null || !Directory.Exists(directory))
+        // A publication whose directory is not made yet: say so, wait for the
+        // directory as the file system notices it, and follow from there.
+        bool waited = !Directory.Exists(directory);
+        if (waited)
         {
             yield return SurfaceChange.Initial(Source);
-            yield break;
+            await PathArrival.DirectoryAsync(directory, stop).ConfigureAwait(false);
         }
 
         Channel<bool> changed = Channel.CreateBounded<bool>(
@@ -154,7 +157,10 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
 
         try
         {
-            yield return SurfaceChange.Initial(Source);
+            yield return waited
+                ? new SurfaceChange(
+                    ++announced, SurfaceChangeKind.All, DateTimeOffset.UtcNow, Source)
+                : SurfaceChange.Initial(Source);
 
             await foreach (bool notice in changed.Reader.ReadAllAsync(stop).ConfigureAwait(false))
             {
@@ -341,7 +347,7 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
                 SubscriptionList.Empty,
                 EventSubscriptionList.Empty,
                 DeadMessageList.Empty,
-                FailedJourneyList.Empty);
+                FailedJourneyList.Unlisted);
         }
     }
 

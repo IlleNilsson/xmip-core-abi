@@ -316,7 +316,7 @@ public sealed class RemoteOperator : IOperatorSurface, IDisposable
     public FailedJourneyList FailedJourneys(string scope, ulong from = 0, uint most = 0)
     {
         return Ask<FailedJourneyList>("FailedJourneys", scope, from, most)
-            ?? FailedJourneyList.Empty;
+            ?? FailedJourneyList.Unlisted;
     }
 
     /// <inheritdoc />
