@@ -63,7 +63,7 @@ public interface IOperatorSurface
 
     /// <summary>
     /// What is configured at a stage across the cluster — each Receive
-    /// Location, Xmip Process or Send Location, one scope each: what is
+    /// Location, Work Process or Send Location, one scope each: what is
     /// directly beneath every scope where the stage begins. Until 2026-09-26 a
     /// stage card called every leaf beneath its stage, each contract and
     /// identity step, a thing configured.

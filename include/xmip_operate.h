@@ -61,7 +61,7 @@ extern "C" {
  * Omitted userinfo is the caller's identity; omitted host is estate-wide. The
  * path walks the one scope tree - the execution tree the Xmip Service builds
  * at startup: installation, cluster, node, host service, then a receive
- * location, an xmip process or a send location. A Party is a filter across
+ * location, a work process or a send location. A Party is a filter across
  * that tree, expressed in the query, never a level in it. ADR-0027 clauses 3
  * and 4.
  *
@@ -128,7 +128,7 @@ typedef struct {
 
 /*
  * What a measurement counts. Never a bare "throughput", because a Stream at a
- * Receive Location, a Journey in an Xmip Process and a Message at a Send
+ * Receive Location, a Journey in a Work Process and a Message at a Send
  * Location are three different quantities and Xmip keeps those words apart on
  * every page. ADR-0027 clause 5.
  *

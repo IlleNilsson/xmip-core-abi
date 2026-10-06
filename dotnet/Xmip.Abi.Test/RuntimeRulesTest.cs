@@ -194,7 +194,7 @@ public sealed class RuntimeRulesTest
         Assert.Null(Rules.StageCounted("Receive"));
         Assert.Equal([true, false, true], Rules.StageWords.Select(Rules.Pausable));
         Assert.Null(Rules.Pausable("file"));
-        Assert.Equal("xmip process", Rules.Location("process"));
+        Assert.Equal("work process", Rules.Location("process"));
         Assert.Null(Rules.Location("capability"));
     }
 
