@@ -7,9 +7,9 @@ namespace Xmip.Surface.Test;
 
 /// <summary>
 /// An act that reaches a host over its surface hub is refused server-side
-/// unless the host's role may act, and is taken as the identity the client
-/// certificate proved, never the name the caller gives (ADR-0009, amendment
-/// 2026-10-03); taken or refused, it is audited (ADR-0062). Proved against a
+/// unless the role the host grants its caller may act, and is taken as the
+/// identity the client certificate proved, never the name the caller gives
+/// (ADR-0009, amendments 2026-10-03 and 2026-10-06); taken or refused, it is audited (ADR-0062). Proved against a
 /// real hub on a loopback port, over a snapshot that leaves its orders in a
 /// directory, with the test cluster's names.
 /// </summary>
@@ -92,7 +92,7 @@ public sealed partial class SurfaceHubTest : IDisposable
         Assert.All(said, refused =>
         {
             Assert.StartsWith("REFUSED. ", refused, StringComparison.Ordinal);
-            Assert.Contains($"runs as {Role.Observer}", refused, StringComparison.Ordinal);
+            Assert.Contains($" is {Role.Observer}, ", refused, StringComparison.Ordinal);
         });
         Assert.False(Directory.Exists(Orders));
         Assert.Equal(
@@ -151,7 +151,9 @@ public sealed partial class SurfaceHubTest : IDisposable
     {
         string? proven = GatedOperator.Proven(null, loopback: false);
         GatedOperator gated = new(
-            Surface(), Role.Operator, proven, new ProgramAudit("Xmip.Surface.Test", Audit));
+            Surface(),
+            new RoleContext(Role.Operator, proven),
+            new ProgramAudit("Xmip.Surface.Test", Audit));
 
         Assert.Null(proven);
         Assert.Equal(GatedOperator.HostUser, GatedOperator.Proven(null, loopback: true));
@@ -219,21 +221,11 @@ public sealed partial class SurfaceHubTest : IDisposable
         return operation.Result;
     }
 
-    // A snapshot of the test cluster holding one Subscription on its first
-    // node and one Event subscription on its last, whose publisher takes
-    // orders in this test's directory.
+    // A snapshot of the test cluster whose publisher takes orders in this
+    // test's directory.
     private SnapshotOperator Surface()
     {
-        string snapshot = Path.Combine(scratch, "snapshot.toml");
-        File.WriteAllText(
-            snapshot,
-            $"node = \"{cluster.Scope}\"\norders = '{Orders}'\n"
-            + $"[[subscriptions]]\nnode = \"{cluster.NodeScope(0)}\"\nname = \"routed\"\n"
-            + "state = \"active\"\n"
-            + $"[[event_subscriptions]]\nnode = \"{cluster.NodeScope(cluster.Nodes.Count - 1)}\"\n"
-            + "id = 7\nsubscriber = \"p\"\nstate = \"active\"\n");
-
-        return new SnapshotOperator(snapshot);
+        return TestHost.Acting(cluster, scratch, Orders);
     }
 
     [GeneratedRegex("^action = \"act\"$", RegexOptions.Multiline)]

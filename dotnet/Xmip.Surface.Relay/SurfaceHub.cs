@@ -1,4 +1,3 @@
-using System.Net;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.SignalR;
 using Xmip.Abi.Operate;
@@ -13,8 +12,9 @@ namespace Xmip.Surface.Relay;
 /// </summary>
 /// <remarks>
 /// Every act goes through <see cref="GatedOperator"/>, the one role check
-/// (ADR-0009, amendment 2026-10-03): it is taken only where the host's
-/// assigned role may act, and as the identity the connection proved — the
+/// (ADR-0009, amendments 2026-10-03 and 2026-10-06): it is taken only where
+/// the role the host's <see cref="RoleAssignment"/> grants the caller may
+/// act, and as the identity the connection proved — the
 /// subject of the client certificate the TLS handshake checked against the
 /// host's anchors (<see cref="SurfaceBinding.UseXmipTls"/>). No act takes a
 /// name from the caller. Over loopback without a certificate the act is the
@@ -22,7 +22,8 @@ namespace Xmip.Surface.Relay;
 /// the machine reaches loopback; from anywhere else without one, it is
 /// refused. Every act, taken or refused, is audited (ADR-0062).
 /// </remarks>
-public sealed class SurfaceHub(IOperatorSurface surface, RoleContext role, ProgramAudit audit)
+public sealed class SurfaceHub(
+    IOperatorSurface surface, RoleAssignment roles, ProgramAudit audit)
     : Hub
 {
     /// <summary>Where a web host maps this hub.</summary>
@@ -75,7 +76,7 @@ public sealed class SurfaceHub(IOperatorSurface surface, RoleContext role, Progr
     }
 
     /// <summary>Pause or resume one Subscription, as the proven caller, where
-    /// the host's role may act. There is no remove.</summary>
+    /// the caller's role may act. There is no remove.</summary>
     public SubscriptionOperation ActOnSubscription(
         SubscriptionRecord subscription, SubscriptionAct act)
     {
@@ -89,7 +90,7 @@ public sealed class SurfaceHub(IOperatorSurface surface, RoleContext role, Progr
     }
 
     /// <summary>Pause, resume or remove one Event subscription, as the proven
-    /// caller, where the host's role may act.</summary>
+    /// caller, where the caller's role may act.</summary>
     public EventSubscriptionOperation ActOnEventSubscription(
         EventSubscriptionRecord subscription, EventSubscriptionAct act)
     {
@@ -104,7 +105,7 @@ public sealed class SurfaceHub(IOperatorSurface surface, RoleContext role, Progr
     }
 
     /// <summary>Replay one Message from a Dead Message Queue, as the proven
-    /// caller, where the host's role may act.</summary>
+    /// caller, where the caller's role may act.</summary>
     public DeadMessageOperation ActOnDeadMessage(DeadMessageRecord message, DeadMessageAct act)
     {
         return Acting().Act(message, act, Unread);
@@ -119,14 +120,14 @@ public sealed class SurfaceHub(IOperatorSurface surface, RoleContext role, Progr
 
     /// <summary>Retry or Dismiss a Journey that failed, sent by the node at
     /// or above <paramref name="scope"/>, as the proven caller, where the
-    /// host's role may act.</summary>
+    /// caller's role may act.</summary>
     public JourneyOperation ActOnJourney(string scope, string journey, JourneyAct act)
     {
         return Acting().Act(scope, journey, act, Unread);
     }
 
     /// <summary>Pause or resume everything at and beneath a scope, as the
-    /// proven caller, where the host's role may act, and say what came of it
+    /// proven caller, where the caller's role may act, and say what came of it
     /// as the host's surface says it.</summary>
     public ScopeOperation ActOnScope(string scope, ScopeAction action)
     {
@@ -134,14 +135,11 @@ public sealed class SurfaceHub(IOperatorSurface surface, RoleContext role, Progr
     }
 
     /// <summary>The host's surface behind the one role check, for the
-    /// identity this connection proved, by <see cref="GatedOperator.Proven"/>.</summary>
+    /// identity this connection proved, by
+    /// <see cref="ProvenCaller.Of(ConnectionInfo?)"/>.</summary>
     private GatedOperator Acting()
     {
-        ConnectionInfo? connection = Context.GetHttpContext()?.Connection;
-        string? proven = GatedOperator.Proven(
-            connection?.ClientCertificate?.Subject,
-            connection?.RemoteIpAddress is { } from && IPAddress.IsLoopback(from));
-
-        return new GatedOperator(surface, role.Role, proven, audit);
+        return new GatedOperator(
+            surface, roles.For(ProvenCaller.Of(Context.GetHttpContext()?.Connection)), audit);
     }
 }

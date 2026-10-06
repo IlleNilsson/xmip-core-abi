@@ -127,9 +127,11 @@ public sealed class DeadMessageSurfaceTest : IDisposable
         SnapshotOperator inner = Over(Orders);
         DeadMessageRecord kept = inner.DeadMessages().DeadMessages[0];
 
-        DeadMessageOperation observed = new GatedOperator(inner, Role.Observer, "operator", audit)
+        DeadMessageOperation observed = new GatedOperator(
+                inner, new RoleContext(Role.Observer, "operator"), audit)
             .Act(kept, DeadMessageAct.Replay, Claimed);
-        DeadMessageOperation unproven = new GatedOperator(inner, Role.Operator, null, audit)
+        DeadMessageOperation unproven = new GatedOperator(
+                inner, new RoleContext(Role.Operator, null), audit)
             .Act(kept, DeadMessageAct.Replay, Claimed);
 
         Assert.All([observed, unproven], refused =>
@@ -139,7 +141,8 @@ public sealed class DeadMessageSurfaceTest : IDisposable
         });
         Assert.False(Directory.Exists(Orders));
 
-        DeadMessageOperation taken = new GatedOperator(inner, Role.Operator, "operator", audit)
+        DeadMessageOperation taken = new GatedOperator(
+                inner, new RoleContext(Role.Operator, "operator"), audit)
             .Act(kept, DeadMessageAct.Replay, Claimed);
 
         Assert.True(taken.Applied, taken.Result);

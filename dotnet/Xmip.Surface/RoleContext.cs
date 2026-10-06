@@ -1,73 +1,37 @@
-using Microsoft.Extensions.Configuration;
-
 namespace Xmip.Surface;
 
 /// <summary>
-/// The role this surface runs as (ADR-0009). It is <b>assigned, not chosen</b>:
-/// a person cannot promote themselves in the UI — an Observer stays an Observer.
-/// Both hosts take it by one rule, <see cref="Assigned"/>, and offer by it
-/// what it may do (ADR-0014 and ADR-0052, amendments 2026-09-14): an Observer
-/// watches, an Operator also pauses, resumes and configures, a Developer also
-/// opens configuration. A web host's surface hub refuses by it every act a
-/// remote surface asks for (<see cref="GatedOperator"/>), so it lives here,
-/// beneath both GUIs and the relay, and not in <c>Xmip.Gui</c>.
+/// Who is at the keyboard and the role they hold (ADR-0009): the proven
+/// caller and what <see cref="RoleAssignment"/> grants them. It is
+/// <b>assigned, not chosen</b>: a person cannot promote themselves in the UI.
+/// A screen shapes what it offers by it (ADR-0014 and ADR-0052, amendments
+/// 2026-09-14): an Observer watches, an Operator also pauses, resumes and
+/// configures, a Developer also opens configuration. Every act is decided by
+/// it in <see cref="GatedOperator"/>, the one check every surface's acts pass,
+/// and taken as <see cref="Who"/> — so it lives here, beneath both GUIs and
+/// the relay, and not in <c>Xmip.Gui</c>. A web host holds one per browser
+/// circuit, the desktop one for its own user (ADR-0009, amendment 2026-10-06).
 /// </summary>
-public sealed class RoleContext(Role role)
+/// <param name="role">The role the caller holds.</param>
+/// <param name="who">The identity the caller proved, or null where nothing
+/// proved it: such a caller watches and takes no act.</param>
+public sealed class RoleContext(Role role, string? who)
 {
-    /// <summary>The assigned role. Read-only for the life of the surface.</summary>
+    /// <summary>The assigned role. Read-only for the life of the caller.</summary>
     public Role Role { get; } = role;
 
-    /// <summary>Whether this surface may reach configuration.</summary>
+    /// <summary>The proven caller, or null where nothing proved who asks.</summary>
+    public string? Who { get; } = who;
+
+    /// <summary>Whether this caller may reach configuration.</summary>
     public bool MayConfigure()
     {
-        return Role.MayConfigure();
+        return Who is not null && Role.MayConfigure();
     }
 
-    /// <summary>Whether this surface may pause and resume the running estate.</summary>
+    /// <summary>Whether this caller may pause and resume the running estate.</summary>
     public bool MayOperate()
     {
-        return Role.MayOperate();
-    }
-
-    /// <summary>The configuration key a run states a role under, in the host's
-    /// <c>[Xmip]</c> table.</summary>
-    public const string ConfigurationKey = "Xmip:Role";
-
-    /// <summary>The environment variable a run states a role in.</summary>
-    public const string EnvironmentVariable = "XMIP_ROLE";
-
-    /// <summary>
-    /// The role a host runs as, by one rule for the web and the desktop
-    /// (ADR-0009, amendment 2026-09-14): a role the run states —
-    /// <see cref="ConfigurationKey"/>, else <see cref="EnvironmentVariable"/>
-    /// — is the role, and one it states wrongly is Observer, so a
-    /// misstatement grants nothing. A run that states none has its role from
-    /// the directory, and no directory is configured yet: the Playground's is
-    /// the fake directory that allows the tester, who holds every role —
-    /// Developer, which includes the rest. The gate that asks a real
-    /// directory replaces that answer and nothing else.
-    /// </summary>
-    public static Role Assigned(IConfiguration configuration)
-    {
-        ArgumentNullException.ThrowIfNull(configuration);
-
-        string? stated = configuration[ConfigurationKey]
-            ?? Environment.GetEnvironmentVariable(EnvironmentVariable);
-
-        return string.IsNullOrWhiteSpace(stated) ? Role.Developer : Parse(stated);
-    }
-
-    /// <summary>
-    /// The role named in configuration, or Observer when unrecognised — the
-    /// safe default, so a misconfiguration never grants privilege.
-    /// </summary>
-    public static Role Parse(string? text)
-    {
-        return text?.Trim().ToLowerInvariant() switch
-        {
-            "operator" => Role.Operator,
-            "developer" => Role.Developer,
-            _ => Role.Observer,
-        };
+        return Who is not null && Role.MayOperate();
     }
 }
