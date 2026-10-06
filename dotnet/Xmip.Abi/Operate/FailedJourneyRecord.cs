@@ -41,10 +41,30 @@ public sealed record FailedJourneyPort(
 /// </summary>
 /// <param name="Orders">Where a surface leaves an act for the publisher.</param>
 /// <param name="Ports">Each Send Port's, by node and Port.</param>
-public sealed record FailedJourneyList(string Orders, IReadOnlyList<FailedJourneyPort> Ports)
+/// <param name="Listed">Whether the list is an answer: true where a node or
+/// a publication was read, even with no Journey in it; false where the
+/// surface could not list failed Journeys at all, or asked and was not
+/// answered, so that its emptiness says nothing of the queue.</param>
+/// <param name="Failure">Where the surface asked and was not answered — Xmip
+/// Storage did not answer the node — what it was told, as one sentence that
+/// opens <c>FAILED:</c>; empty otherwise, <see cref="Unlisted"/> among
+/// them.</param>
+public sealed record FailedJourneyList(
+    string Orders,
+    IReadOnlyList<FailedJourneyPort> Ports,
+    bool Listed = true,
+    string Failure = "")
 {
-    /// <summary>No Journey, nowhere to leave an act.</summary>
-    public static FailedJourneyList Empty { get; } = new(string.Empty, []);
+    /// <summary>No answer: the surface cannot list failed Journeys — it
+    /// reaches no node, no runtime is loaded, no publication was read.</summary>
+    public static FailedJourneyList Unlisted { get; } = new(string.Empty, [], false);
+
+    /// <summary>No answer, though the surface asked: <paramref name="why"/>,
+    /// as what asked was told it.</summary>
+    public static FailedJourneyList Unanswered(string why)
+    {
+        return new FailedJourneyList(string.Empty, [], false, $"FAILED: {why}");
+    }
 
     /// <summary>Every Journey listed, Port by Port.</summary>
     public IEnumerable<FailedJourneyRecord> Journeys => Ports.SelectMany(port => port.Journeys);

@@ -108,7 +108,19 @@ page reads from and its `FailedJourneyRecord`s, read from Xmip Storage a page
 at a time; a `Publication` carries its own `FailedJourneys`, each Port's
 count and oldest hundred. `Xmip.Surface` lists them through
 `IOperatorSurface.FailedJourneys` at a cluster, a node or one Send Port's
-scope (`JourneyOperation.PortAt`, `JourneyOperation.Within`).
+scope (`JourneyOperation.PortAt`, `JourneyOperation.Within`). A Port's page
+may be empty with a next place, where the stretch the node read held no
+failed Journey: the place, not the Journeys, says whether more remain. A
+list is an answer (`FailedJourneyList.Listed`) even when it lists none;
+`FailedJourneyList.Unlisted` is a surface that cannot list them — no node
+reached, no runtime loaded, no publication read yet — and
+`FailedJourneyList.Unanswered` one that asked and was not answered, its
+`Failure` the sentence, opening `FAILED:`, in the runtime's words: where Xmip
+Storage does not answer, `NativeOperator` says so through
+`JourneyOperation.Read` rather than throwing. The evidence a Send
+Port publishes is read in one place each: the last Journey that ever failed
+there by `JourneyOperation.FailedIn`, how many wait in its queue now by
+`JourneyOperation.FailingIn`.
 Section 10 — the
 cluster's `xmip.toml` read, edited and sliced — is `RuntimeRules.Design`
 (`RuntimeDesign`): `TryViews`, `TryEdit`, `TrySlices`, `TryFilterStructure`
@@ -156,7 +168,15 @@ faces over it.
   announces it, and answers every question from that reading without touching
   the file; `SurfaceChoice.OpenAll` follows every snapshot it opens
   (`ClusterSurfaces.Follow`), so no render reads one (ADR-0052, amendment
-  2026-10-03; `SnapshotReadCostTest` holds the bound).
+  2026-10-03; `SnapshotReadCostTest` holds the bound). A watch begun before
+  its source recovers when the source arrives (`PathArrival`): a
+  `SnapshotOperator` whose publication's directory is not made yet, and a
+  `NativeOperator` whose runtime library is not built yet or would not load
+  (`RuntimeLoad`, which tries a refused file again once it is written
+  again), each say their first view, wait for the file system's notice and
+  announce a change the moment the source is there — a retry, its interval
+  doubling to five seconds, only where not even the path's root exists to
+  watch (`SurfaceArrivalTest`).
 - **Subscriptions.** `IOperatorSurface.Subscriptions` lists what the nodes
   route by and `IOperatorSurface.Act` pauses or resumes one (`SubscriptionAct`,
   which holds no remove, answered as a `SubscriptionOperation`; a

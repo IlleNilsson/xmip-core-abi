@@ -12,19 +12,18 @@ namespace Xmip.Surface;
 /// words an operator reads, through <see cref="English"/>.
 /// </summary>
 /// <remarks>
-/// The library is loaded when first needed and kept. While there is no file
-/// at the path — the runtime not built yet — every read tries again, so the
-/// board comes alive the moment it is; a file that is there and will not
-/// load is tried once, and the reason stays in <see cref="Source"/>. A
-/// surface that cannot reach a node shows that rather than an empty tree.
+/// The library is loaded when first needed and kept (<see cref="RuntimeLoad"/>).
+/// While there is no file at the path — the runtime not built yet — every
+/// read tries again; a file that is there and will not load is tried once,
+/// and the reason stays in <see cref="Source"/>. A watch begun before the
+/// runtime loads waits for the library to be made or written again and
+/// follows from the moment it loads. A surface that cannot reach a node shows
+/// that rather than an empty tree.
 /// </remarks>
 public sealed class NativeOperator : IOperatorSurface, IDisposable
 {
     private readonly Lock _gate = new();
-    private Operator? _runtime;
-    private string _reason = string.Empty;
-    private bool _retry = true;
-    private bool _disposed;
+    private readonly RuntimeLoad _load;
     private ScopeIndex? _index;
 
     /// <summary>Open the runtime at <paramref name="path"/>, found by
@@ -32,6 +31,7 @@ public sealed class NativeOperator : IOperatorSurface, IDisposable
     public NativeOperator(string path)
     {
         Path = path;
+        _load = new RuntimeLoad(path);
         _ = Runtime();
     }
 
@@ -42,10 +42,11 @@ public sealed class NativeOperator : IOperatorSurface, IDisposable
     public bool IsLoaded => Runtime() is not null;
 
     /// <summary>Why the runtime is not loaded; empty when it is.</summary>
-    public string Reason => Runtime() is null ? _reason : string.Empty;
+    public string Reason => Runtime() is null ? _load.Reason : string.Empty;
 
     /// <inheritdoc />
-    public string Source => Runtime() is { } runtime ? runtime.Source : $"NATIVE — {_reason}";
+    public string Source =>
+        Runtime() is { } runtime ? runtime.Source : $"NATIVE — {_load.Reason}";
 
     /// <summary>
     /// Plan a node from its configuration file through <c>xmip_start_v1</c>:
@@ -58,7 +59,7 @@ public sealed class NativeOperator : IOperatorSurface, IDisposable
     {
         return Runtime() is { } runtime
             ? ConfigurationVerdict.Planned(configurationPath, runtime.Start(configurationPath))
-            : ConfigurationVerdict.NotLoaded(configurationPath, _reason);
+            : ConfigurationVerdict.NotLoaded(configurationPath, _load.Reason);
     }
 
     /// <summary>
@@ -70,7 +71,7 @@ public sealed class NativeOperator : IOperatorSurface, IDisposable
     public ConfigurationVerdict Validate(string configurationPath)
     {
         return Runtime() is null
-            ? ConfigurationVerdict.NotLoaded(configurationPath, _reason)
+            ? ConfigurationVerdict.NotLoaded(configurationPath, _load.Reason)
             : !File.Exists(configurationPath)
                 ? ConfigurationVerdict.NoFile(configurationPath)
                 : Validate(configurationPath, File.ReadAllText(configurationPath));
@@ -86,7 +87,7 @@ public sealed class NativeOperator : IOperatorSurface, IDisposable
     {
         return Runtime() is { } runtime
             ? ConfigurationVerdict.Validated(configurationPath, runtime.Validate(configuration))
-            : ConfigurationVerdict.NotLoaded(configurationPath, _reason);
+            : ConfigurationVerdict.NotLoaded(configurationPath, _load.Reason);
     }
 
     /// <inheritdoc />
@@ -143,13 +144,19 @@ public sealed class NativeOperator : IOperatorSurface, IDisposable
         [EnumeratorCancellation] CancellationToken stop = default)
     {
         Operator? runtime = Runtime();
-        ulong revision = runtime?.CurrentRevision ?? 0;
         yield return SurfaceChange.Initial(Source);
 
+        // A runtime not built yet, or one that would not load: wait for the
+        // library to load, as the file system notices it made or written
+        // again; the board comes alive the moment it can.
         if (runtime is null)
         {
-            yield break;
+            runtime = await _load.ArrivedAsync(stop).ConfigureAwait(false);
+            yield return new SurfaceChange(
+                runtime.CurrentRevision, SurfaceChangeKind.All, DateTimeOffset.UtcNow, Source);
         }
+
+        ulong revision = runtime.CurrentRevision;
 
         while (!stop.IsCancellationRequested)
         {
@@ -310,13 +317,15 @@ public sealed class NativeOperator : IOperatorSurface, IDisposable
 
         if (Runtime() is null)
         {
-            return FailedJourneyList.Empty;
+            return FailedJourneyList.Unlisted;
         }
 
         (string node, string port) = JourneyOperation.PortAt(scope);
 
-        return RuntimeLibrary.Rules.Journeys.Failed(
-            node.Length > 0 ? node : scope, port, from, most);
+        return JourneyOperation.Read(
+            scope,
+            () => RuntimeLibrary.Rules.Journeys.Failed(
+                node.Length > 0 ? node : scope, port, from, most));
     }
 
     /// <inheritdoc />
@@ -354,40 +363,16 @@ public sealed class NativeOperator : IOperatorSurface, IDisposable
     /// <inheritdoc />
     public void Dispose()
     {
-        using Lock.Scope held = _gate.EnterScope();
-
-        if (_disposed)
-        {
-            return;
-        }
-
-        _disposed = true;
-        _retry = false;
-        _runtime?.Dispose();
-        _runtime = null;
+        _load.Dispose();
     }
 
     private string NotLoaded()
     {
-        return $"no runtime loaded: {_reason}";
+        return $"no runtime loaded: {_load.Reason}";
     }
 
     private Operator? Runtime()
     {
-        using Lock.Scope held = _gate.EnterScope();
-
-        if (_runtime is not null || !_retry)
-        {
-            return _runtime;
-        }
-
-        _runtime = Operator.Load(Path, out _reason);
-
-        // Keep trying only while the file is not there yet. A file that is
-        // there and refused is a defect to read about, not to retry every
-        // two seconds.
-        _retry = _runtime is null && !File.Exists(Path);
-
-        return _runtime;
+        return _load.Runtime();
     }
 }

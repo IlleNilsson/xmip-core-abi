@@ -86,6 +86,45 @@ public sealed record JourneyOperation(
         };
     }
 
+    /// <summary>
+    /// The Journeys that failed at <paramref name="scope"/>, as
+    /// <paramref name="read"/> lists them — or, where Xmip Storage did not
+    /// answer it, <see cref="FailedJourneyList.Unanswered"/> in the runtime's
+    /// words: said, not thrown, so a screen or a command shows it and goes on.
+    /// </summary>
+    public static FailedJourneyList Read(string scope, Func<FailedJourneyList> read)
+    {
+        ArgumentNullException.ThrowIfNull(read);
+
+        try
+        {
+            return read();
+        }
+        catch (InvalidOperationException unanswered)
+        {
+            return FailedJourneyList.Unanswered(
+                $"the Journeys that failed at {scope} could not be read: {unanswered.Message}");
+        }
+    }
+
+    /// <summary>
+    /// What a list of the Journeys that failed at <paramref name="scope"/>
+    /// says where it is no answer, read from <paramref name="source"/>: what
+    /// the surface was told where it asked (<c>FAILED:</c>), or that it
+    /// cannot list them, so nothing is known of the queue (<c>NOT
+    /// LISTED:</c>). Empty where the list is an answer. The one sentence
+    /// every surface says it with.
+    /// </summary>
+    public static string Unlisted(FailedJourneyList failed, string scope, string source)
+    {
+        ArgumentNullException.ThrowIfNull(failed);
+
+        return failed.Failure.Length > 0 ? failed.Failure
+            : failed.Listed ? string.Empty
+            : $"NOT LISTED: {source} cannot list the Journeys that failed, so whether any "
+                + $"wait at or beneath {scope} is not known — not that none do.";
+    }
+
     /// <summary>The act not taken, and why.</summary>
     public static JourneyOperation Declined(
         string node, string journey, JourneyAct act, string why)
@@ -118,6 +157,43 @@ public sealed record JourneyOperation(
 
         return end > start && !evidence.AsSpan(start, end - start).ContainsAny(" ;")
             ? evidence[start..end]
+            : null;
+    }
+
+    /// <summary>
+    /// How many Journeys that failed wait in a Send Port's queue now, read
+    /// from the evidence its node publishes at the Port's scope — the figure
+    /// <c>failed in its queue &lt;n&gt;</c> the runtime's
+    /// <c>send_step::PortFigures::evidence</c> writes — or null where the
+    /// evidence says none. Unlike <see cref="FailedIn"/>, which names the
+    /// last Journey that ever failed there, this is the queue as it stands:
+    /// zero once every failed Journey was retried or dismissed.
+    /// </summary>
+    public static ulong? FailingIn(string? evidence)
+    {
+        const string Opening = "failed in its queue ";
+
+        int start = evidence?.IndexOf(Opening, StringComparison.Ordinal) ?? -1;
+
+        if (evidence is null || start < 0)
+        {
+            return null;
+        }
+
+        start += Opening.Length;
+        int end = start;
+
+        while (end < evidence.Length && char.IsAsciiDigit(evidence[end]))
+        {
+            end++;
+        }
+
+        return ulong.TryParse(
+            evidence.AsSpan(start, end - start),
+            System.Globalization.NumberStyles.None,
+            System.Globalization.CultureInfo.InvariantCulture,
+            out ulong failing)
+            ? failing
             : null;
     }
 

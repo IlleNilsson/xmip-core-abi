@@ -113,6 +113,67 @@ public sealed class FailedJourneySurfaceTest : IDisposable
     }
 
     [Fact]
+    public void APublicationAnswersEvenWhereItListsNoneAndNoPublicationIsNoAnswer()
+    {
+        SnapshotOperator surface = Published();
+
+        FailedJourneyList none = surface.FailedJourneys($"{Sending}/send/nothing");
+        Assert.True(none.Listed);
+        Assert.Empty(none.Journeys);
+
+        FailedJourneyList unread = new SnapshotOperator(
+            Path.Combine(scratch, "not-published-yet.toml")).FailedJourneys(Cluster.Scope);
+        Assert.False(unread.Listed);
+        Assert.False(FailedJourneyList.Unlisted.Listed);
+    }
+
+    [Fact]
+    public void StorageThatDoesNotAnswerIsSaidAsAFailureNotThrownAndNotUnlisted()
+    {
+        string port = $"{Sending}/send/invoices";
+
+        FailedJourneyList failed = JourneyOperation.Read(
+            port, () => throw new InvalidOperationException("Xmip Storage is not open"));
+
+        Assert.False(failed.Listed);
+        Assert.Empty(failed.Journeys);
+        Assert.NotSame(FailedJourneyList.Unlisted, failed);
+        Assert.Equal(
+            $"FAILED: the Journeys that failed at {port} could not be read: "
+                + "Xmip Storage is not open",
+            failed.Failure);
+        Assert.Empty(FailedJourneyList.Unlisted.Failure);
+
+        SnapshotOperator surface = Published();
+        FailedJourneyList answered = JourneyOperation.Read(port, () => surface.FailedJourneys(port));
+        Assert.True(answered.Listed);
+        Assert.Empty(answered.Failure);
+
+        // Said in one sentence on every surface: none for an answer.
+        Assert.Empty(JourneyOperation.Unlisted(answered, port, surface.Source));
+        Assert.Equal(failed.Failure, JourneyOperation.Unlisted(failed, port, "here"));
+        Assert.StartsWith(
+            "NOT LISTED: here cannot list",
+            JourneyOperation.Unlisted(FailedJourneyList.Unlisted, port, "here"),
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TheFailedJourneysInAPortsQueueNowAreReadFromItsEvidence()
+    {
+        Assert.Equal(
+            2ul,
+            JourneyOperation.FailingIn(
+                "sent 4, failed 3, waiting 0, failed in its queue 2; the Journey j-1 failed: x"));
+        Assert.Equal(
+            0ul,
+            JourneyOperation.FailingIn(
+                "sent 4, failed 3, waiting 0, failed in its queue 0; the Journey j-1 failed: x"));
+        Assert.Null(JourneyOperation.FailingIn("sent 4, failed 3, waiting 0"));
+        Assert.Null(JourneyOperation.FailingIn(null));
+    }
+
+    [Fact]
     public void AScopeNamesItsNodeAndItsSendPort()
     {
         Assert.Equal((Sending, "invoices"), JourneyOperation.PortAt($"{Sending}/send/invoices"));

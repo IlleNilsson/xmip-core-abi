@@ -323,12 +323,17 @@ public interface IOperatorSurface
     /// surface reads a publication (runtime-model.md section 13). In the
     /// process that runs the node they are read from Xmip Storage a page at
     /// a time, each Port naming where its next page reads from; a
-    /// publication carries the oldest hundred of each. None where this
-    /// surface cannot list them.
+    /// publication carries the oldest hundred of each. A Port's page may be
+    /// empty with a next place where the stretch read held no failed Journey:
+    /// the place, not the Journeys, says whether more remain.
+    /// <see cref="FailedJourneyList.Unlisted"/> where this surface cannot list
+    /// them, which a caller tells from an answer that lists none;
+    /// <see cref="FailedJourneyList.Unanswered"/>, with what it was told,
+    /// where it asked and Xmip Storage did not answer.
     /// </summary>
     public FailedJourneyList FailedJourneys(string scope, ulong from = 0, uint most = 0)
     {
-        return FailedJourneyList.Empty;
+        return FailedJourneyList.Unlisted;
     }
 
     /// <summary>Pause everything at and beneath a scope, by <paramref name="who"/>.
