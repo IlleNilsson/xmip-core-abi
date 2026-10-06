@@ -150,6 +150,26 @@ them.
 operator surfaces; the GUI hosts, the cli and the PowerShell module are thin
 faces over it.
 
+### What each source answers
+
+A face reads one of three sources, chosen by `Surface = "native" |
+"snapshot" | "remote"` in its `[Xmip]` table, or by `--remote`, then
+`--snapshot`, then `--runtime` on a line (`SurfaceChoice`). They do not
+answer alike, and an operator reading a view should know which one it is:
+
+| | `native` (`NativeOperator`) | `snapshot` (`SnapshotOperator`) | `remote` (`RemoteOperator`) |
+| --- | --- | --- | --- |
+| Reads | the runtime library in this process, and the nodes running in it | a node's published `snapshot.toml` | a web host's surface hub, over https |
+| Topology | none: the native boundary does not publish it yet | the publication's, where it carries one | the host's source's |
+| Failed Journeys | Listed, from Xmip Storage a page at a time; Unanswered where Storage does not answer; Unlisted with no runtime loaded, and where no node running in the process sends a Send Port at or beneath the scope: it cannot know of nodes elsewhere | Listed: each Port's count and its oldest hundred; Unlisted with no file read | the host's answer; Unlisted while the host is unreachable |
+| A Journey's Retry or Dismiss; a Subscription's or an Event subscription's pause and resume; a Dead Message's Replay | applied at once, in this process, by a node running here — refused where none does | submitted as an order where the publication says its node takes them, taken within a round; declined where it names none | forwarded to the host, which applies or submits it as its own source does, behind its role gate |
+| A scope's pause and resume | applied at once | declined: a snapshot cannot be paused | forwarded to the host, behind its role gate; the answer is the host's own, applied, declined or refused in its words, and not applied while the host is unreachable |
+
+*Listed* is an
+answer even when it lists none; *Unlisted* is a source that cannot list;
+*Unanswered* one that asked and was not answered, its sentence opening
+`FAILED:` (`FailedJourneyList`).
+
 - **Surfaces.** `IOperatorSurface` with its three implementations —
   `NativeOperator` over the binding, `SnapshotOperator` over a published
   snapshot and `RemoteOperator` over a web host's surface hub on another

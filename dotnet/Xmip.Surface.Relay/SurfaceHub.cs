@@ -125,18 +125,12 @@ public sealed class SurfaceHub(IOperatorSurface surface, RoleContext role, Progr
         return Acting().Act(scope, journey, act, Unread);
     }
 
-    /// <summary>Pause everything at and beneath a scope, as the proven
-    /// caller, where the host's role may act.</summary>
-    public string Pause(string scope)
+    /// <summary>Pause or resume everything at and beneath a scope, as the
+    /// proven caller, where the host's role may act, and say what came of it
+    /// as the host's surface says it.</summary>
+    public ScopeOperation ActOnScope(string scope, ScopeAction action)
     {
-        return Acting().PauseScope(scope, Unread);
-    }
-
-    /// <summary>Resume everything at and beneath a scope, as the proven
-    /// caller, where the host's role may act.</summary>
-    public string Resume(string scope)
-    {
-        return Acting().ResumeScope(scope);
+        return Acting().Control(scope, action, Unread);
     }
 
     /// <summary>The host's surface behind the one role check, for the

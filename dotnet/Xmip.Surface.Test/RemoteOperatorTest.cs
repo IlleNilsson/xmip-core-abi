@@ -106,6 +106,11 @@ public sealed class RemoteOperatorTest
             StringComparison.Ordinal);
         Assert.Empty(remote.Health(ScopeTree.Root));
         Assert.Null(remote.Measure(ScopeTree.Root, Abi.Operate.Counted.Streams));
+
+        ScopeOperation paused = ((IOperatorSurface)remote).Control(
+            ScopeTree.Root, ScopeAction.Pause, "an operator");
+        Assert.False(paused.Applied);
+        Assert.Equal(remote.Source, paused.Result);
     }
 
     /// <summary>

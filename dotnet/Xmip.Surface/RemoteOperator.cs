@@ -329,13 +329,23 @@ public sealed class RemoteOperator : IOperatorSurface, IDisposable
     /// <inheritdoc />
     public string PauseScope(string scope, string who)
     {
-        return Ask<string>("Pause", scope) ?? Source;
+        return Control(scope, ScopeAction.Pause, who).Result;
     }
 
     /// <inheritdoc />
     public string ResumeScope(string scope)
     {
-        return Ask<string>("Resume", scope) ?? Source;
+        return Control(scope, ScopeAction.Resume, string.Empty).Result;
+    }
+
+    /// <inheritdoc />
+    /// <remarks>The host's own answer — applied, left as an order, or
+    /// refused in its words — never taken at its word; not applied, with the
+    /// host said unreachable, where it does not answer.</remarks>
+    public ScopeOperation Control(string scope, ScopeAction action, string who)
+    {
+        return Ask<ScopeOperation>("ActOnScope", scope, action)
+            ?? new ScopeOperation(scope, action, false, Source);
     }
 
     /// <inheritdoc />

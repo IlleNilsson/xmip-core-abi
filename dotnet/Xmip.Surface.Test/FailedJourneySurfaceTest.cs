@@ -128,6 +128,30 @@ public sealed class FailedJourneySurfaceTest : IDisposable
     }
 
     [Fact]
+    public void ARuntimeWithNoNodeRunningInItsProcessCannotSayNoneFailed()
+    {
+        // Until 2026-10-06 a loaded runtime with no node here answered
+        // Listed with no Port: an authoritative none it could not know.
+        using NativeOperator surface = new(
+            Path.Combine(RuntimeLibrary.Beside, RuntimeLibrary.FileName));
+        Assert.True(surface.IsLoaded, surface.Reason);
+
+        Assert.All(
+            [Cluster.Scope, Sending, $"{Sending}/send/invoices"],
+            scope =>
+            {
+                FailedJourneyList failed = surface.FailedJourneys(scope);
+
+                Assert.False(failed.Listed, scope);
+                Assert.Empty(failed.Failure);
+                Assert.StartsWith(
+                    "NOT LISTED: ",
+                    JourneyOperation.Unlisted(failed, scope, surface.Source),
+                    StringComparison.Ordinal);
+            });
+    }
+
+    [Fact]
     public void StorageThatDoesNotAnswerIsSaidAsAFailureNotThrownAndNotUnlisted()
     {
         string port = $"{Sending}/send/invoices";

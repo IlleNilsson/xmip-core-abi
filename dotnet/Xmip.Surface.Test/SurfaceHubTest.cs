@@ -56,9 +56,9 @@ public sealed partial class SurfaceHubTest : IDisposable
 
         Assert.True(paused.Applied, paused.Result);
         Assert.True(removed.Applied, removed.Result);
-        Assert.Equal(
-            local.PauseScope(cluster.Scope, Claimed), surface.PauseScope(cluster.Scope, Claimed));
-        Assert.Equal(local.ResumeScope(cluster.Scope), surface.ResumeScope(cluster.Scope));
+        Assert.All(Enum.GetValues<ScopeAction>(), action => Assert.Equal(
+            local.Control(cluster.Scope, action, Claimed),
+            surface.Control(cluster.Scope, action, Claimed)));
 
         string[] orders = Directory.GetFiles(Orders, "*.toml", SearchOption.AllDirectories);
         Assert.Equal(2, orders.Length);
@@ -127,6 +127,26 @@ public sealed partial class SurfaceHubTest : IDisposable
     }
 
     [Fact]
+    public async Task AScopeActOverTheHubSaysWhatTheHostDidNotWhatWasAsked()
+    {
+        // Until 2026-10-06 a remote pause was said applied whatever the host
+        // did: the host's words came back and the remote took them as done.
+        await using WebApplication host = await TestHost.Serve(
+            new Applying(), role: Role.Operator, audit: Audit).ConfigureAwait(true);
+        using RemoteOperator remote = new(new Uri(host.Urls.First()));
+        IOperatorSurface surface = remote;
+
+        Assert.True(remote.Connect(), remote.Reason);
+        ScopeOperation paused = surface.Control(cluster.Scope, ScopeAction.Pause, Claimed);
+        ScopeOperation resumed = surface.Control(cluster.Scope, ScopeAction.Resume, Claimed);
+
+        Assert.True(paused.Applied, paused.Result);
+        Assert.Equal($"paused {cluster.Scope} by {GatedOperator.HostUser}", paused.Result);
+        Assert.True(resumed.Applied, resumed.Result);
+        Assert.Equal(paused.Result, surface.PauseScope(cluster.Scope, Claimed));
+    }
+
+    [Fact]
     public void FromElsewhereWithoutACertificateNoActIsTaken()
     {
         string? proven = GatedOperator.Proven(null, loopback: false);
@@ -176,9 +196,15 @@ public sealed partial class SurfaceHubTest : IDisposable
                 remote.Act(subscription, act, Claimed)).Select(Refused),
             .. Enum.GetValues<EventSubscriptionAct>().Select(act =>
                 remote.Act(held, act, Claimed)).Select(Refused),
-            remote.PauseScope(cluster.Scope, Claimed),
-            remote.ResumeScope(cluster.Scope),
+            .. Enum.GetValues<ScopeAction>().Select(action =>
+                remote.Control(cluster.Scope, action, Claimed)).Select(Refused),
         ];
+    }
+
+    private static string Refused(ScopeOperation operation)
+    {
+        Assert.False(operation.Applied);
+        return operation.Result;
     }
 
     private static string Refused(SubscriptionOperation operation)
@@ -212,4 +238,31 @@ public sealed partial class SurfaceHubTest : IDisposable
 
     [GeneratedRegex("^action = \"act\"$", RegexOptions.Multiline)]
     private static partial Regex Acts();
+
+    // A host's surface that applies every scope act it is handed, saying
+    // whose it was, as a runtime in its process does.
+    private sealed class Applying : IOperatorSurface
+    {
+        public string Source => "applying";
+
+        public IReadOnlyList<HealthRecord> Health(string scope)
+        {
+            return [];
+        }
+
+        public MeasurementRecord? Measure(string scope, Counted counted)
+        {
+            return null;
+        }
+
+        public string PauseScope(string scope, string who)
+        {
+            return $"paused {scope} by {who}";
+        }
+
+        public string ResumeScope(string scope)
+        {
+            return $"resumed {scope}";
+        }
+    }
 }
