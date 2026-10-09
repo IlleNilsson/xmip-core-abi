@@ -15,8 +15,8 @@ namespace Xmip.Abi.Operate;
 /// <param name="Node">The node that scope is on, or null.</param>
 /// <param name="Cluster">The cluster that scope is in, or null.</param>
 /// <param name="Action">What it did.</param>
-/// <param name="Phase">begin, execute, finished or failure.</param>
-/// <param name="Severity">information, warning or error.</param>
+/// <param name="Phase">Begin, Execute, Finished or Failure.</param>
+/// <param name="Severity">Information, Warning or Error.</param>
 /// <param name="Message">What it said, or null.</param>
 /// <param name="Summary">What it says in one line: its message, else its
 /// properties, cut short by the capability.</param>

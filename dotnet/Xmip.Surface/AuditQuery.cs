@@ -45,7 +45,7 @@ public sealed record AuditQuery
     /// set aside.</summary>
     public string? Record { get; init; }
 
-    /// <summary>information, warning or error.</summary>
+    /// <summary>Information, Warning or Error.</summary>
     public string? Severity { get; init; }
 
     /// <summary>One action, exactly.</summary>

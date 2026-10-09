@@ -66,8 +66,8 @@ public sealed class ProgramAuditTest
         Assert.Equal(AuditKept.Persisted, outcome?.Kept);
         Assert.Null(audit.Failed("host", boom));
         string text = File.ReadAllText(Path.Combine(directory, "audit.toml"));
-        Assert.Contains("phase = \"failure\"", text, StringComparison.Ordinal);
-        Assert.Contains("severity = \"error\"", text, StringComparison.Ordinal);
+        Assert.Contains("phase = \"Failure\"", text, StringComparison.Ordinal);
+        Assert.Contains("severity = \"Error\"", text, StringComparison.Ordinal);
         Assert.Contains("message = \"boom\"", text, StringComparison.Ordinal);
         Assert.Contains(
             "\"exception\" = \"System.InvalidOperationException\"", text, StringComparison.Ordinal);
@@ -83,12 +83,12 @@ public sealed class ProgramAuditTest
         audit.Record("start", AuditPhase.Begin, AuditSeverity.Information);
         audit.Record("stop", AuditPhase.Finished, AuditSeverity.Warning, "stopped");
 
-        AuditQuery query = new() { Severity = "warning", Sort = "action", Order = "ascending" };
+        AuditQuery query = new() { Severity = "Warning", Sort = "action", Order = "ascending" };
         AuditRead read = audit.Read(query);
 
         Assert.False(query.Descending);
         Assert.Equal(
-            [new("severity", "warning"), new("sort", "action"), new("order", "ascending")],
+            [new("severity", "Warning"), new("sort", "action"), new("order", "ascending")],
             query.Pairs());
         Assert.Equal(2, read.Read);
         Assert.Equal("stopped", Assert.Single(read.Records).Summary);

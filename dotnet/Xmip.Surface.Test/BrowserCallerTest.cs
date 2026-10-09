@@ -118,7 +118,7 @@ public sealed class BrowserCallerTest : IDisposable
         Assert.StartsWith(
             "REFUSED. Nothing proved who asks", done.Result, StringComparison.Ordinal);
         Assert.False(Directory.Exists(Orders));
-        Assert.Contains("phase = \"failure\"", Audited(), StringComparison.Ordinal);
+        Assert.Contains("phase = \"Failure\"", Audited(), StringComparison.Ordinal);
     }
 
     [Fact]
