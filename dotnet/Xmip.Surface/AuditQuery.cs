@@ -77,6 +77,11 @@ public sealed record AuditQuery
     /// left out unless asked. Carried as <c>hidden=include</c>.</summary>
     public bool IncludeHidden { get; init; }
 
+    /// <summary>Whether the audit chain of each writer of the records matched
+    /// is walked whole and its verdict said (ADR-0070 clause 5): the verify
+    /// act, which reads no payload. Carried as <c>verify=yes</c>.</summary>
+    public bool Verify { get; init; }
+
     /// <summary>Whether the order is newest, or greatest, first.</summary>
     public bool Descending => !string.Equals(Order, "ascending", StringComparison.Ordinal);
 
@@ -115,5 +120,6 @@ public sealed record AuditQuery
         yield return ("offset", Offset > 0 ? $"{Offset}" : null);
         yield return ("limit", Limit > 0 ? $"{Limit}" : null);
         yield return (HiddenKey, IncludeHidden ? Included : null);
+        yield return ("verify", Verify ? "yes" : null);
     }
 }

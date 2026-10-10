@@ -197,6 +197,7 @@ public sealed unsafe class RuntimeAudit
             [.. root.GetProperty("records").EnumerateArray().Select(Entry)],
             [.. root.GetProperty("groups").EnumerateArray().Select(Group)],
             Words(root, "actions"),
+            [.. root.GetProperty("chains").EnumerateArray().Select(Chain)],
             Words(root, "columns"),
             Words(root, "severities"));
     }
@@ -232,6 +233,15 @@ public sealed unsafe class RuntimeAudit
             group.GetProperty("errors").GetInt32(),
             Text(group, "latest") ?? string.Empty,
             Flag(group, "hidden"));
+    }
+
+    private static AuditChain Chain(JsonElement chain)
+    {
+        return new AuditChain(
+            Text(chain, "writer") ?? string.Empty,
+            chain.GetProperty("records").GetInt64(),
+            Flag(chain, "whole"),
+            Text(chain, "said") ?? string.Empty);
     }
 
     private static bool Flag(JsonElement element, string name)

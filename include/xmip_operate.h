@@ -744,8 +744,10 @@ typedef XmipStatus (*XmipAuditFn)(XmipStr program, XmipStr directory, XmipStr ac
  * filter set aside), severity, action, from and to (RFC 3339; a date, or a
  * date and time with no zone, is UTC), sort (at, location, node, program,
  * host, action, phase, severity, summary), order (ascending, descending; the
- * default is descending), offset and limit (at most 1000; 100 when unstated).
- * An empty value is no filter. The answer is JSON, in memory only (ADR-0031
+ * default is descending), offset and limit (at most 1000; 100 when unstated),
+ * hidden (exclude, include) and verify (no, yes: walk the audit chain of each
+ * writer of the records matched, ADR-0070 clause 5). An empty value is no
+ * filter. The answer is JSON, in memory only (ADR-0031
  * clause 2), written into out as UTF-8, its true byte length in out_len
  * whether or not it fit:
  *
@@ -757,11 +759,17 @@ typedef XmipStatus (*XmipAuditFn)(XmipStr program, XmipStr directory, XmipStr ac
  *    "groups":[{"kind":"cluster"|"node"|"scope"|"program"|"host","who",
  *               "count","warnings","errors","latest"}],
  *    "actions":["<every action where the query stands>"],
+ *    "chains":[{"writer","records","whole","said"}],
  *    "columns":["at",...],"severities":["information","warning","error"]}
  *
  * groups are one step down from where the query stands - clusters and hosts
  * at the top, a cluster's nodes and its own programs, a node's programs -
- * and none once a program is asked; columns are the sort words in the
+ * and none once a program is asked; chains are empty unless verify is yes,
+ * and then each writer's chain - a node's location, or a program's name -
+ * walked whole over every record of it, hidden ones among them, with the
+ * first place it breaks (a record deleted, changed or out of order) or
+ * that it is whole, in one sentence opening OK or FAILED; columns are the
+ * sort words in the
  * order a reader shows them and severities least first, so no surface
  * keeps a list of its own. XMIP_OK with the answer;
  * XMIP_E_INVALID with the refusal, one sentence opening REFUSED, in out for

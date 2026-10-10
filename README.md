@@ -69,7 +69,9 @@ to `xmip-core-audit` through the runtime's library, with `AuditPhase`,
 `AuditSeverity` and `AuditKept` as the header defines them (ADR-0062), and
 `Read`, the records read back by the capability's one reader and query —
 `AuditRead`, its `AuditEntry` page and its `AuditGroup`s one step down the
-drill (ADR-0062, amendment 2026-09-29). Section 11 — Events, subscribed (ADR-0065) — is bound once as
+drill (ADR-0062, amendment 2026-09-29), and, where the read asks `verify`,
+its `AuditChain`s, each writer's audit chain walked whole (ADR-0070 clause
+5). Section 11 — Events, subscribed (ADR-0065) — is bound once as
 `RuntimeRules.Events` (`RuntimeEvents`): `Subscribe` returns a disposable
 `EventSubscription` drained with `Next(timeout, max)`, `Listen` calls a
 handler on the runtime's listener thread, and `Publish` hands an Event to
@@ -308,7 +310,8 @@ answer even when it lists none; *Unlisted* is a source that cannot list;
   a call into `xmip_audit_v1` and never a record of its own; and
   `Read(AuditQuery)`, every .NET surface's read of the records back — the
   Audit view, `xmip-cli audit` and `Get-XmipAudit` — through
-  `xmip_audit_read_v1` (ADR-0062, amendment 2026-09-29); and
+  `xmip_audit_read_v1` (ADR-0062, amendment 2026-09-29), `AuditQuery.Verify`
+  asking each writer's audit chain walked (ADR-0070 clause 5); and
   `OperatingSystemLog`, the one .NET writer to the Windows Event Log or the
   local syslog, used only when the runtime's library cannot be loaded at all
   and saying why.

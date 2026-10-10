@@ -99,6 +99,13 @@ public sealed class ProgramAuditTest
             new KeyValuePair<string, string>("hidden", "include"),
             (query with { IncludeHidden = true }).Pairs());
         Assert.DoesNotContain(query.Pairs(), pair => pair.Key == "hidden");
+        Assert.Empty(read.Chains);
+
+        AuditChain chain = Assert.Single(audit.Read(query with { Verify = true }).Chains);
+        Assert.Equal("Xmip.Surface.Test", chain.Writer);
+        Assert.Equal(2, chain.Records);
+        Assert.True(chain.Whole, chain.Said);
+        Assert.StartsWith("OK: ", chain.Said, StringComparison.Ordinal);
         Directory.Delete(directory, recursive: true);
     }
 

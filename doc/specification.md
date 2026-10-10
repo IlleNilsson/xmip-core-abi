@@ -568,3 +568,11 @@ byte `has_topology` was padded beside, so the head's size is unchanged but
 `has_topology` moves by one, and an older reader and a newer runtime do not
 mix. An audit query takes `hidden` (`include` or `exclude`) and a record and
 a group say `hidden` in section 9's JSON (ADR-0028, amendment 2026-09-30).
+
+Section 9's audit query takes `verify` (`yes` or `no`) since 2026-10-10:
+with `yes`, its JSON carries `chains`, the audit chain of each writer of
+the records matched — a node's location, or a program's name — walked whole
+by `xmip-core-audit`'s one walk, `audit_chain::walk`, each with how many
+records it read, whether it is whole and the first place it breaks in words
+(ADR-0070 clause 5). .NET reads them as `AuditRead.Chains`, each an
+`AuditChain`.
