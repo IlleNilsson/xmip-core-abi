@@ -83,10 +83,12 @@ public sealed class SurfaceArrivalTest : IDisposable
             Assert.False(surface.IsLoaded);
             Assert.NotEmpty(surface.Reason);
 
-            // Built again, it loads, and the watch says so.
+            // Built again, it loads, and the watch says so. Written in place,
+            // as a build writes it, while the watch may be reading the file
+            // refused: a rename over it is refused by Windows while any
+            // reader has it open, the watch's own read among them.
             string built = Path.Combine(RuntimeLibrary.Beside, RuntimeLibrary.FileName);
-            File.Copy(built, library + ".next");
-            File.Move(library + ".next", library, overwrite: true);
+            File.Copy(built, library, overwrite: true);
 
             Assert.True(await arrived);
             Assert.True(surface.IsLoaded, surface.Reason);
