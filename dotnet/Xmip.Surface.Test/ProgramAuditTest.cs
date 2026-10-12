@@ -106,6 +106,26 @@ public sealed class ProgramAuditTest
         Assert.Equal(2, chain.Records);
         Assert.True(chain.Whole, chain.Said);
         Assert.StartsWith("OK: ", chain.Said, StringComparison.Ordinal);
+        Assert.Empty(read.Fragments);
+        Assert.Empty(audit.Read(query with { Verify = true }).Fragments);
+
+        // A write left unfinished is said apart from the chain; the next
+        // append seals it, and the record after it continues the chain.
+        File.AppendAllText(read.File, "[[record]]\naudit_id = \"0");
+        AuditRead open = audit.Read(query with { Verify = true });
+        AuditFragment end = Assert.Single(open.Fragments);
+        Assert.False(end.Sealed, end.Said);
+        Assert.StartsWith("UNFINISHED: ", end.Said, StringComparison.Ordinal);
+        Assert.True(Assert.Single(open.Chains).Whole);
+
+        audit.Record("stop", AuditPhase.Finished, AuditSeverity.Warning, "again");
+        AuditRead sealedRead = audit.Read(query with { Verify = true });
+        AuditFragment sealedFragment = Assert.Single(sealedRead.Fragments);
+        Assert.True(sealedFragment.Sealed, sealedFragment.Said);
+        Assert.StartsWith("FAILED: ", sealedFragment.Said, StringComparison.Ordinal);
+        AuditChain after = Assert.Single(sealedRead.Chains);
+        Assert.Equal(3, after.Records);
+        Assert.True(after.Whole, after.Said);
         Directory.Delete(directory, recursive: true);
     }
 
