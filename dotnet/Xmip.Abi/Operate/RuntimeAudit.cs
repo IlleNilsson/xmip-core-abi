@@ -198,6 +198,7 @@ public sealed unsafe class RuntimeAudit
             [.. root.GetProperty("groups").EnumerateArray().Select(Group)],
             Words(root, "actions"),
             [.. root.GetProperty("chains").EnumerateArray().Select(Chain)],
+            [.. root.GetProperty("fragments").EnumerateArray().Select(Fragment)],
             Words(root, "columns"),
             Words(root, "severities"));
     }
@@ -242,6 +243,15 @@ public sealed unsafe class RuntimeAudit
             chain.GetProperty("records").GetInt64(),
             Flag(chain, "whole"),
             Text(chain, "said") ?? string.Empty);
+    }
+
+    private static AuditFragment Fragment(JsonElement fragment)
+    {
+        return new AuditFragment(
+            fragment.GetProperty("offset").GetInt64(),
+            fragment.GetProperty("length").GetInt64(),
+            Flag(fragment, "sealed"),
+            Text(fragment, "said") ?? string.Empty);
     }
 
     private static bool Flag(JsonElement element, string name)

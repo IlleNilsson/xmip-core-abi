@@ -70,8 +70,9 @@ to `xmip-core-audit` through the runtime's library, with `AuditPhase`,
 `Read`, the records read back by the capability's one reader and query —
 `AuditRead`, its `AuditEntry` page and its `AuditGroup`s one step down the
 drill (ADR-0062, amendment 2026-09-29), and, where the read asks `verify`,
-its `AuditChain`s, each writer's audit chain walked whole (ADR-0070 clause
-5). Section 11 — Events, subscribed (ADR-0065) — is bound once as
+its `AuditChain`s, each writer's audit chain walked whole, and its
+`AuditFragment`s, each part of the file no write finished, said apart from
+the chains (ADR-0070 clause 5). Section 11 — Events, subscribed (ADR-0065) — is bound once as
 `RuntimeRules.Events` (`RuntimeEvents`): `Subscribe` returns a disposable
 `EventSubscription` drained with `Next(timeout, max)`, `Listen` calls a
 handler on the runtime's listener thread, and `Publish` hands an Event to

@@ -760,6 +760,7 @@ typedef XmipStatus (*XmipAuditFn)(XmipStr program, XmipStr directory, XmipStr ac
  *               "count","warnings","errors","latest"}],
  *    "actions":["<every action where the query stands>"],
  *    "chains":[{"writer","records","whole","said"}],
+ *    "fragments":[{"offset","length","sealed","said"}],
  *    "columns":["at",...],"severities":["information","warning","error"]}
  *
  * groups are one step down from where the query stands - clusters and hosts
@@ -768,10 +769,14 @@ typedef XmipStatus (*XmipAuditFn)(XmipStr program, XmipStr directory, XmipStr ac
  * and then each writer's chain - a node's location, or a program's name -
  * walked whole over every record of it, hidden ones among them, with the
  * first place it breaks (a record deleted, changed or out of order) or
- * that it is whole, in one sentence opening OK or FAILED; columns are the
- * sort words in the
- * order a reader shows them and severities least first, so no surface
- * keeps a list of its own. XMIP_OK with the answer;
+ * that it is whole, in one sentence opening OK or FAILED; fragments are
+ * empty unless verify is yes, and then each part of the file that is not a
+ * whole record, apart from the chains: a record whose write was interrupted,
+ * kept as written and sealed by the next append (sealed true, its sentence
+ * opening FAILED), or the file's end no write has finished yet (sealed
+ * false, opening UNFINISHED), each at its byte offset and length; columns
+ * are the sort words in the order a reader shows them and severities least
+ * first, so no surface keeps a list of its own. XMIP_OK with the answer;
  * XMIP_E_INVALID with the refusal, one sentence opening REFUSED, in out for
  * a key or value the query does not take or an odd query_len; XMIP_E_IO
  * with the reason when the file is there and cannot be read;

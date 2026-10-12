@@ -575,4 +575,11 @@ the records matched — a node's location, or a program's name — walked whole
 by `xmip-core-audit`'s one walk, `audit_chain::walk`, each with how many
 records it read, whether it is whole and the first place it breaks in words
 (ADR-0070 clause 5). .NET reads them as `AuditRead.Chains`, each an
-`AuditChain`.
+`AuditChain`. Since 2026-10-12 it carries `fragments` beside them, each part
+of the file that is not a whole record (`audit_fragment`): a record whose
+write was interrupted, which the next append keeps as written and seals with
+a comment line and a blank line (`sealed` true, its sentence opening
+FAILED), or the file's end no write has finished yet (`sealed` false,
+opening UNFINISHED), each with its byte `offset` and `length`. A fragment is
+in no chain, so it is said apart from the chain verdict. .NET reads them as
+`AuditRead.Fragments`, each an `AuditFragment`.

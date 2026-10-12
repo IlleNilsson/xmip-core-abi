@@ -4,8 +4,8 @@ namespace Xmip.Abi.Operate;
 /// What an audit read found (section 9, <c>xmip_audit_read_v1</c>; ADR-0062,
 /// amendment 2026-09-29): which file it read, how many records that holds and
 /// how many matched, the page asked for, the groups one step down, the
-/// actions there are to choose from, and each writer's audit chain where the
-/// read asked to verify.
+/// actions there are to choose from, and each writer's audit chain and each
+/// fragment of the file no write finished where the read asked to verify.
 /// </summary>
 /// <param name="File">The file read; empty where no audit directory is
 /// stated and records go to the operating system's log.</param>
@@ -19,6 +19,9 @@ namespace Xmip.Abi.Operate;
 /// <param name="Chains">Where the read asked <c>verify</c>, the audit chain of
 /// each writer of the records it matched, walked whole (ADR-0070 clause 5);
 /// empty otherwise.</param>
+/// <param name="Fragments">Where the read asked <c>verify</c>, each part of
+/// the file that is not a whole record, apart from the chains (ADR-0070
+/// clause 5); empty otherwise.</param>
 /// <param name="Columns">The columns a record sorts by, as the capability
 /// names them, in the order a reader shows them.</param>
 /// <param name="Severities">The severities, least first, as the capability
@@ -33,5 +36,6 @@ public sealed record AuditRead(
     IReadOnlyList<AuditGroup> Groups,
     IReadOnlyList<string> Actions,
     IReadOnlyList<AuditChain> Chains,
+    IReadOnlyList<AuditFragment> Fragments,
     IReadOnlyList<string> Columns,
     IReadOnlyList<string> Severities);
