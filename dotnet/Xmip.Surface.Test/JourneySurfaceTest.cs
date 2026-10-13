@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Builder;
 using Xmip.Abi.Module;
 
 namespace Xmip.Surface.Test;
@@ -137,26 +136,6 @@ public sealed class JourneySurfaceTest : IDisposable
         string order = File.ReadAllText(
             Assert.Single(Directory.GetFiles(Orders, "*.toml", SearchOption.AllDirectories)));
         Assert.Contains("operator", order, StringComparison.Ordinal);
-        Assert.DoesNotContain(Claimed, order, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public async Task AnActOverTheHubIsTakenAsTheHostsSurfaceTakesIt()
-    {
-        SnapshotOperator local = Over(Orders);
-        await using WebApplication host = await TestHost.Serve(
-            local, role: Role.Operator, audit: Audit).ConfigureAwait(true);
-        using RemoteOperator remote = new(new Uri(host.Urls.First()));
-        IOperatorSurface surface = remote;
-
-        Assert.True(remote.Connect(), remote.Reason);
-
-        JourneyOperation dismissed = surface.Act(Port, Journey, JourneyAct.Dismiss, Claimed);
-
-        Assert.True(dismissed.Applied, dismissed.Result);
-        Assert.Equal(Sending, dismissed.Node);
-        string order = File.ReadAllText(
-            Assert.Single(Directory.GetFiles(Orders, "*.toml", SearchOption.AllDirectories)));
         Assert.DoesNotContain(Claimed, order, StringComparison.Ordinal);
     }
 

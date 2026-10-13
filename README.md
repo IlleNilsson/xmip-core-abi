@@ -124,6 +124,16 @@ Storage does not answer, `NativeOperator` says so through
 Port publishes is read in one place each: the last Journey that ever failed
 there by `JourneyOperation.FailedIn`, how many wait in its queue now by
 `JourneyOperation.FailingIn`.
+Section 17 — a node reached at its operate address (ADR-0014, amendment
+2026-10-12) — is `RuntimeRules.Remotes` (`RuntimeRemotes`): `Open` gives a
+`RemoteNode` over `host:port` with PEM certificate, key and anchors, whose
+`Publication`, `Wait` and `Act` read the node's publication, wait on the
+runtime's follow and ask an act as the certificate's subject, and whose
+`Dispose` ends the follow, lets every call in flight return and frees the
+handle; `Serve` gives a `ServedNode`, an operate listener this process serves
+for what it `Post`s. Section 18 is `RuntimeRules.SecurityRoles`
+(`RuntimeSecurityRoles`): the role a word names, its words, and `Admitted`,
+the one gate `GatedOperator` asks.
 Section 10 — the
 cluster's `xmip.toml` read, edited and sliced — is `RuntimeRules.Design`
 (`RuntimeDesign`): `TryViews`, `TryEdit`, `TrySlices`, `TryFilterStructure`
@@ -162,11 +172,11 @@ answer alike, and an operator reading a view should know which one it is:
 
 | | `native` (`NativeOperator`) | `snapshot` (`SnapshotOperator`) | `remote` (`RemoteOperator`) |
 | --- | --- | --- | --- |
-| Reads | the runtime library in this process, and the nodes running in it | a node's published `snapshot.toml` | a web host's surface hub, over https |
-| Topology | none: the native boundary does not publish it yet | the publication's, where it carries one | the host's source's |
-| Failed Journeys | Listed, from Xmip Storage a page at a time; Unanswered where Storage does not answer; Unlisted with no runtime loaded, and where no node running in the process sends a Send Port at or beneath the scope: it cannot know of nodes elsewhere | Listed: each Port's count and its oldest hundred; Unlisted with no file read | the host's answer; Unlisted while the host is unreachable |
-| A Journey's Retry or Dismiss; a Subscription's or an Event subscription's pause and resume; a Dead Message's Replay | applied at once, in this process, by a node running here — refused where none does | submitted as an order where the publication says its node takes them, taken within a round; declined where it names none | forwarded to the host, which applies or submits it as its own source does, behind its role gate |
-| A scope's pause and resume | applied at once | declined: a snapshot cannot be paused | forwarded to the host, behind its role gate; the answer is the host's own, applied, declined or refused in its words, and not applied while the host is unreachable |
+| Reads | the runtime library in this process, and the nodes running in it | a node's published `snapshot.toml` | a node's publication, over gRPC to its operate listener in Xmip's mutual TLS (section 17) |
+| Topology | none: the native boundary does not publish it yet | the publication's, where it carries one | the node's publication's |
+| Failed Journeys | Listed, from Xmip Storage a page at a time; Unanswered where Storage does not answer; Unlisted with no runtime loaded, and where no node running in the process sends a Send Port at or beneath the scope: it cannot know of nodes elsewhere | Listed: each Port's count and its oldest hundred; Unlisted with no file read | as a snapshot: what the node's publication carries; Unlisted while the node is unreachable |
+| A Journey's Retry or Dismiss; a Subscription's or an Event subscription's pause and resume; a Dead Message's Replay | applied at once, in this process, by a node running here — refused where none does | submitted as an order where the publication says its node takes them, taken within a round; declined where it names none | asked of the node, which takes it as the certificate's subject behind the role its `[operate]` grants (section 18's gate), applies it at once and audits it; refused in its words otherwise |
+| A scope's pause and resume | applied at once | declined: a snapshot cannot be paused | declined: a node's operate listener takes the acts on what it publishes, not a scope's pause |
 
 *Listed* is an
 answer even when it lists none; *Unlisted* is a source that cannot list;
@@ -175,18 +185,18 @@ answer even when it lists none; *Unlisted* is a source that cannot list;
 
 - **Surfaces.** `IOperatorSurface` with its three implementations —
   `NativeOperator` over the binding, `SnapshotOperator` over a published
-  snapshot and `RemoteOperator` over a web host's surface hub on another
-  machine — and `ClusterSurfaces`, the set a face holds when more than one
+  snapshot and `RemoteOperator` over a node's operate listener on another
+  machine, the runtime's remote surface (section 17) — and `ClusterSurfaces`, the set a face holds when more than one
   cluster is published: one surface per cluster, and nothing added across them
   (ADR-0052, amendment 2026-09-20). `NativeOperator.Plan` hands a node's
   file to `xmip_start_v1`, which reads, validates and publishes its plan and
-  runs nothing; its sentence says *planned … not running*. A host that
+  runs nothing; its sentence says *planned … not running*. A node that
   `RemoteOperator` loses is told at once to every watch, with a `Source` that
   says it is unreachable and why, and every answer is empty until it is back
-  — never the publication held from before; while anything watches, the host
-  is tried again on `RemoteOperator.Retry` (SignalR's 0, 2, 10, 30 seconds,
-  the last repeated), whether it was lost or never reached, and every watch
-  is told the moment it answers (`RemoteOperatorTest`). A snapshot is read once per change: a
+  — never the publication held from before; the runtime's follow tries it
+  again on its own loop (0, 2, 10 and 30 seconds, the last repeated), whether
+  it was lost or never reached, and every watch is told the moment it
+  answers (`RemoteOperatorTest`; the runtime's `tests/plane`). A snapshot is read once per change: a
   followed `SnapshotOperator` reads each publication before its change feed
   announces it, and answers every question from that reading without touching
   the file; `SurfaceChoice.OpenAll` follows every snapshot it opens
@@ -317,23 +327,21 @@ answer even when it lists none; *Unlisted* is a source that cannot list;
   local syslog, used only when the runtime's library cannot be loaded at all
   and saying why.
 
-`dotnet/Xmip.Surface.Relay` is the served half — `SurfaceHub`, answering what
-the host's surface answers, and `SurfaceRelay`, pushing the host's change feed
-to every remote surface, so a surface is told and never asks (ADR-0052,
-amendment 2026-09-15); only a web host references it. `SurfaceBinding` is
-where such a host listens: plain HTTP beyond loopback and HTTPS with no
+`dotnet/Xmip.Surface.Relay` is what a web host adds for its browsers; only a
+web host references it, and it serves no surface to other machines — a remote
+surface follows a node, not a web host (ADR-0014, amendment 2026-10-12).
+`SurfaceBinding` is where such a host listens: plain HTTP beyond loopback and HTTPS with no
 certificate refused before anything listens, the plain loopback addresses
 answered for the host to say it binds them, and `UseXmipTls`, every HTTPS
-address presenting the host's certificate and checking a caller's; the hub
-takes no caller over TLS without one (ADR-0063 clause 1). Every act the hub
-serves goes through `GatedOperator` in `Xmip.Surface`, the one role check:
-taken only where the host's `RoleContext` may operate, as the subject of the
-client certificate the connection proved, else on loopback as the operating
-system user the host runs as (`GatedOperator.Proven`) — no hub method takes a
-name, and from elsewhere with no certificate no act is taken — and refused in
-words otherwise; taken or refused, audited through the host's `ProgramAudit`
-(ADR-0009, amendment 2026-10-03). `Role`, `Roles` and `RoleContext` are
-`Xmip.Surface`'s, beneath both GUIs and the relay.
+address presenting the host's certificate and checking a caller's
+(ADR-0063 clause 1); and `ProvenCaller`, who each request proved. Every act a
+screen takes goes through `GatedOperator` in `Xmip.Surface`, over the
+runtime's one gate (`xmip_act_admitted_v1`, section 18): taken only where the
+caller's `RoleContext` may operate, as the subject of the client certificate
+the connection proved, else on loopback as the operating system user the host
+runs as (`GatedOperator.Proven`), and refused in words otherwise; taken or
+refused, audited through the host's `ProgramAudit` (ADR-0009). `Role`,
+`Roles` and `RoleContext` are `Xmip.Surface`'s, beneath both GUIs.
 
 `dotnet/Xmip.Surface.Test` covers the tree and its index, the pattern, the
 filter and the selection, the figures and their flow, runtime discovery and

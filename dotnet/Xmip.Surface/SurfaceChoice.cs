@@ -7,8 +7,8 @@ namespace Xmip.Surface;
 /// (ADR-0052 clause 3). In the host's <c>[Xmip]</c> table: <c>Surface</c> is
 /// <c>"native"</c> — a runtime library found by <see cref="RuntimeLibrary"/>'s
 /// rule — <c>"snapshot"</c> — a file at <c>Snapshot</c> — or <c>"remote"</c> —
-/// a web host at <c>Url</c>, followed over its surface hub (ADR-0052,
-/// amendment 2026-09-15), presenting and trusting what <see cref="SurfaceTls"/>
+/// a node's operate listener at <c>Address</c>, followed over gRPC (ADR-0014,
+/// amendment 2026-10-12), presenting and trusting what <see cref="SurfaceTls"/>
 /// reads from the same table (ADR-0063 clause 1). Nothing is chosen by finding a file in a temp
 /// directory, and a configuration that names none is refused rather than
 /// defaulted.
@@ -29,10 +29,11 @@ public static class SurfaceChoice
     /// <summary>The word for the surface over a published snapshot.</summary>
     public const string Snapshot = "snapshot";
 
-    /// <summary>The key naming the web host, when the surface is remote.</summary>
-    public const string UrlKey = "Xmip:Url";
+    /// <summary>The key naming the node's operate address, <c>host:port</c>,
+    /// when the surface is remote.</summary>
+    public const string AddressKey = "Xmip:Address";
 
-    /// <summary>The word for the surface over a web host on another machine.</summary>
+    /// <summary>The word for the surface over a node on another machine.</summary>
     public const string Remote = "remote";
 
     /// <summary>Whether the configuration names a surface at all. A host
@@ -76,13 +77,12 @@ public static class SurfaceChoice
 
         if (string.Equals(chosen, Remote, StringComparison.OrdinalIgnoreCase))
         {
-            string? url = configuration[UrlKey];
+            string? address = configuration[AddressKey];
 
-            return RemoteOperator.IsWebHost(url)
-                ? new RemoteOperator(
-                    new Uri(url, UriKind.Absolute), SurfaceTls.From(configuration, basePath))
+            return RemoteOperator.Refusal(address) is null
+                ? new RemoteOperator(address!, SurfaceTls.From(configuration, basePath))
                 : throw new InvalidOperationException(
-                    $"{SurfaceKey} is \"{Remote}\" and {UrlKey} names no web host");
+                    $"{SurfaceKey} is \"{Remote}\" and {AddressKey} names no node");
         }
 
         string words = $"\"{Native}\", \"{Snapshot}\" or \"{Remote}\"";
@@ -175,7 +175,7 @@ public static class SurfaceChoice
 
     /// <summary>
     /// The one surface a command, a cmdlet or the prompt reads, the line over
-    /// the document: a web host <paramref name="line"/> names, else the
+    /// the document: a node <paramref name="line"/> names, else the
     /// snapshot it names, else — where it names no runtime and the document
     /// names a surface — the document's choice, the first cluster where it
     /// names several; else the runtime library
@@ -208,8 +208,7 @@ public static class SurfaceChoice
             line.Runtime, document, basePath, besideExecutable);
 
         return !string.IsNullOrWhiteSpace(line.Remote)
-            ? new RemoteOperator(
-                new Uri(line.Remote, UriKind.Absolute), SurfaceTls.From(document, basePath))
+            ? new RemoteOperator(line.Remote, SurfaceTls.From(document, basePath))
             : !string.IsNullOrWhiteSpace(line.Snapshot)
                 ? new SnapshotOperator(TomlDocument.Resolve(line.Snapshot, basePath))
                 : string.IsNullOrWhiteSpace(line.Runtime) && IsChosen(document)
@@ -219,7 +218,7 @@ public static class SurfaceChoice
 
     /// <summary>
     /// The surface <see cref="Stated"/> chooses from the document at
-    /// <paramref name="documentPath"/>, once it has answered: a remote host
+    /// <paramref name="documentPath"/>, once it has answered: a remote node
     /// connected, a runtime loaded, a snapshot file present. Null with the
     /// reason otherwise — the line's own <see cref="SurfaceLine.Refusal"/>,
     /// the document's refusal prefixed with its file name, or the surface's
@@ -264,7 +263,7 @@ public static class SurfaceChoice
         return null;
     }
 
-    /// <summary>Whether a surface answers at all: a remote host connects, a
+    /// <summary>Whether a surface answers at all: a remote node answers, a
     /// runtime library loads, a snapshot file is there. A surface of another
     /// kind is taken at its word.</summary>
     public static bool Answers(IOperatorSurface surface)

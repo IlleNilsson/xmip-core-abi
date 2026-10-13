@@ -46,15 +46,10 @@ public static class Roles
     }
 
     /// <summary>What the role may do, in the words every host's badge uses:
-    /// the one description, so the web and the desktop say the same.</summary>
+    /// the runtime's one description (<c>xmip_security_role_words_v1</c>), so
+    /// the web, the desktop and a node's refusal say the same.</summary>
     public static string Describe(this Role role)
     {
-        return role switch
-        {
-            Role.Observer => "watches — monitoring only",
-            Role.Operator => "also acts and configures",
-            Role.Developer => "also builds",
-            _ => string.Empty,
-        };
+        return RuntimeLibrary.Rules.SecurityRoles.Words((int)role).Description;
     }
 }

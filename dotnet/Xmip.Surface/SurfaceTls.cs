@@ -10,10 +10,12 @@ namespace Xmip.Surface;
 /// What a surface presents and what it trusts when it crosses a network
 /// (ADR-0063 clause 1: internal traffic is mutual TLS, a loopback connection
 /// inside one machine the one exception, said where it is made). A web host
-/// serves its pages and its surface hub over HTTPS with this certificate and
-/// checks the one a <see cref="RemoteOperator"/> presents; a remote surface
-/// presents this certificate and checks the host's. The rule is here, once,
-/// for both ends and every .NET surface.
+/// serves its pages over HTTPS with this certificate and checks the one a
+/// browser presents; a <see cref="RemoteOperator"/> hands the runtime the
+/// same files (<see cref="Pem(out string, out string, out string)"/>), and
+/// the runtime presents this certificate to a node's operate listener and
+/// checks the node's against these anchors in Xmip's own TLS. The rule is
+/// here, once, for every .NET surface.
 /// </summary>
 /// <remarks>
 /// The certificate and its trust come the way <c>xmip-core-library-tls</c>
@@ -56,15 +58,21 @@ public sealed class SurfaceTls
     private SurfaceTls(
         X509Certificate2? certificate,
         X509Certificate2Collection chain,
-        X509Certificate2Collection anchors)
+        X509Certificate2Collection anchors,
+        (string? Certificate, string? PrivateKey, string? TrustAnchor) paths = default)
     {
         Certificate = certificate;
         Chain = chain;
         Anchors = anchors;
+        Paths = paths;
     }
 
     /// <summary>Nothing presented, and the operating system's anchors trusted.</summary>
     public static SurfaceTls None { get; } = new(null, [], []);
+
+    /// <summary>The files this was read from, each null where none was
+    /// named.</summary>
+    public (string? Certificate, string? PrivateKey, string? TrustAnchor) Paths { get; }
 
     /// <summary>What this end presents, with its private key; null where
     /// nothing is configured, and then a web host serves no HTTPS and a
@@ -168,7 +176,7 @@ public sealed class SurfaceTls
 
         if (certificatePath is null || privateKeyPath is null)
         {
-            return new SurfaceTls(null, [], anchors);
+            return new SurfaceTls(null, [], anchors, (null, null, trustAnchorPath));
         }
 
         X509Certificate2Collection chain = Pem(certificatePath);
@@ -198,7 +206,38 @@ public sealed class SurfaceTls
 
         chain.RemoveAt(0);
 
-        return new SurfaceTls(leaf, chain, anchors);
+        return new SurfaceTls(
+            leaf, chain, anchors, (certificatePath, privateKeyPath, trustAnchorPath));
+    }
+
+    /// <summary>
+    /// The certificate chain, its key and the anchors as the PEM text
+    /// <c>xmip-core-library-tls</c> takes them, for a connection the runtime
+    /// makes: a remote surface's to a node's operate listener, which is
+    /// mutual TLS always (ADR-0063). Null with all three read; else what is
+    /// missing, in words.
+    /// </summary>
+    public string? Pem(out string certificate, out string privateKey, out string trustAnchor)
+    {
+        certificate = privateKey = trustAnchor = string.Empty;
+
+        if (Paths.Certificate is null || Paths.PrivateKey is null)
+        {
+            return $"REFUSED. A remote surface presents a certificate: name {CertificateKey} "
+                + $"and {PrivateKeyKey}, or {CertificateVariable} and {PrivateKeyVariable} "
+                + "(ADR-0063 clause 1)";
+        }
+
+        if (Paths.TrustAnchor is null)
+        {
+            return $"REFUSED. A remote surface trusts a node by the anchors {TrustAnchorKey} "
+                + $"or {TrustAnchorVariable} names, never the operating system's (ADR-0063)";
+        }
+
+        certificate = File.ReadAllText(Paths.Certificate);
+        privateKey = File.ReadAllText(Paths.PrivateKey);
+        trustAnchor = File.ReadAllText(Paths.TrustAnchor);
+        return null;
     }
 
     /// <summary>

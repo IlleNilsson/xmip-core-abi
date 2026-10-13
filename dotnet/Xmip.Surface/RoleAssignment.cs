@@ -4,10 +4,10 @@ namespace Xmip.Surface;
 
 /// <summary>
 /// The one rule a host grants a caller a role by (ADR-0009, amendments
-/// 2026-09-14 and 2026-10-06), for the web, the desktop and the surface hub
-/// alike: a caller nothing proved is an Observer and acts on nothing; a role
-/// the run states is every proven caller's; else the directory the host was
-/// handed answers for the caller; else Observer, so an unstated role grants
+/// 2026-09-14 and 2026-10-06), for the web and the desktop alike: a caller
+/// nothing proved is an Observer and acts on nothing; a role the run states
+/// is every proven caller's; else the directory the host was handed answers
+/// for the caller; else Observer, so an unstated role grants
 /// nothing. The Playground's permissive identity is its fake directory,
 /// <see cref="TesterDirectory"/>, there only where configuration names it.
 /// </summary>
@@ -55,12 +55,7 @@ public sealed class RoleAssignment(Role? stated, IDirectory? directory)
     /// </summary>
     public static Role Parse(string? text)
     {
-        return text?.Trim().ToLowerInvariant() switch
-        {
-            "operator" => Role.Operator,
-            "developer" => Role.Developer,
-            _ => Role.Observer,
-        };
+        return (Role)RuntimeLibrary.Rules.SecurityRoles.Named(text ?? string.Empty);
     }
 
     /// <summary>The caller <paramref name="who"/> — the identity a connection

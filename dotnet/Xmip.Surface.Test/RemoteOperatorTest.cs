@@ -1,30 +1,31 @@
+using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
-using Microsoft.AspNetCore.Builder;
-using Xmip.Surface.Relay;
+using Xmip.Abi.Operate;
 
 namespace Xmip.Surface.Test;
 
 /// <summary>
-/// The surface over a web host on another machine, proved against a real hub
-/// on a loopback port hosted the way the web host hosts it: it answers what
-/// the host's surface answers, it is told when that surface changes, and a
-/// host that is not there is said so (ADR-0052, amendment 2026-09-15). Over
-/// TLS both ends present a certificate and check the other's, and a
-/// certificate the other end's anchors do not reach is refused (ADR-0063
-/// clause 1). What an act across the hub comes to is <see cref="SurfaceHubTest"/>'s.
+/// The surface over a node on another machine (ADR-0014, amendment
+/// 2026-10-12), proved against a real operate listener on a loopback port,
+/// served by the runtime this estate built, over gRPC inside Xmip's mutual
+/// TLS with certificates a test authority issued: it answers what the node
+/// publishes, it is told when that advances and how fast, a node that is not
+/// there or is lost is said so, an act is the certificate's and is admitted
+/// by the role the node grants it, and a certificate the other end's anchors
+/// do not reach is refused (ADR-0063).
 /// </summary>
 public sealed class RemoteOperatorTest
 {
     private static readonly TestCluster Cluster = TestCluster.Read();
 
     [Fact]
-    public async Task SaysWhatTheHostsRunWasStartedWith()
+    public void SaysWhatTheNodesRunWasStartedWith()
     {
-        IOperatorSurface local = new SnapshotOperator(
-            Path.Combine(AppContext.BaseDirectory, "Fixture", "cluster.toml"));
-        await using WebApplication host = await TestHost.Serve(local).ConfigureAwait(true);
-        using RemoteOperator remote = new(new Uri(host.Urls.First()));
+        using TestAuthority authority = new("run");
+        using ServedNode served = Serve(authority, Fixture("cluster.toml"));
+        using RemoteOperator remote = Remote(authority, served.Address);
+        IOperatorSurface local = new SnapshotOperator(FixturePath("cluster.toml"));
         string receiver = Cluster.WithRole("receiving");
         string processor = Cluster.WithRole("processing");
 
@@ -42,254 +43,187 @@ public sealed class RemoteOperatorTest
     }
 
     [Fact]
-    public async Task AnswersWhatTheHostReadsAndIsToldWhenItChanges()
+    public async Task AnswersWhatTheNodePublishesAndIsToldWhenItAdvances()
     {
-        string copy = Path.Combine(
-            Path.GetTempPath(), $"xmip-remote-{Guid.NewGuid():n}-snapshot.toml");
-        File.Copy(Path.Combine(AppContext.BaseDirectory, "Fixture", "snapshot.toml"), copy);
+        using TestAuthority authority = new("follow");
+        string published = Fixture("snapshot.toml");
+        using ServedNode served = Serve(authority, published);
+        using RemoteOperator remoteNode = Remote(authority, served.Address);
+        IOperatorSurface remote = remoteNode;
+        IOperatorSurface local = new SnapshotOperator(FixturePath("snapshot.toml"));
 
-        try
+        Assert.True(remoteNode.Connect(), remoteNode.Reason);
+        Assert.Equal($"REMOTE — {served.Address}", remote.Source);
+        Assert.Equal(local.Health(ScopeTree.Root), remote.Health(ScopeTree.Root));
+        Assert.Equal(
+            local.Figures(ScopeTree.Root) with { Observed = null },
+            remote.Figures(ScopeTree.Root) with { Observed = null });
+
+        using CancellationTokenSource patience = new(TimeSpan.FromSeconds(30));
+        await using IAsyncEnumerator<SurfaceChange> feed =
+            remote.WatchAsync(patience.Token).GetAsyncEnumerator(patience.Token);
+
+        Assert.True(await feed.MoveNextAsync().ConfigureAwait(true));
+        Assert.True(await feed.MoveNextAsync().ConfigureAwait(true));
+        ulong first = feed.Current.Revision;
+
+        // Told, not asked: the node posts its next publication and the
+        // follow is told, measured from the post to the notice in hand.
+        List<double> took = [];
+
+        for (int round = 1; round <= 50; round++)
         {
-            IOperatorSurface local = new SnapshotOperator(copy);
-            await using WebApplication host = await TestHost.Serve(local).ConfigureAwait(true);
-            using RemoteOperator remoteHost = new(new Uri(host.Urls.First()));
-            IOperatorSurface remote = remoteHost;
-
-            Assert.True(remoteHost.Connect(), remoteHost.Reason);
-            Assert.Equal($"REMOTE — {remoteHost.Host}", remote.Source);
-            Assert.Equal(local.Health(ScopeTree.Root), remote.Health(ScopeTree.Root));
-            string sending = ScopeTree.Root + Cluster.WithRole("sending");
-            Assert.Equal(
-                local.Health(sending).Select(record => record.Scope),
-                remote.Health(sending).Select(record => record.Scope));
-            Assert.Equal(
-                local.Figures(ScopeTree.Root) with { Observed = null },
-                remote.Figures(ScopeTree.Root) with { Observed = null });
-            Assert.Equal(local.Topology().Source, remote.Topology().Source);
-
-            using CancellationTokenSource patience = new(TimeSpan.FromSeconds(30));
-            await using IAsyncEnumerator<SurfaceChange> feed =
-                remote.WatchAsync(patience.Token).GetAsyncEnumerator(patience.Token);
-
+            Stopwatch posted = Stopwatch.StartNew();
+            served.Post(published + $"\n# round {round}\n");
             Assert.True(await feed.MoveNextAsync().ConfigureAwait(true));
-            Assert.Equal(remote.Source, feed.Current.Source);
-
-            // Told, not asked: the host's file advances, the host's feed fires,
-            // the relay pushes, and the notice carries the host's own source.
-            File.WriteAllText(copy, File.ReadAllText(copy) + "\n# advanced\n");
-
-            SurfaceChange told;
-
-            do
-            {
-                Assert.True(await feed.MoveNextAsync().ConfigureAwait(true));
-                told = feed.Current;
-            }
-            while (told.Source != local.Source);
-
-            Assert.Equal(local.Source, told.Source);
+            took.Add(posted.Elapsed.TotalMilliseconds);
+            Assert.Equal(first + (ulong)round, feed.Current.Revision);
         }
-        finally
-        {
-            File.Delete(copy);
-        }
+
+        took.Sort();
+        Console.WriteLine(
+            $"a remote follow told over loopback: median {took[took.Count / 2]:F3} ms, "
+            + $"worst {took[^1]:F3} ms");
+        Assert.Equal(local.Health(ScopeTree.Root), remote.Health(ScopeTree.Root));
     }
 
     [Fact]
-    public void AHostThatIsNotThereIsSaidSo()
+    public void ANodeThatIsNotThereIsSaidSo()
     {
-        using RemoteOperator remote = new(new Uri("http://127.0.0.1:9"));
+        using TestAuthority authority = new("absent");
+        string address = FreeAddress();
+        using RemoteOperator remote = Remote(authority, address);
 
         Assert.False(remote.Connect());
-        Assert.NotEmpty(remote.Reason);
-        Assert.StartsWith("REMOTE — http://127.0.0.1:9/ unreachable: ", remote.Source,
+        Assert.StartsWith($"REMOTE — {address} unreachable: ", remote.Source,
             StringComparison.Ordinal);
         Assert.Empty(remote.Health(ScopeTree.Root));
-        Assert.Null(remote.Measure(ScopeTree.Root, Abi.Operate.Counted.Streams));
-
-        ScopeOperation paused = ((IOperatorSurface)remote).Control(
-            ScopeTree.Root, ScopeAction.Pause, "an operator");
-        Assert.False(paused.Applied);
-        Assert.Equal(remote.Source, paused.Result);
+        Assert.Null(remote.Measure(ScopeTree.Root, Counted.Streams));
     }
 
-    /// <summary>
-    /// A watch begun while the host is not there is told it is unreachable,
-    /// answers nothing, and is told again the moment the host comes up —
-    /// without anyone asking (ADR-0052, amendment 2026-09-15).
-    /// </summary>
     [Fact]
-    public async Task AWatchBegunBeforeTheHostIsToldWhenItComesUp()
+    public async Task ANodeLostIsToldAndItsLastPublicationIsNotAnsweredAsCurrent()
     {
-        Uri address = FreeAddress();
-        using RemoteOperator remote = new(address, null, Quick);
+        using TestAuthority authority = new("lost");
+        ServedNode served = Serve(authority, Fixture("snapshot.toml"));
+        using RemoteOperator remote = Remote(authority, served.Address);
         IOperatorSurface surface = remote;
         using CancellationTokenSource patience = new(TimeSpan.FromSeconds(30));
         await using IAsyncEnumerator<SurfaceChange> feed =
             surface.WatchAsync(patience.Token).GetAsyncEnumerator(patience.Token);
 
-        Assert.True(await feed.MoveNextAsync().ConfigureAwait(true));
-        Assert.Contains(" unreachable: ", feed.Current.Source, StringComparison.Ordinal);
-        Assert.Empty(surface.Health(ScopeTree.Root));
-
-        SnapshotOperator local = Fixture();
-        await using WebApplication host = await TestHost.Serve(local, url: Bare(address))
-            .ConfigureAwait(true);
-
-        Assert.Equal($"REMOTE — {remote.Host}", await Next(feed, Connected).ConfigureAwait(true));
-        Assert.Equal(local.Health(ScopeTree.Root), surface.Health(ScopeTree.Root));
-    }
-
-    /// <summary>
-    /// A host lost is told at once, and from then on nothing it published
-    /// before is answered as if current; the host back is told again.
-    /// </summary>
-    [Fact]
-    public async Task AHostLostIsToldAndItsLastPublicationIsNotAnsweredAsCurrent()
-    {
-        Uri address = FreeAddress();
-        SnapshotOperator local = Fixture();
-        WebApplication host = await TestHost.Serve(local, url: Bare(address)).ConfigureAwait(true);
-        using RemoteOperator remote = new(address, null, Quick);
-        IOperatorSurface surface = remote;
-        using CancellationTokenSource patience = new(TimeSpan.FromSeconds(30));
-        await using IAsyncEnumerator<SurfaceChange> feed =
-            surface.WatchAsync(patience.Token).GetAsyncEnumerator(patience.Token);
-
-        Assert.True(await feed.MoveNextAsync().ConfigureAwait(true));
-        Assert.Equal($"REMOTE — {remote.Host}", feed.Current.Source);
+        Assert.Equal($"REMOTE — {served.Address}", await Next(feed, Reached).ConfigureAwait(true));
         Assert.NotEmpty(surface.Health(ScopeTree.Root));
 
-        await host.StopAsync().ConfigureAwait(true);
-        await host.DisposeAsync().ConfigureAwait(true);
+        served.Dispose();
 
-        string lost = await Next(feed, source => !Connected(source)).ConfigureAwait(true);
+        string lost = await Next(feed, source => !Reached(source)).ConfigureAwait(true);
         Assert.Contains(" unreachable: ", lost, StringComparison.Ordinal);
         Assert.Empty(surface.Health(ScopeTree.Root));
-        Assert.Equal(lost, surface.Source);
-
-        await using WebApplication again = await TestHost.Serve(local, url: Bare(address))
-            .ConfigureAwait(true);
-
-        Assert.Equal($"REMOTE — {remote.Host}", await Next(feed, Connected).ConfigureAwait(true));
-        Assert.Equal(local.Health(ScopeTree.Root), surface.Health(ScopeTree.Root));
     }
 
     [Fact]
-    public void TheHubIsWhereTheClientLooks()
+    public void AnActIsTheCertificatesAndIsAdmittedByTheNodesRole()
     {
-        using RemoteOperator remote = new(new Uri("http://host:5087"));
+        using TestAuthority authority = new("act");
+        string node = $"{Cluster.Scope}/node/{Cluster.WithRole("sending")}";
 
-        Assert.Equal(new Uri("http://host:5087/surface"), remote.Hub);
-        Assert.Equal(RemoteOperator.HubPath, SurfaceHub.Path);
+        using (ServedNode observed = Serve(authority, Fixture("snapshot.toml")))
+        using (RemoteOperator remote = Remote(authority, observed.Address))
+        {
+            JourneyOperation refused = remote.Act(node, "j1", JourneyAct.Retry, "a name");
+            Assert.False(refused.Applied);
+            Assert.StartsWith("REFUSED. CN=xmip-client may not retry", refused.Result,
+                StringComparison.Ordinal);
+            Assert.DoesNotContain("a name", refused.Result, StringComparison.Ordinal);
+        }
+
+        using ServedNode operated = Serve(authority, Fixture("snapshot.toml"), "operator");
+        using RemoteOperator acting = Remote(authority, operated.Address);
+        JourneyOperation taken = acting.Act(node, "j1", JourneyAct.Retry, "a name");
+        Assert.False(taken.Applied);
+        Assert.Equal($"REFUSED: no node at {node} runs in this process", taken.Result);
     }
 
     [Fact]
-    public async Task AnswersOverMutualTlsWithCertificatesBothEndsTrust()
+    public void ACertificateEitherEndDoesNotTrustIsRefused()
     {
-        using TestAuthority authority = new("mutual");
-        SnapshotOperator local = Fixture();
-        List<string> refused = [];
-        await using WebApplication host =
-            await TestHost.Serve(
-                    local, TestHost.Tls(authority, authority.Server()), refused.Add)
-                .ConfigureAwait(true);
-        using RemoteOperator remote = new(
-            new Uri(host.Urls.First()), TestHost.Tls(authority, authority.Client()));
-
-        Assert.StartsWith("https://127.0.0.1:", host.Urls.First(), StringComparison.Ordinal);
-        Assert.True(remote.Connect(), remote.Reason);
-        Assert.Equal(local.Health(ScopeTree.Root), ((IOperatorSurface)remote).Health(ScopeTree.Root));
-        Assert.Empty(refused);
-    }
-
-    [Fact]
-    public async Task AClientCertificateTheHostDoesNotTrustIsRefused()
-    {
-        using TestAuthority authority = new("host");
+        using TestAuthority authority = new("node");
         using TestAuthority stranger = new("stranger");
-        SnapshotOperator local = Fixture();
-        List<string> refused = [];
-        await using WebApplication host =
-            await TestHost.Serve(
-                    local, TestHost.Tls(authority, authority.Server()), refused.Add)
-                .ConfigureAwait(true);
+        using ServedNode served = Serve(authority, Fixture("snapshot.toml"));
 
-        // Trusts the host, and presents a certificate another authority issued.
-        (string certificate, string privateKey) = stranger.Client();
-        SurfaceTls wrong = SurfaceTls.Load(certificate, privateKey, authority.Anchor);
-        using RemoteOperator remote = new(new Uri(host.Urls.First()), wrong);
+        (string certificate, string key) = stranger.Client();
+        using RemoteOperator untrusted = new(
+            served.Address, SurfaceTls.Load(certificate, key, authority.Anchor));
+        Assert.False(untrusted.Connect());
 
-        Assert.False(remote.Connect());
-        Assert.Contains(refused, why => why.Contains("xmip-client", StringComparison.Ordinal));
+        (certificate, key) = authority.Client();
+        using RemoteOperator distrusting = new(
+            served.Address, SurfaceTls.Load(certificate, key, stranger.Anchor));
+        Assert.False(distrusting.Connect());
+        Assert.Contains(" unreachable: ", distrusting.Source, StringComparison.Ordinal);
     }
 
     [Fact]
-    public async Task AHostCertificateTheSurfaceDoesNotTrustIsRefused()
+    public void NoCertificateAndNoOperateAddressAreRefusedInWords()
     {
-        using TestAuthority authority = new("served");
-        using TestAuthority stranger = new("expected");
-        SnapshotOperator local = Fixture();
-        await using WebApplication host =
-            await TestHost.Serve(local, TestHost.Tls(authority, authority.Server()))
-                .ConfigureAwait(true);
-        (string certificate, string privateKey) = authority.Client();
-        using RemoteOperator remote = new(
-            new Uri(host.Urls.First()),
-            SurfaceTls.Load(certificate, privateKey, stranger.Anchor));
+        using TestAuthority authority = new("words");
 
-        Assert.False(remote.Connect());
-        Assert.StartsWith("REFUSED. CN=xmip-server is not trusted", remote.Reason,
-            StringComparison.Ordinal);
+        using RemoteOperator bare = new(
+            "127.0.0.1:9", SurfaceTls.Load(null, null, authority.Anchor));
+        Assert.False(bare.Connect());
+        Assert.Contains("presents a certificate", bare.Reason, StringComparison.Ordinal);
+
+        using RemoteOperator url = Remote(authority, "https://host:5443");
+        Assert.False(url.Connect());
+        Assert.Contains("is no operate address", url.Reason, StringComparison.Ordinal);
+        Assert.NotNull(RemoteOperator.Refusal(" "));
+        Assert.Null(RemoteOperator.Refusal("node1:7401"));
     }
 
-    [Fact]
-    public async Task NoCertificateOverTlsIsRefusedAtTheHub()
+    private static string FixturePath(string name)
     {
-        using TestAuthority authority = new("bare");
-        SnapshotOperator local = Fixture();
-        List<string> refused = [];
-        await using WebApplication host =
-            await TestHost.Serve(
-                    local, TestHost.Tls(authority, authority.Server()), refused.Add)
-                .ConfigureAwait(true);
-        using RemoteOperator remote = new(
-            new Uri(host.Urls.First()), SurfaceTls.Load(null, null, authority.Anchor));
-
-        Assert.False(remote.Connect());
-        Assert.Contains(refused, why => why.Contains("without a certificate", StringComparison.Ordinal));
+        return Path.Combine(AppContext.BaseDirectory, "Fixture", name);
     }
 
-    [Fact]
-    public void PlainHttpBeyondThisMachineIsRefusedBeforeAnyConnection()
+    private static string Fixture(string name)
     {
-        using RemoteOperator remote = new(new Uri("http://192.0.2.1:5087"));
-
-        Assert.False(remote.Connect());
-        Assert.StartsWith("REFUSED. 192.0.2.1 is plain http beyond this machine", remote.Reason,
-            StringComparison.Ordinal);
+        return File.ReadAllText(FixturePath(name));
     }
 
-    /// <summary>A retry schedule a test waits on in milliseconds.</summary>
-    private static readonly TimeSpan[] Quick = [TimeSpan.FromMilliseconds(20)];
+    /// <summary>An operate listener on a loopback port, served by the runtime
+    /// with the authority's server certificate, answering
+    /// <paramref name="publication"/>, every proven caller holding
+    /// <paramref name="role"/>.</summary>
+    private static ServedNode Serve(TestAuthority authority, string publication, string role = "")
+    {
+        (string certificate, string key) = authority.Server();
+        ServedNode served = RuntimeLibrary.Rules.Remotes.Serve(
+            "127.0.0.1:0", File.ReadAllText(certificate), File.ReadAllText(key),
+            File.ReadAllText(authority.Anchor), role, "remote-operator-test",
+            out string reason)
+            ?? throw new InvalidOperationException(reason);
+        served.Post(publication);
+        return served;
+    }
 
-    /// <summary>A loopback address no host serves yet.</summary>
-    private static Uri FreeAddress()
+    private static RemoteOperator Remote(TestAuthority authority, string address)
+    {
+        (string certificate, string key) = authority.Client();
+        return new RemoteOperator(address, SurfaceTls.Load(certificate, key, authority.Anchor));
+    }
+
+    /// <summary>A loopback address nothing serves.</summary>
+    private static string FreeAddress()
     {
         TcpListener probe = new(IPAddress.Loopback, 0);
         probe.Start();
         int port = ((IPEndPoint)probe.LocalEndpoint).Port;
         probe.Stop();
-        return new Uri($"http://127.0.0.1:{port}");
+        return $"127.0.0.1:{port}";
     }
 
-    /// <summary>The address as a host binds it, without the trailing slash.</summary>
-    private static string Bare(Uri address)
-    {
-        return address.GetLeftPart(UriPartial.Authority);
-    }
-
-    private static bool Connected(string source)
+    private static bool Reached(string source)
     {
         return !source.Contains(" unreachable: ", StringComparison.Ordinal);
     }
@@ -299,7 +233,7 @@ public sealed class RemoteOperatorTest
     private static async Task<string> Next(
         IAsyncEnumerator<SurfaceChange> feed, Func<string, bool> wanted)
     {
-        while (await feed.MoveNextAsync().ConfigureAwait(false))
+        while (await feed.MoveNextAsync().ConfigureAwait(true))
         {
             if (wanted(feed.Current.Source))
             {
@@ -307,13 +241,6 @@ public sealed class RemoteOperatorTest
             }
         }
 
-        throw new InvalidOperationException("the watch ended before the notice came");
-    }
-
-    /// <summary>The snapshot fixture, as the surface a host serves.</summary>
-    private static SnapshotOperator Fixture()
-    {
-        return new SnapshotOperator(
-            Path.Combine(AppContext.BaseDirectory, "Fixture", "snapshot.toml"));
+        throw new InvalidOperationException("the feed ended");
     }
 }
