@@ -33,7 +33,7 @@ namespace Xmip.Surface;
 public sealed class SnapshotOperator(string path) : IOperatorSurface
 {
     private readonly Lock gate = new();
-    private volatile Reading? cached;
+    private volatile PublicationReading? cached;
     private DateTime cachedWrite;
     private long cachedLength;
     private ulong revision;
@@ -93,9 +93,7 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
     /// cannot start where there is nothing to drill.</remarks>
     public string Root()
     {
-        Reading read = Read();
-
-        return read.Index.Health(read.Root).Count > 0 ? read.Root : ScopeTree.Root;
+        return Read().Root;
     }
 
     /// <inheritdoc />
@@ -273,19 +271,7 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
     /// page within them.</remarks>
     public FailedJourneyList FailedJourneys(string scope, ulong from = 0, uint most = 0)
     {
-        FailedJourneyList within = JourneyOperation.Within(Read().FailedJourneys, scope);
-        int take = most == 0 ? int.MaxValue : (int)Math.Min(most, int.MaxValue);
-
-        return within with
-        {
-            Ports =
-            [
-                .. within.Ports.Select(port => port with
-                {
-                    Journeys = [.. port.Journeys.Where(j => j.Sequence >= from).Take(take)],
-                }),
-            ],
-        };
+        return Read().FailedJourneysWithin(scope, from, most);
     }
 
     /// <inheritdoc cref="IOperatorSurface.Act(string, string, JourneyAct, string)" />
@@ -327,39 +313,15 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
         return new ScopeOperation(scope, action, false, said);
     }
 
-    private sealed record Reading(
-        ScopeIndex Index,
-        TopologySnapshot Topology,
-        RunHeader Run,
-        string Root,
-        SubscriptionList Subscriptions,
-        EventSubscriptionList EventSubscriptions,
-        DeadMessageList DeadMessages,
-        FailedJourneyList FailedJourneys)
-    {
-        public static Reading Nothing(string source)
-        {
-            return new Reading(
-                ScopeIndex.Empty(source),
-                TopologySnapshot.Empty(source),
-                RunHeader.None,
-                ScopeTree.Root,
-                SubscriptionList.Empty,
-                EventSubscriptionList.Empty,
-                DeadMessageList.Empty,
-                FailedJourneyList.Unlisted);
-        }
-    }
-
     // A follow's last reading while one follows; the file as it is otherwise.
-    private Reading Read()
+    private PublicationReading Read()
     {
         return Volatile.Read(ref following) > 0 && cached is { } told ? told : Refresh(out _);
     }
 
     // Parsed once per publication, never per question: the file's write time
     // and length say whether anything changed.
-    private Reading Refresh(out bool current)
+    private PublicationReading Refresh(out bool current)
     {
         lock (gate)
         {
@@ -374,14 +336,14 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
                 return held;
             }
 
-            Reading? read = Parse(file);
+            PublicationReading? read = Parse(file);
 
             // The publisher was replacing the file this instant: what was read
             // last stands, and the stamps stay so the next question reads again.
             if (read is null)
             {
                 current = false;
-                return cached ?? Reading.Nothing(Source);
+                return cached ?? PublicationReading.Nothing(Source);
             }
 
             cachedWrite = file.Exists ? file.LastWriteTimeUtc : default;
@@ -398,7 +360,7 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
     // an IOException. Until 2026-09-18 it went uncaught, and one such moment
     // ended the prompt's observer for the rest of the session. Text the
     // runtime's reader refuses is nothing published.
-    private Reading? Parse(FileInfo file)
+    private PublicationReading? Parse(FileInfo file)
     {
         string text;
 
@@ -406,7 +368,7 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
         {
             if (!file.Exists)
             {
-                return Reading.Nothing(Source);
+                return PublicationReading.Nothing(Source);
             }
 
             text = File.ReadAllText(Path);
@@ -417,31 +379,6 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
             return null;
         }
 
-        if (RuntimeLibrary.Rules.Publications.Read(text, out _) is not { } read)
-        {
-            return Reading.Nothing(Source);
-        }
-
-        string source = read.Source.Length > 0 ? read.Source : Source;
-        // Each count keeps when it was observed, so a figure is as old as its
-        // publication says: until 2026-09-26 it was dropped here, and every
-        // figure a snapshot answered was dated now, however long the
-        // publisher had been silent (ADR-0027 clause 6).
-        ScopeIndex index = ScopeIndex.Build(
-            read.Records,
-            read.Counts.Select(count => new ScopeIndex.Count(
-                count.Scope, count.Counted, count.Value, count.Observed)),
-            ++revision,
-            source);
-
-        return new Reading(
-            index,
-            read.Topology ?? TopologySnapshot.Empty(source),
-            RunHeader.From(read.Run),
-            read.Node.Length > 0 ? read.Node : ScopeTree.Root,
-            read.Subscriptions,
-            read.EventSubscriptions,
-            read.DeadMessages,
-            read.FailedJourneys);
+        return PublicationReading.Of(text, ++revision, Source);
     }
 }

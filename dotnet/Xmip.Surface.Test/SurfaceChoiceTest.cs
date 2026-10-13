@@ -10,23 +10,19 @@ namespace Xmip.Surface.Test;
 public sealed class SurfaceChoiceTest
 {
     [Fact]
-    public void ARemoteThatIsNoWebHostIsRefusedInOneSentence()
+    public void ARemoteThatNamesNoNodeIsRefusedInOneSentence()
     {
         // --remote and -Remote say the same thing, and the precedence refuses
-        // the line itself rather than blaming the document.
-        SurfaceLine line = new(Remote: "host:5443");
+        // the line itself rather than blaming the document. What an address
+        // that names something is, the runtime judges as it opens it.
+        SurfaceLine line = new(Remote: " ");
 
-        Assert.Equal(RemoteOperator.Refusal("host:5443"), line.Refusal);
-        Assert.Contains("https://host:5443", line.Refusal, StringComparison.Ordinal);
-        Assert.Null(new SurfaceLine(Remote: "https://host:5443").Refusal);
+        Assert.Null(line.Refusal);
+        Assert.Equal(
+            "A remote needs a node's operate address, like node1:7401.",
+            RemoteOperator.Refusal(" "));
+        Assert.Null(new SurfaceLine(Remote: "node1:7401").Refusal);
         Assert.Null(SurfaceLine.None.Refusal);
-
-        IOperatorSurface? surface = SurfaceChoice.Answering(
-            line, Path.Combine(AppContext.BaseDirectory, "absent.toml"),
-            AppContext.BaseDirectory, out string reason);
-
-        Assert.Null(surface);
-        Assert.Equal(line.Refusal, reason);
     }
 
     [Fact]
@@ -116,33 +112,32 @@ public sealed class SurfaceChoiceTest
     }
 
     [Fact]
-    public void ARemoteSurfaceFollowsTheWebHostTheDocumentNames()
+    public void ARemoteSurfaceFollowsTheNodeTheDocumentNames()
     {
         using Document document = new("""
             [Xmip]
             Surface = "remote"
-            Url = "http://another-host:5087"
+            Address = "another-host:7401"
             """);
 
         IOperatorSurface surface = SurfaceChoice.Open(document.Configuration, document.Directory);
 
         using RemoteOperator remote = Assert.IsType<RemoteOperator>(surface);
-        Assert.Equal(new Uri("http://another-host:5087/surface"), remote.Hub);
+        Assert.Equal("another-host:7401", remote.Address);
     }
 
     [Fact]
-    public void ARemoteSurfaceWithoutAWebHostIsRefused()
+    public void ARemoteSurfaceWithoutANodeIsRefused()
     {
         using Document document = new("""
             [Xmip]
             Surface = "remote"
-            Url = "another-host"
             """);
 
         InvalidOperationException refused = Assert.Throws<InvalidOperationException>(
             () => SurfaceChoice.Open(document.Configuration, document.Directory));
 
-        Assert.Contains("Xmip:Url names no web host", refused.Message, StringComparison.Ordinal);
+        Assert.Contains("Xmip:Address names no node", refused.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -178,16 +173,16 @@ public sealed class SurfaceChoiceTest
     }
 
     [Fact]
-    public void ARemoteHostStatedWinsOverEverything()
+    public void ARemoteNodeStatedWinsOverEverything()
     {
         IOperatorSurface chosen = SurfaceChoice.Stated(
-            new SurfaceLine("http://elsewhere:5087", "b.toml", "mine.dll"),
+            new SurfaceLine("elsewhere:7401", "b.toml", "mine.dll"),
             Pairs(("Surface", "snapshot"), ("Snapshot", "a.toml")),
             Beside,
             Beside);
 
         using RemoteOperator remote = Assert.IsType<RemoteOperator>(chosen);
-        Assert.Equal(new Uri("http://elsewhere:5087"), remote.Host);
+        Assert.Equal("elsewhere:7401", remote.Address);
     }
 
     [Fact]

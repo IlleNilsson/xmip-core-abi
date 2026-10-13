@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Builder;
 using Xmip.Abi.Module;
 using Xmip.Abi.Operate;
 
@@ -149,29 +148,6 @@ public sealed class DeadMessageSurfaceTest : IDisposable
         string order = File.ReadAllText(
             Assert.Single(Directory.GetFiles(Orders, "*.toml", SearchOption.AllDirectories)));
         Assert.Contains("operator", order, StringComparison.Ordinal);
-        Assert.DoesNotContain(Claimed, order, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public async Task AReplayOverTheHubListsAndActsAsTheHostsSurfaceDoes()
-    {
-        SnapshotOperator local = Over(Orders);
-        await using WebApplication host = await TestHost.Serve(
-            local, role: Role.Operator, audit: Audit).ConfigureAwait(true);
-        using RemoteOperator remote = new(new Uri(host.Urls.First()));
-        IOperatorSurface surface = remote;
-
-        Assert.True(remote.Connect(), remote.Reason);
-        DeadMessageList listed = surface.DeadMessages();
-        Assert.Equal(3, listed.DeadMessages.Count);
-        DeadMessageRecord invoice = listed.DeadMessages.Single(entry => entry.Message == "m-2");
-        Assert.Equal(local.DeadMessages().DeadMessages[1].Declines, invoice.Declines);
-
-        DeadMessageOperation replayed = surface.Act(invoice, DeadMessageAct.Replay, Claimed);
-
-        Assert.True(replayed.Applied, replayed.Result);
-        string order = File.ReadAllText(
-            Assert.Single(Directory.GetFiles(Orders, "*.toml", SearchOption.AllDirectories)));
         Assert.DoesNotContain(Claimed, order, StringComparison.Ordinal);
     }
 

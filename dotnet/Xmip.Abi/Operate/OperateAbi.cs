@@ -296,4 +296,44 @@ public static class OperateAbi
     /// <summary>The System Process declarations standing in a directory:
     /// section 13, forwarded to <c>xmip-core-node</c>'s <c>standing</c>.</summary>
     public const string ProcessDeclarationsEntrypoint = "xmip_process_declarations_v1";
+
+    /// <summary>A node reached at its operate address: section 17 (ADR-0014,
+    /// amendment 2026-10-12).</summary>
+    public const string RemoteOpenEntrypoint = "xmip_remote_open_v1";
+
+    /// <summary>The remote node's publication: section 17.</summary>
+    public const string RemotePublicationEntrypoint = "xmip_remote_publication_v1";
+
+    /// <summary>The remote node's follow, waited on: section 17.</summary>
+    public const string RemoteWaitEntrypoint = "xmip_remote_wait_v1";
+
+    /// <summary>An act asked of the remote node: section 17.</summary>
+    public const string RemoteActEntrypoint = "xmip_remote_act_v1";
+
+    /// <summary>The follow ended and every wait woken: section 17.</summary>
+    public const string RemoteEndEntrypoint = "xmip_remote_end_v1";
+
+    /// <summary>A remote node released: section 17.</summary>
+    public const string RemoteFreeEntrypoint = "xmip_remote_free_v1";
+
+    /// <summary>An operate listener this process serves: section 17.</summary>
+    public const string OperateServeEntrypoint = "xmip_operate_serve_v1";
+
+    /// <summary>Where a served listener listens: section 17.</summary>
+    public const string OperateServedAddressEntrypoint = "xmip_operate_served_address_v1";
+
+    /// <summary>A publication posted to a served listener: section 17.</summary>
+    public const string OperatePostEntrypoint = "xmip_operate_post_v1";
+
+    /// <summary>A served listener stopped and released: section 17.</summary>
+    public const string OperateServeStopEntrypoint = "xmip_operate_serve_stop_v1";
+
+    /// <summary>The security role a word names: section 18 (ADR-0009).</summary>
+    public const string SecurityRoleNamedEntrypoint = "xmip_security_role_named_v1";
+
+    /// <summary>What a security role is called and may do: section 18.</summary>
+    public const string SecurityRoleWordsEntrypoint = "xmip_security_role_words_v1";
+
+    /// <summary>The one check every act passes: section 18.</summary>
+    public const string ActAdmittedEntrypoint = "xmip_act_admitted_v1";
 }

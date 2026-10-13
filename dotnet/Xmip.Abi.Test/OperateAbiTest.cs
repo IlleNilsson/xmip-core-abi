@@ -100,6 +100,22 @@ public sealed class OperateAbiTest
     [InlineData("XMIP_PROCESS_DECLARE_ENTRYPOINT", OperateAbi.ProcessDeclareEntrypoint)]
     [InlineData(
         "XMIP_PROCESS_DECLARATIONS_ENTRYPOINT", OperateAbi.ProcessDeclarationsEntrypoint)]
+    [InlineData("XMIP_REMOTE_OPEN_ENTRYPOINT", OperateAbi.RemoteOpenEntrypoint)]
+    [InlineData("XMIP_REMOTE_PUBLICATION_ENTRYPOINT", OperateAbi.RemotePublicationEntrypoint)]
+    [InlineData("XMIP_REMOTE_WAIT_ENTRYPOINT", OperateAbi.RemoteWaitEntrypoint)]
+    [InlineData("XMIP_REMOTE_ACT_ENTRYPOINT", OperateAbi.RemoteActEntrypoint)]
+    [InlineData("XMIP_REMOTE_END_ENTRYPOINT", OperateAbi.RemoteEndEntrypoint)]
+    [InlineData("XMIP_REMOTE_FREE_ENTRYPOINT", OperateAbi.RemoteFreeEntrypoint)]
+    [InlineData("XMIP_OPERATE_SERVE_ENTRYPOINT", OperateAbi.OperateServeEntrypoint)]
+    [InlineData(
+        "XMIP_OPERATE_SERVED_ADDRESS_ENTRYPOINT", OperateAbi.OperateServedAddressEntrypoint)]
+    [InlineData("XMIP_OPERATE_POST_ENTRYPOINT", OperateAbi.OperatePostEntrypoint)]
+    [InlineData("XMIP_OPERATE_SERVE_STOP_ENTRYPOINT", OperateAbi.OperateServeStopEntrypoint)]
+    [InlineData(
+        "XMIP_SECURITY_ROLE_NAMED_ENTRYPOINT", OperateAbi.SecurityRoleNamedEntrypoint)]
+    [InlineData(
+        "XMIP_SECURITY_ROLE_WORDS_ENTRYPOINT", OperateAbi.SecurityRoleWordsEntrypoint)]
+    [InlineData("XMIP_ACT_ADMITTED_ENTRYPOINT", OperateAbi.ActAdmittedEntrypoint)]
     public void NamesEachSymbolTheHeaderDeclares(string define, string symbol)
     {
         Assert.Equal(Header.Define("xmip_operate.h", define), symbol);

@@ -314,6 +314,7 @@ pub mod event;
 pub mod journey;
 pub mod process;
 pub mod publication;
+pub mod remote;
 pub mod subscription;
 
 #[cfg(test)]

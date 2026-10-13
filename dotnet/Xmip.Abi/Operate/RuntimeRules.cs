@@ -116,6 +116,8 @@ public sealed unsafe class RuntimeRules
         Subscriptions = new RuntimeSubscriptions(library);
         DeadMessages = new RuntimeDeadMessages(library);
         Journeys = new RuntimeJourneys(library);
+        Remotes = new RuntimeRemotes(library);
+        SecurityRoles = new RuntimeSecurityRoles(library);
 
         delegate* unmanaged[Cdecl]<XmipStr*, nuint, nuint*, int> words =
             (delegate* unmanaged[Cdecl]<XmipStr*, nuint, nuint*, int>)
@@ -174,6 +176,15 @@ public sealed unsafe class RuntimeRules
     /// ADR-0013).</summary>
     public RuntimeJourneys Journeys { get; }
 
+    /// <summary>Section 17: a node reached at its operate address over gRPC
+    /// inside Xmip's mutual TLS, and this process's node served on an operate
+    /// listener of its own (ADR-0014, amendment 2026-10-12).</summary>
+    public RuntimeRemotes Remotes { get; }
+
+    /// <summary>Section 18: a person's security role and the one check every
+    /// act passes (ADR-0009).</summary>
+    public RuntimeSecurityRoles SecurityRoles { get; }
+
     /// <summary>The stage words, in message-path order — the segments a
     /// scope names a stage by: <c>node::Stage::WORDS</c>, read once when the
     /// library loads.</summary>
@@ -206,6 +217,8 @@ public sealed unsafe class RuntimeRules
         .. RuntimeSubscriptions.Entrypoints,
         .. RuntimeDeadMessages.Entrypoints,
         .. RuntimeJourneys.Entrypoints,
+        .. RuntimeRemotes.Entrypoints,
+        .. RuntimeSecurityRoles.Entrypoints,
         OperateAbi.ScopeContainsEntrypoint,
         OperateAbi.ScopeMatchesEntrypoint,
         OperateAbi.RunShownEntrypoint,

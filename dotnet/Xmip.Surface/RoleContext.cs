@@ -9,8 +9,9 @@ namespace Xmip.Surface;
 /// configures, a Developer also opens configuration. Every act is decided by
 /// it in <see cref="GatedOperator"/>, the one check every surface's acts pass,
 /// and taken as <see cref="Who"/> — so it lives here, beneath both GUIs and
-/// the relay, and not in <c>Xmip.Gui</c>. A web host holds one per browser
-/// circuit, the desktop one for its own user (ADR-0009, amendment 2026-10-06).
+/// the web host's caller proof, and not in <c>Xmip.Gui</c>. A web host holds
+/// one per browser circuit, the desktop one for its own user (ADR-0009,
+/// amendment 2026-10-06).
 /// </summary>
 /// <param name="role">The role the caller holds.</param>
 /// <param name="who">The identity the caller proved, or null where nothing

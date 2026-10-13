@@ -5,10 +5,11 @@ namespace Xmip.Surface;
 /// <summary>
 /// A surface whose acts are taken only by a proven caller whose role may act
 /// (ADR-0009, amendments 2026-10-03 and 2026-10-06): the one role check every
-/// act passes, from a browser, the desktop or another machine over the
-/// surface hub. It reads as <paramref name="inner"/> reads; each act — pause
-/// and resume a scope, pause and resume a Subscription, pause, resume and
-/// remove an Event subscription, replay a Message from a Dead Message Queue,
+/// act passes from a browser or the desktop, over the runtime's gate
+/// (<c>xmip_act_admitted_v1</c>) a node's operate listener asks too. It reads
+/// as <paramref name="inner"/> reads; each act — pause and resume a scope,
+/// pause and resume a Subscription, pause, resume and remove an Event
+/// subscription, replay a Message from a Dead Message Queue,
 /// retry or dismiss a Journey that failed — is refused in words, and nothing
 /// reaches <paramref name="inner"/>, unless <paramref name="caller"/> was
 /// proven and the role <see cref="RoleAssignment"/> granted them may operate.
@@ -248,8 +249,9 @@ public sealed class GatedOperator(
             : new ScopeOperation(scope, action, false, refused);
     }
 
-    // The one check: a proven caller, and a role that may act. Audited
-    // either way, with who, what, on what and the role it was judged by.
+    // The one check, the runtime's (xmip_act_admitted_v1): a proven caller,
+    // and a role that may act. Audited either way, with who, what, on what
+    // and the role it was judged by.
     private bool Admits(string act, string target, out string proven, out string refused)
     {
         ArgumentNullException.ThrowIfNull(caller);
@@ -257,15 +259,12 @@ public sealed class GatedOperator(
         string? who = caller.Who;
         Role role = caller.Role;
         proven = who ?? string.Empty;
-        refused = who is null
-            ? $"REFUSED. Nothing proved who asks to {act} {target}; an act is taken from "
-              + "the identity the connection proved — a client certificate, or the host's "
-              + "own user on loopback — never from what the caller says (ADR-0009)"
-            : role.MayOperate()
-                ? string.Empty
-                : $"REFUSED. {who} may not {act} {target}: {who} is {role}, "
-                  + $"which {role.Describe()} (ADR-0009)";
-        bool admitted = refused.Length == 0;
+
+        // The gate is the runtime's, once: a node's operate listener asks it
+        // of every act that reaches it from another machine (ADR-0014,
+        // amendment 2026-10-12).
+        bool admitted = RuntimeLibrary.Rules.SecurityRoles.Admitted(
+            who, (int)role, act, target, out refused);
 
         audit.Record(
             AuditAction,

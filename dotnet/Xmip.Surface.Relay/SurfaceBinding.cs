@@ -92,8 +92,8 @@ public static class SurfaceBinding
     /// certificate and asks the caller for one: a browser may decline, and
     /// then reads the pages; a certificate presented is checked against the
     /// anchors, and one they do not reach ends the handshake and is told to
-    /// <paramref name="refused"/>. The hub itself takes no caller without one
-    /// (<see cref="SurfaceRelayExtensions.MapXmipSurfaceHub"/>).
+    /// <paramref name="refused"/>. Who a request proved is
+    /// <see cref="ProvenCaller"/>'s.
     /// </summary>
     public static IWebHostBuilder UseXmipTls(
         this IWebHostBuilder host, SurfaceTls tls, Action<string>? refused = null)

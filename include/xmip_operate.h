@@ -1439,6 +1439,142 @@ typedef XmipStatus (*XmipPublicationFailedJourneysFn)(const XmipPublication *pub
 #define XMIP_FAILED_JOURNEYS_ENTRYPOINT             "xmip_failed_journeys_v1"
 #define XMIP_PUBLICATION_FAILED_JOURNEYS_ENTRYPOINT "xmip_publication_failed_journeys_v1"
 
+/*
+ * 17. A node reached at its operate address (ADR-0014, amendment
+ * 2026-10-12; ADR-0067; ADR-0052, amendment 2026-10-05 and its note).
+ *
+ * The remote surface: a node on another machine, reached over gRPC on TCP
+ * at its operate listener, inside Xmip's mutual TLS (ADR-0063). Running a
+ * command on another machine stays shell remoting (ADR-0014 clause 6);
+ * SignalR stays between a web host and the browser it serves. Every
+ * surface follows a node through these calls, so the follow, its recovery
+ * and every word are the runtime's, once.
+ *
+ * xmip_remote_open_v1 makes a handle over the node at address, host:port,
+ * presenting certificate (a PEM chain, leaf first) with key (its PEM
+ * private key) and taking the node only where its certificate names host
+ * and reaches anchors (PEM). Nothing is connected yet. XMIP_OK; XMIP_E_INVALID
+ * with the refusal in report for an address that is no operate address or
+ * an identity that does not pair; XMIP_E_MALFORMED for text not UTF-8.
+ *
+ * xmip_remote_publication_v1 reads the node's publication - the text its
+ * file holds, which section 8 reads - and its revision. XMIP_OK with the
+ * text in out, its true length in out_len; XMIP_E_TRUNCATED where it did
+ * not fit, the text kept and handed whole at the next call without asking
+ * the node again; XMIP_E_UNAVAILABLE with why in out where the node did not
+ * answer - said at once, without a second try, while the follow is
+ * recovering it.
+ *
+ * xmip_remote_wait_v1 waits until the follow has told more than seen
+ * times, or for timeout_ms, and says how many times it has told, the
+ * revision of the node's publication, whether the node is reached, and
+ * why not in reason (empty where it is). The follow starts at the first
+ * wait and runs until the handle is freed, on a connection of its own:
+ * the node answers its wait when the publication advances, so a surface
+ * is told and never asks again and again. When the node is lost, or the
+ * first try fails, every waiter is told at once with why, and the node is
+ * tried again after 0, 2, 10 and 30 seconds, the last repeated; told once
+ * more the moment it answers. XMIP_OK; XMIP_E_INVALID for no handle.
+ *
+ * xmip_remote_act_v1 asks the node to apply act to the noun called target
+ * of the node at node - the nouns and acts of section 14's xmip_order_v1 -
+ * as the identity the certificate proves; no name crosses. The node admits
+ * it by the role it grants that identity (section 18) and audits it, taken
+ * or refused. XMIP_OK taken; XMIP_E_AUTH refused by role; XMIP_E_NOT_FOUND
+ * refused by the node, opening REFUSED; XMIP_E_INVALID no act the noun
+ * takes; XMIP_E_IO, opening FAILED, Xmip Storage did not answer and nothing
+ * changed; XMIP_E_UNAVAILABLE the node did not answer. The sentence in said.
+ *
+ * xmip_remote_end_v1 ends the follow and wakes every wait, from any
+ * thread, while a call may still be in flight on another; a binding asks
+ * it, lets every call in flight return, and then calls xmip_remote_free_v1,
+ * which closes every connection and frees the handle.
+ *
+ * xmip_operate_serve_v1 serves, for a program hosting a node through this
+ * boundary, what it posts and the acts on the nodes this process runs, on
+ * an operate listener bound at listen, host:port, presenting certificate with key and taking a
+ * surface only where its certificate reaches anchors; every proven caller
+ * holds the role role names (section 18; empty: Observer), and every act is
+ * audited as program. XMIP_OK; XMIP_E_IO with why in report. A node that
+ * xmip-service runs serves from its configuration's [operate] instead.
+ * xmip_operate_post_v1 posts publication - the text a publication file
+ * holds (section 8) - as what the listener answers: a new revision where it
+ * differs from the last, every surface following told at once. Until a
+ * first post it answers revision 0 and an empty text.
+ * xmip_operate_served_address_v1 says where it listens, host:port;
+ * xmip_operate_serve_stop_v1 stops it - every connection shut, every wait
+ * woken - and frees it.
+ *
+ * Optional symbols, as section 7's are; XMIP_OPERATE_VERSION is unchanged.
+ */
+typedef struct XmipRemote XmipRemote;
+typedef struct XmipServed XmipServed;
+
+typedef XmipStatus (*XmipRemoteOpenFn)(XmipStr address, XmipStr certificate, XmipStr key,
+                                       XmipStr anchors, XmipRemote **out, uint8_t *report,
+                                       size_t cap, size_t *out_len);
+typedef XmipStatus (*XmipRemotePublicationFn)(const XmipRemote *remote, uint8_t *out,
+                                              size_t cap, size_t *out_len,
+                                              uint64_t *out_revision);
+typedef XmipStatus (*XmipRemoteWaitFn)(const XmipRemote *remote, uint64_t seen,
+                                       uint32_t timeout_ms, uint64_t *out_told,
+                                       uint64_t *out_revision, uint8_t *out_reachable,
+                                       uint8_t *reason, size_t cap, size_t *reason_len);
+typedef XmipStatus (*XmipRemoteActFn)(const XmipRemote *remote, XmipScope node, XmipStr noun,
+                                      XmipStr target, XmipStr act, uint8_t *said, size_t cap,
+                                      size_t *said_len);
+typedef void (*XmipRemoteEndFn)(const XmipRemote *remote);
+typedef void (*XmipRemoteFreeFn)(XmipRemote *remote);
+typedef XmipStatus (*XmipOperateServeFn)(XmipStr listen, XmipStr certificate, XmipStr key,
+                                         XmipStr anchors, XmipStr role, XmipStr program,
+                                         XmipServed **out, uint8_t *report, size_t cap,
+                                         size_t *out_len);
+typedef XmipStatus (*XmipOperateServedAddressFn)(const XmipServed *served, uint8_t *out,
+                                                 size_t cap, size_t *out_len);
+typedef XmipStatus (*XmipOperatePostFn)(const XmipServed *served, XmipStr publication);
+typedef void (*XmipOperateServeStopFn)(XmipServed *served);
+
+#define XMIP_REMOTE_OPEN_ENTRYPOINT            "xmip_remote_open_v1"
+#define XMIP_REMOTE_PUBLICATION_ENTRYPOINT     "xmip_remote_publication_v1"
+#define XMIP_REMOTE_WAIT_ENTRYPOINT            "xmip_remote_wait_v1"
+#define XMIP_REMOTE_ACT_ENTRYPOINT             "xmip_remote_act_v1"
+#define XMIP_REMOTE_END_ENTRYPOINT             "xmip_remote_end_v1"
+#define XMIP_REMOTE_FREE_ENTRYPOINT            "xmip_remote_free_v1"
+#define XMIP_OPERATE_SERVE_ENTRYPOINT          "xmip_operate_serve_v1"
+#define XMIP_OPERATE_SERVED_ADDRESS_ENTRYPOINT "xmip_operate_served_address_v1"
+#define XMIP_OPERATE_POST_ENTRYPOINT           "xmip_operate_post_v1"
+#define XMIP_OPERATE_SERVE_STOP_ENTRYPOINT     "xmip_operate_serve_stop_v1"
+
+/*
+ * 18. The role a caller holds, and the one check every act passes
+ * (ADR-0009, amendments 2026-10-03 and 2026-10-06).
+ *
+ * A role crosses as an int, least first: 0 Observer, 1 Operator, 2
+ * Developer - a person's security role, not a node's roles of section 7.
+ * xmip_security_role_named_v1 names the role a word names, without regard
+ * to case, Observer for any other word, so a misconfiguration grants
+ * nothing. xmip_security_role_words_v1 writes what a role is called and
+ * what it may do in the words a host's badge uses, both static;
+ * XMIP_E_INVALID for no role. xmip_act_admitted_v1 is the gate a node's
+ * operate listener and every surface's acts pass: whether who - proven
+ * where proven is non-zero, the identity a connection proved and never a
+ * name a caller gave - holding role may act on target. XMIP_OK with nothing
+ * said; XMIP_E_AUTH with the refusal in said, opening REFUSED.
+ *
+ * Pure, as section 7: no handle, any thread. Optional symbols;
+ * XMIP_OPERATE_VERSION is unchanged.
+ */
+typedef XmipStatus (*XmipSecurityRoleNamedFn)(XmipStr word, int32_t *out);
+typedef XmipStatus (*XmipSecurityRoleWordsFn)(int32_t role, XmipStr *out_word,
+                                              XmipStr *out_description);
+typedef XmipStatus (*XmipActAdmittedFn)(XmipStr who, uint8_t proven, int32_t role, XmipStr act,
+                                        XmipStr target, uint8_t *said, size_t cap,
+                                        size_t *said_len);
+
+#define XMIP_SECURITY_ROLE_NAMED_ENTRYPOINT "xmip_security_role_named_v1"
+#define XMIP_SECURITY_ROLE_WORDS_ENTRYPOINT "xmip_security_role_words_v1"
+#define XMIP_ACT_ADMITTED_ENTRYPOINT "xmip_act_admitted_v1"
+
 #ifdef __cplusplus
 }
 #endif

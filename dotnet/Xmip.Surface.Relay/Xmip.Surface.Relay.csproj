@@ -1,15 +1,14 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    A surface served over the network (ADR-0052, amendment 2026-09-15: a
-    surface is told, it does not ask). SurfaceHub answers what the host's own
-    surface answers, and SurfaceRelay pushes the host's change feed to every
-    connected RemoteOperator, so the CLI, the PowerShell module and a GUI on
-    another machine follow a web host as that host follows a node.
-
-    Only a web host references this; the client half, RemoteOperator, is in
-    Xmip.Surface, so nothing of ASP.NET Core reaches pwsh or the desktop.
-    Target framework and the rest come from Directory.Build.props.
+    What a web host adds to the surfaces it serves its browsers: where it
+    binds and how (SurfaceBinding, ADR-0063 clause 1) and who each request
+    proved (ProvenCaller, ADR-0009, amendment 2026-10-06). SignalR here is
+    only server-side Blazor's own circuit to the browser; a remote surface
+    follows a node over gRPC to its operate listener, never a web host
+    (ADR-0014, amendment 2026-10-12). Only a web host references this, so
+    nothing of ASP.NET Core reaches pwsh or the desktop. Target framework
+    and the rest come from Directory.Build.props.
   -->
 
   <PropertyGroup>
