@@ -36,7 +36,8 @@ public sealed class TomlDocumentTest
         TomlDocument.Set(service, "name", "b \"quoted\"");
 
         Assert.Equal(
-            Document.Replace("name = \"a\"", "name = \"b \\\"quoted\\\"\"", StringComparison.Ordinal),
+            Document.Replace(
+                "name = \"a\"", "name = \"b \\\"quoted\\\"\"", StringComparison.Ordinal),
             document.ToString());
         Assert.Equal("b \"quoted\"", TomlDocument.Text(service, "name"));
     }

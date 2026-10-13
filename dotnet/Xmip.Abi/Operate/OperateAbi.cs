@@ -20,12 +20,6 @@ public static class OperateAbi
     /// Section 1 of the header.</summary>
     public const string Entrypoint = "xmip_operate_v1";
 
-    /// <summary>
-    /// Wait until the runtime publishes a revision newer than the caller's.
-    /// Separate from the table so version 1 remains binary-compatible.
-    /// </summary>
-    public const string ChangeEntrypoint = "xmip_wait_change_v1";
-
     /// <summary>Start a node from a saved configuration file. Section 6 of the
     /// header; a configurer's symbol, not part of the watcher's table.</summary>
     public const string StartEntrypoint = "xmip_start_v1";
@@ -301,6 +295,10 @@ public static class OperateAbi
     /// amendment 2026-10-12).</summary>
     public const string RemoteOpenEntrypoint = "xmip_remote_open_v1";
 
+    /// <summary>A node on this machine reached at its local endpoint: section
+    /// 17 (ADR-0014, amendment 2026-10-13).</summary>
+    public const string RemoteOpenLocalEntrypoint = "xmip_remote_open_local_v1";
+
     /// <summary>The remote node's publication: section 17.</summary>
     public const string RemotePublicationEntrypoint = "xmip_remote_publication_v1";
 
@@ -318,6 +316,10 @@ public static class OperateAbi
 
     /// <summary>An operate listener this process serves: section 17.</summary>
     public const string OperateServeEntrypoint = "xmip_operate_serve_v1";
+
+    /// <summary>An operate listener this process serves on this machine's
+    /// local endpoint: section 17.</summary>
+    public const string OperateServeLocalEntrypoint = "xmip_operate_serve_local_v1";
 
     /// <summary>Where a served listener listens: section 17.</summary>
     public const string OperateServedAddressEntrypoint = "xmip_operate_served_address_v1";

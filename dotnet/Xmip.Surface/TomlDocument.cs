@@ -62,7 +62,9 @@ public static class TomlDocument
     /// </summary>
     public static string BasePath(string here)
     {
-        for (DirectoryInfo? directory = new(here); directory is not null; directory = directory.Parent)
+        for (DirectoryInfo? directory = new(here);
+            directory is not null;
+            directory = directory.Parent)
         {
             if (File.Exists(Path.Combine(directory.FullName, "architecture.toml")))
             {
@@ -252,7 +254,8 @@ public static class TomlDocument
     {
         foreach (KeyValueSyntax item in table.Items)
         {
-            if (KeyPath(item.Key) is [{ } only] && string.Equals(only, key, StringComparison.Ordinal))
+            if (KeyPath(item.Key) is [{ } only]
+                && string.Equals(only, key, StringComparison.Ordinal))
             {
                 return item;
             }

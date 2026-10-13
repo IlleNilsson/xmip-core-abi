@@ -22,7 +22,8 @@ internal sealed class TestAuthority : IDisposable
         Directory = Path.Combine(Path.GetTempPath(), $"xmip-tls-{name}-{Guid.NewGuid():n}");
         System.IO.Directory.CreateDirectory(Directory);
 
-        CertificateRequest request = new($"CN=Xmip test anchor {name}", key, HashAlgorithmName.SHA256);
+        CertificateRequest request =
+            new($"CN=Xmip test anchor {name}", key, HashAlgorithmName.SHA256);
         request.CertificateExtensions.Add(new X509BasicConstraintsExtension(true, false, 0, true));
         request.CertificateExtensions.Add(new X509KeyUsageExtension(
             X509KeyUsageFlags.KeyCertSign | X509KeyUsageFlags.CrlSign, true));

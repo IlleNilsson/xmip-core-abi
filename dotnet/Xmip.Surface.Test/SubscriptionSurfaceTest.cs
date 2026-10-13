@@ -105,7 +105,8 @@ public sealed class SubscriptionSurfaceTest
             IReadOnlyList<SubscriptionRecord> all = surface.Subscriptions().Subscriptions;
 
             Assert.Equal(
-                ["edi", "flat", "structured"], new SubscriptionQuery().Apply(all).Select(s => s.Name));
+                ["edi", "flat", "structured"],
+                new SubscriptionQuery().Apply(all).Select(s => s.Name));
             Assert.Equal(
                 ["edi", "structured"],
                 new SubscriptionQuery { Location = Processing }.Apply(all)

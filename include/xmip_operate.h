@@ -840,12 +840,28 @@ typedef XmipStatus (*XmipAuditReadFn)(XmipStr directory,
  *                             row offers; and document, "cluster" where the
  *                             text declares its nodes, "node" where it is a
  *                             node's own document, which no tool edits.
+ *                             For an editor (ADR-0064, amendment
+ *                             2026-10-13): written, each table's section,
+ *                             header keys, and the bytes of its header,
+ *                             name, extent and every key and value;
+ *                             references, each name standing for an entry
+ *                             declared elsewhere, what it names, where that
+ *                             is and every name it may take; keys, every
+ *                             key each table may hold, its kind, words and
+ *                             whether it is required, read from configure's
+ *                             own types; and tuning, the runtime's
+ *                             declaration of [tuning].
  *   xmip_filter_structure_v1  a filter's text in; its rows and groups out.
  *   xmip_filter_text_v1       rows and groups in; the filter's canonical
  *                             text out, which reads back byte for byte.
  *   xmip_cluster_edit_v1      a cluster's xmip.toml in, an edit as
  *                             argument; the edited text out, everything the
- *                             edit does not touch as it was.
+ *                             edit does not touch as it was. The edits: set,
+ *                             remove, add-entry, remove-entry (refused while
+ *                             anything names the entry, unless references),
+ *                             add-node, rename (with every name standing
+ *                             for it), refer, rename-key, and an
+ *                             Application's own.
  *   xmip_cluster_slices_v1    a cluster's xmip.toml in, a node's name or
  *                             empty as argument; out
  *                             {"slices":[{"node","text"}]}, each node's
@@ -1440,15 +1456,20 @@ typedef XmipStatus (*XmipPublicationFailedJourneysFn)(const XmipPublication *pub
 #define XMIP_PUBLICATION_FAILED_JOURNEYS_ENTRYPOINT "xmip_publication_failed_journeys_v1"
 
 /*
- * 17. A node reached at its operate address (ADR-0014, amendment
- * 2026-10-12; ADR-0067; ADR-0052, amendment 2026-10-05 and its note).
+ * 17. A node reached at its operate listener (ADR-0014, amendments
+ * 2026-10-12 and 2026-10-13; ADR-0067; ADR-0052, amendment 2026-10-05 and
+ * its note).
  *
- * The remote surface: a node on another machine, reached over gRPC on TCP
- * at its operate listener, inside Xmip's mutual TLS (ADR-0063). Running a
- * command on another machine stays shell remoting (ADR-0014 clause 6);
- * SignalR stays between a web host and the browser it serves. Every
- * surface follows a node through these calls, so the follow, its recovery
- * and every word are the runtime's, once.
+ * The surface over a node's operate listener: a node on another machine,
+ * reached over gRPC on TCP inside Xmip's mutual TLS (ADR-0063), or a node
+ * on this one, reached over gRPC on its local endpoint - a named pipe on
+ * Windows, a Unix domain socket elsewhere - without TLS, the operating
+ * system admitting only the node's account and the machine's
+ * administrators and proving who connected. Every surface operates a node
+ * through these calls, on its machine and elsewhere alike, so the follow,
+ * its recovery and every word are the runtime's, once. Running a command
+ * on another machine stays shell remoting (ADR-0014 clause 6); SignalR
+ * stays between a web host and the browser it serves.
  *
  * xmip_remote_open_v1 makes a handle over the node at address, host:port,
  * presenting certificate (a PEM chain, leaf first) with key (its PEM
@@ -1456,6 +1477,13 @@ typedef XmipStatus (*XmipPublicationFailedJourneysFn)(const XmipPublication *pub
  * and reaches anchors (PEM). Nothing is connected yet. XMIP_OK; XMIP_E_INVALID
  * with the refusal in report for an address that is no operate address or
  * an identity that does not pair; XMIP_E_MALFORMED for text not UTF-8.
+ *
+ * xmip_remote_open_local_v1 makes the same handle over the node on this
+ * machine whose local endpoint is called endpoint: a name - \\.\pipe\<name>
+ * on Windows, a file in the temporary directory on Unix - or a path. The
+ * node takes every call as the operating system user this process runs as;
+ * no name crosses. XMIP_OK; XMIP_E_INVALID with the refusal in report for an
+ * empty endpoint. Every call below takes either handle.
  *
  * xmip_remote_publication_v1 reads the node's publication - the text its
  * file holds, which section 8 reads - and its revision. XMIP_OK with the
@@ -1478,7 +1506,8 @@ typedef XmipStatus (*XmipPublicationFailedJourneysFn)(const XmipPublication *pub
  *
  * xmip_remote_act_v1 asks the node to apply act to the noun called target
  * of the node at node - the nouns and acts of section 14's xmip_order_v1 -
- * as the identity the certificate proves; no name crosses. The node admits
+ * as the identity the certificate proves, or on the local endpoint the
+ * user the operating system says this process runs as; no name crosses. The node admits
  * it by the role it grants that identity (section 18) and audits it, taken
  * or refused. XMIP_OK taken; XMIP_E_AUTH refused by role; XMIP_E_NOT_FOUND
  * refused by the node, opening REFUSED; XMIP_E_INVALID no act the noun
@@ -1492,16 +1521,21 @@ typedef XmipStatus (*XmipPublicationFailedJourneysFn)(const XmipPublication *pub
  *
  * xmip_operate_serve_v1 serves, for a program hosting a node through this
  * boundary, what it posts and the acts on the nodes this process runs, on
- * an operate listener bound at listen, host:port, presenting certificate with key and taking a
- * surface only where its certificate reaches anchors; every proven caller
- * holds the role role names (section 18; empty: Observer), and every act is
- * audited as program. XMIP_OK; XMIP_E_IO with why in report. A node that
- * xmip-service runs serves from its configuration's [operate] instead.
+ * an operate listener bound at listen, host:port, presenting certificate
+ * with key and taking a surface only where its certificate reaches
+ * anchors; every proven caller holds the role role names (section 18;
+ * empty: Observer), and every act is audited as program. XMIP_OK; XMIP_E_IO
+ * with why in report. xmip_operate_serve_local_v1 serves the same on this
+ * machine's local endpoint called local, every caller the user its process
+ * runs as; the plain text inside the machine is audited where it is made
+ * (ADR-0063 clause 1). A node that xmip-service runs serves from its
+ * configuration's [operate] instead.
  * xmip_operate_post_v1 posts publication - the text a publication file
  * holds (section 8) - as what the listener answers: a new revision where it
  * differs from the last, every surface following told at once. Until a
  * first post it answers revision 0 and an empty text.
- * xmip_operate_served_address_v1 says where it listens, host:port;
+ * xmip_operate_served_address_v1 says where it listens, host:port or the
+ * local endpoint's path;
  * xmip_operate_serve_stop_v1 stops it - every connection shut, every wait
  * woken - and frees it.
  *
@@ -1513,6 +1547,8 @@ typedef struct XmipServed XmipServed;
 typedef XmipStatus (*XmipRemoteOpenFn)(XmipStr address, XmipStr certificate, XmipStr key,
                                        XmipStr anchors, XmipRemote **out, uint8_t *report,
                                        size_t cap, size_t *out_len);
+typedef XmipStatus (*XmipRemoteOpenLocalFn)(XmipStr endpoint, XmipRemote **out,
+                                            uint8_t *report, size_t cap, size_t *out_len);
 typedef XmipStatus (*XmipRemotePublicationFn)(const XmipRemote *remote, uint8_t *out,
                                               size_t cap, size_t *out_len,
                                               uint64_t *out_revision);
@@ -1529,18 +1565,23 @@ typedef XmipStatus (*XmipOperateServeFn)(XmipStr listen, XmipStr certificate, Xm
                                          XmipStr anchors, XmipStr role, XmipStr program,
                                          XmipServed **out, uint8_t *report, size_t cap,
                                          size_t *out_len);
+typedef XmipStatus (*XmipOperateServeLocalFn)(XmipStr local, XmipStr role, XmipStr program,
+                                              XmipServed **out, uint8_t *report, size_t cap,
+                                              size_t *out_len);
 typedef XmipStatus (*XmipOperateServedAddressFn)(const XmipServed *served, uint8_t *out,
                                                  size_t cap, size_t *out_len);
 typedef XmipStatus (*XmipOperatePostFn)(const XmipServed *served, XmipStr publication);
 typedef void (*XmipOperateServeStopFn)(XmipServed *served);
 
 #define XMIP_REMOTE_OPEN_ENTRYPOINT            "xmip_remote_open_v1"
+#define XMIP_REMOTE_OPEN_LOCAL_ENTRYPOINT      "xmip_remote_open_local_v1"
 #define XMIP_REMOTE_PUBLICATION_ENTRYPOINT     "xmip_remote_publication_v1"
 #define XMIP_REMOTE_WAIT_ENTRYPOINT            "xmip_remote_wait_v1"
 #define XMIP_REMOTE_ACT_ENTRYPOINT             "xmip_remote_act_v1"
 #define XMIP_REMOTE_END_ENTRYPOINT             "xmip_remote_end_v1"
 #define XMIP_REMOTE_FREE_ENTRYPOINT            "xmip_remote_free_v1"
 #define XMIP_OPERATE_SERVE_ENTRYPOINT          "xmip_operate_serve_v1"
+#define XMIP_OPERATE_SERVE_LOCAL_ENTRYPOINT    "xmip_operate_serve_local_v1"
 #define XMIP_OPERATE_SERVED_ADDRESS_ENTRYPOINT "xmip_operate_served_address_v1"
 #define XMIP_OPERATE_POST_ENTRYPOINT           "xmip_operate_post_v1"
 #define XMIP_OPERATE_SERVE_STOP_ENTRYPOINT     "xmip_operate_serve_stop_v1"

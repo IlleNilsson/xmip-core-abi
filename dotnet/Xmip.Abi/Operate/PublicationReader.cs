@@ -27,7 +27,8 @@ public sealed unsafe class PublicationReader
     private readonly delegate* unmanaged[Cdecl]<XmipStr, nint*, byte*, nuint, nuint*, int> _read;
     private readonly delegate* unmanaged[Cdecl]<nint, void> _free;
     private readonly delegate* unmanaged[Cdecl]<nint, XmipPublicationHead*, int> _head;
-    private readonly delegate* unmanaged[Cdecl]<nint, XmipHealthEntry*, nuint, nuint*, int> _records;
+    private readonly delegate* unmanaged[Cdecl]<nint, XmipHealthEntry*, nuint, nuint*, int>
+        _records;
     private readonly delegate* unmanaged[Cdecl]<nint, XmipMeasurement*, nuint, nuint*, int> _counts;
     private readonly delegate* unmanaged[Cdecl]<nint, XmipTopologyNode*, nuint, nuint*, int> _nodes;
     private readonly delegate* unmanaged[Cdecl]<nint, XmipTopologyLink*, nuint, nuint*, int> _links;
@@ -39,7 +40,8 @@ public sealed unsafe class PublicationReader
     private readonly delegate* unmanaged[Cdecl]<int, XmipStr*, XmipStr*, int> _originWords;
     private readonly delegate* unmanaged[Cdecl]<int, XmipStr*, XmipStr*, int> _patternWords;
     private readonly delegate* unmanaged[Cdecl]<nint, byte*, nuint, nuint*, int> _subscriptions;
-    private readonly delegate* unmanaged[Cdecl]<nint, byte*, nuint, nuint*, int> _eventSubscriptions;
+    private readonly delegate* unmanaged[Cdecl]<nint, byte*, nuint, nuint*, int>
+        _eventSubscriptions;
     private readonly delegate* unmanaged[Cdecl]<nint, byte*, nuint, nuint*, int> _deadMessages;
     private readonly delegate* unmanaged[Cdecl]<nint, byte*, nuint, nuint*, int> _failedJourneys;
 
@@ -148,7 +150,7 @@ public sealed unsafe class PublicationReader
 
         try
         {
-            return [.. Fill(_points, handle).Select(Count)];
+            return [.. Fill(_points, handle).Select(PublicationEntries.Count)];
         }
         finally
         {
@@ -225,7 +227,8 @@ public sealed unsafe class PublicationReader
 
         if (status == (int)XmipStatus.Invalid)
         {
-            refusal = Encoding.UTF8.GetString(report, 0, (int)Math.Min(length, (nuint)report.Length));
+            refusal = Encoding.UTF8.GetString(
+                report, 0, (int)Math.Min(length, (nuint)report.Length));
             return 0;
         }
 
@@ -245,8 +248,8 @@ public sealed unsafe class PublicationReader
         return new Publication(
             source,
             head.Node.Read(),
-            [.. Fill(_records, handle).Select(Record)],
-            [.. Fill(_counts, handle).Select(Count)],
+            [.. Fill(_records, handle).Select(PublicationEntries.Record)],
+            [.. Fill(_counts, handle).Select(PublicationEntries.Count)],
             head.HasTopology == 0 ? null : Topology(handle, head, source),
             head.HasRun == 0 ? null : Run(handle, head),
             SubscriptionList.Parse(Listed(_subscriptions, handle)),
@@ -285,8 +288,8 @@ public sealed unsafe class PublicationReader
         string drawnBy = head.TopologySource.Read();
 
         return new TopologySnapshot(
-            [.. Fill(_nodes, handle).Select(Node)],
-            [.. Fill(_links, handle).Select(Link)],
+            [.. Fill(_nodes, handle).Select(PublicationEntries.Node)],
+            [.. Fill(_links, handle).Select(PublicationEntries.Link)],
             Operator.FromNanos(head.TopologyObservedUnixNanos),
             drawnBy.Length > 0 ? drawnBy : source);
     }
@@ -335,62 +338,6 @@ public sealed unsafe class PublicationReader
         }
 
         return found;
-    }
-
-    private static HealthRecord Record(XmipHealthEntry entry)
-    {
-        return new HealthRecord(
-            entry.Scope.Read(),
-            (HealthState)entry.Health,
-            entry.Severity,
-            entry.Evidence.Read(),
-            Operator.FromNanos(entry.ObservedUnixNanos));
-    }
-
-    private static MeasurementRecord Count(XmipMeasurement entry)
-    {
-        return new MeasurementRecord(
-            entry.Scope.Read(),
-            (Counted)entry.Counted,
-            entry.Value,
-            Operator.FromNanos(entry.WindowStartUnixNanos),
-            Operator.FromNanos(entry.WindowEndUnixNanos),
-            Operator.FromNanos(entry.ObservedUnixNanos));
-    }
-
-    private static TopologyNode Node(XmipTopologyNode entry)
-    {
-        string parent = entry.Parent.Read();
-
-        return new TopologyNode(
-            entry.Id.Read(),
-            parent.Length > 0 ? parent : null,
-            entry.Label.Read(),
-            (TopologyNodeKind)entry.Kind,
-            entry.Scope.Read(),
-            (HealthState)entry.Health,
-            (TopologyOrigin)entry.Origin,
-            entry.Load,
-            entry.Activity,
-            entry.Evidence.Read());
-    }
-
-    private static CommunicationLink Link(XmipTopologyLink entry)
-    {
-        return new CommunicationLink(
-            entry.Id.Read(),
-            entry.From.Read(),
-            entry.To.Read(),
-            (CommunicationPattern)entry.Pattern,
-            (TopologyOrigin)entry.Origin,
-            entry.Protocol.Read(),
-            (HealthState)entry.Health,
-            entry.Volume,
-            entry.Rate,
-            entry.LatencyMilliseconds,
-            entry.Progress,
-            entry.Attempts,
-            entry.Evidence.Read());
     }
 
     // Any other status is a runtime breaking section 8's promise, not an answer.

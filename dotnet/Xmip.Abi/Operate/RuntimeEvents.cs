@@ -1,4 +1,3 @@
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
@@ -106,7 +105,7 @@ public sealed unsafe class RuntimeEvents
         GCHandle kept = decide is null ? default : GCHandle.Alloc(decide);
         int status = decide is null
             ? _authorize(null, null)
-            : _authorize(&Decide, (void*)GCHandle.ToIntPtr(kept));
+            : _authorize(&EventCallbacks.Decide, (void*)GCHandle.ToIntPtr(kept));
 
         lock (Policy)
         {
@@ -118,7 +117,7 @@ public sealed unsafe class RuntimeEvents
             Policy[0] = kept;
         }
 
-        Refused(status, "the policy");
+        EventAnswer.Refused(status, "the policy");
     }
 
     /// <summary>
@@ -127,7 +126,7 @@ public sealed unsafe class RuntimeEvents
     /// </summary>
     public IReadOnlyList<UnheardRecord> Unheard()
     {
-        byte[] json = Written((into, cap, len) => _unheard(into, cap, len));
+        byte[] json = EventAnswer.Written((into, cap, len) => _unheard(into, cap, len));
         using JsonDocument read = JsonDocument.Parse(json);
         return UnheardRecord.Read(read.RootElement.GetProperty("unheard"));
     }
@@ -238,7 +237,7 @@ public sealed unsafe class RuntimeEvents
             status = _publish(&raised, &delivered);
         }
 
-        Refused(status, "an Event");
+        EventAnswer.Refused(status, "an Event");
         return checked((int)delivered);
     }
 
@@ -282,17 +281,18 @@ public sealed unsafe class RuntimeEvents
 
         try
         {
-            Refused(status, "a drain");
+            EventAnswer.Refused(status, "a drain");
 
             EventRecord[] copied = new EventRecord[checked((int)count)];
 
             for (int at = 0; at < copied.Length; at++)
             {
-                copied[at] = Copy(events + at);
+                copied[at] = EventCallbacks.Copy(events + at);
             }
 
             nint drained = batch;
-            byte[] json = Written((into, cap, len) => _batchUnheard(drained, into, cap, len));
+            byte[] json = EventAnswer.Written(
+                (into, cap, len) => _batchUnheard(drained, into, cap, len));
             using JsonDocument read = JsonDocument.Parse(json);
             JsonElement root = read.RootElement;
 
@@ -364,9 +364,9 @@ public sealed unsafe class RuntimeEvents
             status = listening is null
                 ? _subscribe(each[0], each[1], each[2], &asked, (nuint)capacity, &handle,
                     sentence, (nuint)said.Length, &saidLength)
-                : _listen(each[0], each[1], each[2], &asked, (nuint)capacity, &Heard,
-                    (void*)GCHandle.ToIntPtr(context), &handle, sentence, (nuint)said.Length,
-                    &saidLength);
+                : _listen(each[0], each[1], each[2], &asked, (nuint)capacity,
+                    &EventCallbacks.Heard, (void*)GCHandle.ToIntPtr(context), &handle,
+                    sentence, (nuint)said.Length, &saidLength);
         }
 
         if (status != 0)
@@ -382,140 +382,12 @@ public sealed unsafe class RuntimeEvents
                     said, 0, (int)Math.Min(saidLength, (nuint)said.Length)));
             }
 
-            Refused(status, "the subscription");
+            EventAnswer.Refused(status, "the subscription");
         }
 
         EventSubscription subscription = new(this, listening);
 
         subscription.Adopt(handle, context);
         return subscription;
-    }
-
-    // The runtime asks this on the subscribing thread. Nothing may cross back
-    // into it: an exception is no opinion.
-    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
-    private static int Decide(
-        void* context, XmipStr party, XmipStr mechanism, XmipStr value, XmipStr scope,
-        XmipStr type)
-    {
-        if (GCHandle.FromIntPtr((nint)context).Target
-            is not Func<EventAuthorization, bool?> decide)
-        {
-            return 0;
-        }
-
-        try
-        {
-            bool? said = decide(new EventAuthorization(
-                party.Read(), mechanism.Read(), value.Read(), scope.Read(), type.Read()));
-            return said switch
-            {
-                true => 1,
-                false => -1,
-                null => 0,
-            };
-        }
-#pragma warning disable CA1031 // Whatever it is, it must not unwind into Rust.
-        catch (Exception)
-#pragma warning restore CA1031
-        {
-            return 0;
-        }
-    }
-
-    // The runtime calls this on its listener thread. Nothing may cross back
-    // into it: an exception is kept for the program to read.
-    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
-    private static void Heard(void* context, XmipEvent* raised)
-    {
-        if (GCHandle.FromIntPtr((nint)context).Target is not EventListening listening)
-        {
-            return;
-        }
-
-        try
-        {
-            listening.Heard(Copy(raised));
-        }
-#pragma warning disable CA1031 // Whatever it is, it must not unwind into Rust.
-        catch (Exception thrown)
-#pragma warning restore CA1031
-        {
-            listening.Fault = thrown;
-        }
-    }
-
-    // One Event out of the runtime's borrow, whole.
-    private static EventRecord Copy(XmipEvent* raised)
-    {
-        Dictionary<string, string> diagnostics = [with(StringComparer.Ordinal)];
-
-        for (nuint at = 0; at + 1 < raised->DiagnosticsLen; at += 2)
-        {
-            diagnostics[raised->Diagnostics[at].Read()] = raised->Diagnostics[at + 1].Read();
-        }
-
-        return new EventRecord
-        {
-            Id = raised->Id.Read(),
-            Type = raised->Type.Read(),
-            TimeUnixNanos = raised->TimeUnixNanos,
-            Action = (EventAction)raised->Action,
-            Outcome = (EventOutcome)raised->Outcome,
-            Scope = raised->Scope.Read(),
-            Journey = raised->Journey.Read(),
-            Message = raised->Message.Read(),
-            Stream = raised->Stream.Read(),
-            Endpoint = raised->Endpoint.Read(),
-            Module = raised->Module.Read(),
-            Artifact = raised->Artifact.Read(),
-            Party = raised->Party.Read(),
-            Diagnostics = diagnostics,
-        };
-    }
-
-    private delegate int Writer(byte* into, nuint cap, nuint* length);
-
-    // What a call that writes JSON into a buffer wrote, asked again with room
-    // where the first buffer was too small.
-    private static byte[] Written(Writer write)
-    {
-        byte[] buffer = new byte[4096];
-
-        while (true)
-        {
-            nuint length = 0;
-            int status;
-
-            fixed (byte* into = buffer)
-            {
-                status = write(into, (nuint)buffer.Length, &length);
-            }
-
-            Refused(status, "a list");
-
-            if (length <= (nuint)buffer.Length)
-            {
-                return buffer[..(int)length];
-            }
-
-            buffer = new byte[checked((int)length)];
-        }
-    }
-
-    // What the runtime refused, in its status's words; nothing on XMIP_OK.
-    private static void Refused(int status, string what)
-    {
-        if (status == 0)
-        {
-            return;
-        }
-
-        XmipStatus said = (XmipStatus)status;
-
-        throw said is XmipStatus.Invalid or XmipStatus.Malformed
-            ? new ArgumentException($"The runtime refused {what}: {said.Explain()}")
-            : new InvalidOperationException($"The runtime answered {what} with {said}: " +
-                said.Explain());
     }
 }

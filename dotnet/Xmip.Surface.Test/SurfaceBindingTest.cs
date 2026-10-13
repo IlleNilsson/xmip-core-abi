@@ -57,7 +57,8 @@ public sealed class SurfaceBindingTest
     {
         Assert.Equal(
             ["https://0.0.0.0:5443"],
-            SurfaceBinding.Addresses(Configured(("Kestrel:Endpoints:Http:Url", "https://0.0.0.0:5443"))));
+            SurfaceBinding.Addresses(
+                Configured(("Kestrel:Endpoints:Http:Url", "https://0.0.0.0:5443"))));
         Assert.Equal(
             ["http://127.0.0.1:1", "https://*:2"],
             SurfaceBinding.Addresses(Configured(("urls", "http://127.0.0.1:1; https://*:2"))));

@@ -5,13 +5,17 @@ namespace Xmip.Surface;
 /// <summary>
 /// The surface a host reads is chosen in its configuration, never guessed
 /// (ADR-0052 clause 3). In the host's <c>[Xmip]</c> table: <c>Surface</c> is
-/// <c>"native"</c> — a runtime library found by <see cref="RuntimeLibrary"/>'s
-/// rule — <c>"snapshot"</c> — a file at <c>Snapshot</c> — or <c>"remote"</c> —
-/// a node's operate listener at <c>Address</c>, followed over gRPC (ADR-0014,
-/// amendment 2026-10-12), presenting and trusting what <see cref="SurfaceTls"/>
-/// reads from the same table (ADR-0063 clause 1). Nothing is chosen by finding a file in a temp
-/// directory, and a configuration that names none is refused rather than
-/// defaulted.
+/// <c>"local"</c> — a node on this machine, at the local endpoint
+/// <c>Local</c> names, followed over gRPC (ADR-0014, amendment 2026-10-13) —
+/// <c>"snapshot"</c> — a file at <c>Snapshot</c> — or <c>"remote"</c> — a
+/// node's operate listener at <c>Address</c>, followed over gRPC (ADR-0014,
+/// amendment 2026-10-12), presenting and trusting what
+/// <see cref="SurfaceTls"/> reads from the same table (ADR-0063 clause 1).
+/// Nothing is chosen by finding a file in a temp directory, and a
+/// configuration that names none is refused rather than defaulted. The
+/// runtime library, found by <see cref="RuntimeLibrary"/>'s rule, is what
+/// every surface calls the runtime through — the gRPC client among it — and
+/// chooses no surface.
 /// </summary>
 public static class SurfaceChoice
 {
@@ -23,8 +27,12 @@ public static class SurfaceChoice
     /// amendment 2026-09-20).</summary>
     public const string SnapshotKey = "Xmip:Snapshot";
 
-    /// <summary>The word for the surface over a runtime library.</summary>
-    public const string Native = "native";
+    /// <summary>The word for the surface over a node on this machine.</summary>
+    public const string Local = "local";
+
+    /// <summary>The key naming the node's local endpoint, a name or a path,
+    /// when the surface is local.</summary>
+    public const string LocalKey = "Xmip:Local";
 
     /// <summary>The word for the surface over a published snapshot.</summary>
     public const string Snapshot = "snapshot";
@@ -37,10 +45,9 @@ public static class SurfaceChoice
     public const string Remote = "remote";
 
     /// <summary>Whether the configuration names a surface at all. A host
-    /// that has one runtime-discovery fallback — the PowerShell module, whose
-    /// prompt follows whatever library the one rule finds — asks this before
-    /// <see cref="Open"/>, so that nothing configured is said as such rather
-    /// than refused.</summary>
+    /// whose line may name none — a command, a cmdlet, the prompt — asks this
+    /// before <see cref="Open"/>, so that nothing configured is said as such
+    /// rather than refused.</summary>
     public static bool IsChosen(IConfiguration configuration)
     {
         return !string.IsNullOrWhiteSpace(configuration[SurfaceKey]);
@@ -56,13 +63,15 @@ public static class SurfaceChoice
     {
         string chosen = configuration[SurfaceKey]?.Trim() ?? string.Empty;
 
-        // Found for every surface, not only a native one: a snapshot or a
-        // remote surface calls the runtime's rules too, in this library.
-        string library = RuntimeLibrary.Find(configuration, basePath);
+        // Found for every surface: each calls the runtime's rules, and the
+        // gRPC client, in this library.
+        _ = RuntimeLibrary.Find(configuration, basePath);
 
-        if (string.Equals(chosen, Native, StringComparison.OrdinalIgnoreCase))
+        // A local surface naming no endpoint names no node, and says so on
+        // every answer (LocalOperator.Unnamed), as a command naming none does.
+        if (string.Equals(chosen, Local, StringComparison.OrdinalIgnoreCase))
         {
-            return new NativeOperator(library);
+            return new LocalOperator(configuration[LocalKey]);
         }
 
         if (string.Equals(chosen, Snapshot, StringComparison.OrdinalIgnoreCase))
@@ -85,7 +94,7 @@ public static class SurfaceChoice
                     $"{SurfaceKey} is \"{Remote}\" and {AddressKey} names no node");
         }
 
-        string words = $"\"{Native}\", \"{Snapshot}\" or \"{Remote}\"";
+        string words = $"\"{Local}\", \"{Snapshot}\" or \"{Remote}\"";
 
         throw new InvalidOperationException(
             chosen.Length == 0
@@ -175,11 +184,13 @@ public static class SurfaceChoice
 
     /// <summary>
     /// The one surface a command, a cmdlet or the prompt reads, the line over
-    /// the document: a node <paramref name="line"/> names, else the
-    /// snapshot it names, else — where it names no runtime and the document
-    /// names a surface — the document's choice, the first cluster where it
-    /// names several; else the runtime library
-    /// <see cref="RuntimeLibrary.Stated"/> finds. Not yet asked to answer, so
+    /// the document: a node on another machine <paramref name="line"/> names,
+    /// else a node on this one it names, else the snapshot it names, else the
+    /// document's choice, the first cluster where it names several; else a
+    /// <see cref="LocalOperator"/> that names no node and says so
+    /// (<see cref="LocalOperator.Unnamed"/>). The runtime library
+    /// <see cref="RuntimeLibrary.Stated"/> finds is what every one of them
+    /// calls the runtime through, and chooses none. Not yet asked to answer, so
     /// the precedence is tested without a runtime or a network. Held here for
     /// the executable and the PowerShell module alike (ADR-0052 clause 1);
     /// until 2026-09-24 the executable wrote it and the prompt wrote it again.
@@ -203,23 +214,24 @@ public static class SurfaceChoice
             throw new InvalidOperationException(refusal);
         }
 
-        // Found whatever the surface: every one calls the runtime's rules in it.
-        string library = RuntimeLibrary.Stated(
-            line.Runtime, document, basePath, besideExecutable);
+        // Found whatever the surface: every one calls the runtime in it.
+        _ = RuntimeLibrary.Stated(line.Runtime, document, basePath, besideExecutable);
 
         return !string.IsNullOrWhiteSpace(line.Remote)
             ? new RemoteOperator(line.Remote, SurfaceTls.From(document, basePath))
-            : !string.IsNullOrWhiteSpace(line.Snapshot)
-                ? new SnapshotOperator(TomlDocument.Resolve(line.Snapshot, basePath))
-                : string.IsNullOrWhiteSpace(line.Runtime) && IsChosen(document)
-                    ? OpenFirst(document, basePath)
-                    : new NativeOperator(library);
+            : !string.IsNullOrWhiteSpace(line.Local)
+                ? new LocalOperator(line.Local)
+                : !string.IsNullOrWhiteSpace(line.Snapshot)
+                    ? new SnapshotOperator(TomlDocument.Resolve(line.Snapshot, basePath))
+                    : IsChosen(document)
+                        ? OpenFirst(document, basePath)
+                        : new LocalOperator(null);
     }
 
     /// <summary>
     /// The surface <see cref="Stated"/> chooses from the document at
-    /// <paramref name="documentPath"/>, once it has answered: a remote node
-    /// connected, a runtime loaded, a snapshot file present. Null with the
+    /// <paramref name="documentPath"/>, once it has answered: a node
+    /// connected, a snapshot file present. Null with the
     /// reason otherwise — the line's own <see cref="SurfaceLine.Refusal"/>,
     /// the document's refusal prefixed with its file name, or the surface's
     /// own <see cref="IOperatorSurface.Source"/> — and the surface released.
@@ -263,15 +275,14 @@ public static class SurfaceChoice
         return null;
     }
 
-    /// <summary>Whether a surface answers at all: a remote node answers, a
-    /// runtime library loads, a snapshot file is there. A surface of another
-    /// kind is taken at its word.</summary>
+    /// <summary>Whether a surface answers at all: a node, on this machine or
+    /// another, answers at its operate listener; a snapshot file is there. A
+    /// surface of another kind is taken at its word.</summary>
     public static bool Answers(IOperatorSurface surface)
     {
         return surface switch
         {
-            RemoteOperator remote => remote.Connect(),
-            NativeOperator native => native.IsLoaded,
+            ListenerOperator node => node.Connect(),
             SnapshotOperator snapshot => snapshot.Exists,
             _ => true,
         };

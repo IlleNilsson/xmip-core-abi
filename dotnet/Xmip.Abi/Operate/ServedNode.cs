@@ -30,7 +30,8 @@ public sealed unsafe class ServedNode : IDisposable
         Address = RuntimeRemotes.Said(text, length);
     }
 
-    /// <summary>Where it listens, <c>host:port</c>.</summary>
+    /// <summary>Where it listens: <c>host:port</c>, or the local endpoint's
+    /// path.</summary>
     public string Address { get; }
 
     /// <summary>Post <paramref name="publication"/>, the text a publication

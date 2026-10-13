@@ -214,16 +214,17 @@ public sealed class ClusterSurfacesTest
     [Fact]
     public void AnythingButAListOfSnapshotsIsASetOfOne()
     {
-        using Papers native = new("""
+        using Papers local = new("""
             [Xmip]
-            Surface = "native"
+            Surface = "local"
+            Local = "xmip-nobody-listens-here"
             RuntimeLibrary = "lib/xmip_core_runtime.dll"
             """);
 
-        using ClusterSurfaces held = SurfaceChoice.OpenAll(native.Configuration, native.Directory);
+        using ClusterSurfaces held = SurfaceChoice.OpenAll(local.Configuration, local.Directory);
 
         Assert.False(held.Several(includingHidden: true));
-        Assert.IsType<NativeOperator>(held.First);
+        Assert.IsType<LocalOperator>(held.First);
     }
 
     [Fact]
