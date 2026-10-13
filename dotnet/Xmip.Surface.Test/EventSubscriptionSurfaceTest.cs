@@ -71,7 +71,8 @@ public sealed class EventSubscriptionSurfaceTest
             EventSubscriptionRecord held = listed.EventSubscriptions.Single(entry => entry.Id == 2);
             Assert.True(held.Paused);
 
-            EventSubscriptionOperation resumed = surface.Act(held, EventSubscriptionAct.Resume, "ilian");
+            EventSubscriptionOperation resumed =
+                surface.Act(held, EventSubscriptionAct.Resume, "ilian");
 
             Assert.True(resumed.Applied, resumed.Result);
             Assert.Contains($"left for {Sender}", resumed.Result, StringComparison.Ordinal);
@@ -113,14 +114,16 @@ public sealed class EventSubscriptionSurfaceTest
 
         try
         {
-            IReadOnlyList<EventSubscriptionRecord> all = surface.EventSubscriptions().EventSubscriptions;
+            IReadOnlyList<EventSubscriptionRecord> all =
+                surface.EventSubscriptions().EventSubscriptions;
 
             // Who a subscriber is: its declared name, its identifier where
             // it was declared with none; the default order is by it.
             Assert.Equal(
                 ["operations", "on-call", "0199a0a0-0000-7000-8000-000000000004"],
                 all.OrderBy(s => s.Id).Select(EventSubscriptionQuery.Who));
-            Assert.Equal([4ul, 2ul, 1ul], new EventSubscriptionQuery().Apply(all).Select(s => s.Id));
+            Assert.Equal(
+                [4ul, 2ul, 1ul], new EventSubscriptionQuery().Apply(all).Select(s => s.Id));
             Assert.Equal(
                 [4ul, 2ul],
                 new EventSubscriptionQuery { Location = Sending }.Apply(all)

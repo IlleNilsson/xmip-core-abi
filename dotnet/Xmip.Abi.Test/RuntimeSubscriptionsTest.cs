@@ -59,7 +59,13 @@ public sealed class RuntimeSubscriptionsTest
             Assert.Equal(
                 XmipStatus.Invalid,
                 Rules.Subscriptions.Order(
-                    orders, Node, "subscription", "structured", "remove", "ilian", out string said));
+                    orders,
+                    Node,
+                    "subscription",
+                    "structured",
+                    "remove",
+                    "ilian",
+                    out string said));
             Assert.Contains("TOML configuration", said, StringComparison.Ordinal);
             Assert.Equal(
                 XmipStatus.Invalid,

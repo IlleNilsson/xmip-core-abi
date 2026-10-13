@@ -3,9 +3,8 @@ namespace Xmip.Surface.Test;
 /// <summary>
 /// A live view begun before its source recovers when the source arrives
 /// (ADR-0052: events, not polling): a snapshot surface whose publication's
-/// directory is not made yet, and a native surface whose runtime library is
-/// not there yet or would not load, each say so at once and announce a
-/// change the moment the file system notices the source made.
+/// directory is not made yet says so at once and announces a change the
+/// moment the file system notices the source made.
 /// </summary>
 public sealed class SurfaceArrivalTest : IDisposable
 {
@@ -51,47 +50,6 @@ public sealed class SurfaceArrivalTest : IDisposable
             File.Copy(Fixture, path + ".next");
             File.Move(path + ".next", path, overwrite: true);
             Assert.True(await next);
-        }
-        finally
-        {
-            await stop.CancelAsync();
-            await follow.DisposeAsync();
-        }
-    }
-
-    [Fact]
-    public async Task ANativeWatchBegunBeforeItsRuntimeFollowsOnceTheRuntimeLoads()
-    {
-        string directory = Path.Combine(_place, "runtime");
-        string library = Path.Combine(directory, RuntimeLibrary.FileName);
-        using NativeOperator surface = new(library);
-        using CancellationTokenSource stop = new(Patience);
-        IAsyncEnumerator<SurfaceChange> follow =
-            surface.WatchAsync(stop.Token).GetAsyncEnumerator(stop.Token);
-
-        try
-        {
-            Assert.True(await follow.MoveNextAsync());
-            Assert.False(surface.IsLoaded);
-
-            // A file that will not load: read, it is refused and not tried
-            // again on the next read — only once it is written again.
-            ValueTask<bool> arrived = follow.MoveNextAsync();
-            Directory.CreateDirectory(directory);
-            File.WriteAllText(library + ".next", "not a library");
-            File.Move(library + ".next", library);
-            Assert.False(surface.IsLoaded);
-            Assert.NotEmpty(surface.Reason);
-
-            // Built again, it loads, and the watch says so. Written in place,
-            // as a build writes it, while the watch may be reading the file
-            // refused: a rename over it is refused by Windows while any
-            // reader has it open, the watch's own read among them.
-            string built = Path.Combine(RuntimeLibrary.Beside, RuntimeLibrary.FileName);
-            File.Copy(built, library, overwrite: true);
-
-            Assert.True(await arrived);
-            Assert.True(surface.IsLoaded, surface.Reason);
         }
         finally
         {

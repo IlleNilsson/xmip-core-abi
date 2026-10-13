@@ -61,10 +61,10 @@ public sealed class ConfigurationVerdictTest
     }
 
     [Fact]
-    public void AnUnloadedNativeSurfaceAnswersWithAVerdict()
+    public void AnUnloadedRuntimeAnswersWithAVerdict()
     {
         string nowhere = Path.Combine(Path.GetTempPath(), $"no-runtime-{Guid.NewGuid():n}.dll");
-        using NativeOperator surface = new(nowhere);
+        using ConfigurationRuntime surface = new(nowhere);
 
         ConfigurationVerdict validated = surface.Validate(Toml);
         ConfigurationVerdict planned = surface.Plan(Toml);

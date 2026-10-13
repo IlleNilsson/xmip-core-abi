@@ -67,7 +67,8 @@ public enum CommunicationPattern
     Streaming = 3,
     /// <summary>A one-way application send with no expected application reply.</summary>
     FireAndForget = 4,
-    /// <summary>Independent application messages in either direction on a persistent connection.</summary>
+    /// <summary>Independent application messages in either direction on a
+    /// persistent connection.</summary>
     Session = 5,
     /// <summary>An unsuccessful delivery followed by one or more attempts.</summary>
     Retry = 6,

@@ -36,7 +36,8 @@ public sealed class RuntimeJourneysTest
     public void AWordThatIsNoActOnAJourneyIsInvalid()
     {
         Assert.Equal(
-            XmipStatus.Invalid, Rules.Journeys.Act(Node, "j-1", "replay", "ilian", out string said));
+            XmipStatus.Invalid,
+            Rules.Journeys.Act(Node, "j-1", "replay", "ilian", out string said));
         Assert.NotEmpty(said);
     }
 

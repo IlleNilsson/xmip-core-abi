@@ -10,12 +10,13 @@ namespace Xmip.Surface;
 /// (ADR-0052 clause 1).
 /// </summary>
 /// <remarks>
-/// <para>The rules underneath are not written here. Containment, a scope's parts
-/// and the node and stage it is on are <c>observe::Scope</c>'s, the stage words and whether a stage pauses
-/// <c>node::Stage</c>'s, what a stage counts <c>observe::Counted</c>'s, and
-/// the rollup and the worst-first order <c>observe::Health</c>'s and
-/// <c>observe::Standing</c>'s, and this calls each in the runtime's library (<see cref="RuntimeLibrary.Rules"/>, <c>xmip_operate.h</c>
-/// section 7) — one implementation, which the snapshot answers by too
+/// <para>The rules underneath are not written here. Containment, a scope's
+/// parts and the node and stage it is on are <c>observe::Scope</c>'s, the
+/// stage words and whether a stage pauses <c>node::Stage</c>'s, what a stage
+/// counts <c>observe::Counted</c>'s, and the rollup and the worst-first order
+/// <c>observe::Health</c>'s and <c>observe::Standing</c>'s, and this calls
+/// each in the runtime's library (<see cref="RuntimeLibrary.Rules"/>,
+/// <c>xmip_operate.h</c> section 7) — one implementation, which the snapshot answers by too
 /// (ADR-0052, amendment 2026-09-24).</para>
 /// <para>ADR-0041: a leaf's mood does not propagate. A parent is <c>Fine</c>
 /// when every leaf beneath it is, and <c>Holding</c> the moment one is not;

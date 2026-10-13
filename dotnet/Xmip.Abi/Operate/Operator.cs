@@ -10,7 +10,10 @@ namespace Xmip.Abi.Operate;
 /// and this is not; where they differ, the header is right and this is a
 /// defect. One binding for every surface — the cli, the PowerShell module and
 /// the GUI all hold one of these, and none of them declares a struct of its
-/// own (ADR-0014, amendment of 2026-08-26).
+/// own (ADR-0014, amendment of 2026-08-26). What it asks has no node behind
+/// it — starting a plan and validating a document; a running node is
+/// operated over gRPC at its operate listener (<see cref="RuntimeRemotes"/>;
+/// ADR-0014, amendment 2026-10-13).
 /// </summary>
 /// <remarks>
 /// Every method answers in the header's terms — a status, a record — and
@@ -20,28 +23,15 @@ public sealed unsafe class Operator : IDisposable
 {
     private readonly nint _library;
     private readonly XmipOperate _table;
-    private readonly delegate* unmanaged[Cdecl]<ulong, uint, ulong*, int> _waitChange;
     private bool _disposed;
-
-    // The header says entries are valid until the next call on the table, and
-    // a Blazor Server app calls from a prerender thread and a circuit thread.
-    // Two callers at once would have one reading pointers the other has just
-    // replaced. One call at a time, and every string is copied out before the
-    // lock is released.
-    private readonly Lock _gate = new();
 
     /// <summary>The library this table came from, for a surface to show.</summary>
     public string Source { get; }
 
-    private Operator(
-        nint library,
-        XmipOperate table,
-        string path,
-        delegate* unmanaged[Cdecl]<ulong, uint, ulong*, int> waitChange)
+    private Operator(nint library, XmipOperate table, string path)
     {
         _library = library;
         _table = table;
-        _waitChange = waitChange;
         Source = path;
     }
 
@@ -77,15 +67,8 @@ public sealed unsafe class Operator : IDisposable
             return null;
         }
 
-        delegate* unmanaged[Cdecl]<ulong, uint, ulong*, int> waitChange = null;
-
-        if (NativeLibrary.TryGetExport(library, OperateAbi.ChangeEntrypoint, out nint changeSymbol))
-        {
-            waitChange = (delegate* unmanaged[Cdecl]<ulong, uint, ulong*, int>)changeSymbol;
-        }
-
         reason = string.Empty;
-        return new Operator(library, table, path, waitChange);
+        return new Operator(library, table, path);
     }
 
     /// <summary>
@@ -150,119 +133,6 @@ public sealed unsafe class Operator : IDisposable
             .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
         return new ValidationRecord((XmipStatus)status, problems);
-    }
-
-    /// <summary>Health at and beneath a scope, worst first. Empty when the
-    /// scope names nothing.</summary>
-    public IReadOnlyList<HealthRecord> Health(string scope)
-    {
-        List<HealthRecord> found = [];
-
-        using PinnedStr text = XmipStr.Pin(scope);
-        using Lock.Scope held = _gate.EnterScope();
-
-        nuint needed = 0;
-
-        // Ask for the count first, then for exactly that many. The header
-        // promises the true count in out_len however small the buffer.
-        int probe = _table.Health(_table.Ctx, text.Value, null, 0, &needed);
-
-        if (probe != 0 || needed == 0)
-        {
-            return found;
-        }
-
-        XmipHealthEntry[] entries = new XmipHealthEntry[needed];
-        nuint filled;
-
-        fixed (XmipHealthEntry* buffer = entries)
-        {
-            _ = _table.Health(_table.Ctx, text.Value, buffer, needed, &filled);
-        }
-
-        int count = checked((int)Math.Min(filled, needed));
-
-        for (int i = 0; i < count; i++)
-        {
-            XmipHealthEntry entry = entries[i];
-
-            found.Add(new HealthRecord(
-                entry.Scope.Read(),
-                (HealthState)entry.Health,
-                entry.Severity,
-                entry.Evidence.Read(),
-                FromNanos(entry.ObservedUnixNanos)));
-        }
-
-        return found;
-    }
-
-    /// <summary>Whether this runtime can wake observers when it publishes.</summary>
-    public bool SupportsChangeNotifications => _waitChange != null;
-
-    /// <summary>The revision already published, or zero for an older runtime.</summary>
-    public ulong CurrentRevision => WaitForChange(0, 0) ?? 0;
-
-    /// <summary>
-    /// Wait for a publication newer than <paramref name="afterRevision"/>.
-    /// Null means timeout, refusal, or a runtime predating the signal.
-    /// This waits only on the publication clock; it never enters execution.
-    /// </summary>
-    public ulong? WaitForChange(ulong afterRevision, uint timeoutMilliseconds)
-    {
-        if (_waitChange == null)
-        {
-            return null;
-        }
-
-        ulong revision = afterRevision;
-        int status = _waitChange(afterRevision, timeoutMilliseconds, &revision);
-
-        return status == 0 && revision > afterRevision ? revision : null;
-    }
-
-    /// <summary>One kind of count, summed over the scope. Null when the scope
-    /// names nothing or has no such count.</summary>
-    public MeasurementRecord? Measure(string scope, Counted counted)
-    {
-        using PinnedStr text = XmipStr.Pin(scope);
-        using Lock.Scope held = _gate.EnterScope();
-
-        XmipMeasurement entry;
-        nuint len = 0;
-
-        int status = _table.Measure(_table.Ctx, text.Value, (int)counted, &entry, 1, &len);
-
-        return status != 0 || len == 0
-            ? null
-            : new MeasurementRecord(
-                entry.Scope.Read(),
-                (Counted)entry.Counted,
-                entry.Value,
-                FromNanos(entry.WindowStartUnixNanos),
-                FromNanos(entry.WindowEndUnixNanos),
-                FromNanos(entry.ObservedUnixNanos));
-    }
-
-    /// <summary>Pause everything at and beneath a scope, by <paramref name="who"/>.
-    /// <see cref="XmipStatus.NotFound"/> when the scope names nothing.</summary>
-    public XmipStatus PauseScope(string scope, string who)
-    {
-        using PinnedStr scopeText = XmipStr.Pin(scope);
-        using PinnedStr whoText = XmipStr.Pin(who);
-        using Lock.Scope held = _gate.EnterScope();
-
-        return (XmipStatus)_table.Pause(_table.Ctx, scopeText.Value, whoText.Value);
-    }
-
-    /// <summary>Resume everything at and beneath a scope.
-    /// <see cref="XmipStatus.NotFound"/> when the scope names nothing.</summary>
-    public XmipStatus ResumeScope(string scope)
-    {
-        using PinnedStr text = XmipStr.Pin(scope);
-        using Lock.Scope held = _gate.EnterScope();
-
-        return (XmipStatus)_table.Resume(_table.Ctx, text.Value);
     }
 
     /// <summary>A header timestamp — nanoseconds since the Unix epoch — as a

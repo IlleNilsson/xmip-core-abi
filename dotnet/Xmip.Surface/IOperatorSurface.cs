@@ -4,10 +4,11 @@ using Xmip.Abi.Operate;
 namespace Xmip.Surface;
 
 /// <summary>
-/// What every screen, command and cmdlet reads. Two implementations:
-/// <see cref="NativeOperator"/> crosses the C ABI in <c>xmip_operate.h</c>
-/// through the binding in xmip-core-abi, and <see cref="SnapshotOperator"/>
-/// reads a snapshot a node published. The records themselves —
+/// What every screen, command and cmdlet reads. Two kinds of
+/// implementation: <see cref="ListenerOperator"/> follows a node over gRPC
+/// at its operate listener — <see cref="LocalOperator"/> on this machine,
+/// <see cref="RemoteOperator"/> on another (ADR-0014, amendment 2026-10-13)
+/// — and <see cref="SnapshotOperator"/> reads a snapshot a node published. The records themselves —
 /// <see cref="HealthRecord"/>, <see cref="MeasurementRecord"/>,
 /// <see cref="HealthState"/>, <see cref="Counted"/> — are the binding's, so a
 /// screen and a cmdlet read the same shape.
@@ -167,7 +168,9 @@ public interface IOperatorSurface
                 .Order(StringComparer.Ordinal),
         ];
 
-        return drawn.Length > 0 ? drawn : [.. Index().Nodes().Select(node => ScopeTree.Root + node)];
+        return drawn.Length > 0
+            ? drawn
+            : [.. Index().Nodes().Select(node => ScopeTree.Root + node)];
     }
 
     /// <summary>

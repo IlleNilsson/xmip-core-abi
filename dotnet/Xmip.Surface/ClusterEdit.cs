@@ -69,13 +69,28 @@ public abstract record ClusterEdit
     }
 
     /// <summary>Remove the table at <paramref name="Section"/>: an entry of a
-    /// list, or a node.</summary>
-    public sealed record RemoveEntry(IReadOnlyList<string> Section) : ClusterEdit
+    /// list, or a node. Refused while anything in the file names it, saying
+    /// what does, unless <paramref name="References"/>, which removes what
+    /// names it with it (ADR-0064, amendment 2026-10-13).</summary>
+    public sealed record RemoveEntry(IReadOnlyList<string> Section, bool References = false)
+        : ClusterEdit
     {
         /// <inheritdoc />
         public override string ToJson()
         {
-            return Json("remove-entry", new { section = Section });
+            return Json("remove-entry", new { section = Section, references = References });
+        }
+    }
+
+    /// <summary>Rename the entry or node at <paramref name="Section"/> to
+    /// <paramref name="Name"/>, and every name in the file that stands for
+    /// it.</summary>
+    public sealed record Rename(IReadOnlyList<string> Section, string Name) : ClusterEdit
+    {
+        /// <inheritdoc />
+        public override string ToJson()
+        {
+            return Json("rename", new { section = Section, name = Name });
         }
     }
 

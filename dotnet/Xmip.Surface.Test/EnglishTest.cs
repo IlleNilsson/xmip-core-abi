@@ -180,7 +180,8 @@ public sealed class EnglishTest
 
         foreach (TopologyNodeKind kind in Enum.GetValues<TopologyNodeKind>())
         {
-            Assert.Equal(reader.Words(kind), new TopologyWord(English.Word(kind), English.Name(kind)));
+            Assert.Equal(
+                reader.Words(kind), new TopologyWord(English.Word(kind), English.Name(kind)));
         }
 
         foreach (TopologyOrigin origin in Enum.GetValues<TopologyOrigin>())

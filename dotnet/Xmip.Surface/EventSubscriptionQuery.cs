@@ -79,7 +79,8 @@ public sealed record EventSubscriptionQuery
     /// </summary>
     /// <exception cref="ArgumentException">REFUSED: a sort that is no column or
     /// an order that is neither word.</exception>
-    public IReadOnlyList<EventSubscriptionRecord> Apply(IEnumerable<EventSubscriptionRecord> subscriptions)
+    public IReadOnlyList<EventSubscriptionRecord> Apply(
+        IEnumerable<EventSubscriptionRecord> subscriptions)
     {
         ArgumentNullException.ThrowIfNull(subscriptions);
 

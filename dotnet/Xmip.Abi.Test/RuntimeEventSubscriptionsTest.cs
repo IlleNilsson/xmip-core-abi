@@ -39,20 +39,26 @@ public sealed class RuntimeEventSubscriptionsTest
         Assert.False(mine.Paused);
         Assert.Equal("active", mine.State);
 
-        Assert.Equal(XmipStatus.Ok, Rules.EventSubscriptions.Act(mine.Id, "pause", "ilian", out string said));
+        Assert.Equal(
+            XmipStatus.Ok,
+            Rules.EventSubscriptions.Act(mine.Id, "pause", "ilian", out string said));
         Assert.Contains("paused by ilian", said, StringComparison.Ordinal);
         Assert.True(Mine(audited).Paused);
         Assert.Equal(1, Rules.Events.Publish(audited.Raised(EventOutcome.Failure)));
         Assert.Equal(1ul, Mine(audited).Queued);
 
-        Assert.Equal(XmipStatus.Ok, Rules.EventSubscriptions.Act(mine.Id, "resume", "ilian", out _));
+        Assert.Equal(
+            XmipStatus.Ok, Rules.EventSubscriptions.Act(mine.Id, "resume", "ilian", out _));
         Assert.Single(subscription.Next(TimeSpan.FromSeconds(2), 16).Events);
 
-        Assert.Equal(XmipStatus.Invalid, Rules.EventSubscriptions.Act(mine.Id, "sulk", "ilian", out said));
+        Assert.Equal(
+            XmipStatus.Invalid, Rules.EventSubscriptions.Act(mine.Id, "sulk", "ilian", out said));
         Assert.Contains("pause, resume, remove", said, StringComparison.Ordinal);
-        Assert.Equal(XmipStatus.Ok, Rules.EventSubscriptions.Act(mine.Id, "remove", "ilian", out _));
+        Assert.Equal(
+            XmipStatus.Ok, Rules.EventSubscriptions.Act(mine.Id, "remove", "ilian", out _));
         Assert.DoesNotContain(
-            Rules.EventSubscriptions.Standing(Node).EventSubscriptions, entry => entry.Id == mine.Id);
+            Rules.EventSubscriptions.Standing(Node).EventSubscriptions,
+            entry => entry.Id == mine.Id);
         Assert.Equal(
             XmipStatus.NotFound, Rules.EventSubscriptions.Act(mine.Id, "pause", "ilian", out said));
         Assert.StartsWith("REFUSED", said, StringComparison.Ordinal);

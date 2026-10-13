@@ -51,23 +51,36 @@ public sealed class SurfaceChoiceTest
     }
 
     [Fact]
-    public void ANativeSurfaceIsFoundByTheDiscoveryRule()
+    public void ALocalSurfaceFollowsTheEndpointTheDocumentNames()
     {
-        using Document document = new("""
+        string endpoint = $"xmip-nobody-{Guid.NewGuid():n}";
+        using Document document = new($"""
             [Xmip]
-            Surface = "Native"
-            RuntimeLibrary = "lib/xmip_core_runtime.dll"
+            Surface = "Local"
+            Local = "{endpoint}"
             """);
 
         IOperatorSurface surface = SurfaceChoice.Open(document.Configuration, document.Directory);
 
-        NativeOperator native = Assert.IsType<NativeOperator>(surface);
-        Assert.Equal(Path.Combine(document.Directory, "lib", "xmip_core_runtime.dll"), native.Path);
-        Assert.False(native.IsLoaded);
-        Assert.Contains("no runtime library at", native.Reason, StringComparison.Ordinal);
-        Assert.StartsWith("NATIVE — ", native.Source, StringComparison.Ordinal);
-        Assert.Empty(native.Health(ScopeTree.Root));
-        native.Dispose();
+        using LocalOperator local = Assert.IsType<LocalOperator>(surface);
+        Assert.False(SurfaceChoice.Answers(local));
+        Assert.Contains("unreachable", local.Source, StringComparison.Ordinal);
+        Assert.StartsWith("LOCAL — ", local.Source, StringComparison.Ordinal);
+        Assert.Empty(local.Health(ScopeTree.Root));
+    }
+
+    [Fact]
+    public void ALocalSurfaceNamingNoEndpointNamesNoNodeAndSaysSo()
+    {
+        using Document document = new("""
+            [Xmip]
+            Surface = "local"
+            """);
+
+        using LocalOperator local = Assert.IsType<LocalOperator>(
+            SurfaceChoice.Open(document.Configuration, document.Directory));
+        Assert.False(SurfaceChoice.Answers(local));
+        Assert.Contains(LocalOperator.Unnamed, local.Source, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -199,7 +212,7 @@ public sealed class SurfaceChoiceTest
     }
 
     [Fact]
-    public void ARuntimeStatedWinsOverTheDocumentsSurface()
+    public void ARuntimeStatedChoosesNoSurface()
     {
         IOperatorSurface chosen = SurfaceChoice.Stated(
             new SurfaceLine(Runtime: "mine.dll"),
@@ -207,18 +220,32 @@ public sealed class SurfaceChoiceTest
             Beside,
             Beside);
 
-        using NativeOperator native = Assert.IsType<NativeOperator>(chosen);
-        Assert.Equal(Path.GetFullPath("mine.dll"), native.Path);
+        Assert.Equal(Path.Combine(Beside, "a.toml"), Assert.IsType<SnapshotOperator>(chosen).Path);
     }
 
     [Fact]
-    public void NoSurfaceNamedAnywhereMeansTheRuntimeRule()
+    public void ALocalNodeStatedWinsOverTheSnapshotAndTheDocument()
+    {
+        string endpoint = $"xmip-nobody-{Guid.NewGuid():n}";
+        IOperatorSurface chosen = SurfaceChoice.Stated(
+            new SurfaceLine(Snapshot: "b-snapshot.toml", Local: endpoint),
+            Pairs(("Surface", "snapshot"), ("Snapshot", "a.toml")),
+            Beside,
+            Beside);
+
+        using LocalOperator local = Assert.IsType<LocalOperator>(chosen);
+        Assert.EndsWith(endpoint, local.Address, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void NoSurfaceNamedAnywhereNamesNoNodeAndSaysSo()
     {
         IOperatorSurface chosen = SurfaceChoice.Stated(
             SurfaceLine.None, Pairs(("RuntimeLibrary", "configured.dll")), Beside, Beside);
 
-        using NativeOperator native = Assert.IsType<NativeOperator>(chosen);
-        Assert.Equal(Path.Combine(Beside, "configured.dll"), native.Path);
+        using LocalOperator local = Assert.IsType<LocalOperator>(chosen);
+        Assert.False(SurfaceChoice.Answers(local));
+        Assert.Contains(LocalOperator.Unnamed, local.Source, StringComparison.Ordinal);
     }
 
     [Fact]

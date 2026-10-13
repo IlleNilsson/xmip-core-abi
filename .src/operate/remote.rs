@@ -1,7 +1,7 @@
-//! Header sections 17 and 18: a node reached at its operate address — the
-//! remote surface, read, followed and acted through over gRPC inside
-//! Xmip's mutual TLS — and this process's node served on an operate
-//! listener of its own (ADR-0014, amendment 2026-10-12; ADR-0067); and the
+//! Header sections 17 and 18: a node reached at its operate listener —
+//! read, followed and acted through over gRPC, inside Xmip's mutual TLS
+//! from another machine or on its local endpoint from this one — and this
+//! process's node served on an operate listener of its own (ADR-0014, amendment 2026-10-12; ADR-0067); and the
 //! role a caller holds with the one check every act passes (ADR-0009).
 //! Declarations only; the runtime's tests fail to compile if an export
 //! drifts from them.
@@ -10,6 +10,8 @@ use crate::ffi::Str;
 
 /// `xmip_remote_open_v1`.
 pub const OPEN_ENTRYPOINT: &str = "xmip_remote_open_v1";
+/// `xmip_remote_open_local_v1`.
+pub const OPEN_LOCAL_ENTRYPOINT: &str = "xmip_remote_open_local_v1";
 /// `xmip_remote_publication_v1`.
 pub const PUBLICATION_ENTRYPOINT: &str = "xmip_remote_publication_v1";
 /// `xmip_remote_wait_v1`.
@@ -22,6 +24,8 @@ pub const END_ENTRYPOINT: &str = "xmip_remote_end_v1";
 pub const FREE_ENTRYPOINT: &str = "xmip_remote_free_v1";
 /// `xmip_operate_serve_v1`.
 pub const SERVE_ENTRYPOINT: &str = "xmip_operate_serve_v1";
+/// `xmip_operate_serve_local_v1`.
+pub const SERVE_LOCAL_ENTRYPOINT: &str = "xmip_operate_serve_local_v1";
 /// `xmip_operate_served_address_v1`.
 pub const SERVED_ADDRESS_ENTRYPOINT: &str = "xmip_operate_served_address_v1";
 /// `xmip_operate_post_v1`.
@@ -54,6 +58,16 @@ pub type OpenFn = unsafe extern "C" fn(
     certificate: Str,
     key: Str,
     anchors: Str,
+    out: *mut *mut Remote,
+    report: *mut u8,
+    cap: usize,
+    out_len: *mut usize,
+) -> i32;
+
+/// `xmip_remote_open_local_v1`: the node on this machine whose local
+/// endpoint is called `endpoint`.
+pub type OpenLocalFn = unsafe extern "C" fn(
+    endpoint: Str,
     out: *mut *mut Remote,
     report: *mut u8,
     cap: usize,
@@ -116,6 +130,18 @@ pub type ServeFn = unsafe extern "C" fn(
     out_len: *mut usize,
 ) -> i32;
 
+/// `xmip_operate_serve_local_v1`: this process's node served on this
+/// machine's local endpoint called `local`.
+pub type ServeLocalFn = unsafe extern "C" fn(
+    local: Str,
+    role: Str,
+    program: Str,
+    out: *mut *mut Served,
+    report: *mut u8,
+    cap: usize,
+    out_len: *mut usize,
+) -> i32;
+
 /// `xmip_operate_served_address_v1`: where it listens.
 pub type ServedAddressFn = unsafe extern "C" fn(
     served: *const Served,
@@ -159,12 +185,17 @@ mod tests {
     fn every_entrypoint_matches_the_header() {
         for (define, name) in [
             ("XMIP_REMOTE_OPEN_ENTRYPOINT", OPEN_ENTRYPOINT),
+            ("XMIP_REMOTE_OPEN_LOCAL_ENTRYPOINT", OPEN_LOCAL_ENTRYPOINT),
             ("XMIP_REMOTE_PUBLICATION_ENTRYPOINT", PUBLICATION_ENTRYPOINT),
             ("XMIP_REMOTE_WAIT_ENTRYPOINT", WAIT_ENTRYPOINT),
             ("XMIP_REMOTE_ACT_ENTRYPOINT", ACT_ENTRYPOINT),
             ("XMIP_REMOTE_END_ENTRYPOINT", END_ENTRYPOINT),
             ("XMIP_REMOTE_FREE_ENTRYPOINT", FREE_ENTRYPOINT),
             ("XMIP_OPERATE_SERVE_ENTRYPOINT", SERVE_ENTRYPOINT),
+            (
+                "XMIP_OPERATE_SERVE_LOCAL_ENTRYPOINT",
+                SERVE_LOCAL_ENTRYPOINT,
+            ),
             (
                 "XMIP_OPERATE_SERVED_ADDRESS_ENTRYPOINT",
                 SERVED_ADDRESS_ENTRYPOINT,

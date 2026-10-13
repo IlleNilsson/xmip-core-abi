@@ -267,7 +267,8 @@ public sealed class SurfaceTls
             return false;
         }
 
-        using X509Certificate2 peer = X509CertificateLoader.LoadCertificate(presented.GetRawCertData());
+        using X509Certificate2 peer =
+            X509CertificateLoader.LoadCertificate(presented.GetRawCertData());
         using X509Chain chain = new();
         chain.ChainPolicy.RevocationMode = X509RevocationMode.NoCheck;
         chain.ChainPolicy.ApplicationPolicy.Add(new Oid(purpose));

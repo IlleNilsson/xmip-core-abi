@@ -6,8 +6,9 @@ namespace Xmip.Abi.Operate;
 
 /// <summary>
 /// Section 17 of <c>include/xmip_operate.h</c>, crossed by P/Invoke
-/// (ADR-0014, amendment 2026-10-12): a node reached at its operate address
-/// over gRPC inside Xmip's mutual TLS — its publication read, its follow
+/// (ADR-0014, amendments 2026-10-12 and 2026-10-13): a node reached at its
+/// operate listener over gRPC — at its address inside Xmip's mutual TLS, or
+/// on this machine at its local endpoint — its publication read, its follow
 /// waited on, an act asked of it — and this process's node served on an
 /// operate listener of its own. The connection, the follow and its
 /// recovery loop, the gate and every word are the runtime's; this binds
@@ -23,12 +24,21 @@ public sealed unsafe class RuntimeRemotes
     private readonly delegate* unmanaged[Cdecl]<
         XmipStr, XmipStr, XmipStr, XmipStr, XmipStr, XmipStr, nint*, byte*, nuint, nuint*, int>
         _serve;
+    private readonly delegate* unmanaged[Cdecl]<XmipStr, nint*, byte*, nuint, nuint*, int>
+        _openLocal;
+    private readonly delegate* unmanaged[Cdecl]<
+        XmipStr, XmipStr, XmipStr, nint*, byte*, nuint, nuint*, int> _serveLocal;
 
     internal RuntimeRemotes(nint library)
     {
         _open = (delegate* unmanaged[Cdecl]<
             XmipStr, XmipStr, XmipStr, XmipStr, nint*, byte*, nuint, nuint*, int>)
             NativeLibrary.GetExport(library, OperateAbi.RemoteOpenEntrypoint);
+        _openLocal = (delegate* unmanaged[Cdecl]<XmipStr, nint*, byte*, nuint, nuint*, int>)
+            NativeLibrary.GetExport(library, OperateAbi.RemoteOpenLocalEntrypoint);
+        _serveLocal = (delegate* unmanaged[Cdecl]<
+            XmipStr, XmipStr, XmipStr, nint*, byte*, nuint, nuint*, int>)
+            NativeLibrary.GetExport(library, OperateAbi.OperateServeLocalEntrypoint);
         Publication = (delegate* unmanaged[Cdecl]<nint, byte*, nuint, nuint*, ulong*, int>)
             NativeLibrary.GetExport(library, OperateAbi.RemotePublicationEntrypoint);
         Wait = (delegate* unmanaged[Cdecl]<
@@ -57,12 +67,14 @@ public sealed unsafe class RuntimeRemotes
     public static IReadOnlyList<string> Entrypoints { get; } =
     [
         OperateAbi.RemoteOpenEntrypoint,
+        OperateAbi.RemoteOpenLocalEntrypoint,
         OperateAbi.RemotePublicationEntrypoint,
         OperateAbi.RemoteWaitEntrypoint,
         OperateAbi.RemoteActEntrypoint,
         OperateAbi.RemoteEndEntrypoint,
         OperateAbi.RemoteFreeEntrypoint,
         OperateAbi.OperateServeEntrypoint,
+        OperateAbi.OperateServeLocalEntrypoint,
         OperateAbi.OperateServedAddressEntrypoint,
         OperateAbi.OperatePostEntrypoint,
         OperateAbi.OperateServeStopEntrypoint,
@@ -146,6 +158,62 @@ public sealed unsafe class RuntimeRemotes
             status = _serve(
                 pack.Borrow(data, 0), pack.Borrow(data, 1), pack.Borrow(data, 2),
                 pack.Borrow(data, 3), pack.Borrow(data, 4), pack.Borrow(data, 5), &handle,
+                written, (nuint)report.Length, &length);
+        }
+
+        reason = status == 0 ? string.Empty : Said(report, length);
+        return status == 0 && handle != 0 ? new ServedNode(this, handle) : null;
+    }
+
+    /// <summary>
+    /// The node on this machine whose local endpoint is called
+    /// <paramref name="endpoint"/> — a named pipe on Windows, a Unix domain
+    /// socket elsewhere (ADR-0014, amendment 2026-10-13); no certificate, the
+    /// node taking every call as the user this process runs as. Null with
+    /// the runtime's refusal in <paramref name="reason"/>. Nothing is
+    /// connected yet.
+    /// </summary>
+    public RemoteNode? OpenLocal(string endpoint, out string reason)
+    {
+        ArgumentNullException.ThrowIfNull(endpoint);
+
+        Utf8Pack pack = new([endpoint]);
+        byte[] report = new byte[Room];
+        nuint length = 0;
+        nint handle = 0;
+        int status;
+
+        fixed (byte* data = pack.Bytes)
+        fixed (byte* written = report)
+        {
+            status = _openLocal(
+                pack.Borrow(data, 0), &handle, written, (nuint)report.Length, &length);
+        }
+
+        reason = status == 0 ? string.Empty : Said(report, length);
+        return status == 0 && handle != 0 ? new RemoteNode(this, handle) : null;
+    }
+
+    /// <summary>
+    /// Serve what is posted to it and the acts on the nodes of this process
+    /// on this machine's local endpoint called <paramref name="local"/>, every
+    /// caller the user its process runs as, holding the role
+    /// <paramref name="role"/> names, audited as <paramref name="program"/>;
+    /// null with why in <paramref name="reason"/>.
+    /// </summary>
+    public ServedNode? ServeLocal(string local, string role, string program, out string reason)
+    {
+        Utf8Pack pack = new([local, role, program]);
+        byte[] report = new byte[Room];
+        nuint length = 0;
+        nint handle = 0;
+        int status;
+
+        fixed (byte* data = pack.Bytes)
+        fixed (byte* written = report)
+        {
+            status = _serveLocal(
+                pack.Borrow(data, 0), pack.Borrow(data, 1), pack.Borrow(data, 2), &handle,
                 written, (nuint)report.Length, &length);
         }
 

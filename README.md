@@ -119,19 +119,26 @@ list is an answer (`FailedJourneyList.Listed`) even when it lists none;
 reached, no runtime loaded, no publication read yet — and
 `FailedJourneyList.Unanswered` one that asked and was not answered, its
 `Failure` the sentence, opening `FAILED:`, in the runtime's words: where Xmip
-Storage does not answer, `NativeOperator` says so through
-`JourneyOperation.Read` rather than throwing. The evidence a Send
+Storage does not answer, a surface says so through `JourneyOperation.Read`
+rather than throwing. The evidence a Send
 Port publishes is read in one place each: the last Journey that ever failed
 there by `JourneyOperation.FailedIn`, how many wait in its queue now by
 `JourneyOperation.FailingIn`.
-Section 17 — a node reached at its operate address (ADR-0014, amendment
-2026-10-12) — is `RuntimeRules.Remotes` (`RuntimeRemotes`): `Open` gives a
-`RemoteNode` over `host:port` with PEM certificate, key and anchors, whose
-`Publication`, `Wait` and `Act` read the node's publication, wait on the
-runtime's follow and ask an act as the certificate's subject, and whose
-`Dispose` ends the follow, lets every call in flight return and frees the
-handle; `Serve` gives a `ServedNode`, an operate listener this process serves
-for what it `Post`s. Section 18 is `RuntimeRules.SecurityRoles`
+Section 17 — a node reached at its operate listener (ADR-0014, amendments
+2026-10-12 and 2026-10-13) — is `RuntimeRules.Remotes` (`RuntimeRemotes`):
+`Open` gives a `RemoteNode` over `host:port` with PEM certificate, key and
+anchors, and `OpenLocal` one over the local endpoint of a node on this
+machine — a named pipe on Windows, a Unix domain socket elsewhere, no
+certificate, the node taking every call as the user this process runs as;
+its `Publication`, `Wait` and `Act` read the node's publication, wait on the
+runtime's follow and ask an act as the identity the connection proved, and
+its `Dispose` ends the follow, lets every call in flight return and frees the
+handle; `Serve` and `ServeLocal` give a `ServedNode`, an operate listener
+this process serves for what it `Post`s. Every .NET surface operates a node
+through these, on its machine and elsewhere alike; the C ABI is crossed
+directly only for what has no node behind it — validating, editing and
+slicing configuration, the language server's design exports, module
+probing, the audit file and Modules. Section 18 is `RuntimeRules.SecurityRoles`
 (`RuntimeSecurityRoles`): the role a word names, its words, and `Admitted`,
 the one gate `GatedOperator` asks.
 Section 10 — the
@@ -139,7 +146,12 @@ cluster's `xmip.toml` read, edited and sliced — is `RuntimeRules.Design`
 (`RuntimeDesign`): `TryViews`, `TryEdit`, `TrySlices`, `TryFilterStructure`
 and `TryFilterText`, each the header's JSON or text, or the runtime's
 refusal; `Xmip.Surface` reads them as `ConfigurationViews`, `ClusterEdit` and
-`NodeSlice`, which the desktop's Configure page draws and sends. Section 12 — the
+`NodeSlice`, which the desktop's Configure page draws and sends; the cluster's
+file it edits — opened, compared, locked and written whole
+(`ClusterConfiguration`), sliced and delivered to each node
+(`SliceDelivery`, `NodeDelivery`, `SliceDelivery.From` for where), and
+validated, saved and planned with every step audited (`RuntimeCommands`) —
+is `Xmip.Surface`'s too, beneath the page. Section 12 — the
 technologies the runtime carries and what each declares a Location may set —
 is `RuntimeRules.Catalogue` (`RuntimeCatalogue`): `TryRead` brings back the
 header's JSON, every technology or the one named, for the desktop editor's
@@ -165,57 +177,63 @@ faces over it.
 
 ### What each source answers
 
-A face reads one of three sources, chosen by `Surface = "native" |
+A face reads one of three sources, chosen by `Surface = "local" |
 "snapshot" | "remote"` in its `[Xmip]` table, or by `--remote`, then
-`--snapshot`, then `--runtime` on a line (`SurfaceChoice`). They do not
-answer alike, and an operator reading a view should know which one it is:
+`--local`, then `--snapshot` on a line (`SurfaceChoice`); `--runtime` names
+the library every one calls the runtime through and chooses none. They do
+not answer alike, and an operator reading a view should know which one it
+is:
 
-| | `native` (`NativeOperator`) | `snapshot` (`SnapshotOperator`) | `remote` (`RemoteOperator`) |
+| | `local` (`LocalOperator`) | `snapshot` (`SnapshotOperator`) | `remote` (`RemoteOperator`) |
 | --- | --- | --- | --- |
-| Reads | the runtime library in this process, and the nodes running in it | a node's published `snapshot.toml` | a node's publication, over gRPC to its operate listener in Xmip's mutual TLS (section 17) |
-| Topology | none: the native boundary does not publish it yet | the publication's, where it carries one | the node's publication's |
-| Failed Journeys | Listed, from Xmip Storage a page at a time; Unanswered where Storage does not answer; Unlisted with no runtime loaded, and where no node running in the process sends a Send Port at or beneath the scope: it cannot know of nodes elsewhere | Listed: each Port's count and its oldest hundred; Unlisted with no file read | as a snapshot: what the node's publication carries; Unlisted while the node is unreachable |
-| A Journey's Retry or Dismiss; a Subscription's or an Event subscription's pause and resume; a Dead Message's Replay | applied at once, in this process, by a node running here — refused where none does | submitted as an order where the publication says its node takes them, taken within a round; declined where it names none | asked of the node, which takes it as the certificate's subject behind the role its `[operate]` grants (section 18's gate), applies it at once and audits it; refused in its words otherwise |
-| A scope's pause and resume | applied at once | declined: a snapshot cannot be paused | declined: a node's operate listener takes the acts on what it publishes, not a scope's pause |
+| Reads | a node's publication on this machine, over gRPC to its operate listener's local endpoint — a named pipe on Windows, a Unix domain socket elsewhere (section 17) | a node's published `snapshot.toml` | a node's publication on another machine, over gRPC to its operate listener in Xmip's mutual TLS (section 17) |
+| Topology | the node's publication's | the publication's, where it carries one | the node's publication's |
+| Failed Journeys | what the node's publication carries: each Port's count and its oldest hundred; Unlisted while the node is unreachable | Listed: each Port's count and its oldest hundred; Unlisted with no file read | as local |
+| A Journey's Retry or Dismiss; a Subscription's or an Event subscription's pause and resume; a Dead Message's Replay | asked of the node, which takes it as the user this process runs as behind the role its `[operate]` grants (section 18's gate), applies it at once and audits it; refused in its words otherwise | submitted as an order where the publication says its node takes them, taken within a round; declined where it names none | as local, the act the certificate's subject's |
+| A scope's pause and resume | declined: a node's operate listener takes the acts on what it publishes, not a scope's pause | declined: a snapshot cannot be paused | declined, as local |
 
 *Listed* is an
 answer even when it lists none; *Unlisted* is a source that cannot list;
 *Unanswered* one that asked and was not answered, its sentence opening
 `FAILED:` (`FailedJourneyList`).
 
-- **Surfaces.** `IOperatorSurface` with its three implementations —
-  `NativeOperator` over the binding, `SnapshotOperator` over a published
-  snapshot and `RemoteOperator` over a node's operate listener on another
-  machine, the runtime's remote surface (section 17) — and `ClusterSurfaces`, the set a face holds when more than one
+- **Surfaces.** `IOperatorSurface` with its implementations —
+  `ListenerOperator` over a node's operate listener, the runtime's surface
+  (section 17): `LocalOperator` on this machine and `RemoteOperator` on
+  another — and `SnapshotOperator` over a published snapshot — and
+  `ClusterSurfaces`, the set a face holds when more than one
   cluster is published: one surface per cluster, and nothing added across them
-  (ADR-0052, amendment 2026-09-20). `NativeOperator.Plan` hands a node's
+  (ADR-0052, amendment 2026-09-20). A `ListenerOperator` tells every watch
+  first and reads the publication by the next question: a change reaches a
+  .NET watch in about 0.3 ms on the local endpoint (`LocalOperatorTest`
+  holds it under a millisecond). `ConfigurationRuntime` asks the runtime
+  what has no node behind it: `Validate`, and `Plan`, which hands a node's
   file to `xmip_start_v1`, which reads, validates and publishes its plan and
   runs nothing; its sentence says *planned … not running*. A node that
-  `RemoteOperator` loses is told at once to every watch, with a `Source` that
+  a `ListenerOperator` loses is told at once to every watch, with a `Source` that
   says it is unreachable and why, and every answer is empty until it is back
   — never the publication held from before; the runtime's follow tries it
   again on its own loop (0, 2, 10 and 30 seconds, the last repeated), whether
   it was lost or never reached, and every watch is told the moment it
-  answers (`RemoteOperatorTest`; the runtime's `tests/plane`). A snapshot is read once per change: a
+  answers (`RemoteOperatorTest`, `LocalOperatorTest`; the runtime's
+  `tests/plane`). A snapshot is read once per change: a
   followed `SnapshotOperator` reads each publication before its change feed
   announces it, and answers every question from that reading without touching
   the file; `SurfaceChoice.OpenAll` follows every snapshot it opens
   (`ClusterSurfaces.Follow`), so no render reads one (ADR-0052, amendment
   2026-10-03; `SnapshotReadCostTest` holds the bound). A watch begun before
   its source recovers when the source arrives (`PathArrival`): a
-  `SnapshotOperator` whose publication's directory is not made yet, and a
-  `NativeOperator` whose runtime library is not built yet or would not load
-  (`RuntimeLoad`, which tries a refused file again once it is written
-  again), each say their first view, wait for the file system's notice and
-  announce a change the moment the source is there — a retry, its interval
+  `SnapshotOperator` whose publication's directory is not made yet says its
+  first view, waits for the file system's notice and announces a change the
+  moment the source is there — a retry, its interval
   doubling to five seconds, only where not even the path's root exists to
   watch (`SurfaceArrivalTest`).
 - **Subscriptions.** `IOperatorSurface.Subscriptions` lists what the nodes
   route by and `IOperatorSurface.Act` pauses or resumes one (`SubscriptionAct`,
   which holds no remove, answered as a `SubscriptionOperation`; a
   Subscription is added and removed in the TOML configuration,
-  `SubscriptionOperation.Configured` says so in words): in the node's
-  process for `NativeOperator`, through the host's hub for `RemoteOperator`,
+  `SubscriptionOperation.Configured` says so in words): by the node, over
+  its operate listener, for a `ListenerOperator`,
   and for `SnapshotOperator` left where the publication says its publisher
   takes orders, or declined where it says nowhere. `SubscriptionQuery` is the
   one drill, pattern and order every surface asks of them (ADR-0013,
@@ -279,13 +297,14 @@ answer even when it lists none; *Unlisted* is a source that cannot list;
   nowhere else in the estate: `Xmip:RuntimeLibrary`, else
   `XMIP_RUNTIME_LIBRARY`, else beside the executable, with a library an
   operator typed over all three; and `Rules`, the one library a process calls
-  the runtime's rules in — a snapshot or remote surface as much as a native
-  one), `SurfaceChoice` (the surface a host chose in
+  the runtime's rules in, and its gRPC client — every surface alike),
+  `SurfaceChoice` (the surface a host chose in
   its TOML, every snapshot it names, and — over a `SurfaceLine` — the one
-  precedence the executable, the prompt and the cmdlets share: a remote host,
-  a snapshot or a runtime stated for the invocation, then the document, then
-  the runtime rule; a line whose remote is no web host is refused in
-  `RemoteOperator.Refusal`'s one sentence, `SurfaceLine.Refusal`),
+  precedence the executable, the prompt and the cmdlets share: a remote
+  node, a local node or a snapshot stated for the invocation, then the
+  document, else no node, said so (`LocalOperator.Unnamed`); a line whose
+  remote names no node is refused in `RemoteOperator.Refusal`'s one
+  sentence, `SurfaceLine.Refusal`),
   `TomlDocument` (the one TOML reader, and the syntax-tree editing an editor
   changes a document through, comments and layout kept), `ProcessDeclaration` (what a System
   Process Xmip owns says of itself, ADR-0053 clause 3, declared and listed
@@ -348,7 +367,9 @@ filter and the selection, the figures and their flow, runtime discovery and
 the surface precedence, the English, a program's audit — into a directory,
 to the operating system's log when the sink fails, and one entry of its own
 when audit cannot be reached — the
-configuration verdict, the process declaration, the snapshot surface and the
+configuration verdict, the cluster's file edited, saved under its lock,
+refused when another editor changed it, sliced and delivered to each node and
+audited at every step, the process declaration, the snapshot surface and the
 cluster set over fixtures, the remote surface against a hub on a loopback
 port — plain, and over mutual TLS with certificates a test authority issued,
 where a client certificate the host does not trust, a host certificate the

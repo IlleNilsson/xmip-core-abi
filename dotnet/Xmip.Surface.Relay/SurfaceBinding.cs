@@ -9,7 +9,8 @@ namespace Xmip.Surface.Relay;
 /// is not this machine is HTTPS with the host's certificate, a client
 /// certificate is asked for and checked against the host's anchors, and plain
 /// HTTP is bound on loopback only — the one exception, which the host says
-/// where it binds it. The rule itself is <see cref="SurfaceTls.Permits(string, string, out string)"/>.
+/// where it binds it. The rule itself is
+/// <see cref="SurfaceTls.Permits(string, string, out string)"/>.
 /// </summary>
 public static class SurfaceBinding
 {
@@ -42,7 +43,8 @@ public static class SurfaceBinding
 
         return string.IsNullOrWhiteSpace(urls)
             ? [KestrelDefault]
-            : urls.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            : urls.Split(
+                ';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
     }
 
     /// <summary>
@@ -62,7 +64,8 @@ public static class SurfaceBinding
         foreach (string address in addresses)
         {
             (string scheme, string host) = Parts(address);
-            bool secure = string.Equals(scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase);
+            bool secure = string.Equals(
+                scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase);
 
             if (secure && tls.Certificate is null)
             {
@@ -101,23 +104,29 @@ public static class SurfaceBinding
         ArgumentNullException.ThrowIfNull(host);
         ArgumentNullException.ThrowIfNull(tls);
 
-        return tls.Certificate is not { } presented ? host : host.ConfigureKestrel(kestrel => kestrel.ConfigureHttpsDefaults(https =>
-        {
-            https.ServerCertificate = presented;
-            https.ServerCertificateChain = tls.Chain;
-            https.ClientCertificateMode = ClientCertificateMode.AllowCertificate;
-            https.ClientCertificateValidation = (certificate, chain, errors) =>
+        return tls.Certificate is not { } presented
+            ? host
+            : host.ConfigureKestrel(kestrel => kestrel.ConfigureHttpsDefaults(https =>
             {
-                if (tls.Accepts(
-                    certificate, chain, errors, SurfaceTls.ClientAuthentication, out string why))
+                https.ServerCertificate = presented;
+                https.ServerCertificateChain = tls.Chain;
+                https.ClientCertificateMode = ClientCertificateMode.AllowCertificate;
+                https.ClientCertificateValidation = (certificate, chain, errors) =>
                 {
-                    return true;
-                }
+                    if (tls.Accepts(
+                        certificate,
+                        chain,
+                        errors,
+                        SurfaceTls.ClientAuthentication,
+                        out string why))
+                    {
+                        return true;
+                    }
 
-                refused?.Invoke(why);
-                return false;
-            };
-        }));
+                    refused?.Invoke(why);
+                    return false;
+                };
+            }));
     }
 
     // The scheme and host of a binding address. Not a Uri: Kestrel binds

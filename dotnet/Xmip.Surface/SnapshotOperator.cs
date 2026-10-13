@@ -199,7 +199,8 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
         return Read().EventSubscriptions;
     }
 
-    /// <inheritdoc cref="IOperatorSurface.Act(EventSubscriptionRecord, EventSubscriptionAct, string)" />
+    /// <inheritdoc
+    /// cref="IOperatorSurface.Act(EventSubscriptionRecord, EventSubscriptionAct, string)" />
     /// <remarks>A snapshot touches no node. Where its publication says where
     /// its publisher takes orders, the act is left there for the node that
     /// holds the Event subscription, which applies it at its next look and
