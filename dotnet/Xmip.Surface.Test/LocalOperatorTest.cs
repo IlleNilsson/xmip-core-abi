@@ -123,6 +123,48 @@ public sealed class LocalOperatorTest
         Assert.Null(LocalOperator.Refusal("xmip-node"));
     }
 
+    /// <summary>Decided by the owner, 2026-10-13: <i>a local call waits at most
+    /// a set time — <c>[tuning]</c>, default 2 s — then says the node did not
+    /// answer and shows it so; the tool recovers on its own.</i> An endpoint
+    /// that takes the connection and never answers stands for a hung
+    /// node.</summary>
+    [Fact]
+    public void ANodeThatDoesNotAnswerWithinTheWaitIsShownUnreachable()
+    {
+        string name = $"xmip-silent-test-{Guid.NewGuid():n}";
+        using IDisposable silent = Silent(name);
+        using LocalOperator local = new(name, TimeSpan.FromMilliseconds(200));
+
+        Stopwatch asked = Stopwatch.StartNew();
+        Assert.False(local.Connect());
+        Assert.True(asked.Elapsed < TimeSpan.FromSeconds(2), $"{asked.Elapsed}");
+        Assert.Contains(
+            "the node did not answer within 200 ms", local.Source, StringComparison.Ordinal);
+        Assert.Empty(local.Health(ScopeTree.Root));
+    }
+
+    // An endpoint called name that accepts a connection and says nothing.
+    private static IDisposable Silent(string name)
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            System.IO.Pipes.NamedPipeServerStream pipe = new(
+                name, System.IO.Pipes.PipeDirection.InOut, 1,
+                System.IO.Pipes.PipeTransmissionMode.Byte,
+                System.IO.Pipes.PipeOptions.Asynchronous);
+            _ = pipe.WaitForConnectionAsync();
+            return pipe;
+        }
+
+        string folder = OperatingSystem.IsLinux() ? "/run/xmip/" : "/var/run/xmip/";
+        System.Net.Sockets.Socket socket = new(
+            System.Net.Sockets.AddressFamily.Unix, System.Net.Sockets.SocketType.Stream,
+            System.Net.Sockets.ProtocolType.Unspecified);
+        socket.Bind(new System.Net.Sockets.UnixDomainSocketEndPoint($"{folder}{name}.sock"));
+        socket.Listen(1);
+        return socket;
+    }
+
     private static string FixturePath(string name)
     {
         return Path.Combine(AppContext.BaseDirectory, "Fixture", name);

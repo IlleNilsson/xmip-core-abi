@@ -24,7 +24,7 @@ public sealed unsafe class RuntimeRemotes
     private readonly delegate* unmanaged[Cdecl]<
         XmipStr, XmipStr, XmipStr, XmipStr, XmipStr, XmipStr, nint*, byte*, nuint, nuint*, int>
         _serve;
-    private readonly delegate* unmanaged[Cdecl]<XmipStr, nint*, byte*, nuint, nuint*, int>
+    private readonly delegate* unmanaged[Cdecl]<XmipStr, uint, nint*, byte*, nuint, nuint*, int>
         _openLocal;
     private readonly delegate* unmanaged[Cdecl]<
         XmipStr, XmipStr, XmipStr, nint*, byte*, nuint, nuint*, int> _serveLocal;
@@ -34,7 +34,8 @@ public sealed unsafe class RuntimeRemotes
         _open = (delegate* unmanaged[Cdecl]<
             XmipStr, XmipStr, XmipStr, XmipStr, nint*, byte*, nuint, nuint*, int>)
             NativeLibrary.GetExport(library, OperateAbi.RemoteOpenEntrypoint);
-        _openLocal = (delegate* unmanaged[Cdecl]<XmipStr, nint*, byte*, nuint, nuint*, int>)
+        _openLocal = (delegate* unmanaged[Cdecl]<
+            XmipStr, uint, nint*, byte*, nuint, nuint*, int>)
             NativeLibrary.GetExport(library, OperateAbi.RemoteOpenLocalEntrypoint);
         _serveLocal = (delegate* unmanaged[Cdecl]<
             XmipStr, XmipStr, XmipStr, nint*, byte*, nuint, nuint*, int>)
@@ -171,11 +172,15 @@ public sealed unsafe class RuntimeRemotes
     /// socket elsewhere (ADR-0014, amendment 2026-10-13); no certificate, the
     /// node taking every call as the user this process runs as. Null with
     /// the runtime's refusal in <paramref name="reason"/>. Nothing is
-    /// connected yet.
+    /// connected yet. Each call waits at most <paramref name="within"/>; with
+    /// none, what the node declared from its <c>[tuning] local_timeout</c>,
+    /// else 2 s — the runtime's rule, not this one's.
     /// </summary>
-    public RemoteNode? OpenLocal(string endpoint, out string reason)
+    public RemoteNode? OpenLocal(string endpoint, out string reason, TimeSpan within = default)
     {
         ArgumentNullException.ThrowIfNull(endpoint);
+
+        uint withinMs = (uint)Math.Clamp(within.TotalMilliseconds, 0, uint.MaxValue);
 
         Utf8Pack pack = new([endpoint]);
         byte[] report = new byte[Room];
@@ -187,7 +192,7 @@ public sealed unsafe class RuntimeRemotes
         fixed (byte* written = report)
         {
             status = _openLocal(
-                pack.Borrow(data, 0), &handle, written, (nuint)report.Length, &length);
+                pack.Borrow(data, 0), withinMs, &handle, written, (nuint)report.Length, &length);
         }
 
         reason = status == 0 ? string.Empty : Said(report, length);

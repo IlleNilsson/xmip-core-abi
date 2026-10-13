@@ -57,13 +57,13 @@ public sealed class ClusterConfigurationTest : IDisposable
         ArtifactPlace place = sends.Places.First(at => at.Scope == "cluster");
 
         // The runtime refuses an entry that would not read, naming what it
-        // misses; given its values, the entry is added.
+        // misses; given its values, the entry is added, and a Location the
+        // designer creates says start = true (the owner, 2026-10-13).
         Assert.False(
             cluster.TryEdit(new ClusterEdit.AddEntry(place.Section, "out"), out string r0));
-        Assert.Contains("start", r0, StringComparison.Ordinal);
+        Assert.Contains("transport", r0, StringComparison.Ordinal);
         ArtifactField[] values =
         [
-            new(["start"], "false", ""),
             new(["transport"], "\"file\"", ""),
             new(["address"], "\"C:/xmip/out\"", ""),
         ];
@@ -72,6 +72,8 @@ public sealed class ClusterConfigurationTest : IDisposable
             r1);
         ArtifactEntry added = Assert.Single(cluster.Views.Of("send-location")!.Entries);
         Assert.Equal("out", added.Name);
+        Assert.Contains(
+            added.Fields, field => field.Key.SequenceEqual(["start"]) && field.Value == "true");
 
         Assert.True(cluster.TryEdit(new ClusterEdit.RemoveEntry(added.Section), out string r2), r2);
         Assert.Empty(cluster.Views.Of("send-location")!.Entries);

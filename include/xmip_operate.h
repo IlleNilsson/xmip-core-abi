@@ -1480,10 +1480,15 @@ typedef XmipStatus (*XmipPublicationFailedJourneysFn)(const XmipPublication *pub
  *
  * xmip_remote_open_local_v1 makes the same handle over the node on this
  * machine whose local endpoint is called endpoint: a name - \\.\pipe\<name>
- * on Windows, a file in the temporary directory on Unix - or a path. The
- * node takes every call as the operating system user this process runs as;
- * no name crosses. XMIP_OK; XMIP_E_INVALID with the refusal in report for an
- * empty endpoint. Every call below takes either handle.
+ * on Windows, /run/xmip/<name>.sock on Linux, /var/run/xmip/<name>.sock on
+ * macOS - or that place itself. The node takes every call as the operating
+ * system user this process runs as; no name crosses. Each call waits at
+ * most within_ms; 0 takes what the node declared from its [tuning]
+ * local_timeout, else 2 s, and a node that took longer is unreachable,
+ * "the node did not answer within" the wait, until the follow hears it
+ * again. XMIP_OK; XMIP_E_INVALID with the refusal in report for a name
+ * that would leave the endpoints' folder. Every call below takes either
+ * handle.
  *
  * xmip_remote_publication_v1 reads the node's publication - the text its
  * file holds, which section 8 reads - and its revision. XMIP_OK with the
@@ -1547,8 +1552,9 @@ typedef struct XmipServed XmipServed;
 typedef XmipStatus (*XmipRemoteOpenFn)(XmipStr address, XmipStr certificate, XmipStr key,
                                        XmipStr anchors, XmipRemote **out, uint8_t *report,
                                        size_t cap, size_t *out_len);
-typedef XmipStatus (*XmipRemoteOpenLocalFn)(XmipStr endpoint, XmipRemote **out,
-                                            uint8_t *report, size_t cap, size_t *out_len);
+typedef XmipStatus (*XmipRemoteOpenLocalFn)(XmipStr endpoint, uint32_t within_ms,
+                                            XmipRemote **out, uint8_t *report, size_t cap,
+                                            size_t *out_len);
 typedef XmipStatus (*XmipRemotePublicationFn)(const XmipRemote *remote, uint8_t *out,
                                               size_t cap, size_t *out_len,
                                               uint64_t *out_revision);

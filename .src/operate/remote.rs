@@ -65,9 +65,11 @@ pub type OpenFn = unsafe extern "C" fn(
 ) -> i32;
 
 /// `xmip_remote_open_local_v1`: the node on this machine whose local
-/// endpoint is called `endpoint`.
+/// endpoint is called `endpoint`, each call waiting at most `within_ms`
+/// (0: what the node declared).
 pub type OpenLocalFn = unsafe extern "C" fn(
     endpoint: Str,
+    within_ms: u32,
     out: *mut *mut Remote,
     report: *mut u8,
     cap: usize,
