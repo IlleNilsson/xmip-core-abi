@@ -38,11 +38,18 @@
     checkout of this repository alone the glob matches nothing and nothing is
     copied; a deployment puts its own runtime beside it. Where CARGO_TARGET_DIR
     names the estate's one shared build directory (Publish-XmipChange sets it),
-    the library is read from there.
+    the library is read from there. Unset, the estate's shared directory is
+    still the one read where it exists, before the runtime's own target: every
+    landing builds into the shared one, so the runtime's target/debug holds
+    whatever an older plain `cargo build` left, and a console importing the
+    estate module built against that stale copy (the owner's console,
+    2026-10-13).
   -->
   <PropertyGroup>
+    <XmipEstateBuild>$(MSBuildThisFileDirectory)../../../../../.ai-interaction/target-windows/debug</XmipEstateBuild>
     <XmipRuntimeBuild Condition="'$(CARGO_TARGET_DIR)' != ''">$(CARGO_TARGET_DIR)/debug</XmipRuntimeBuild>
-    <XmipRuntimeBuild Condition="'$(CARGO_TARGET_DIR)' == ''">$(MSBuildThisFileDirectory)../../../../platform/runtime/target/debug</XmipRuntimeBuild>
+    <XmipRuntimeBuild Condition="'$(CARGO_TARGET_DIR)' == '' And Exists('$(XmipEstateBuild)')">$(XmipEstateBuild)</XmipRuntimeBuild>
+    <XmipRuntimeBuild Condition="'$(XmipRuntimeBuild)' == ''">$(MSBuildThisFileDirectory)../../../../platform/runtime/target/debug</XmipRuntimeBuild>
   </PropertyGroup>
   <ItemGroup>
     <None Include="$(XmipRuntimeBuild)/*xmip_core_runtime.*"
