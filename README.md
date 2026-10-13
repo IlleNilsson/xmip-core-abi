@@ -129,7 +129,10 @@ Section 17 — a node reached at its operate listener (ADR-0014, amendments
 `Open` gives a `RemoteNode` over `host:port` with PEM certificate, key and
 anchors, and `OpenLocal` one over the local endpoint of a node on this
 machine — a named pipe on Windows, a Unix domain socket elsewhere, no
-certificate, the node taking every call as the user this process runs as;
+certificate, the node taking every call as the user this process runs as,
+each call waiting at most the `within` it is given or else what the node
+declared from its `[tuning] local_timeout`, two seconds by default, then
+saying *the node did not answer within* it;
 its `Publication`, `Wait` and `Act` read the node's publication, wait on the
 runtime's follow and ask an act as the identity the connection proved, and
 its `Dispose` ends the follow, lets every call in flight return and frees the

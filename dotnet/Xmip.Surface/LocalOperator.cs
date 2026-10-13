@@ -11,18 +11,24 @@ namespace Xmip.Surface;
 /// 2026-10-13 it loaded the runtime into its own process instead, which
 /// operated only the nodes that process ran.
 /// </summary>
-/// <param name="endpoint">The node's local endpoint: a name, or the pipe's or
-/// socket's path. With none, a surface that answers nothing and says why
-/// (<see cref="Unnamed"/>).</param>
-public sealed class LocalOperator(string? endpoint)
+/// <param name="endpoint">The node's local endpoint: a name — every node
+/// serves one, <c>xmip-&lt;node&gt;</c> unless its <c>[operate] local</c> names
+/// another — or the pipe's or socket's place. With none, a surface that
+/// answers nothing and says why (<see cref="Unnamed"/>).</param>
+/// <param name="within">How long each call waits before the node is shown
+/// unreachable, "the node did not answer within" it; with none, what the node
+/// declared from its <c>[tuning] local_timeout</c>, else 2 s (the runtime's
+/// rule). The runtime's follow recovers it on its own.</param>
+public sealed class LocalOperator(string? endpoint, TimeSpan within = default)
     : ListenerOperator(
-        "LOCAL", endpoint ?? string.Empty, Opened(endpoint, out string reason), reason)
+        "LOCAL", endpoint ?? string.Empty, Opened(endpoint, within, out string reason), reason)
 {
     /// <summary>What every surface says when nothing names a node to operate
     /// on this machine.</summary>
     public const string Unnamed =
         "no node is named: give -Local or --local the node's local endpoint, " +
-        "as its [operate] local names it, or name a surface in the document";
+        "xmip-<node> unless its [operate] local names another, or name a surface " +
+        "in the document";
 
     /// <summary>What every surface says when <c>--local</c> or
     /// <c>-Local</c> names no endpoint; null when it names one.</summary>
@@ -33,7 +39,8 @@ public sealed class LocalOperator(string? endpoint)
             : null;
     }
 
-    private static Abi.Operate.RemoteNode? Opened(string? endpoint, out string reason)
+    private static Abi.Operate.RemoteNode? Opened(
+        string? endpoint, TimeSpan within, out string reason)
     {
         if (string.IsNullOrWhiteSpace(endpoint))
         {
@@ -41,6 +48,6 @@ public sealed class LocalOperator(string? endpoint)
             return null;
         }
 
-        return RuntimeLibrary.Rules.Remotes.OpenLocal(endpoint, out reason);
+        return RuntimeLibrary.Rules.Remotes.OpenLocal(endpoint, out reason, within);
     }
 }
