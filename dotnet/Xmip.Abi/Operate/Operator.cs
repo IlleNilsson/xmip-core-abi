@@ -42,14 +42,14 @@ public sealed unsafe class Operator : IDisposable
     /// </summary>
     public static Operator? Load(string path, out string reason)
     {
-        if (!LibraryCopy.TryLoad(path, out nint library, out reason))
+        if (!NativeRuntime.TryLoad(path, out nint library, out reason))
         {
             return null;
         }
 
         if (!NativeLibrary.TryGetExport(library, OperateAbi.Entrypoint, out nint symbol))
         {
-            NativeLibrary.Free(library);
+            NativeRuntime.Free(library);
             reason = $"{path} does not export {OperateAbi.Entrypoint}";
             return null;
         }
@@ -61,7 +61,7 @@ public sealed unsafe class Operator : IDisposable
 
         if (status != 0)
         {
-            NativeLibrary.Free(library);
+            NativeRuntime.Free(library);
             reason = $"{OperateAbi.Entrypoint} refused version {OperateAbi.Version} " +
                 $"with status {status}";
             return null;
@@ -158,6 +158,6 @@ public sealed unsafe class Operator : IDisposable
             _table.Destroy(_table.Ctx);
         }
 
-        NativeLibrary.Free(_library);
+        NativeRuntime.Free(_library);
     }
 }

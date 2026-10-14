@@ -29,17 +29,21 @@ public sealed unsafe class RuntimeRemotes
     private readonly delegate* unmanaged[Cdecl]<
         XmipStr, XmipStr, XmipStr, nint*, byte*, nuint, nuint*, int> _serveLocal;
 
+    private readonly nint _library;
+
+    // A remote build serves nothing (RemoteBuild): the serve side is bound
+    // where the library exports it, and Serve and ServeLocal refuse otherwise.
+    private readonly bool _serves;
+
     internal RuntimeRemotes(nint library)
     {
+        _library = library;
         _open = (delegate* unmanaged[Cdecl]<
             XmipStr, XmipStr, XmipStr, XmipStr, nint*, byte*, nuint, nuint*, int>)
             NativeLibrary.GetExport(library, OperateAbi.RemoteOpenEntrypoint);
         _openLocal = (delegate* unmanaged[Cdecl]<
             XmipStr, uint, nint*, byte*, nuint, nuint*, int>)
             NativeLibrary.GetExport(library, OperateAbi.RemoteOpenLocalEntrypoint);
-        _serveLocal = (delegate* unmanaged[Cdecl]<
-            XmipStr, XmipStr, XmipStr, nint*, byte*, nuint, nuint*, int>)
-            NativeLibrary.GetExport(library, OperateAbi.OperateServeLocalEntrypoint);
         Publication = (delegate* unmanaged[Cdecl]<nint, byte*, nuint, nuint*, ulong*, int>)
             NativeLibrary.GetExport(library, OperateAbi.RemotePublicationEntrypoint);
         Wait = (delegate* unmanaged[Cdecl]<
@@ -52,6 +56,16 @@ public sealed unsafe class RuntimeRemotes
             NativeLibrary.GetExport(library, OperateAbi.RemoteEndEntrypoint);
         Free = (delegate* unmanaged[Cdecl]<nint, void>)
             NativeLibrary.GetExport(library, OperateAbi.RemoteFreeEntrypoint);
+        _serves = RemoteBuild.Carries(library, ServeEntrypoints);
+
+        if (!_serves)
+        {
+            return;
+        }
+
+        _serveLocal = (delegate* unmanaged[Cdecl]<
+            XmipStr, XmipStr, XmipStr, nint*, byte*, nuint, nuint*, int>)
+            NativeLibrary.GetExport(library, OperateAbi.OperateServeLocalEntrypoint);
         _serve = (delegate* unmanaged[Cdecl]<
             XmipStr, XmipStr, XmipStr, XmipStr, XmipStr, XmipStr, nint*, byte*, nuint, nuint*,
             int>)
@@ -64,7 +78,8 @@ public sealed unsafe class RuntimeRemotes
             NativeLibrary.GetExport(library, OperateAbi.OperateServeStopEntrypoint);
     }
 
-    /// <summary>The symbols this binds, each of which a runtime must export.</summary>
+    /// <summary>The client's symbols, each of which a runtime must export,
+    /// its remote build too.</summary>
     public static IReadOnlyList<string> Entrypoints { get; } =
     [
         OperateAbi.RemoteOpenEntrypoint,
@@ -74,6 +89,12 @@ public sealed unsafe class RuntimeRemotes
         OperateAbi.RemoteActEntrypoint,
         OperateAbi.RemoteEndEntrypoint,
         OperateAbi.RemoteFreeEntrypoint,
+    ];
+
+    /// <summary>The serve side's symbols, which only a node's build
+    /// exports.</summary>
+    public static IReadOnlyList<string> ServeEntrypoints { get; } =
+    [
         OperateAbi.OperateServeEntrypoint,
         OperateAbi.OperateServeLocalEntrypoint,
         OperateAbi.OperateServedAddressEntrypoint,
@@ -147,6 +168,8 @@ public sealed unsafe class RuntimeRemotes
         string listen, string certificate, string key, string anchors, string role,
         string program, out string reason)
     {
+        Serving();
+
         Utf8Pack pack = new([listen, certificate, key, anchors, role, program]);
         byte[] report = new byte[Room];
         nuint length = 0;
@@ -208,6 +231,8 @@ public sealed unsafe class RuntimeRemotes
     /// </summary>
     public ServedNode? ServeLocal(string local, string role, string program, out string reason)
     {
+        Serving();
+
         Utf8Pack pack = new([local, role, program]);
         byte[] report = new byte[Room];
         nuint length = 0;
@@ -224,6 +249,15 @@ public sealed unsafe class RuntimeRemotes
 
         reason = status == 0 ? string.Empty : Said(report, length);
         return status == 0 && handle != 0 ? new ServedNode(this, handle) : null;
+    }
+
+    // A remote build serves nothing; asked to, it says so.
+    private void Serving()
+    {
+        if (!_serves)
+        {
+            throw RemoteBuild.Refused(_library, ServeEntrypoints);
+        }
     }
 
     /// <summary>Text the runtime wrote, as far as it fit.</summary>

@@ -1,0 +1,61 @@
+<Project>
+
+  <!--
+    The runtime's native library packaged into a phone host. A host that
+    targets Android or iOS imports this beside its reference to Xmip.Abi:
+
+      <Import Project="<abi>/dotnet/build/Xmip.Abi.Native.props" />
+
+    and NativeRuntime in Xmip.Abi loads what it packages — by name on
+    Android, from the main program on iOS (ADR-0014, amendment 2026-10-14).
+    On every other target this adds nothing; a desktop finds its library by
+    the surface's rule (RuntimeLibrary in Xmip.Surface).
+
+    Each path is a property a host may set before the import. The
+    defaults read the estate's Android and iOS builds of the runtime in the
+    working area, release builds, one folder per Rust target.
+  -->
+
+  <PropertyGroup>
+    <XmipEstateRoot Condition="'$(XmipEstateRoot)' == ''">$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)../../../../..'))</XmipEstateRoot>
+
+    <!-- Android: one library per application binary interface. -->
+    <XmipRuntimeAndroid Condition="'$(XmipRuntimeAndroid)' == ''">$(XmipEstateRoot).ai-interaction/target-android</XmipRuntimeAndroid>
+    <XmipRuntimeAndroidArm64 Condition="'$(XmipRuntimeAndroidArm64)' == ''">$(XmipRuntimeAndroid)/aarch64-linux-android/release/libxmip_core_runtime.so</XmipRuntimeAndroidArm64>
+    <XmipRuntimeAndroidX64 Condition="'$(XmipRuntimeAndroidX64)' == ''">$(XmipRuntimeAndroid)/x86_64-linux-android/release/libxmip_core_runtime.so</XmipRuntimeAndroidX64>
+
+    <!-- iOS: a static library in an xcframework. Written, not built: there is
+         no Mac to build or test it on (ADR-0014, amendment 2026-10-14). -->
+    <XmipRuntimeXcframework Condition="'$(XmipRuntimeXcframework)' == ''">$(XmipEstateRoot).ai-interaction/target-ios/xmip_core_runtime.xcframework</XmipRuntimeXcframework>
+  </PropertyGroup>
+
+  <!-- A phone device, and the emulator on a desktop processor. -->
+  <ItemGroup Condition="'$(TargetPlatformIdentifier)' == 'android'">
+    <AndroidNativeLibrary Include="$(XmipRuntimeAndroidArm64)" Abi="arm64-v8a" />
+    <AndroidNativeLibrary Include="$(XmipRuntimeAndroidX64)" Abi="x86_64" />
+  </ItemGroup>
+
+  <!-- A library not built yet stops the build here, naming it and the
+       command that builds it, before packaging fails on it without a word
+       of why. -->
+  <Target Name="XmipCheckRuntimeAndroid"
+          BeforeTargets="BeforeBuild"
+          Condition="'$(TargetPlatformIdentifier)' == 'android'">
+    <ItemGroup>
+      <_XmipRuntimeAndroid Include="$(XmipRuntimeAndroidArm64);$(XmipRuntimeAndroidX64)" />
+    </ItemGroup>
+    <Error Condition="!Exists('%(_XmipRuntimeAndroid.Identity)')"
+           Text="The runtime's Android library %(_XmipRuntimeAndroid.Identity) is not there. Build it at the estate's root in PowerShell: Import-Module -Name ./Xmip/Xmip.psd1; Build-XmipService -Remote Android" />
+  </Target>
+
+  <!-- Linked whole into the application, so every export the binding asks
+       the main program for is there. -->
+  <ItemGroup Condition="'$(TargetPlatformIdentifier)' == 'ios'">
+    <NativeReference Include="$(XmipRuntimeXcframework)">
+      <Kind>Static</Kind>
+      <ForceLoad>True</ForceLoad>
+      <SmartLink>False</SmartLink>
+    </NativeReference>
+  </ItemGroup>
+
+</Project>
