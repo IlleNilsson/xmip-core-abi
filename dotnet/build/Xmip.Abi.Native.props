@@ -24,8 +24,9 @@
     <XmipRuntimeAndroidArm64 Condition="'$(XmipRuntimeAndroidArm64)' == ''">$(XmipRuntimeAndroid)/aarch64-linux-android/release/libxmip_core_runtime.so</XmipRuntimeAndroidArm64>
     <XmipRuntimeAndroidX64 Condition="'$(XmipRuntimeAndroidX64)' == ''">$(XmipRuntimeAndroid)/x86_64-linux-android/release/libxmip_core_runtime.so</XmipRuntimeAndroidX64>
 
-    <!-- iOS: a static library in an xcframework. Written, not built: there is
-         no Mac to build or test it on (ADR-0014, amendment 2026-10-14). -->
+    <!-- iOS: a static library in an xcframework, a device's and the
+         simulator's. Built only on macOS, by the estate's CI for the
+         simulator: not signed, not run (ADR-0014, amendment 2026-10-14). -->
     <XmipRuntimeXcframework Condition="'$(XmipRuntimeXcframework)' == ''">$(XmipEstateRoot).ai-interaction/target-ios/xmip_core_runtime.xcframework</XmipRuntimeXcframework>
   </PropertyGroup>
 
@@ -46,6 +47,13 @@
     </ItemGroup>
     <Error Condition="!Exists('%(_XmipRuntimeAndroid.Identity)')"
            Text="The runtime's Android library %(_XmipRuntimeAndroid.Identity) is not there. Build it at the estate's root in PowerShell: Import-Module -Name ./Xmip/Xmip.psd1; Build-XmipService -Remote Android" />
+  </Target>
+
+  <Target Name="XmipCheckRuntimeIos"
+          BeforeTargets="BeforeBuild"
+          Condition="'$(TargetPlatformIdentifier)' == 'ios'">
+    <Error Condition="!Exists('$(XmipRuntimeXcframework)')"
+           Text="The runtime's iOS xcframework $(XmipRuntimeXcframework) is not there. Build it at the estate's root in PowerShell on macOS: Import-Module -Name ./Xmip/Xmip.psd1; Build-XmipService -Remote iOS" />
   </Target>
 
   <!-- Linked whole into the application, so every export the binding asks
