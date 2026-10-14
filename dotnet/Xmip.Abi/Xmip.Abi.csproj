@@ -27,6 +27,12 @@
     <IsAotCompatible>true</IsAotCompatible>
   </PropertyGroup>
 
+  <!-- The load rule's platform choice is internal: only NativeRuntime makes
+       it, and its test proves each platform's way. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="Xmip.Abi.Test" />
+  </ItemGroup>
+
   <!--
     The runtime this binds, beside whatever references it, in a composed
     estate: the library `cargo build` leaves in xmip-core-runtime's

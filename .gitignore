@@ -84,5 +84,5 @@ logs/
 **/logs/
 
 # Event bindings build output (verify-event-bindings.ps1), and Python byte code
-build/
+/build/
 __pycache__/

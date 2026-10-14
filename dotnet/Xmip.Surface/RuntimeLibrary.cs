@@ -15,7 +15,9 @@ namespace Xmip.Surface;
 /// find the runtime before it can call anything in it, so this is the one
 /// rule a .NET surface cannot ask the runtime for; the Rust copy the language
 /// server kept went on 2026-09-24, and that server is told its library
-/// (ADR-0052, amendment 2026-09-24).
+/// (ADR-0052, amendment 2026-09-24). On a phone the path is only shown: the
+/// library loaded is the one packaged with the application
+/// (<see cref="NativeRuntime"/>; ADR-0014, amendment 2026-10-14).
 /// </remarks>
 public static class RuntimeLibrary
 {
@@ -30,14 +32,6 @@ public static class RuntimeLibrary
     private static volatile RuntimeRules? loaded;
 
     private static string? preferred;
-
-    /// <summary>The library's file name on this platform.</summary>
-    public static string FileName =>
-        OperatingSystem.IsWindows()
-            ? "xmip_core_runtime.dll"
-            : OperatingSystem.IsMacOS()
-                ? "libxmip_core_runtime.dylib"
-                : "libxmip_core_runtime.so";
 
     /// <summary>
     /// Where this build of the surface lies — beside the executable for the
@@ -143,7 +137,7 @@ public static class RuntimeLibrary
             ? TomlDocument.Resolve(configured, basePath)
             : !string.IsNullOrWhiteSpace(fromEnvironment)
                 ? Path.GetFullPath(fromEnvironment)
-                : Path.Combine(besideExecutable, FileName);
+                : Path.Combine(besideExecutable, NativeRuntime.FileName);
     }
 
     // The library a surface's own configuration found is the one its rules

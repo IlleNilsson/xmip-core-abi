@@ -30,7 +30,11 @@ namespace Xmip.Abi.Operate;
 /// <remarks>
 /// Pure calls: none reads the snapshot or holds a table, so one instance
 /// serves a whole process from any thread and is never released. What it
-/// answers is copied out at once; nothing borrowed outlives the call.
+/// answers is copied out at once; nothing borrowed outlives the call. A
+/// library that is the runtime's remote build, the phone's, carries sections
+/// 7, 8, 9, 17's client and 18 only: each node's binding here, sections 10 to
+/// 16, then throws an <see cref="InvalidOperationException"/> saying so
+/// (<see cref="RemoteBuild"/>).
 /// </remarks>
 // Every call encodes its strings into stack buffers the encoder then fills;
 // zeroing them first is wasted on a path a board takes thousands of times.
@@ -63,6 +67,17 @@ public sealed unsafe partial class RuntimeRules
         _published;
     private readonly delegate* unmanaged[Cdecl]<
         XmipStr, XmipStr*, XmipStr*, nuint, nuint*, byte*, nuint, nuint*, int> _entry;
+
+    // Sections 10 to 16: a node's, null in a remote build (RemoteBuild).
+    private readonly nint _library;
+    private readonly RuntimeDesign? _design;
+    private readonly RuntimeEvents? _events;
+    private readonly RuntimeCatalogue? _catalogue;
+    private readonly RuntimeProcesses? _processes;
+    private readonly RuntimeEventSubscriptions? _eventSubscriptions;
+    private readonly RuntimeSubscriptions? _subscriptions;
+    private readonly RuntimeDeadMessages? _deadMessages;
+    private readonly RuntimeJourneys? _journeys;
 
     private RuntimeRules(nint library, string path)
     {
@@ -107,15 +122,24 @@ public sealed unsafe partial class RuntimeRules
             XmipStr, XmipStr*, XmipStr*, nuint, nuint*, byte*, nuint, nuint*, int>)
             Export(library, OperateAbi.CapabilityEntryEntrypoint);
         Publications = new PublicationReader(library);
+        _library = library;
         Audit = new RuntimeAudit(library);
-        Design = new RuntimeDesign(library);
-        Events = new RuntimeEvents(library);
-        Catalogue = new RuntimeCatalogue(library);
-        Processes = new RuntimeProcesses(library);
-        EventSubscriptions = new RuntimeEventSubscriptions(library);
-        Subscriptions = new RuntimeSubscriptions(library);
-        DeadMessages = new RuntimeDeadMessages(library);
-        Journeys = new RuntimeJourneys(library);
+        _design = Node(library, RuntimeDesign.Entrypoints, () => new RuntimeDesign(library));
+        _events = Node(library, RuntimeEvents.Entrypoints, () => new RuntimeEvents(library));
+        _catalogue = Node(
+            library, RuntimeCatalogue.Entrypoints, () => new RuntimeCatalogue(library));
+        _processes = Node(
+            library, RuntimeProcesses.Entrypoints, () => new RuntimeProcesses(library));
+        _eventSubscriptions = Node(
+            library,
+            RuntimeEventSubscriptions.Entrypoints,
+            () => new RuntimeEventSubscriptions(library));
+        _subscriptions = Node(
+            library, RuntimeSubscriptions.Entrypoints, () => new RuntimeSubscriptions(library));
+        _deadMessages = Node(
+            library, RuntimeDeadMessages.Entrypoints, () => new RuntimeDeadMessages(library));
+        _journeys = Node(
+            library, RuntimeJourneys.Entrypoints, () => new RuntimeJourneys(library));
         Remotes = new RuntimeRemotes(library);
         SecurityRoles = new RuntimeSecurityRoles(library);
 
@@ -142,39 +166,48 @@ public sealed unsafe partial class RuntimeRules
     /// <summary>Section 10: the cluster's <c>xmip.toml</c> read, edited and
     /// sliced (ADR-0064, amendment 2026-10-03; ADR-0031, amendment
     /// 2026-10-05).</summary>
-    public RuntimeDesign Design { get; }
+    public RuntimeDesign Design =>
+        _design ?? throw RemoteBuild.Refused(_library, RuntimeDesign.Entrypoints);
 
     /// <summary>Section 11: Events, subscribed from .NET and published into
     /// this process (ADR-0065).</summary>
-    public RuntimeEvents Events { get; }
+    public RuntimeEvents Events =>
+        _events ?? throw RemoteBuild.Refused(_library, RuntimeEvents.Entrypoints);
 
     /// <summary>Section 12: the technologies the runtime carries and the
     /// settings each declares (ADR-0064, amendment 2026-09-26).</summary>
-    public RuntimeCatalogue Catalogue { get; }
+    public RuntimeCatalogue Catalogue =>
+        _catalogue ?? throw RemoteBuild.Refused(_library, RuntimeCatalogue.Entrypoints);
 
     /// <summary>Section 13: a System Process declared, and the declarations
     /// that stand (ADR-0053 clause 3).</summary>
-    public RuntimeProcesses Processes { get; }
+    public RuntimeProcesses Processes =>
+        _processes ?? throw RemoteBuild.Refused(_library, RuntimeProcesses.Entrypoints);
 
     /// <summary>Section 11, what an operator lists and does: the Event
     /// subscriptions a hub holds, and pause, resume and remove on one
     /// (ADR-0065, amendment 2026-09-29).</summary>
-    public RuntimeEventSubscriptions EventSubscriptions { get; }
+    public RuntimeEventSubscriptions EventSubscriptions =>
+        _eventSubscriptions
+            ?? throw RemoteBuild.Refused(_library, RuntimeEventSubscriptions.Entrypoints);
 
     /// <summary>Section 14: the Subscriptions of the nodes running in this
     /// process, pause and resume on one, and an operator's order on any
     /// noun (ADR-0013, amendment 2026-09-30).</summary>
-    public RuntimeSubscriptions Subscriptions { get; }
+    public RuntimeSubscriptions Subscriptions =>
+        _subscriptions ?? throw RemoteBuild.Refused(_library, RuntimeSubscriptions.Entrypoints);
 
     /// <summary>Section 15: the Dead Message Queues of the nodes running in
     /// this process, and Replay on one of their Messages (ADR-0052,
     /// amendment 2026-10-01).</summary>
-    public RuntimeDeadMessages DeadMessages { get; }
+    public RuntimeDeadMessages DeadMessages =>
+        _deadMessages ?? throw RemoteBuild.Refused(_library, RuntimeDeadMessages.Entrypoints);
 
     /// <summary>Section 16: Retry and Dismiss on a Journey that failed, sent
     /// by a node running in this process (runtime-model.md section 13;
     /// ADR-0013).</summary>
-    public RuntimeJourneys Journeys { get; }
+    public RuntimeJourneys Journeys =>
+        _journeys ?? throw RemoteBuild.Refused(_library, RuntimeJourneys.Entrypoints);
 
     /// <summary>Section 17: a node reached at its operate address over gRPC
     /// inside Xmip's mutual TLS, and this process's node served on an operate
@@ -195,9 +228,10 @@ public sealed unsafe partial class RuntimeRules
     /// (ADR-0056, amendment 2026-10-01).</summary>
     public IReadOnlyList<string> RoleWords { get; }
 
-    /// <summary>Section 7's, section 8's, section 9's, section 10's, section
-    /// 11's, section 12's, section 13's, section 14's, section 15's and
-    /// section 16's symbols, each of which a runtime must export.</summary>
+    /// <summary>Section 7's, section 8's, section 9's, section 17's client and
+    /// section 18's symbols, each of which a runtime must export, its remote
+    /// build too. Sections 10 to 16 and section 17's serve side are a node's, bound
+    /// where the library exports them (<see cref="RemoteBuild"/>).</summary>
     public static IReadOnlyList<string> Entrypoints { get; } =
     [
         OperateAbi.HealthRolledEntrypoint,
@@ -209,14 +243,6 @@ public sealed unsafe partial class RuntimeRules
         OperateAbi.CapabilityEntryEntrypoint,
         .. PublicationReader.Entrypoints,
         .. RuntimeAudit.Entrypoints,
-        .. RuntimeDesign.Entrypoints,
-        .. RuntimeEvents.Entrypoints,
-        .. RuntimeCatalogue.Entrypoints,
-        .. RuntimeProcesses.Entrypoints,
-        .. RuntimeEventSubscriptions.Entrypoints,
-        .. RuntimeSubscriptions.Entrypoints,
-        .. RuntimeDeadMessages.Entrypoints,
-        .. RuntimeJourneys.Entrypoints,
         .. RuntimeRemotes.Entrypoints,
         .. RuntimeSecurityRoles.Entrypoints,
         OperateAbi.ScopeContainsEntrypoint,
@@ -239,7 +265,7 @@ public sealed unsafe partial class RuntimeRules
     /// <see cref="Entrypoints"/>.</summary>
     public static RuntimeRules? Load(string path, out string reason)
     {
-        if (!LibraryCopy.TryLoad(path, out nint library, out reason))
+        if (!NativeRuntime.TryLoad(path, out nint library, out reason))
         {
             return null;
         }
@@ -248,7 +274,7 @@ public sealed unsafe partial class RuntimeRules
         {
             if (!NativeLibrary.TryGetExport(library, entrypoint, out _))
             {
-                NativeLibrary.Free(library);
+                NativeRuntime.Free(library);
                 reason = $"{path} does not export {entrypoint}";
                 return null;
             }
@@ -279,6 +305,14 @@ public sealed unsafe partial class RuntimeRules
     private static nint Export(nint library, string entrypoint)
     {
         return NativeLibrary.GetExport(library, entrypoint);
+    }
+
+    // A node's binding, where the library exports all of it; a remote build
+    // leaves it out, and its property refuses in words (RemoteBuild).
+    private static T? Node<T>(nint library, IReadOnlyList<string> entrypoints, Func<T> bind)
+        where T : class
+    {
+        return RemoteBuild.Carries(library, entrypoints) ? bind() : null;
     }
 
     private static string[] Words(delegate* unmanaged[Cdecl]<XmipStr*, nuint, nuint*, int> words)

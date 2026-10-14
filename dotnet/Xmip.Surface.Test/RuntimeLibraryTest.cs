@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Configuration;
+using Xmip.Abi.Operate;
 
 namespace Xmip.Surface.Test;
 
@@ -42,7 +43,7 @@ public sealed class RuntimeLibraryTest
     {
         string chosen = RuntimeLibrary.Choose(null, "", Base, Beside);
 
-        Assert.Equal(Path.Combine(Beside, RuntimeLibrary.FileName), chosen);
+        Assert.Equal(Path.Combine(Beside, NativeRuntime.FileName), chosen);
     }
 
     [Fact]
@@ -68,17 +69,6 @@ public sealed class RuntimeLibraryTest
         Assert.Equal(
             Path.GetFullPath(Path.Combine(Base, "configured.dll")),
             RuntimeLibrary.Stated(null, document, Base, Beside));
-    }
-
-    [Fact]
-    public void TheFileNameIsThePlatformsOwn()
-    {
-        string name = RuntimeLibrary.FileName;
-
-        Assert.Contains("xmip_core_runtime", name, StringComparison.Ordinal);
-        Assert.True(name.EndsWith(".dll", StringComparison.Ordinal)
-            || name.EndsWith(".so", StringComparison.Ordinal)
-            || name.EndsWith(".dylib", StringComparison.Ordinal));
     }
 
     private static IConfiguration Configured(string library)
