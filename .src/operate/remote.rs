@@ -10,6 +10,8 @@ use crate::ffi::Str;
 
 /// `xmip_remote_open_v1`.
 pub const OPEN_ENTRYPOINT: &str = "xmip_remote_open_v1";
+/// `xmip_remote_open_kept_v1`.
+pub const OPEN_KEPT_ENTRYPOINT: &str = "xmip_remote_open_kept_v1";
 /// `xmip_remote_open_local_v1`.
 pub const OPEN_LOCAL_ENTRYPOINT: &str = "xmip_remote_open_local_v1";
 /// `xmip_remote_publication_v1`.
@@ -58,6 +60,32 @@ pub type OpenFn = unsafe extern "C" fn(
     certificate: Str,
     key: Str,
     anchors: Str,
+    out: *mut *mut Remote,
+    report: *mut u8,
+    cap: usize,
+    out_len: *mut usize,
+) -> i32;
+
+/// The keeper's signature a surface makes for a kept open: ECDSA on P-256
+/// with SHA-256 over `message`, DER, into `out`; any other status with the
+/// keeper's sentence there instead.
+pub type SignFn = unsafe extern "C" fn(
+    context: *mut core::ffi::c_void,
+    message: crate::ffi::Slice,
+    out: *mut u8,
+    cap: usize,
+    out_len: *mut usize,
+) -> i32;
+
+/// `xmip_remote_open_kept_v1`: the node at `address`, presenting
+/// `certificate`, whose key the surface's keeper holds and signs with
+/// through `sign` and `context`, and trusting `anchors`.
+pub type OpenKeptFn = unsafe extern "C" fn(
+    address: Str,
+    certificate: Str,
+    anchors: Str,
+    sign: SignFn,
+    context: *mut core::ffi::c_void,
     out: *mut *mut Remote,
     report: *mut u8,
     cap: usize,
@@ -187,6 +215,7 @@ mod tests {
     fn every_entrypoint_matches_the_header() {
         for (define, name) in [
             ("XMIP_REMOTE_OPEN_ENTRYPOINT", OPEN_ENTRYPOINT),
+            ("XMIP_REMOTE_OPEN_KEPT_ENTRYPOINT", OPEN_KEPT_ENTRYPOINT),
             ("XMIP_REMOTE_OPEN_LOCAL_ENTRYPOINT", OPEN_LOCAL_ENTRYPOINT),
             ("XMIP_REMOTE_PUBLICATION_ENTRYPOINT", PUBLICATION_ENTRYPOINT),
             ("XMIP_REMOTE_WAIT_ENTRYPOINT", WAIT_ENTRYPOINT),

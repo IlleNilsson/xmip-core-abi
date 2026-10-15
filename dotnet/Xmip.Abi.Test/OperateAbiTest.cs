@@ -101,6 +101,7 @@ public sealed class OperateAbiTest
     [InlineData(
         "XMIP_PROCESS_DECLARATIONS_ENTRYPOINT", OperateAbi.ProcessDeclarationsEntrypoint)]
     [InlineData("XMIP_REMOTE_OPEN_ENTRYPOINT", OperateAbi.RemoteOpenEntrypoint)]
+    [InlineData("XMIP_REMOTE_OPEN_KEPT_ENTRYPOINT", OperateAbi.RemoteOpenKeptEntrypoint)]
     [InlineData("XMIP_REMOTE_PUBLICATION_ENTRYPOINT", OperateAbi.RemotePublicationEntrypoint)]
     [InlineData("XMIP_REMOTE_WAIT_ENTRYPOINT", OperateAbi.RemoteWaitEntrypoint)]
     [InlineData("XMIP_REMOTE_ACT_ENTRYPOINT", OperateAbi.RemoteActEntrypoint)]
@@ -117,6 +118,9 @@ public sealed class OperateAbiTest
         "XMIP_SECURITY_ROLE_WORDS_ENTRYPOINT", OperateAbi.SecurityRoleWordsEntrypoint)]
     [InlineData("XMIP_ACT_ADMITTED_ENTRYPOINT", OperateAbi.ActAdmittedEntrypoint)]
     [InlineData("XMIP_OPERATOR_REQUEST_ENTRYPOINT", OperateAbi.OperatorRequestEntrypoint)]
+    [InlineData(
+        "XMIP_OPERATOR_INFORMATION_ENTRYPOINT", OperateAbi.OperatorInformationEntrypoint)]
+    [InlineData("XMIP_OPERATOR_ASSEMBLE_ENTRYPOINT", OperateAbi.OperatorAssembleEntrypoint)]
     [InlineData("XMIP_OPERATOR_SIGN_ENTRYPOINT", OperateAbi.OperatorSignEntrypoint)]
     public void NamesEachSymbolTheHeaderDeclares(string define, string symbol)
     {

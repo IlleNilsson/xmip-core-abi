@@ -149,9 +149,17 @@ person's certificate (ADR-0034, amendment 2026-10-15) — is
 key and a request naming the person, which every build carries, the phone's
 remote build too; `Sign` signs a request by the authority a node
 configuration's `[provision.operator]` names, which only a node's build
-carries, refused in words in a remote build. `Xmip.Surface`'s
-`OperatorCertificate` writes their files once, for `xmip-cli certificate`
-and `New-XmipCertificate`.
+carries, refused in words in a remote build. For a key that never leaves
+its platform's keeper, `Information` and `Assemble` are the request's two
+halves around the keeper's signature, every build carrying them, and
+`RuntimeRemotes.OpenKept` (section 17's `xmip_remote_open_kept_v1`) reaches a
+node presenting the chain with the keeper signing each handshake through a
+callback. `Xmip.Surface`'s `OperatorCertificate` writes their files once,
+for `xmip-cli certificate` and `New-XmipCertificate`, and makes a request
+over a keeper's key and keeps the chain signed for it (`RequestKept`,
+`Keep`, `KeepAnchors`); `IOperatorKeeper` is the one interface each
+platform's keeper implements, and `SurfaceTls` names a keeper's key where a
+host's document names a `Certificate` and no `PrivateKey`.
 Section 10 — the
 cluster's `xmip.toml` read, edited and sliced — is `RuntimeRules.Design`
 (`RuntimeDesign`): `TryViews`, `TryEdit`, `TrySlices`, `TryFilterStructure`

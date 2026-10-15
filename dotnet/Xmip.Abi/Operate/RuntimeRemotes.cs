@@ -27,6 +27,10 @@ public sealed unsafe class RuntimeRemotes
     private readonly delegate* unmanaged[Cdecl]<XmipStr, uint, nint*, byte*, nuint, nuint*, int>
         _openLocal;
     private readonly delegate* unmanaged[Cdecl]<
+        XmipStr, XmipStr, XmipStr,
+        delegate* unmanaged[Cdecl]<void*, XmipStr, byte*, nuint, nuint*, int>, void*, nint*,
+        byte*, nuint, nuint*, int> _openKept;
+    private readonly delegate* unmanaged[Cdecl]<
         XmipStr, XmipStr, XmipStr, nint*, byte*, nuint, nuint*, int> _serveLocal;
 
     private readonly nint _library;
@@ -44,6 +48,11 @@ public sealed unsafe class RuntimeRemotes
         _openLocal = (delegate* unmanaged[Cdecl]<
             XmipStr, uint, nint*, byte*, nuint, nuint*, int>)
             NativeLibrary.GetExport(library, OperateAbi.RemoteOpenLocalEntrypoint);
+        _openKept = (delegate* unmanaged[Cdecl]<
+            XmipStr, XmipStr, XmipStr,
+            delegate* unmanaged[Cdecl]<void*, XmipStr, byte*, nuint, nuint*, int>, void*, nint*,
+            byte*, nuint, nuint*, int>)
+            NativeLibrary.GetExport(library, OperateAbi.RemoteOpenKeptEntrypoint);
         Publication = (delegate* unmanaged[Cdecl]<nint, byte*, nuint, nuint*, ulong*, int>)
             NativeLibrary.GetExport(library, OperateAbi.RemotePublicationEntrypoint);
         Wait = (delegate* unmanaged[Cdecl]<
@@ -83,6 +92,7 @@ public sealed unsafe class RuntimeRemotes
     public static IReadOnlyList<string> Entrypoints { get; } =
     [
         OperateAbi.RemoteOpenEntrypoint,
+        OperateAbi.RemoteOpenKeptEntrypoint,
         OperateAbi.RemoteOpenLocalEntrypoint,
         OperateAbi.RemotePublicationEntrypoint,
         OperateAbi.RemoteWaitEntrypoint,
@@ -152,6 +162,53 @@ public sealed unsafe class RuntimeRemotes
 
         reason = status == 0 ? string.Empty : Said(report, length);
         return status == 0 && handle != 0 ? new RemoteNode(this, handle) : null;
+    }
+
+    /// <summary>
+    /// The node at <paramref name="address"/>, <c>host:port</c>, presenting
+    /// the chain <paramref name="certificate"/>, PEM, whose key its
+    /// platform's keeper holds (ADR-0034, amendment 2026-10-15):
+    /// <paramref name="sign"/> is asked for every signature the handshake
+    /// needs — given what is signed, it answers ECDSA on P-256 with SHA-256,
+    /// DER; it throws to refuse — from any thread, until the node is
+    /// disposed. The node is taken where its certificate reaches
+    /// <paramref name="anchors"/>. Null with the runtime's refusal in
+    /// <paramref name="reason"/>. Nothing is connected yet.
+    /// </summary>
+    public RemoteNode? OpenKept(
+        string address, string certificate, string anchors, Func<byte[], byte[]> sign,
+        out string reason)
+    {
+        ArgumentNullException.ThrowIfNull(address);
+        ArgumentNullException.ThrowIfNull(certificate);
+        ArgumentNullException.ThrowIfNull(anchors);
+        ArgumentNullException.ThrowIfNull(sign);
+
+        Utf8Pack pack = new([address, certificate, anchors]);
+        byte[] report = new byte[Room];
+        nuint length = 0;
+        nint handle = 0;
+        int status;
+        GCHandle kept = GCHandle.Alloc(sign);
+
+        fixed (byte* data = pack.Bytes)
+        fixed (byte* written = report)
+        {
+            status = _openKept(
+                pack.Borrow(data, 0), pack.Borrow(data, 1), pack.Borrow(data, 2),
+                &KeeperSigning.Sign, (void*)GCHandle.ToIntPtr(kept), &handle, written,
+                (nuint)report.Length, &length);
+        }
+
+        reason = status == 0 ? string.Empty : Said(report, length);
+
+        if (status == 0 && handle != 0)
+        {
+            return new RemoteNode(this, handle, kept);
+        }
+
+        kept.Free();
+        return null;
     }
 
     /// <summary>

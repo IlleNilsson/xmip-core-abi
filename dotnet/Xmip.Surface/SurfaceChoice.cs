@@ -55,11 +55,15 @@ public static class SurfaceChoice
 
     /// <summary>Open the surface the configuration names. Relative paths
     /// resolve against <paramref name="basePath"/>, the directory the
-    /// configuration's paths are written from.</summary>
+    /// configuration's paths are written from. A remote surface presents a
+    /// key <paramref name="keeper"/> holds where one is given and the
+    /// configuration names a certificate and no private key
+    /// (<see cref="SurfaceTls.Kept"/>).</summary>
     /// <exception cref="InvalidOperationException">The configuration names no
     /// surface, a surface this build does not know, or a snapshot with no
     /// path.</exception>
-    public static IOperatorSurface Open(IConfiguration configuration, string basePath)
+    public static IOperatorSurface Open(
+        IConfiguration configuration, string basePath, IOperatorKeeper? keeper = null)
     {
         string chosen = configuration[SurfaceKey]?.Trim() ?? string.Empty;
 
@@ -89,7 +93,7 @@ public static class SurfaceChoice
             string? address = configuration[AddressKey];
 
             return RemoteOperator.Refusal(address) is null
-                ? new RemoteOperator(address!, SurfaceTls.From(configuration, basePath))
+                ? new RemoteOperator(address!, SurfaceTls.From(configuration, basePath, keeper))
                 : throw new InvalidOperationException(
                     $"{SurfaceKey} is \"{Remote}\" and {AddressKey} names no node");
         }
@@ -143,17 +147,19 @@ public static class SurfaceChoice
     /// as the set lives (<see cref="ClusterSurfaces.Follow"/>): a face names
     /// every cluster on every render, and each publication is read once as it
     /// changes rather than by whichever render asks first.
+    /// <paramref name="keeper"/> is as <see cref="Open"/> takes it.
     /// </summary>
     /// <exception cref="InvalidOperationException">What <see cref="Open"/>
     /// refuses, or two paths publishing one cluster.</exception>
-    public static ClusterSurfaces OpenAll(IConfiguration configuration, string basePath)
+    public static ClusterSurfaces OpenAll(
+        IConfiguration configuration, string basePath, IOperatorKeeper? keeper = null)
     {
         ArgumentNullException.ThrowIfNull(configuration);
 
         IReadOnlyList<string> paths = Listed(configuration);
 
         return paths.Count == 0
-            ? ClusterSurfaces.Over(Open(configuration, basePath))
+            ? ClusterSurfaces.Over(Open(configuration, basePath, keeper))
             : ClusterSurfaces.Over(paths.Select(Snapshot)).Follow();
 
         SnapshotOperator Snapshot(string path)

@@ -299,6 +299,11 @@ public static class OperateAbi
     /// 17 (ADR-0014, amendment 2026-10-13).</summary>
     public const string RemoteOpenLocalEntrypoint = "xmip_remote_open_local_v1";
 
+    /// <summary>A node reached at its operate address presenting a key its
+    /// platform's keeper holds and signs with: section 17 (ADR-0034,
+    /// amendment 2026-10-15).</summary>
+    public const string RemoteOpenKeptEntrypoint = "xmip_remote_open_kept_v1";
+
     /// <summary>The remote node's publication: section 17.</summary>
     public const string RemotePublicationEntrypoint = "xmip_remote_publication_v1";
 
@@ -342,6 +347,14 @@ public static class OperateAbi
     /// <summary>A person's key and certificate request made: section 19
     /// (ADR-0034, amendment 2026-10-15).</summary>
     public const string OperatorRequestEntrypoint = "xmip_operator_request_v1";
+
+    /// <summary>What an operator's request signs over a key its platform's
+    /// keeper holds: section 19.</summary>
+    public const string OperatorInformationEntrypoint = "xmip_operator_information_v1";
+
+    /// <summary>The request the information and the keeper's signature make:
+    /// section 19.</summary>
+    public const string OperatorAssembleEntrypoint = "xmip_operator_assemble_v1";
 
     /// <summary>A person's request signed by the authority a node's
     /// <c>[provision.operator]</c> names: section 19.</summary>
