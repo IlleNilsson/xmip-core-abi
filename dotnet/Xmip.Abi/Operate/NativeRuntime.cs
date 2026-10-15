@@ -99,13 +99,26 @@ public static class NativeRuntime
         return true;
     }
 
+    // A copy per load, and until 2026-10-15 none was ever removed: 236 of
+    // them, 127 MB each, filled a Linux guest's /tmp. Elsewhere than Windows a
+    // loaded library's file is unlinked at once and the mapping stays; on
+    // Windows a loaded one cannot be deleted, so each load first sweeps the
+    // copies no process holds any more. A copy that did not load goes too.
+    // The copies have a folder of their own, so the sweep takes nothing else.
+    private static readonly string Copies = Path.Combine(Path.GetTempPath(), "xmip-abi");
+
     private static bool TryCopy(string path, out nint library, out string reason)
     {
         library = 0;
 
-        string copy = Path.Combine(
-            Path.GetTempPath(),
-            $"xmip-abi-{Guid.NewGuid():n}-{Path.GetFileName(path)}");
+        Directory.CreateDirectory(Copies);
+
+        if (OperatingSystem.IsWindows())
+        {
+            Sweep();
+        }
+
+        string copy = Path.Combine(Copies, $"{Guid.NewGuid():n}-{Path.GetFileName(path)}");
 
         try
         {
@@ -129,13 +142,35 @@ public static class NativeRuntime
             return false;
         }
 
-        if (!NativeLibrary.TryLoad(copy, out library))
+        bool loaded = NativeLibrary.TryLoad(copy, out library);
+
+        if (!loaded || !OperatingSystem.IsWindows())
         {
-            reason = $"{path} could not be loaded";
-            return false;
+            Remove(copy);
         }
 
-        reason = string.Empty;
-        return true;
+        reason = loaded ? string.Empty : $"{path} could not be loaded";
+        return loaded;
+    }
+
+    // Every earlier copy; one a process still has loaded refuses and stays.
+    private static void Sweep()
+    {
+        foreach (string earlier in Directory.EnumerateFiles(Copies))
+        {
+            Remove(earlier);
+        }
+    }
+
+    private static void Remove(string copy)
+    {
+        try
+        {
+            File.Delete(copy);
+        }
+        catch (Exception held) when (held is IOException or UnauthorizedAccessException)
+        {
+            // Loaded by a process, this one or another: its turn comes later.
+        }
     }
 }
