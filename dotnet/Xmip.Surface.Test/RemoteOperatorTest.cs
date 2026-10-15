@@ -186,7 +186,7 @@ public sealed class RemoteOperatorTest
         return Path.Combine(AppContext.BaseDirectory, "Fixture", name);
     }
 
-    private static string Fixture(string name)
+    internal static string Fixture(string name)
     {
         return File.ReadAllText(FixturePath(name));
     }
@@ -195,7 +195,7 @@ public sealed class RemoteOperatorTest
     /// with the authority's server certificate, answering
     /// <paramref name="publication"/>, every proven caller holding
     /// <paramref name="role"/>.</summary>
-    private static ServedNode Serve(TestAuthority authority, string publication, string role = "")
+    internal static ServedNode Serve(TestAuthority authority, string publication, string role = "")
     {
         (string certificate, string key) = authority.Server();
         ServedNode served = RuntimeLibrary.Rules.Remotes.Serve(

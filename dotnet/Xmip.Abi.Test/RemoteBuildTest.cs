@@ -59,6 +59,20 @@ public sealed class RemoteBuildTest
     }
 
     [Fact]
+    public void TheRemoteBuildMakesAPersonsRequestAndSignsNone()
+    {
+        // The phone makes its own key and request (ADR-0034, amendment
+        // 2026-10-15); only the authority's node signs.
+        Assert.True(
+            Rules.Certificates.Request("alice@example.org", out _, out string request, out _));
+
+        InvalidOperationException refused = Assert.Throws<InvalidOperationException>(
+            () => Rules.Certificates.Sign("node.toml", request, out _, out _));
+
+        Assert.StartsWith(RemoteBuild.Sentence, refused.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void TheRemoteBuildCarriesTheAudit()
     {
         // Every surface, the phone's too, records its own start and acts

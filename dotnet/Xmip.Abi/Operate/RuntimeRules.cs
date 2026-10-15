@@ -32,9 +32,9 @@ namespace Xmip.Abi.Operate;
 /// serves a whole process from any thread and is never released. What it
 /// answers is copied out at once; nothing borrowed outlives the call. A
 /// library that is the runtime's remote build, the phone's, carries sections
-/// 7, 8, 9, 17's client and 18 only: each node's binding here, sections 10 to
-/// 16, then throws an <see cref="InvalidOperationException"/> saying so
-/// (<see cref="RemoteBuild"/>).
+/// 7, 8, 9, 17's client, 18 and 19's request only: each node's binding here,
+/// sections 10 to 16 and 19's signing, then throws an
+/// <see cref="InvalidOperationException"/> saying so (<see cref="RemoteBuild"/>).
 /// </remarks>
 // Every call encodes its strings into stack buffers the encoder then fills;
 // zeroing them first is wasted on a path a board takes thousands of times.
@@ -142,6 +142,7 @@ public sealed unsafe partial class RuntimeRules
             library, RuntimeJourneys.Entrypoints, () => new RuntimeJourneys(library));
         Remotes = new RuntimeRemotes(library);
         SecurityRoles = new RuntimeSecurityRoles(library);
+        Certificates = new RuntimeCertificates(library);
 
         delegate* unmanaged[Cdecl]<XmipStr*, nuint, nuint*, int> words =
             (delegate* unmanaged[Cdecl]<XmipStr*, nuint, nuint*, int>)
@@ -218,6 +219,10 @@ public sealed unsafe partial class RuntimeRules
     /// act passes (ADR-0009).</summary>
     public RuntimeSecurityRoles SecurityRoles { get; }
 
+    /// <summary>Section 19: a person's key and request made, and signed on a
+    /// node's build by its authority (ADR-0034, amendment 2026-10-15).</summary>
+    public RuntimeCertificates Certificates { get; }
+
     /// <summary>The stage words, in message-path order — the segments a
     /// scope names a stage by: <c>node::Stage::WORDS</c>, read once when the
     /// library loads.</summary>
@@ -228,10 +233,11 @@ public sealed unsafe partial class RuntimeRules
     /// (ADR-0056, amendment 2026-10-01).</summary>
     public IReadOnlyList<string> RoleWords { get; }
 
-    /// <summary>Section 7's, section 8's, section 9's, section 17's client and
-    /// section 18's symbols, each of which a runtime must export, its remote
-    /// build too. Sections 10 to 16 and section 17's serve side are a node's, bound
-    /// where the library exports them (<see cref="RemoteBuild"/>).</summary>
+    /// <summary>Section 7's, section 8's, section 9's, section 17's client,
+    /// section 18's and section 19's request symbols, each of which a runtime
+    /// must export, its remote build too. Sections 10 to 16, section 17's
+    /// serve side and section 19's signing are a node's, bound where the
+    /// library exports them (<see cref="RemoteBuild"/>).</summary>
     public static IReadOnlyList<string> Entrypoints { get; } =
     [
         OperateAbi.HealthRolledEntrypoint,
@@ -245,6 +251,7 @@ public sealed unsafe partial class RuntimeRules
         .. RuntimeAudit.Entrypoints,
         .. RuntimeRemotes.Entrypoints,
         .. RuntimeSecurityRoles.Entrypoints,
+        .. RuntimeCertificates.Entrypoints,
         OperateAbi.ScopeContainsEntrypoint,
         OperateAbi.ScopeMatchesEntrypoint,
         OperateAbi.RunShownEntrypoint,
