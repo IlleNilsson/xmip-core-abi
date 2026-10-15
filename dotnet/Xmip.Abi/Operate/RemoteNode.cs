@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using Xmip.Abi.Module;
 
 namespace Xmip.Abi.Operate;
@@ -20,14 +21,18 @@ public sealed unsafe class RemoteNode : IDisposable
 
     private readonly nint handle;
 
+    // The keeper a kept open signs with, held until the handle is freed.
+    private readonly GCHandle kept;
+
     private int inFlight;
 
     private int disposed;
 
-    internal RemoteNode(RuntimeRemotes calls, nint handle)
+    internal RemoteNode(RuntimeRemotes calls, nint handle, GCHandle kept = default)
     {
         this.calls = calls;
         this.handle = handle;
+        this.kept = kept;
     }
 
     /// <summary>
@@ -168,6 +173,11 @@ public sealed unsafe class RemoteNode : IDisposable
         }
 
         calls.Free(handle);
+
+        if (kept.IsAllocated)
+        {
+            kept.Free();
+        }
     }
 
     private int Read(byte[] read, out nuint length, out ulong revision)

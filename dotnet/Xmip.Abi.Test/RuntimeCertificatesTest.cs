@@ -32,6 +32,36 @@ public sealed class RuntimeCertificatesTest
     }
 
     [Fact]
+    public void AKeepersTwoHalvesMakeARequestFromEitherFormOfItsPublicKey()
+    {
+        using ECDsa keeper = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+        ECParameters held = keeper.ExportParameters(includePrivateParameters: false);
+        byte[] point = [0x04, .. held.Q.X!, .. held.Q.Y!];
+
+        foreach (byte[] publicKey in new[] { keeper.ExportSubjectPublicKeyInfo(), point })
+        {
+            Assert.True(
+                Certificates.Information(Person, publicKey, out byte[] information, out string no),
+                no);
+            byte[] signature = keeper.SignData(
+                information, HashAlgorithmName.SHA256, DSASignatureFormat.Rfc3279DerSequence);
+            Assert.True(
+                Certificates.Assemble(information, signature, out string request, out no), no);
+
+            CertificateRequest read = CertificateRequest.LoadSigningRequestPem(
+                request, HashAlgorithmName.SHA256);
+            Assert.Equal($"CN={Person}", read.SubjectName.Name);
+        }
+
+        Assert.True(Certificates.Information(Person, point, out byte[] signed, out _));
+        byte[] fixedWidth = keeper.SignData(signed, HashAlgorithmName.SHA256);
+        Assert.False(Certificates.Assemble(signed, fixedWidth, out _, out string refused));
+        Assert.Contains("DER", refused, StringComparison.Ordinal);
+        Assert.False(Certificates.Information(Person, [1, 2, 3], out _, out refused));
+        Assert.False(string.IsNullOrEmpty(refused));
+    }
+
+    [Fact]
     public void ARequestIsSignedForClientAuthenticationAloneByTheAuthorityTheTableNames()
     {
         string place = Directory.CreateTempSubdirectory("xmip-abi-certificate-").FullName;

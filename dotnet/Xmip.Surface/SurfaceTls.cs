@@ -29,7 +29,7 @@ namespace Xmip.Surface;
 /// variable. Revocation is not checked here yet: the estate's revocation is
 /// by held CRLs (ADR-0045), and none is configured for a surface.
 /// </remarks>
-public sealed class SurfaceTls
+public sealed partial class SurfaceTls
 {
     /// <summary>The key naming this end's PEM certificate chain, leaf first.</summary>
     public const string CertificateKey = "Xmip:Certificate";
@@ -48,6 +48,12 @@ public sealed class SurfaceTls
 
     /// <summary>The environment variable when the document names no anchors.</summary>
     public const string TrustAnchorVariable = "XMIP_TRUST_ANCHOR";
+
+    // What a remote surface naming no anchors is told, with a key in a file
+    // or kept.
+    private const string NoAnchors =
+        $"REFUSED. A remote surface trusts a node by the anchors {TrustAnchorKey} "
+        + $"or {TrustAnchorVariable} names, never the operating system's (ADR-0063)";
 
     /// <summary>The purpose a server's certificate must be for.</summary>
     public const string ServerAuthentication = "1.3.6.1.5.5.7.3.1";
@@ -144,12 +150,31 @@ public sealed class SurfaceTls
     /// names the file.</exception>
     public static SurfaceTls From(IConfiguration configuration, string basePath)
     {
+        return From(configuration, basePath, null);
+    }
+
+    /// <summary>
+    /// As <see cref="From(IConfiguration, string)"/>, where this end's key
+    /// may be kept by its platform's <paramref name="keeper"/> instead of a
+    /// file: a configuration that names a certificate and no private key
+    /// presents that chain with the key the keeper holds
+    /// (<see cref="Kept"/>). A configuration naming a private key reads it,
+    /// keeper or not.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">As
+    /// <see cref="From(IConfiguration, string)"/>.</exception>
+    public static SurfaceTls From(
+        IConfiguration configuration, string basePath, IOperatorKeeper? keeper)
+    {
         ArgumentNullException.ThrowIfNull(configuration);
 
-        return Load(
-            Named(configuration, CertificateKey, CertificateVariable, basePath),
-            Named(configuration, PrivateKeyKey, PrivateKeyVariable, basePath),
-            Named(configuration, TrustAnchorKey, TrustAnchorVariable, basePath));
+        string? certificate = Named(configuration, CertificateKey, CertificateVariable, basePath);
+        string? privateKey = Named(configuration, PrivateKeyKey, PrivateKeyVariable, basePath);
+        string? trustAnchor = Named(configuration, TrustAnchorKey, TrustAnchorVariable, basePath);
+
+        return keeper is not null && certificate is not null && privateKey is null
+            ? Kept(certificate, trustAnchor, keeper)
+            : Load(certificate, privateKey, trustAnchor);
     }
 
     /// <summary>
@@ -157,7 +182,8 @@ public sealed class SurfaceTls
     /// at <paramref name="privateKeyPath"/>, and the anchors at
     /// <paramref name="trustAnchorPath"/>; all PEM, any of them null.
     /// </summary>
-    /// <exception cref="InvalidOperationException">As <see cref="From"/>.</exception>
+    /// <exception cref="InvalidOperationException">As
+    /// <see cref="From(IConfiguration, string)"/>.</exception>
     public static SurfaceTls Load(
         string? certificatePath, string? privateKeyPath, string? trustAnchorPath)
     {
@@ -230,8 +256,7 @@ public sealed class SurfaceTls
 
         if (Paths.TrustAnchor is null)
         {
-            return $"REFUSED. A remote surface trusts a node by the anchors {TrustAnchorKey} "
-                + $"or {TrustAnchorVariable} names, never the operating system's (ADR-0063)";
+            return NoAnchors;
         }
 
         certificate = File.ReadAllText(Paths.Certificate);

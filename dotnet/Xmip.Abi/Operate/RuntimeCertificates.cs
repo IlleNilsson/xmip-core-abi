@@ -12,6 +12,10 @@ namespace Xmip.Abi.Operate;
 /// too; and a request signed by the authority a node's
 /// <c>[provision.operator]</c> names, which only a node's build carries —
 /// asked of a remote build, it is refused in words (<see cref="RemoteBuild"/>).
+/// Where the key never leaves its platform's keeper, the request is made in
+/// two halves around the keeper's signature, <see cref="Information"/> and
+/// <see cref="Assemble"/>, which every build carries too, so no surface
+/// writes DER.
 /// The rules are <c>xmip-core-provision</c>'s; nothing here keeps one.
 /// </summary>
 /// <remarks>Pure in the header's sense: one instance serves a whole process
@@ -23,11 +27,22 @@ public sealed unsafe class RuntimeCertificates
     private readonly delegate* unmanaged[Cdecl]<XmipStr, XmipStr, byte*, nuint, nuint*, int>
         _sign;
 
+    // An xmip_slice of bytes has the layout of an xmip_str (the header's
+    // typedef), so the two halves cross as XmipStr over bytes.
+    private readonly delegate* unmanaged[Cdecl]<XmipStr, XmipStr, byte*, nuint, nuint*, int>
+        _information;
+    private readonly delegate* unmanaged[Cdecl]<XmipStr, XmipStr, byte*, nuint, nuint*, int>
+        _assemble;
+
     internal RuntimeCertificates(nint library)
     {
         _library = library;
         _request = (delegate* unmanaged[Cdecl]<XmipStr, byte*, nuint, nuint*, int>)
             NativeLibrary.GetExport(library, OperateAbi.OperatorRequestEntrypoint);
+        _information = (delegate* unmanaged[Cdecl]<XmipStr, XmipStr, byte*, nuint, nuint*, int>)
+            NativeLibrary.GetExport(library, OperateAbi.OperatorInformationEntrypoint);
+        _assemble = (delegate* unmanaged[Cdecl]<XmipStr, XmipStr, byte*, nuint, nuint*, int>)
+            NativeLibrary.GetExport(library, OperateAbi.OperatorAssembleEntrypoint);
         bool signs = NativeLibrary.TryGetExport(
             library, OperateAbi.OperatorSignEntrypoint, out nint sign);
         _sign = signs
@@ -37,7 +52,11 @@ public sealed unsafe class RuntimeCertificates
 
     /// <summary>The symbols every build exports.</summary>
     public static IReadOnlyList<string> Entrypoints { get; } =
-        [OperateAbi.OperatorRequestEntrypoint];
+    [
+        OperateAbi.OperatorRequestEntrypoint,
+        OperateAbi.OperatorInformationEntrypoint,
+        OperateAbi.OperatorAssembleEntrypoint,
+    ];
 
     /// <summary>The symbols only a node's build exports.</summary>
     public static IReadOnlyList<string> NodeEntrypoints { get; } =
@@ -71,6 +90,55 @@ public sealed unsafe class RuntimeCertificates
         key = answer.RootElement.GetProperty("key").GetString() ?? string.Empty;
         request = answer.RootElement.GetProperty("request").GetString() ?? string.Empty;
         return true;
+    }
+
+    /// <summary>
+    /// What an operator's request for <paramref name="person"/> signs over a
+    /// key its platform's keeper holds, DER: <paramref name="publicKey"/> as
+    /// the keeper hands it — <c>SubjectPublicKeyInfo</c> DER, or the bare
+    /// uncompressed point. The keeper signs these bytes and
+    /// <see cref="Assemble"/> makes the request; or false with the runtime's
+    /// sentence in <paramref name="refused"/>.
+    /// </summary>
+    public bool Information(
+        string person, byte[] publicKey, out byte[] information, out string refused)
+    {
+        ArgumentNullException.ThrowIfNull(person);
+        ArgumentNullException.ThrowIfNull(publicKey);
+
+        Utf8Pack pack = new([person]);
+        (int status, byte[] bytes) = Bytes(
+            publicKey, [], (key, _, written, cap, length) =>
+            {
+                fixed (byte* data = pack.Bytes)
+                {
+                    return _information(pack.Borrow(data, 0), key, written, cap, length);
+                }
+            });
+        information = status == 0 ? bytes : [];
+        refused = status == 0 ? string.Empty : Refusal(status, Encoding.UTF8.GetString(bytes));
+        return status == 0;
+    }
+
+    /// <summary>
+    /// The request, <c>CERTIFICATE REQUEST</c> PEM, that
+    /// <paramref name="information"/> and the keeper's
+    /// <paramref name="signature"/> over it — ECDSA with SHA-256, DER — make,
+    /// the signature verified first; or false with the runtime's sentence.
+    /// </summary>
+    public bool Assemble(
+        byte[] information, byte[] signature, out string request, out string refused)
+    {
+        ArgumentNullException.ThrowIfNull(information);
+        ArgumentNullException.ThrowIfNull(signature);
+
+        (int status, byte[] bytes) = Bytes(
+            information, signature, (first, second, written, cap, length) =>
+                _assemble(first, second, written, cap, length));
+        string text = Encoding.UTF8.GetString(bytes);
+        request = status == 0 ? text : string.Empty;
+        refused = status == 0 ? string.Empty : Refusal(status, text);
+        return status == 0;
     }
 
     /// <summary>
@@ -127,6 +195,38 @@ public sealed unsafe class RuntimeCertificates
             }
 
             Array.Clear(room);
+            room = new byte[(int)length];
+        }
+    }
+
+    private delegate int Lent(
+        XmipStr first, XmipStr second, byte* written, nuint cap, nuint* length);
+
+    // Two byte ranges lent for one call, asked again with the true length
+    // where the answer did not fit; the answer as the runtime wrote it.
+    private static (int Status, byte[] Bytes) Bytes(byte[] first, byte[] second, Lent call)
+    {
+        byte[] room = new byte[RuntimeRemotes.Room];
+
+        while (true)
+        {
+            nuint length = 0;
+            int status;
+
+            fixed (byte* one = first)
+            fixed (byte* two = second)
+            fixed (byte* written = room)
+            {
+                status = call(
+                    new XmipStr(one, (nuint)first.Length), new XmipStr(two, (nuint)second.Length),
+                    written, (nuint)room.Length, &length);
+            }
+
+            if (length <= (nuint)room.Length)
+            {
+                return (status, room[..(int)length]);
+            }
+
             room = new byte[(int)length];
         }
     }

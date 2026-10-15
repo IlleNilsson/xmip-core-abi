@@ -1478,6 +1478,20 @@ typedef XmipStatus (*XmipPublicationFailedJourneysFn)(const XmipPublication *pub
  * with the refusal in report for an address that is no operate address or
  * an identity that does not pair; XMIP_E_MALFORMED for text not UTF-8.
  *
+ * xmip_remote_open_kept_v1 makes the same handle where the key never
+ * leaves its platform's keeper - the Android Keystore, the iOS keychain's
+ * Secure Enclave, Windows CNG and the TPM (ADR-0034, amendment
+ * 2026-10-15): certificate is the PEM chain, leaf first, and in place of
+ * the key, sign is called with context for every signature the handshake
+ * needs - ECDSA on P-256 with SHA-256 over message, unhashed, the keeper
+ * hashing it - writing the signature, DER, into out (room for 512 bytes)
+ * and its length into out_len, and answering XMIP_OK; any other status
+ * with the keeper's sentence in out refuses the handshake with it. sign
+ * may be called from any thread, at once from several, until
+ * xmip_remote_free_v1 returns: the binding keeps context alive until then.
+ * Whether the chain's leaf is the keeper's key the handshake finds; the
+ * node refuses a signature its certificate does not verify.
+ *
  * xmip_remote_open_local_v1 makes the same handle over the node on this
  * machine whose local endpoint is called endpoint: a name - \\.\pipe\<name>
  * on Windows, /run/xmip/<name>.sock on Linux, /var/run/xmip/<name>.sock on
@@ -1552,6 +1566,12 @@ typedef struct XmipServed XmipServed;
 typedef XmipStatus (*XmipRemoteOpenFn)(XmipStr address, XmipStr certificate, XmipStr key,
                                        XmipStr anchors, XmipRemote **out, uint8_t *report,
                                        size_t cap, size_t *out_len);
+typedef XmipStatus (*XmipKeeperSignFn)(void *context, XmipSlice message, uint8_t *out,
+                                       size_t cap, size_t *out_len);
+typedef XmipStatus (*XmipRemoteOpenKeptFn)(XmipStr address, XmipStr certificate, XmipStr anchors,
+                                           XmipKeeperSignFn sign, void *context,
+                                           XmipRemote **out, uint8_t *report, size_t cap,
+                                           size_t *out_len);
 typedef XmipStatus (*XmipRemoteOpenLocalFn)(XmipStr endpoint, uint32_t within_ms,
                                             XmipRemote **out, uint8_t *report, size_t cap,
                                             size_t *out_len);
@@ -1580,6 +1600,7 @@ typedef XmipStatus (*XmipOperatePostFn)(const XmipServed *served, XmipStr public
 typedef void (*XmipOperateServeStopFn)(XmipServed *served);
 
 #define XMIP_REMOTE_OPEN_ENTRYPOINT            "xmip_remote_open_v1"
+#define XMIP_REMOTE_OPEN_KEPT_ENTRYPOINT       "xmip_remote_open_kept_v1"
 #define XMIP_REMOTE_OPEN_LOCAL_ENTRYPOINT      "xmip_remote_open_local_v1"
 #define XMIP_REMOTE_PUBLICATION_ENTRYPOINT     "xmip_remote_publication_v1"
 #define XMIP_REMOTE_WAIT_ENTRYPOINT            "xmip_remote_wait_v1"
@@ -1641,6 +1662,19 @@ typedef XmipStatus (*XmipActAdmittedFn)(XmipStr who, uint8_t proven, int32_t rol
  * (PRIVATE KEY, CERTIFICATE REQUEST), in memory only. Every build carries
  * it, the phone's remote build too.
  *
+ * Where the key never leaves its platform's keeper - the Android Keystore,
+ * the iOS keychain's Secure Enclave, Windows CNG and the TPM - the request
+ * is made in two halves around the keeper's signature, so the surface
+ * never writes DER: xmip_operator_information_v1 answers what the request
+ * signs for person over public_key, the keeper's P-256 public key in the
+ * form its platform hands it - SubjectPublicKeyInfo DER, or the bare
+ * uncompressed point (X9.63, 65 bytes) - as DER bytes; the keeper signs
+ * them, ECDSA with SHA-256, DER; and xmip_operator_assemble_v1 makes the
+ * request (PEM, CERTIFICATE REQUEST) of information and signature,
+ * verifying the signature under the key the information holds first, so a
+ * keeper that signed in another form is told so here. Every build carries
+ * both, the phone's remote build too.
+ *
  * xmip_operator_sign_v1 signs the request text (PEM) by the authority the
  * node configuration at configuration (a path) names in
  * [provision.operator]: authority, the folder the cluster's authority keeps
@@ -1651,18 +1685,24 @@ typedef XmipStatus (*XmipActAdmittedFn)(XmipStr who, uint8_t proven, int32_t rol
  * host's name, an authority's constraint, any other extension - is refused.
  * A node's build only, as sections 10 to 16.
  *
- * Both write their answer into out as UTF-8, its true byte length in
- * out_len whether or not it fit. XMIP_OK with the answer; XMIP_E_INVALID
- * with the refusal, one sentence; XMIP_E_MALFORMED when a string is not
- * UTF-8. Pure, as section 7: no handle, any thread. Optional symbols;
- * XMIP_OPERATE_VERSION is unchanged.
+ * Each writes its answer into out - UTF-8, the information's DER bytes -
+ * its true byte length in out_len whether or not it fit. XMIP_OK with the
+ * answer; XMIP_E_INVALID with the refusal, one sentence; XMIP_E_MALFORMED
+ * when a string is not UTF-8. Pure, as section 7: no handle, any thread.
+ * Optional symbols; XMIP_OPERATE_VERSION is unchanged.
  */
 typedef XmipStatus (*XmipOperatorRequestFn)(XmipStr person, uint8_t *out, size_t cap,
                                             size_t *out_len);
+typedef XmipStatus (*XmipOperatorInformationFn)(XmipStr person, XmipSlice public_key,
+                                                uint8_t *out, size_t cap, size_t *out_len);
+typedef XmipStatus (*XmipOperatorAssembleFn)(XmipSlice information, XmipSlice signature,
+                                             uint8_t *out, size_t cap, size_t *out_len);
 typedef XmipStatus (*XmipOperatorSignFn)(XmipStr configuration, XmipStr request,
                                          uint8_t *out, size_t cap, size_t *out_len);
 
 #define XMIP_OPERATOR_REQUEST_ENTRYPOINT "xmip_operator_request_v1"
+#define XMIP_OPERATOR_INFORMATION_ENTRYPOINT "xmip_operator_information_v1"
+#define XMIP_OPERATOR_ASSEMBLE_ENTRYPOINT "xmip_operator_assemble_v1"
 #define XMIP_OPERATOR_SIGN_ENTRYPOINT "xmip_operator_sign_v1"
 
 #ifdef __cplusplus

@@ -6,7 +6,9 @@ namespace Xmip.Surface;
 /// 2026-10-12; ADR-0063): a <see cref="ListenerOperator"/> that presents the
 /// certificate its <see cref="SurfaceTls"/> names and takes the node only
 /// where its certificate reaches the anchors named with it. The node takes
-/// every act as the subject that certificate proves.
+/// every act as the subject that certificate proves. Where the key is kept
+/// by the platform's keeper (<see cref="SurfaceTls.Keeper"/>), the keeper
+/// signs each handshake through the runtime and the key never leaves it.
 /// </summary>
 /// <param name="address">The node's operate address, <c>host:port</c>.</param>
 /// <param name="tls">What this side presents and trusts.</param>
@@ -28,6 +30,22 @@ public sealed class RemoteOperator(string address, SurfaceTls tls)
     {
         ArgumentNullException.ThrowIfNull(address);
         ArgumentNullException.ThrowIfNull(tls);
+
+        // A key its platform's keeper holds: the keeper signs every
+        // handshake, and the key never leaves it (ADR-0034, amendment
+        // 2026-10-15).
+        if (tls.Keeper is { } keeper)
+        {
+            if (tls.KeptPem(out string chain, out string trusted) is { } absent)
+            {
+                reason = absent;
+                return null;
+            }
+
+            return RuntimeLibrary.Rules.Remotes.OpenKept(
+                address, chain, trusted,
+                message => keeper.Sign(OperatorCertificate.KeptAlias, message), out reason);
+        }
 
         if (tls.Pem(out string certificate, out string key, out string anchors) is { } missing)
         {
