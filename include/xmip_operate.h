@@ -1622,6 +1622,49 @@ typedef XmipStatus (*XmipActAdmittedFn)(XmipStr who, uint8_t proven, int32_t rol
 #define XMIP_SECURITY_ROLE_WORDS_ENTRYPOINT "xmip_security_role_words_v1"
 #define XMIP_ACT_ADMITTED_ENTRYPOINT "xmip_act_admitted_v1"
 
+/* ===================================================================== */
+/* 19. A person's certificate: requested, and signed                     */
+/* ===================================================================== */
+
+/*
+ * An operator's certificate (ADR-0034, amendment 2026-10-15): client
+ * authentication alone, its subject the person - the caller a node's
+ * operate listener proves (section 18; ADR-0009, note of 2026-10-12). The
+ * surface makes its own key and a request (PKCS #10) naming the person; the
+ * cluster's authority signs it once it is approved out of band. Both rules
+ * are xmip-core-provision's; these forward.
+ *
+ * xmip_operator_request_v1 makes a fresh P-256 key and the request for
+ * person - a person's name as their directory knows it, a user principal
+ * name where there is one, one to 64 characters, no control character and
+ * none RFC 4514 escapes. The answer is JSON, {"key","request"}, each PEM
+ * (PRIVATE KEY, CERTIFICATE REQUEST), in memory only. Every build carries
+ * it, the phone's remote build too.
+ *
+ * xmip_operator_sign_v1 signs the request text (PEM) by the authority the
+ * node configuration at configuration (a path) names in
+ * [provision.operator]: authority, the folder the cluster's authority keeps
+ * authority.key and authority.pem in, relative to that file; lifetime, how
+ * long the certificate is valid. The answer is the chain, PEM, leaf first.
+ * The request's signature is verified under its own key, and a request
+ * asking more than an operator's certificate carries - another usage, a
+ * host's name, an authority's constraint, any other extension - is refused.
+ * A node's build only, as sections 10 to 16.
+ *
+ * Both write their answer into out as UTF-8, its true byte length in
+ * out_len whether or not it fit. XMIP_OK with the answer; XMIP_E_INVALID
+ * with the refusal, one sentence; XMIP_E_MALFORMED when a string is not
+ * UTF-8. Pure, as section 7: no handle, any thread. Optional symbols;
+ * XMIP_OPERATE_VERSION is unchanged.
+ */
+typedef XmipStatus (*XmipOperatorRequestFn)(XmipStr person, uint8_t *out, size_t cap,
+                                            size_t *out_len);
+typedef XmipStatus (*XmipOperatorSignFn)(XmipStr configuration, XmipStr request,
+                                         uint8_t *out, size_t cap, size_t *out_len);
+
+#define XMIP_OPERATOR_REQUEST_ENTRYPOINT "xmip_operator_request_v1"
+#define XMIP_OPERATOR_SIGN_ENTRYPOINT "xmip_operator_sign_v1"
+
 #ifdef __cplusplus
 }
 #endif

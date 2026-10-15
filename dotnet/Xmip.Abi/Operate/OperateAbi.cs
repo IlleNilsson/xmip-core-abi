@@ -338,4 +338,12 @@ public static class OperateAbi
 
     /// <summary>The one check every act passes: section 18.</summary>
     public const string ActAdmittedEntrypoint = "xmip_act_admitted_v1";
+
+    /// <summary>A person's key and certificate request made: section 19
+    /// (ADR-0034, amendment 2026-10-15).</summary>
+    public const string OperatorRequestEntrypoint = "xmip_operator_request_v1";
+
+    /// <summary>A person's request signed by the authority a node's
+    /// <c>[provision.operator]</c> names: section 19.</summary>
+    public const string OperatorSignEntrypoint = "xmip_operator_sign_v1";
 }

@@ -116,6 +116,8 @@ public sealed class OperateAbiTest
     [InlineData(
         "XMIP_SECURITY_ROLE_WORDS_ENTRYPOINT", OperateAbi.SecurityRoleWordsEntrypoint)]
     [InlineData("XMIP_ACT_ADMITTED_ENTRYPOINT", OperateAbi.ActAdmittedEntrypoint)]
+    [InlineData("XMIP_OPERATOR_REQUEST_ENTRYPOINT", OperateAbi.OperatorRequestEntrypoint)]
+    [InlineData("XMIP_OPERATOR_SIGN_ENTRYPOINT", OperateAbi.OperatorSignEntrypoint)]
     public void NamesEachSymbolTheHeaderDeclares(string define, string symbol)
     {
         Assert.Equal(Header.Define("xmip_operate.h", define), symbol);

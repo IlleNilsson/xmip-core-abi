@@ -55,6 +55,27 @@ internal sealed class TestAuthority : IDisposable
         return Issue("client", SurfaceTls.ClientAuthentication);
     }
 
+    /// <summary>
+    /// This authority kept as the cluster's is (<c>xmip-core-provision</c>'s
+    /// <c>authority.pem</c> and <c>authority.key</c>) and a node's
+    /// configuration naming it in <c>[provision.operator]</c> (ADR-0034,
+    /// amendment 2026-10-15); the configuration's path.
+    /// </summary>
+    public string Kept()
+    {
+        string kept = System.IO.Directory.CreateDirectory(
+            Path.Combine(Directory, "authority")).FullName;
+        File.WriteAllText(Path.Combine(kept, "authority.pem"), anchor.ExportCertificatePem());
+        File.WriteAllText(Path.Combine(kept, "authority.key"), key.ExportPkcs8PrivateKeyPem());
+
+        string configuration = Path.Combine(Directory, "node.toml");
+        File.WriteAllText(
+            configuration,
+            "[service]\nname = \"n\"\ncluster_name = \"c\"\nnode_name = \"d\"\n\n"
+                + "[provision.operator]\nauthority = \"authority\"\nlifetime = \"1h\"\n");
+        return configuration;
+    }
+
     public void Dispose()
     {
         anchor.Dispose();

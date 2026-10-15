@@ -141,9 +141,17 @@ this process serves for what it `Post`s. Every .NET surface operates a node
 through these, on its machine and elsewhere alike; the C ABI is crossed
 directly only for what has no node behind it — validating, editing and
 slicing configuration, the language server's design exports, module
-probing, the audit file and Modules. Section 18 is `RuntimeRules.SecurityRoles`
-(`RuntimeSecurityRoles`): the role a word names, its words, and `Admitted`,
-the one gate `GatedOperator` asks.
+probing, the audit file, a person's certificate and Modules. Section 18 is
+`RuntimeRules.SecurityRoles` (`RuntimeSecurityRoles`): the role a word names,
+its words, and `Admitted`, the one gate `GatedOperator` asks. Section 19 — a
+person's certificate (ADR-0034, amendment 2026-10-15) — is
+`RuntimeRules.Certificates` (`RuntimeCertificates`): `Request` makes a fresh
+key and a request naming the person, which every build carries, the phone's
+remote build too; `Sign` signs a request by the authority a node
+configuration's `[provision.operator]` names, which only a node's build
+carries, refused in words in a remote build. `Xmip.Surface`'s
+`OperatorCertificate` writes their files once, for `xmip-cli certificate`
+and `New-XmipCertificate`.
 Section 10 — the
 cluster's `xmip.toml` read, edited and sliced — is `RuntimeRules.Design`
 (`RuntimeDesign`): `TryViews`, `TryEdit`, `TrySlices`, `TryFilterStructure`

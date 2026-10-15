@@ -7,10 +7,11 @@ namespace Xmip.Abi.Operate;
 /// remote</c>, the phone's (ADR-0014, amendment 2026-10-14) — and the one
 /// rule for a library that carries it only: section 7's rules, section 8's
 /// publication read, section 9's audit — every surface records its own
-/// start and acts — section 17's client and section 18's security roles
-/// are always there; what only a node does — serving, the design, the Event
-/// hub, the catalogue, process declarations and the acts on this process's
-/// nodes — is bound where the library exports it, and a
+/// start and acts — section 17's client, section 18's security roles and
+/// section 19's request are always there; what only a node does — serving,
+/// the design, the Event hub, the catalogue, process declarations, the acts
+/// on this process's nodes and signing a person's request — is bound where
+/// the library exports it, and a
 /// call into it where it does not is refused in words, never a crash.
 /// </summary>
 internal static class RemoteBuild
