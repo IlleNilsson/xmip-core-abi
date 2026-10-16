@@ -79,9 +79,12 @@ internal sealed record PublicationReading(
 
     /// <summary>
     /// The Journeys that failed at or beneath <paramref name="scope"/> as the
-    /// publication carries them — each Port's count and its oldest hundred —
-    /// paged from the place <paramref name="from"/> on, at most
-    /// <paramref name="most"/> of each Port (0: every one carried).
+    /// publication carries them — each Port's count and its window of the
+    /// oldest — those from the place <paramref name="from"/> in the Port's
+    /// queue on, at most <paramref name="most"/> of each Port (0: every one
+    /// carried). A publication carries no place in the Port's index of failed
+    /// Journeys, which a node's own list pages by, so its list names no next
+    /// (<see cref="IOperatorSurface.FailedJourneys"/>).
     /// </summary>
     public FailedJourneyList FailedJourneysWithin(string scope, ulong from, uint most)
     {

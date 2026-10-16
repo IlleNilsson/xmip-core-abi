@@ -42,12 +42,13 @@ public sealed class OperatorKeptTest
         Assert.True(
             Certificates.Sign(authority.Kept(), asked.Request, out string signed, out string no),
             no);
-        Assert.Equal(string.Empty, OperatorCertificate.Keep(keeper, signed, chain));
+        Assert.Equal(string.Empty, OperatorCertificate.Keep(Certificates, keeper, signed, chain));
         Assert.Contains(
             "No anchors are kept", tls.KeptPem(out _, out _), StringComparison.Ordinal);
         Assert.Equal(
             string.Empty,
-            OperatorCertificate.KeepAnchors(File.ReadAllText(authority.Anchor), anchors));
+            OperatorCertificate.KeepAnchors(
+                Certificates, File.ReadAllText(authority.Anchor), anchors));
 
         string node = $"{Cluster.Scope}/node/{Cluster.WithRole("sending")}";
         using ServedNode served = RemoteOperatorTest.Serve(
@@ -76,12 +77,12 @@ public sealed class OperatorKeptTest
 
         Assert.StartsWith(
             $"REFUSED: CN={Person} is not for the key", OperatorCertificate.Keep(
-                keeper, signed, chain), StringComparison.Ordinal);
+                Certificates, keeper, signed, chain), StringComparison.Ordinal);
         Assert.False(File.Exists(chain));
 
         Assert.Equal(
             "REFUSED: the text holds no CERTIFICATE.",
-            OperatorCertificate.KeepAnchors("nothing", chain));
+            OperatorCertificate.KeepAnchors(Certificates, "nothing", chain));
 
         keeper.Failing = true;
         OperatorKept failed = OperatorCertificate.RequestKept(Certificates, keeper, Person);

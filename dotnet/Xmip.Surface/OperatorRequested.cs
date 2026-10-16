@@ -2,7 +2,7 @@ namespace Xmip.Surface;
 
 /// <summary>A key and a request made for <paramref name="Person"/>, at
 /// <paramref name="Key"/> and <paramref name="Request"/>; or, where
-/// <paramref name="Refused"/> says why, nothing written
+/// <paramref name="Refused"/> says why, nothing written and both empty
 /// (<see cref="OperatorCertificate.Request"/>).</summary>
 public sealed record OperatorRequested(
     string Person, string Key, string Request, string Refused)

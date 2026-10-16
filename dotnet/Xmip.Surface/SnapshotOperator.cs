@@ -268,8 +268,10 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
 
     /// <inheritdoc />
     /// <remarks>What the publication carries: each Port's count and its
-    /// oldest hundred; <paramref name="from"/> and <paramref name="most"/>
-    /// page within them.</remarks>
+    /// window of the oldest; <paramref name="from"/>, a place in the Port's
+    /// queue, and <paramref name="most"/> page within them, and no Port names
+    /// a next (<see cref="IOperatorSurface.FailedJourneys"/> says
+    /// why).</remarks>
     public FailedJourneyList FailedJourneys(string scope, ulong from = 0, uint most = 0)
     {
         return Read().FailedJourneysWithin(scope, from, most);

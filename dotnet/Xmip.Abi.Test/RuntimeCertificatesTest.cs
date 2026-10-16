@@ -21,14 +21,33 @@ public sealed class RuntimeCertificatesTest
     private static RuntimeCertificates Certificates => RuntimeRulesTest.Rules.Certificates;
 
     [Fact]
-    public void ARequestIsMadeForAPersonAndANameThatIsNoneIsRefused()
+    public void ARequestIsWrittenForAPersonAndANameThatIsNoneIsRefused()
     {
-        Assert.True(Certificates.Request(Person, out string key, out string request, out _));
-        Assert.Contains("PRIVATE KEY", key, StringComparison.Ordinal);
-        Assert.Contains("CERTIFICATE REQUEST", request, StringComparison.Ordinal);
+        string place = Directory.CreateTempSubdirectory("xmip-abi-request-").FullName;
 
-        Assert.False(Certificates.Request("CN=alice", out _, out _, out string refused));
-        Assert.Contains("person", refused, StringComparison.Ordinal);
+        try
+        {
+            string folder = Path.Combine(place, "phone");
+            Assert.True(
+                Certificates.Request(Person, folder, out string key, out string request, out _));
+            Assert.Equal(Path.Combine(folder, "operator.key"), key);
+            Assert.Contains("PRIVATE KEY", File.ReadAllText(key), StringComparison.Ordinal);
+            Assert.Contains(
+                "CERTIFICATE REQUEST", File.ReadAllText(request), StringComparison.Ordinal);
+
+            Assert.False(Certificates.Request(Person, folder, out _, out _, out string there));
+            Assert.Contains("nothing is overwritten", there, StringComparison.Ordinal);
+
+            string other = Path.Combine(place, "other");
+            Assert.False(
+                Certificates.Request("CN=alice", other, out _, out _, out string refused));
+            Assert.Contains("person", refused, StringComparison.Ordinal);
+            Assert.False(Directory.Exists(other) && Directory.EnumerateFiles(other).Any());
+        }
+        finally
+        {
+            Directory.Delete(place, recursive: true);
+        }
     }
 
     [Fact]
@@ -69,7 +88,9 @@ public sealed class RuntimeCertificatesTest
         try
         {
             string configuration = Authority(place);
-            Assert.True(Certificates.Request(Person, out _, out string request, out _));
+            Assert.True(Certificates.Request(
+                Person, Path.Combine(place, "phone"), out _, out string written, out _));
+            string request = File.ReadAllText(written);
 
             Assert.True(
                 Certificates.Sign(configuration, request, out string chain, out string refused),

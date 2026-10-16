@@ -323,12 +323,20 @@ public interface IOperatorSurface
     /// scope — each Port's count and its Journeys, oldest first, read from
     /// the place <paramref name="from"/> on, at most <paramref name="most"/>
     /// of each Port (0: a hundred), and where an act is left when this
-    /// surface reads a publication (runtime-model.md section 13). In the
-    /// process that runs the node they are read from Xmip Storage a page at
-    /// a time, each Port naming where its next page reads from; a
-    /// publication carries the oldest hundred of each. A Port's page may be
-    /// empty with a next place where the stretch read held no failed Journey:
-    /// the place, not the Journeys, says whether more remain.
+    /// surface reads a publication (runtime-model.md section 13).
+    /// <para><paramref name="from"/> is a place in one of two lines, because
+    /// the two lists are kept in two places. In the process that runs the
+    /// node they are read from the Port's index of failed Journeys in Xmip
+    /// Storage, in the order they failed, a page at a time, each page one
+    /// read: <paramref name="from"/> is a place in that index, 0 the oldest,
+    /// and each Port names the place its next page reads from, or none at the
+    /// index's end. A publication carries only its node's window, the oldest
+    /// <c>[tuning] failed_window</c> of each Port (a hundred by default), each
+    /// with its place in the Port's queue and none in the index:
+    /// <paramref name="from"/> is then a place in the Port's queue, those
+    /// before it passed over, and no Port names a next, the window being all
+    /// it carries. Either way <paramref name="from"/> 0 is the start, and a
+    /// next place is only ever passed back to the surface that gave it.</para>
     /// <see cref="FailedJourneyList.Unlisted"/> where this surface cannot list
     /// them, which a caller tells from an answer that lists none;
     /// <see cref="FailedJourneyList.Unanswered"/>, with what it was told,

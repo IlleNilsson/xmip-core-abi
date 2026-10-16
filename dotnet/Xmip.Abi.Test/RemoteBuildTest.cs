@@ -63,13 +63,24 @@ public sealed class RemoteBuildTest
     {
         // The phone makes its own key and request (ADR-0034, amendment
         // 2026-10-15); only the authority's node signs.
-        Assert.True(
-            Rules.Certificates.Request("alice@example.org", out _, out string request, out _));
+        string folder = Directory.CreateTempSubdirectory("xmip-abi-remote-request-").FullName;
 
-        InvalidOperationException refused = Assert.Throws<InvalidOperationException>(
-            () => Rules.Certificates.Sign("node.toml", request, out _, out _));
+        try
+        {
+            Assert.True(Rules.Certificates.Request(
+                "alice@example.org", Path.Combine(folder, "phone"), out _, out string written,
+                out _));
+            string request = File.ReadAllText(written);
 
-        Assert.StartsWith(RemoteBuild.Sentence, refused.Message, StringComparison.Ordinal);
+            InvalidOperationException refused = Assert.Throws<InvalidOperationException>(
+                () => Rules.Certificates.Sign("node.toml", request, out _, out _));
+
+            Assert.StartsWith(RemoteBuild.Sentence, refused.Message, StringComparison.Ordinal);
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
     }
 
     [Fact]
