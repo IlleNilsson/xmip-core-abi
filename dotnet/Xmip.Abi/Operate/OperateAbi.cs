@@ -356,6 +356,10 @@ public static class OperateAbi
     /// section 19.</summary>
     public const string OperatorAssembleEntrypoint = "xmip_operator_assemble_v1";
 
+    /// <summary>A chain or anchors kept whole at a file, synced: section 19
+    /// (ADR-0034, amendment 2026-10-16).</summary>
+    public const string OperatorKeepEntrypoint = "xmip_operator_keep_v1";
+
     /// <summary>A person's request signed by the authority a node's
     /// <c>[provision.operator]</c> names: section 19.</summary>
     public const string OperatorSignEntrypoint = "xmip_operator_sign_v1";

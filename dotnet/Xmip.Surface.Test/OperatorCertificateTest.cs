@@ -28,7 +28,8 @@ public sealed class OperatorCertificateTest
 
         OperatorRequested requested = OperatorCertificate.Request(Certificates, Person, folder);
         Assert.True(requested.Ok, requested.Refused);
-        Assert.Equal(Path.Combine(folder, OperatorCertificate.KeyFile), requested.Key);
+        Assert.Equal(Path.Combine(folder, "operator.key"), requested.Key);
+        Assert.True(OwnerOnly(requested.Key), $"{requested.Key} is the owner's alone");
 
         string chain = Path.Combine(folder, "operator.pem");
         OperatorSigned signed = OperatorCertificate.Sign(
@@ -69,8 +70,34 @@ public sealed class OperatorCertificateTest
         Assert.Equal($"No file at {absent}.", none.Refused);
 
         OperatorSigned over = OperatorCertificate.Sign(
-            Certificates, Path.Combine(folder, OperatorCertificate.RequestFile), configuration,
+            Certificates, Path.Combine(folder, "operator.csr"), configuration,
             configuration);
         Assert.Contains("nothing is overwritten", over.Refused, StringComparison.Ordinal);
+    }
+
+    // The runtime's private file, as this platform says it: on Unix mode
+    // 0600; on Windows an access list protected from inheritance, granting
+    // the user this process runs as and SYSTEM, no one else.
+    private static bool OwnerOnly(string path)
+    {
+        return OperatingSystem.IsWindows()
+            ? OwnerOnlyOnWindows(path)
+            : File.GetUnixFileMode(path) == (UnixFileMode.UserRead | UnixFileMode.UserWrite);
+    }
+
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+    private static bool OwnerOnlyOnWindows(string path)
+    {
+        System.Security.AccessControl.FileSecurity access = new FileInfo(path).GetAccessControl();
+        string[] granted = access
+            .GetAccessRules(true, true, typeof(System.Security.Principal.SecurityIdentifier))
+            .Cast<System.Security.AccessControl.FileSystemAccessRule>()
+            .Select(rule => rule.IdentityReference.Value)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+        string user = System.Security.Principal.WindowsIdentity.GetCurrent().User!.Value;
+        string[] owner =
+            new[] { user, "S-1-5-18" }.Distinct().Order(StringComparer.Ordinal).ToArray();
+        return access.AreAccessRulesProtected && granted.SequenceEqual(owner);
     }
 }

@@ -121,6 +121,7 @@ public sealed class OperateAbiTest
     [InlineData(
         "XMIP_OPERATOR_INFORMATION_ENTRYPOINT", OperateAbi.OperatorInformationEntrypoint)]
     [InlineData("XMIP_OPERATOR_ASSEMBLE_ENTRYPOINT", OperateAbi.OperatorAssembleEntrypoint)]
+    [InlineData("XMIP_OPERATOR_KEEP_ENTRYPOINT", OperateAbi.OperatorKeepEntrypoint)]
     [InlineData("XMIP_OPERATOR_SIGN_ENTRYPOINT", OperateAbi.OperatorSignEntrypoint)]
     public void NamesEachSymbolTheHeaderDeclares(string define, string symbol)
     {

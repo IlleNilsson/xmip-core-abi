@@ -1382,11 +1382,13 @@ typedef XmipStatus (*XmipPublicationDeadMessagesFn)(const XmipPublication *publi
  * what failed, how many failed wait in its queue, and the last Journey that
  * failed with why - Done while any waits, Fine once none does; and beside
  * its records, for every Port it sends, how many wait now (zero where none),
- * whether one blocks its sequence, and the oldest hundred with why: the
- * identifiers an act names; apart from them the last that failed there
- * since the node started, as history.
- * A Journey that failed before the node restarted, or on another node
- * sending the Port, is among them once the node's scan has read it.
+ * whether one blocks its sequence, and the oldest with why - the node's
+ * [tuning] failed_window of them, a hundred by default: the identifiers an
+ * act names; apart from them the last that failed there since the node
+ * started, as history.
+ * Xmip Storage keeps the count and every one of them in the queue's index
+ * of failed Journeys, written with the failure, so one that failed before
+ * the node restarted, or on another node sending the Port, is among them.
  *
  * A list is JSON, written into out as UTF-8, its true byte length in out_len
  * whether or not it fit:
@@ -1397,22 +1399,22 @@ typedef XmipStatus (*XmipPublicationDeadMessagesFn)(const XmipPublication *publi
  *                        "last_failure":{"journey","reason"}|null}]}
  *
  * node is the scope of the node that sends the Port and send_port its
- * configured name; count how many failed Journeys the node knows wait in its
- * queue now, zero where none; blocked whether one of them blocks a
- * Sequential Port's sequence now; journeys those listed, oldest first -
- * journey the identifier an act names, sequence its place in the queue,
- * reason why it failed, in words; next the place the next page reads from,
- * or null where the queue was read to its end or the list is a
- * publication's; last_failure the last Journey that failed at the Port
+ * configured name; count how many failed Journeys wait in its queue now,
+ * as Xmip Storage counts them, zero where none; blocked whether one of them
+ * blocks a Sequential Port's sequence now; journeys those listed, oldest
+ * first - journey the identifier an act names, sequence its place in the
+ * queue, reason why it failed, in words; next the place in the queue's
+ * index of failed Journeys the next page reads from, or null where the
+ * index was read to its end or the list is a publication's; last_failure the last Journey that failed at the Port
  * since its node started, and why - history, which may since have been
  * retried or dismissed - or null where none has.
  *
  * xmip_failed_journeys_v1 lists, for every node running in this process at
  * or beneath node (empty: every one), the Journeys that failed at its Send
  * Port port (empty: every Port it sends), read from Xmip Storage from the
- * place from on (0: the oldest), at most most of each Port (0: a hundred);
- * a page reads at most 1024 entries of a queue, so a page may hold fewer
- * than most and still name a next. orders is empty. XMIP_OK; XMIP_E_MALFORMED
+ * place from on in each Port's index of failed Journeys (0: the oldest), at
+ * most most of each Port (0: a hundred), each page one read of the index.
+ * orders is empty. XMIP_OK; XMIP_E_MALFORMED
  * when node or port is not UTF-8; XMIP_E_IO with the reason, opening FAILED,
  * when Xmip Storage did not answer.
  *
@@ -1658,9 +1660,15 @@ typedef XmipStatus (*XmipActAdmittedFn)(XmipStr who, uint8_t proven, int32_t rol
  * xmip_operator_request_v1 makes a fresh P-256 key and the request for
  * person - a person's name as their directory knows it, a user principal
  * name where there is one, one to 64 characters, no control character and
- * none RFC 4514 escapes. The answer is JSON, {"key","request"}, each PEM
- * (PRIVATE KEY, CERTIFICATE REQUEST), in memory only. Every build carries
- * it, the phone's remote build too.
+ * none RFC 4514 escapes - and writes them into folder (a path, created
+ * where absent) as operator.key (PRIVATE KEY PEM) and operator.csr
+ * (CERTIFICATE REQUEST PEM). Each is a private file: readable by the user
+ * the process runs as alone - mode 0600 in a 0700 folder on Unix, an
+ * access list of that user and SYSTEM on Windows - set before its first
+ * byte, synced and moved into place whole. The key never crosses this
+ * boundary. A file already there is never overwritten: the call is refused
+ * and nothing is written. The answer is JSON, {"key","request"}, the two
+ * files' paths. Every build carries it, the phone's remote build too.
  *
  * Where the key never leaves its platform's keeper - the Android Keystore,
  * the iOS keychain's Secure Enclave, Windows CNG and the TPM - the request
@@ -1674,6 +1682,13 @@ typedef XmipStatus (*XmipActAdmittedFn)(XmipStr who, uint8_t proven, int32_t rol
  * verifying the signature under the key the information holds first, so a
  * keeper that signed in another form is told so here. Every build carries
  * both, the phone's remote build too.
+ *
+ * xmip_operator_keep_v1 keeps text - the chain the authority signed, or
+ * the anchors a surface trusts, PEM, not secret - whole at the file path:
+ * written beside it, synced, renamed over what was there, the folder synced
+ * after on Unix, so a reader finds the old file or the new one and never
+ * half of either. What the text must be is the surface's to check first.
+ * The answer is empty. Every build carries it, the phone's remote build too.
  *
  * xmip_operator_sign_v1 signs the request text (PEM) by the authority the
  * node configuration at configuration (a path) names in
@@ -1691,18 +1706,21 @@ typedef XmipStatus (*XmipActAdmittedFn)(XmipStr who, uint8_t proven, int32_t rol
  * when a string is not UTF-8. Pure, as section 7: no handle, any thread.
  * Optional symbols; XMIP_OPERATE_VERSION is unchanged.
  */
-typedef XmipStatus (*XmipOperatorRequestFn)(XmipStr person, uint8_t *out, size_t cap,
-                                            size_t *out_len);
+typedef XmipStatus (*XmipOperatorRequestFn)(XmipStr person, XmipStr folder, uint8_t *out,
+                                            size_t cap, size_t *out_len);
 typedef XmipStatus (*XmipOperatorInformationFn)(XmipStr person, XmipSlice public_key,
                                                 uint8_t *out, size_t cap, size_t *out_len);
 typedef XmipStatus (*XmipOperatorAssembleFn)(XmipSlice information, XmipSlice signature,
                                              uint8_t *out, size_t cap, size_t *out_len);
+typedef XmipStatus (*XmipOperatorKeepFn)(XmipStr path, XmipStr text, uint8_t *out, size_t cap,
+                                         size_t *out_len);
 typedef XmipStatus (*XmipOperatorSignFn)(XmipStr configuration, XmipStr request,
                                          uint8_t *out, size_t cap, size_t *out_len);
 
 #define XMIP_OPERATOR_REQUEST_ENTRYPOINT "xmip_operator_request_v1"
 #define XMIP_OPERATOR_INFORMATION_ENTRYPOINT "xmip_operator_information_v1"
 #define XMIP_OPERATOR_ASSEMBLE_ENTRYPOINT "xmip_operator_assemble_v1"
+#define XMIP_OPERATOR_KEEP_ENTRYPOINT "xmip_operator_keep_v1"
 #define XMIP_OPERATOR_SIGN_ENTRYPOINT "xmip_operator_sign_v1"
 
 #ifdef __cplusplus

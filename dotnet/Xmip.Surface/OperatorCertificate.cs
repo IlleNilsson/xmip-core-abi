@@ -7,28 +7,26 @@ namespace Xmip.Surface;
 /// <summary>
 /// A person's certificate for every .NET surface (ADR-0034, amendment
 /// 2026-10-15): a key and a request made into a folder, and a request signed
-/// by the authority a node's <c>[provision.operator]</c> names. The files and
-/// their names are written here, once, for <c>xmip-cli certificate</c> and
-/// <c>New-XmipCertificate</c>; what a request names and what is signed are
-/// the runtime's (<c>xmip_operate.h</c> section 19).
+/// by the authority a node's <c>[provision.operator]</c> names, for
+/// <c>xmip-cli certificate</c> and <c>New-XmipCertificate</c>. The key's and
+/// the request's files, their names and their protection, what a request
+/// names and what is signed are the runtime's (<c>xmip_operate.h</c> section
+/// 19), and so is how the chain and the anchors a surface keeps are written
+/// whole; what each must be before it is kept is checked here.
 /// </summary>
 public static class OperatorCertificate
 {
-    /// <summary>The key's file in the folder a request is made into.</summary>
-    public const string KeyFile = "operator.key";
-
-    /// <summary>The request's file beside it.</summary>
-    public const string RequestFile = "operator.csr";
-
     /// <summary>The name a platform's keeper holds the operator's key under
     /// (<see cref="IOperatorKeeper"/>).</summary>
     public const string KeptAlias = "xmip-operator";
 
     /// <summary>
     /// A fresh key and an operator's request for <paramref name="person"/>,
-    /// written into <paramref name="folder"/> as <see cref="KeyFile"/> — on
-    /// Unix readable by its owner alone — and <see cref="RequestFile"/>.
-    /// Files already there are never overwritten: the request is refused.
+    /// written by the runtime into <paramref name="folder"/> as
+    /// <c>operator.key</c> and <c>operator.csr</c>, each readable by the user
+    /// this process runs as alone; the key never enters this process. Files
+    /// already there are never overwritten: the request is refused, and
+    /// nothing is written.
     /// </summary>
     public static OperatorRequested Request(
         RuntimeCertificates certificates, string person, string folder)
@@ -37,25 +35,10 @@ public static class OperatorCertificate
         ArgumentNullException.ThrowIfNull(person);
         ArgumentNullException.ThrowIfNull(folder);
 
-        string key = Path.Combine(folder, KeyFile);
-        string request = Path.Combine(folder, RequestFile);
-
-        if (new[] { key, request }.FirstOrDefault(File.Exists) is { } there)
-        {
-            return new OperatorRequested(
-                person, key, request,
-                $"REFUSED: {there} is there already; nothing is overwritten.");
-        }
-
-        if (!certificates.Request(person, out string keyPem, out string requestPem, out string no))
-        {
-            return new OperatorRequested(person, key, request, $"REFUSED: {no}");
-        }
-
-        Directory.CreateDirectory(folder);
-        Write(key, keyPem, secret: true);
-        Write(request, requestPem, secret: false);
-        return new OperatorRequested(person, key, request, string.Empty);
+        return certificates.Request(
+                person, folder, out string key, out string request, out string no)
+            ? new OperatorRequested(person, key, request, string.Empty)
+            : new OperatorRequested(person, string.Empty, string.Empty, $"REFUSED: {no}");
     }
 
     /// <summary>
@@ -91,7 +74,7 @@ public static class OperatorCertificate
 
         if (chain is not null)
         {
-            Write(chain, signed, secret: false);
+            Write(chain, signed);
         }
 
         return new OperatorSigned(request, chain, signed, string.Empty);
@@ -143,8 +126,10 @@ public static class OperatorCertificate
     /// leaf's key verifies it. A chain kept before is replaced whole, which
     /// is how a renewed certificate arrives. Empty where kept; else why not.
     /// </summary>
-    public static string Keep(IOperatorKeeper keeper, string chain, string path)
+    public static string Keep(
+        RuntimeCertificates certificates, IOperatorKeeper keeper, string chain, string path)
     {
+        ArgumentNullException.ThrowIfNull(certificates);
         ArgumentNullException.ThrowIfNull(keeper);
         ArgumentNullException.ThrowIfNull(chain);
         ArgumentNullException.ThrowIfNull(path);
@@ -163,8 +148,7 @@ public static class OperatorCertificate
                 return $"REFUSED: {leaf.Subject} is not for the key {keeper.Name} holds.";
             }
 
-            Replace(path, chain);
-            return string.Empty;
+            return Kept(certificates, path, chain);
         }
         catch (Exception failed) when (failed is CryptographicException or IOException
             or InvalidOperationException or UnauthorizedAccessException)
@@ -181,8 +165,9 @@ public static class OperatorCertificate
     /// check by other means, as the request's approval is. Empty where kept;
     /// else why not.
     /// </summary>
-    public static string KeepAnchors(string anchors, string path)
+    public static string KeepAnchors(RuntimeCertificates certificates, string anchors, string path)
     {
+        ArgumentNullException.ThrowIfNull(certificates);
         ArgumentNullException.ThrowIfNull(anchors);
         ArgumentNullException.ThrowIfNull(path);
 
@@ -196,8 +181,7 @@ public static class OperatorCertificate
                 return "REFUSED: the text holds no CERTIFICATE.";
             }
 
-            Replace(path, anchors);
-            return string.Empty;
+            return Kept(certificates, path, anchors);
         }
         catch (Exception failed) when (failed is CryptographicException or IOException
             or UnauthorizedAccessException)
@@ -206,27 +190,19 @@ public static class OperatorCertificate
         }
     }
 
-    // A file written whole beside its place and moved over it, so a reader
-    // never sees half of it.
-    private static void Replace(string path, string text)
+    // The text kept whole at its file by the runtime (xmip_operator_keep_v1):
+    // written beside it, synced and renamed over it, so a reader never sees
+    // half of it. Empty where kept; else why not.
+    private static string Kept(RuntimeCertificates certificates, string path, string text)
     {
-        string folder = Path.GetDirectoryName(Path.GetFullPath(path)) ?? ".";
-        Directory.CreateDirectory(folder);
-        string written = Path.Combine(folder, $"{Path.GetFileName(path)}.new");
-        File.WriteAllText(written, text);
-        File.Move(written, path, overwrite: true);
+        return certificates.Keep(Path.GetFullPath(path), text, out string refused)
+            ? string.Empty
+            : $"REFUSED: {refused}";
     }
 
-    private static void Write(string path, string text, bool secret)
+    private static void Write(string path, string text)
     {
         using FileStream file = new(path, FileMode.CreateNew, FileAccess.Write);
-
-        if (secret && !OperatingSystem.IsWindows())
-        {
-            File.SetUnixFileMode(
-                file.SafeFileHandle, UnixFileMode.UserRead | UnixFileMode.UserWrite);
-        }
-
         using StreamWriter writer = new(file);
         writer.Write(text);
     }

@@ -23,7 +23,8 @@ namespace Xmip.Abi.Operate;
 public sealed unsafe class RuntimeCertificates
 {
     private readonly nint _library;
-    private readonly delegate* unmanaged[Cdecl]<XmipStr, byte*, nuint, nuint*, int> _request;
+    private readonly delegate* unmanaged[Cdecl]<XmipStr, XmipStr, byte*, nuint, nuint*, int>
+        _request;
     private readonly delegate* unmanaged[Cdecl]<XmipStr, XmipStr, byte*, nuint, nuint*, int>
         _sign;
 
@@ -33,16 +34,20 @@ public sealed unsafe class RuntimeCertificates
         _information;
     private readonly delegate* unmanaged[Cdecl]<XmipStr, XmipStr, byte*, nuint, nuint*, int>
         _assemble;
+    private readonly delegate* unmanaged[Cdecl]<XmipStr, XmipStr, byte*, nuint, nuint*, int>
+        _keep;
 
     internal RuntimeCertificates(nint library)
     {
         _library = library;
-        _request = (delegate* unmanaged[Cdecl]<XmipStr, byte*, nuint, nuint*, int>)
+        _request = (delegate* unmanaged[Cdecl]<XmipStr, XmipStr, byte*, nuint, nuint*, int>)
             NativeLibrary.GetExport(library, OperateAbi.OperatorRequestEntrypoint);
         _information = (delegate* unmanaged[Cdecl]<XmipStr, XmipStr, byte*, nuint, nuint*, int>)
             NativeLibrary.GetExport(library, OperateAbi.OperatorInformationEntrypoint);
         _assemble = (delegate* unmanaged[Cdecl]<XmipStr, XmipStr, byte*, nuint, nuint*, int>)
             NativeLibrary.GetExport(library, OperateAbi.OperatorAssembleEntrypoint);
+        _keep = (delegate* unmanaged[Cdecl]<XmipStr, XmipStr, byte*, nuint, nuint*, int>)
+            NativeLibrary.GetExport(library, OperateAbi.OperatorKeepEntrypoint);
         bool signs = NativeLibrary.TryGetExport(
             library, OperateAbi.OperatorSignEntrypoint, out nint sign);
         _sign = signs
@@ -56,6 +61,7 @@ public sealed unsafe class RuntimeCertificates
         OperateAbi.OperatorRequestEntrypoint,
         OperateAbi.OperatorInformationEntrypoint,
         OperateAbi.OperatorAssembleEntrypoint,
+        OperateAbi.OperatorKeepEntrypoint,
     ];
 
     /// <summary>The symbols only a node's build exports.</summary>
@@ -63,19 +69,23 @@ public sealed unsafe class RuntimeCertificates
         [OperateAbi.OperatorSignEntrypoint];
 
     /// <summary>
-    /// A fresh key and an operator's request for <paramref name="person"/>:
-    /// the key's <c>PRIVATE KEY</c> PEM and the <c>CERTIFICATE REQUEST</c>
-    /// PEM; or, where the runtime refuses the name, false with its sentence
-    /// in <paramref name="refused"/>.
+    /// A fresh key and an operator's request for <paramref name="person"/>,
+    /// written by the runtime into <paramref name="folder"/> as private
+    /// files — the key never enters this process's memory — and the paths of
+    /// the two files: <paramref name="key"/>, <c>PRIVATE KEY</c> PEM, and
+    /// <paramref name="request"/>, <c>CERTIFICATE REQUEST</c> PEM. Or, where
+    /// the runtime refuses the name or a file is there already, false with
+    /// its sentence in <paramref name="refused"/> and nothing written.
     /// </summary>
     public bool Request(
-        string person, out string key, out string request, out string refused)
+        string person, string folder, out string key, out string request, out string refused)
     {
         ArgumentNullException.ThrowIfNull(person);
+        ArgumentNullException.ThrowIfNull(folder);
 
         (int status, string text) = Answer(
-            [person], (pack, data, written, cap, length) =>
-                _request(pack.Borrow(data, 0), written, cap, length));
+            [person, folder], (pack, data, written, cap, length) =>
+                _request(pack.Borrow(data, 0), pack.Borrow(data, 1), written, cap, length));
         key = string.Empty;
         request = string.Empty;
         refused = string.Empty;
@@ -138,6 +148,25 @@ public sealed unsafe class RuntimeCertificates
         string text = Encoding.UTF8.GetString(bytes);
         request = status == 0 ? text : string.Empty;
         refused = status == 0 ? string.Empty : Refusal(status, text);
+        return status == 0;
+    }
+
+    /// <summary>
+    /// <paramref name="text"/> — a chain the authority signed, or the anchors
+    /// a surface trusts, PEM — kept whole at the file <paramref name="path"/>
+    /// by the runtime: written beside it, synced and renamed over what was
+    /// there. Or false with the runtime's sentence in
+    /// <paramref name="refused"/>.
+    /// </summary>
+    public bool Keep(string path, string text, out string refused)
+    {
+        ArgumentNullException.ThrowIfNull(path);
+        ArgumentNullException.ThrowIfNull(text);
+
+        (int status, string said) = Answer(
+            [path, text], (pack, data, written, cap, length) =>
+                _keep(pack.Borrow(data, 0), pack.Borrow(data, 1), written, cap, length));
+        refused = status == 0 ? string.Empty : Refusal(status, said);
         return status == 0;
     }
 

@@ -200,7 +200,9 @@ public abstract class ListenerOperator : IOperatorSurface, IDisposable
 
     /// <inheritdoc />
     /// <remarks>What the node's publication carries: each Port's count and
-    /// its oldest hundred.</remarks>
+    /// its window of the oldest, <paramref name="from"/> a place in the
+    /// Port's queue and no next (<see cref="IOperatorSurface.FailedJourneys"/>
+    /// says why).</remarks>
     public FailedJourneyList FailedJourneys(string scope, ulong from = 0, uint most = 0)
     {
         return Read().FailedJourneysWithin(scope, from, most);

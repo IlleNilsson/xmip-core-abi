@@ -22,10 +22,11 @@ public sealed record FailedJourneyRecord(
 /// </summary>
 /// <param name="Node">The node that sends the Port.</param>
 /// <param name="SendPort">The Send Port, by name.</param>
-/// <param name="Count">How many failed Journeys the node knows wait in its
-/// queue.</param>
-/// <param name="Next">The place the next page reads from, or null where the
-/// queue was read to its end or the list is a publication's.</param>
+/// <param name="Count">How many failed Journeys wait in its queue, as Xmip
+/// Storage counts them.</param>
+/// <param name="Next">The place in the Port's index of failed Journeys the
+/// next page reads from, or null where the index was read to its end or the
+/// list is a publication's, which carries only its node's window.</param>
 /// <param name="Journeys">Those listed, oldest first.</param>
 public sealed record FailedJourneyPort(
     string Node,
