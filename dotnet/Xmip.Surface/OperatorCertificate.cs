@@ -45,7 +45,9 @@ public static class OperatorCertificate
     /// The request in the file <paramref name="request"/>, signed by the
     /// authority the node configuration <paramref name="configuration"/>
     /// names, the chain written to <paramref name="chain"/> where one is
-    /// given — never over a file already there.
+    /// given — by the runtime, whole and synced, never over a file already
+    /// there (<c>xmip_operator_keep_v1</c>). A file there before the signing
+    /// is refused before anything is signed.
     /// </summary>
     public static OperatorSigned Sign(
         RuntimeCertificates certificates, string request, string configuration, string? chain)
@@ -72,9 +74,10 @@ public static class OperatorCertificate
             return new OperatorSigned(request, chain, string.Empty, $"REFUSED: {no}");
         }
 
-        if (chain is not null)
+        if (chain is not null
+            && !certificates.Keep(Path.GetFullPath(chain), signed, false, out no))
         {
-            Write(chain, signed);
+            return new OperatorSigned(request, chain, string.Empty, $"REFUSED: {no}");
         }
 
         return new OperatorSigned(request, chain, signed, string.Empty);
@@ -195,15 +198,8 @@ public static class OperatorCertificate
     // half of it. Empty where kept; else why not.
     private static string Kept(RuntimeCertificates certificates, string path, string text)
     {
-        return certificates.Keep(Path.GetFullPath(path), text, out string refused)
+        return certificates.Keep(Path.GetFullPath(path), text, true, out string refused)
             ? string.Empty
             : $"REFUSED: {refused}";
-    }
-
-    private static void Write(string path, string text)
-    {
-        using FileStream file = new(path, FileMode.CreateNew, FileAccess.Write);
-        using StreamWriter writer = new(file);
-        writer.Write(text);
     }
 }

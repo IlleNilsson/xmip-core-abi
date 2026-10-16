@@ -1685,10 +1685,13 @@ typedef XmipStatus (*XmipActAdmittedFn)(XmipStr who, uint8_t proven, int32_t rol
  *
  * xmip_operator_keep_v1 keeps text - the chain the authority signed, or
  * the anchors a surface trusts, PEM, not secret - whole at the file path:
- * written beside it, synced, renamed over what was there, the folder synced
- * after on Unix, so a reader finds the old file or the new one and never
- * half of either. What the text must be is the surface's to check first.
- * The answer is empty. Every build carries it, the phone's remote build too.
+ * written beside it and synced, then, where replace is non-zero, renamed
+ * over what was there, so a reader finds the old file or the new one and
+ * never half of either; where replace is zero, linked where nothing is and
+ * never over a file already there - refused, and nothing written - for a
+ * chain written to a file a person named. The folder is synced after on
+ * Unix. What the text must be is the surface's to check first. The answer
+ * is empty. Every build carries it, the phone's remote build too.
  *
  * xmip_operator_sign_v1 signs the request text (PEM) by the authority the
  * node configuration at configuration (a path) names in
@@ -1712,8 +1715,8 @@ typedef XmipStatus (*XmipOperatorInformationFn)(XmipStr person, XmipSlice public
                                                 uint8_t *out, size_t cap, size_t *out_len);
 typedef XmipStatus (*XmipOperatorAssembleFn)(XmipSlice information, XmipSlice signature,
                                              uint8_t *out, size_t cap, size_t *out_len);
-typedef XmipStatus (*XmipOperatorKeepFn)(XmipStr path, XmipStr text, uint8_t *out, size_t cap,
-                                         size_t *out_len);
+typedef XmipStatus (*XmipOperatorKeepFn)(XmipStr path, XmipStr text, uint8_t replace,
+                                         uint8_t *out, size_t cap, size_t *out_len);
 typedef XmipStatus (*XmipOperatorSignFn)(XmipStr configuration, XmipStr request,
                                          uint8_t *out, size_t cap, size_t *out_len);
 

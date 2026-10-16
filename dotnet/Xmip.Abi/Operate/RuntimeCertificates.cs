@@ -34,7 +34,7 @@ public sealed unsafe class RuntimeCertificates
         _information;
     private readonly delegate* unmanaged[Cdecl]<XmipStr, XmipStr, byte*, nuint, nuint*, int>
         _assemble;
-    private readonly delegate* unmanaged[Cdecl]<XmipStr, XmipStr, byte*, nuint, nuint*, int>
+    private readonly delegate* unmanaged[Cdecl]<XmipStr, XmipStr, byte, byte*, nuint, nuint*, int>
         _keep;
 
     internal RuntimeCertificates(nint library)
@@ -46,7 +46,7 @@ public sealed unsafe class RuntimeCertificates
             NativeLibrary.GetExport(library, OperateAbi.OperatorInformationEntrypoint);
         _assemble = (delegate* unmanaged[Cdecl]<XmipStr, XmipStr, byte*, nuint, nuint*, int>)
             NativeLibrary.GetExport(library, OperateAbi.OperatorAssembleEntrypoint);
-        _keep = (delegate* unmanaged[Cdecl]<XmipStr, XmipStr, byte*, nuint, nuint*, int>)
+        _keep = (delegate* unmanaged[Cdecl]<XmipStr, XmipStr, byte, byte*, nuint, nuint*, int>)
             NativeLibrary.GetExport(library, OperateAbi.OperatorKeepEntrypoint);
         bool signs = NativeLibrary.TryGetExport(
             library, OperateAbi.OperatorSignEntrypoint, out nint sign);
@@ -154,18 +154,20 @@ public sealed unsafe class RuntimeCertificates
     /// <summary>
     /// <paramref name="text"/> — a chain the authority signed, or the anchors
     /// a surface trusts, PEM — kept whole at the file <paramref name="path"/>
-    /// by the runtime: written beside it, synced and renamed over what was
-    /// there. Or false with the runtime's sentence in
+    /// by the runtime: written beside it and synced, then, where
+    /// <paramref name="replace"/>, renamed over what was there; else never
+    /// over a file already there. Or false with the runtime's sentence in
     /// <paramref name="refused"/>.
     /// </summary>
-    public bool Keep(string path, string text, out string refused)
+    public bool Keep(string path, string text, bool replace, out string refused)
     {
         ArgumentNullException.ThrowIfNull(path);
         ArgumentNullException.ThrowIfNull(text);
 
+        byte over = replace ? (byte)1 : (byte)0;
         (int status, string said) = Answer(
             [path, text], (pack, data, written, cap, length) =>
-                _keep(pack.Borrow(data, 0), pack.Borrow(data, 1), written, cap, length));
+                _keep(pack.Borrow(data, 0), pack.Borrow(data, 1), over, written, cap, length));
         refused = status == 0 ? string.Empty : Refusal(status, said);
         return status == 0;
     }

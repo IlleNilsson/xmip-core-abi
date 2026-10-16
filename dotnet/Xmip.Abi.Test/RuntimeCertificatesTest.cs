@@ -51,6 +51,29 @@ public sealed class RuntimeCertificatesTest
     }
 
     [Fact]
+    public void AChainIsKeptWholeReplacedWhereAskedAndElseNeverOverAFile()
+    {
+        string place = Directory.CreateTempSubdirectory("xmip-abi-keep-").FullName;
+
+        try
+        {
+            string chain = Path.Combine(place, "phone", "operator.pem");
+            Assert.True(Certificates.Keep(chain, "first", false, out string refused), refused);
+            Assert.False(Certificates.Keep(chain, "over", false, out refused));
+            Assert.Contains("nothing is overwritten", refused, StringComparison.Ordinal);
+            Assert.Equal("first", File.ReadAllText(chain));
+
+            Assert.True(Certificates.Keep(chain, "renewed", true, out refused), refused);
+            Assert.Equal("renewed", File.ReadAllText(chain));
+            Assert.Single(Directory.EnumerateFileSystemEntries(Path.GetDirectoryName(chain)!));
+        }
+        finally
+        {
+            Directory.Delete(place, recursive: true);
+        }
+    }
+
+    [Fact]
     public void AKeepersTwoHalvesMakeARequestFromEitherFormOfItsPublicKey()
     {
         using ECDsa keeper = ECDsa.Create(ECCurve.NamedCurves.nistP256);
