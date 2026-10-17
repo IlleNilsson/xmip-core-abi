@@ -60,7 +60,7 @@ public sealed class DeadMessageSurfaceTest : IDisposable
 
         Assert.True(replayed.Applied, replayed.Result);
         Assert.Equal(
-            $"replay of Message m-2 left for {Receiver} to take at its next look",
+            $"replay of Message m-2 left for {Receiver} to take",
             replayed.Result);
         string order = Assert.Single(Directory.GetFiles(Path.Combine(Orders, Receiver), "*.toml"));
         Assert.Contains(

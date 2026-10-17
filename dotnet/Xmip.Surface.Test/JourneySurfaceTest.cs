@@ -50,8 +50,7 @@ public sealed class JourneySurfaceTest : IDisposable
         Assert.True(done.Applied, done.Result);
         Assert.Equal(Sending, done.Node);
         Assert.Equal(
-            $"{JourneyOperation.Word(act)} of the Journey {Journey} left for {Sender} "
-            + "to take at its next look",
+            $"{JourneyOperation.Word(act)} of the Journey {Journey} left for {Sender} to take",
             done.Result);
         string order = File.ReadAllText(
             Assert.Single(Directory.GetFiles(Path.Combine(Orders, Sender), "*.toml")));

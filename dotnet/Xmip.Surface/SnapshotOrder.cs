@@ -16,7 +16,7 @@ internal static class SnapshotOrder
     /// Leave <paramref name="act"/> on the <paramref name="noun"/> called
     /// <paramref name="target"/> of <paramref name="node"/> where
     /// <paramref name="orders"/> says its publisher takes orders, for the
-    /// node to take at its next look; declined where it says nowhere.
+    /// node to take; declined where it says nowhere.
     /// <paramref name="what"/> names the target in the sentence said.
     /// </summary>
     public static (bool Left, string Said) Leave(
@@ -33,7 +33,7 @@ internal static class SnapshotOrder
             orders, node, noun, target, act, who, out string said) == XmipStatus.Ok;
 
         return (left, left
-            ? $"{act} of {what} left for {ScopeTree.Node(node)} to take at its next look"
+            ? $"{act} of {what} left for {ScopeTree.Node(node)} to take"
             : said);
     }
 }

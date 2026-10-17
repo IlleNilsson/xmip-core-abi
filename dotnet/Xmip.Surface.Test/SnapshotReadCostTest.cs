@@ -23,9 +23,16 @@ public sealed class SnapshotReadCostTest(ITestOutputHelper output) : IDisposable
     private const int Drawn = 176;
 
     // A view's median, which a collection pause in the middle of a run does
-    // not move. Unfollowed, each question asks the file system whether the
-    // file changed, a few tens of microseconds each with the estate's other
-    // tests running beside it; followed, nothing is asked but memory.
+    // not move, in the processor time the viewing thread ran
+    // (ProcessorTime), which the estate's other tests running beside it do
+    // not reach: a view preempted on a busy machine waits, and does no more
+    // work for it. Unfollowed, each question asks the file system whether the
+    // file changed — an unfollowed surface answers the file as it is — and
+    // that is the file's load, not Xmip's: on 2026-10-17 one metadata check
+    // cost about 50 µs of processor time under Windows' file-system filters,
+    // a view asks five, about 0.4 ms in all and up to 0.7 under load, so the
+    // bound stays the millisecond. Followed, nothing is asked but memory,
+    // about 5 µs a view.
     private const double Unfollowed = 1;
 
     private const double Followed = 0.1;
@@ -74,18 +81,16 @@ public sealed class SnapshotReadCostTest(ITestOutputHelper output) : IDisposable
                 $"the follow read the change and announced it in "
                 + $"{announced.Elapsed.TotalMilliseconds:F1} ms");
 
-            Stopwatch told = Stopwatch.StartNew();
+            long from = ProcessorTime.Thread();
             Assert.Equal("round 2", surface.Run().Stress);
             Assert.Equal(Records, View(surface));
-            told.Stop();
+            double told = ProcessorTime.Milliseconds(ProcessorTime.Thread() - from);
 
             double view = Median(surface);
             output.WriteLine(
-                $"the first view after it: {told.Elapsed.TotalMilliseconds * 1000:F1} µs; "
-                + $"a view: {view * 1000:F1} µs");
-            Assert.True(
-                told.Elapsed.TotalMilliseconds < 1,
-                $"the view after a change took {told.Elapsed.TotalMilliseconds:F3} ms");
+                $"the first view after it: {told * 1000:F1} µs; "
+                + $"a view: {view * 1000:F1} µs, of processor time");
+            Assert.True(told < 1, $"the view after a change took {told:F3} ms");
             Assert.True(view < Followed, $"a view of a followed snapshot took {view:F3} ms");
         }
         finally
@@ -122,9 +127,9 @@ public sealed class SnapshotReadCostTest(ITestOutputHelper output) : IDisposable
 
         for (int at = 0; at < taken.Length; at++)
         {
-            long start = Stopwatch.GetTimestamp();
+            long start = ProcessorTime.Thread();
             View(surface);
-            taken[at] = Stopwatch.GetElapsedTime(start).TotalMilliseconds;
+            taken[at] = ProcessorTime.Milliseconds(ProcessorTime.Thread() - start);
         }
 
         Array.Sort(taken);

@@ -1283,7 +1283,7 @@ typedef XmipStatus (*XmipProcessDeclarationsFn)(XmipStr directory, uint8_t *out,
  * Subscription's name, event-subscription with an Event subscription's
  * number, dead-message with a Message's identifier and the act replay
  * (section 15), or journey with a Journey's identifier and the act retry or
- * dismiss (section 16) - for the node to take at its next look and apply; said
+ * dismiss (section 16) - for the node to take and apply; said
  * holds the file written. XMIP_OK; XMIP_E_INVALID with the refusal for an
  * empty orders, a node that names no node, a noun that is no noun, or an
  * act the noun does not take; XMIP_E_IO with the reason when it could not
