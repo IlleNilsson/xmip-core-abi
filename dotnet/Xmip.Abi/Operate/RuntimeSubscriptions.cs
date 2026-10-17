@@ -113,7 +113,7 @@ public sealed unsafe class RuntimeSubscriptions
     /// (section 15) or <c>journey</c> (section 16) — called
     /// <paramref name="target"/> of the node at <paramref name="node"/> in
     /// <paramref name="orders"/>, the place its publication names, for the
-    /// node to take at its next look. <see cref="XmipStatus.Ok"/> with the
+    /// node to take. <see cref="XmipStatus.Ok"/> with the
     /// file written in <paramref name="said"/>; <see cref="XmipStatus.Invalid"/>
     /// or <see cref="XmipStatus.Io"/> with why not.
     /// </summary>

@@ -47,6 +47,9 @@
          surface's one TOML reader. -->
     <ProjectReference Include="..\Xmip.Surface\Xmip.Surface.csproj" />
     <Compile Include="..\Xmip.Surface.Test\TestCluster.cs" Link="TestCluster.cs" />
+    <!-- The processor time a thread or the process ran, the one counter a
+         .NET test holds Xmip's own time by. -->
+    <Compile Include="..\Xmip.Surface.Test\ProcessorTime.cs" Link="ProcessorTime.cs" />
     <Using Include="Xmip.Surface.Test" />
   </ItemGroup>
 

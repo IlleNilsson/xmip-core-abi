@@ -29,7 +29,7 @@ public sealed class EventLatency;
 /// the publishing thread spends in <c>Publish</c> and the subscriber's
 /// thread spends between one Event and the next — the wait entered, the
 /// wake taken, the drain, the crossing and the copy — counted by
-/// <see cref="ThreadTime"/>, which counts only while a thread runs. The
+/// <see cref="ProcessorTime"/>, which counts only while a thread runs. The
 /// rule is a millisecond <em>apart from load</em>, and that is the time
 /// load cannot reach. What the wall clock's tail is, is printed and never
 /// asserted: on a machine busy on every processor a woken thread waits its
@@ -67,11 +67,11 @@ public sealed class EventLatencyTest(ITestOutputHelper output)
             {
                 for (int i = 0; i < Warm + Measured; i++)
                 {
-                    long from = ThreadTime.Now();
+                    long from = ProcessorTime.Thread();
                     EventRecord heard = Assert.Single(
                         subscription.Next(TimeSpan.FromSeconds(5), 1).Events);
 
-                    worked.Add(ThreadTime.Now() - from);
+                    worked.Add(ProcessorTime.Thread() - from);
                     took.Add(Since(heard));
                     received.Set();
                 }
@@ -107,12 +107,12 @@ public sealed class EventLatencyTest(ITestOutputHelper output)
                 // The runtime's thread between the last callback and this
                 // one: the wait entered, the wake, the drain, the crossing
                 // and the copy. The first has no last, and is warm-up.
-                long now = ThreadTime.Now();
+                long now = ProcessorTime.Thread();
 
                 worked.Add(left == 0 ? 0 : now - left);
                 took.Add(Since(heard));
                 received.Set();
-                left = ThreadTime.Now();
+                left = ProcessorTime.Thread();
             },
             new EventFilter { Scope = audited.Scope });
 
@@ -153,10 +153,10 @@ public sealed class EventLatencyTest(ITestOutputHelper output)
         {
             string sent = Stopwatch.GetTimestamp().ToString(CultureInfo.InvariantCulture);
             EventRecord raised = audited.Raised(EventOutcome.Success, sent);
-            long from = ThreadTime.Now();
+            long from = ProcessorTime.Thread();
 
             Assert.Equal(1, Events.Publish(raised));
-            published.Add(ThreadTime.Now() - from);
+            published.Add(ProcessorTime.Thread() - from);
             Assert.True(received.WaitOne(TimeSpan.FromSeconds(5)), $"Event {i} did not arrive");
 
             Volatile.Write(ref stamp, Stopwatch.GetTimestamp());
@@ -185,7 +185,7 @@ public sealed class EventLatencyTest(ITestOutputHelper output)
     {
         Assert.Equal(published.Count, worked.Count);
 
-        return [.. published.Zip(worked, (one, other) => ThreadTime.Milliseconds(one + other))];
+        return [.. published.Zip(worked, (one, other) => ProcessorTime.Milliseconds(one + other))];
     }
 
     // The median, the 99th percentile and the worst after the warm-up.

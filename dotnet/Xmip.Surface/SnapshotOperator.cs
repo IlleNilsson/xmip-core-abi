@@ -203,7 +203,7 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
     /// cref="IOperatorSurface.Act(EventSubscriptionRecord, EventSubscriptionAct, string)" />
     /// <remarks>A snapshot touches no node. Where its publication says where
     /// its publisher takes orders, the act is left there for the node that
-    /// holds the Event subscription, which applies it at its next look and
+    /// holds the Event subscription, which applies it as it takes it and
     /// publishes what came of it (<c>observe::Order</c>, ADR-0065, amendment
     /// 2026-09-29); where it says nowhere, the act is declined.</remarks>
     public EventSubscriptionOperation Act(
@@ -228,7 +228,7 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
     /// <inheritdoc cref="IOperatorSurface.Act(SubscriptionRecord, SubscriptionAct, string)" />
     /// <remarks>A snapshot touches no node. Where its publication says where
     /// its publisher takes orders, the act is left there for the node that
-    /// routes by the Subscription, which applies it at its next look and
+    /// routes by the Subscription, which applies it as it takes it and
     /// publishes what came of it (<c>observe::Order</c>, ADR-0013, amendment
     /// 2026-09-30); where it says nowhere, the act is declined.</remarks>
     public SubscriptionOperation Act(
@@ -252,7 +252,7 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
     /// <inheritdoc cref="IOperatorSurface.Act(DeadMessageRecord, DeadMessageAct, string)" />
     /// <remarks>A snapshot touches no node. Where its publication says where
     /// its publisher takes orders, the Replay is left there for the node whose
-    /// queue keeps the Message, which takes it at its next look and publishes
+    /// queue keeps the Message, which takes it, applies it and publishes
     /// what came of it (<c>observe::Order</c>, ADR-0052, amendment
     /// 2026-10-01); where it says nowhere, the act is declined.</remarks>
     public DeadMessageOperation Act(DeadMessageRecord message, DeadMessageAct act, string who)
@@ -281,7 +281,7 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
     /// <remarks>A snapshot touches no node. Where its publication says where
     /// its publisher takes orders — one place for every noun — the act is
     /// left there for the node that sends the Journey's Send Port, which takes
-    /// it at its next look and publishes what came of it
+    /// it, applies it and publishes what came of it
     /// (<c>observe::Order</c>, runtime-model.md section 13); where it says
     /// nowhere, the act is declined.</remarks>
     public JourneyOperation Act(string scope, string journey, JourneyAct act, string who)

@@ -14,9 +14,40 @@ namespace Xmip.Surface.Test;
 /// is said so; and a surface that names no node says that. Run alone
 /// (<see cref="Measured"/>), so the time is Xmip's and not the run's.
 /// </summary>
+/// <remarks>
+/// The notice is held by what is Xmip's alone, as the Event's is
+/// (<c>EventLatencyTest</c>), each figure as the median of the fastest round
+/// in every five: a poll or a busy loop is in every round and is in the
+/// fastest of five too, where a wake that waited its turn for a processor,
+/// or a thread of the .NET runtime compiling beside it, is in some rounds
+/// only. <b>The wake is a wake</b>: from post to notice is under a
+/// millisecond plus a plain wake across a pipe, measured beside it round by
+/// round — a thread woken on a kernel event writes a byte and an awaiting
+/// read continues, the notice's kind of hop without Xmip's work in it. A
+/// poll, a missed notify or a timeout waited out puts every round at its
+/// interval and fails it. <b>Xmip's own work is under a millisecond</b>: the
+/// processor time this process spends from the post to the notice in hand,
+/// every thread of it — the runtime's notify and write, the surface's read,
+/// decode and continuation — counted by <see cref="ProcessorTime"/>, which
+/// waiting cannot reach, is under a millisecond plus what the process spends
+/// across the plain wake. That one is not nothing: on 2026-10-17 a plain
+/// wake of 0.14 milliseconds cost the process about 0.3 of processor time,
+/// the .NET runtime's own threads spinning beside it, and a notice about 0.8.
+/// The median and the tail of all the rounds are printed and never
+/// asserted: each of the notice's hops is a wake, and on a machine busy on
+/// every processor each waits its turn, so a median held alone ran from 0.1
+/// to 30 milliseconds and measured the scheduler; under sixteen busy
+/// processes, on 2026-10-17, it ran from 0.8 to 2.4 while the fastest of five
+/// stayed between 0.5 and 0.7.
+/// </remarks>
 [Collection(Measured.Name)]
 public sealed class LocalOperatorTest
 {
+    private const int Warm = 20;
+    private const int Rounds = 200;
+    private const double Bound = 1.0;
+    private const int Five = 5;
+
     private static readonly TestCluster Cluster = TestCluster.Read();
 
     [Fact]
@@ -41,25 +72,41 @@ public sealed class LocalOperatorTest
         ulong first = feed.Current.Revision;
 
         // The millisecond rule: from the node posting its next publication to
-        // the notice in a .NET watch's hand, over many rounds. The notice comes
-        // first; the publication is read by the question after it.
+        // the notice in a .NET watch's hand, over many rounds, each beside a
+        // plain wake across a pipe. The notice comes first; the publication
+        // is read by the question after it.
         List<double> took = [];
+        List<double> worked = [];
+        List<double> plain = [];
+        List<double> plainWorked = [];
+        using PlainWake control = new();
 
-        for (int round = 1; round <= 200; round++)
+        for (int round = 1; round <= Warm + Rounds; round++)
         {
-            Stopwatch posted = Stopwatch.StartNew();
+            long posted = Stopwatch.GetTimestamp();
+            long from = ProcessorTime.Process();
             served.Post(published + $"\n# round {round}\n");
             Assert.True(await feed.MoveNextAsync().ConfigureAwait(true));
-            took.Add(posted.Elapsed.TotalMilliseconds);
+            worked.Add(ProcessorTime.Milliseconds(ProcessorTime.Process() - from));
+            took.Add(Stopwatch.GetElapsedTime(posted).TotalMilliseconds);
             Assert.Equal(first + (ulong)round, feed.Current.Revision);
+
+            (double wall, double work) = await control.Round().ConfigureAwait(true);
+            plain.Add(wall);
+            plainWorked.Add(work);
         }
 
-        took.Sort();
-        double median = took[took.Count / 2];
-        Console.WriteLine(
-            $"a local follow told into .NET: median {median:F3} ms, "
-            + $"p99 {took[took.Count * 99 / 100]:F3} ms");
-        Assert.True(median < 1.0, $"median {median:F3} ms");
+        double median = Spread("a local follow told into .NET", took);
+        double usual = Spread("a plain wake across a pipe beside it", plain);
+        double own = Spread("the process's processor time for a notice", worked);
+        double idle = Spread("the process's processor time for a plain wake", plainWorked);
+        Assert.True(
+            median < Bound + usual,
+            $"the fastest of five, median {median:F3} ms, the machine's own {usual:F3} ms");
+        Assert.True(
+            own < Bound + idle,
+            $"the process's processor time for a notice, the fastest of five, median "
+            + $"{own:F3} ms, for a plain wake {idle:F3} ms");
         Assert.Equal(snapshot.Health(ScopeTree.Root), surface.Health(ScopeTree.Root));
     }
 
@@ -186,6 +233,89 @@ public sealed class LocalOperatorTest
             ?? throw new InvalidOperationException(reason);
         served.Post(publication);
         return served;
+    }
+
+    // The median of the fastest round in each five after the warm-up, what
+    // is held; printed with the median, the 99th percentile and the worst of
+    // all of them, which are not.
+    private static double Spread(string what, List<double> took)
+    {
+        double[] sorted = [.. took.Skip(Warm).Order()];
+        double[] fastest = [.. took.Skip(Warm).Chunk(Five).Select(five => five.Min()).Order()];
+        double held = fastest[fastest.Length / 2];
+
+        Console.WriteLine(
+            $"{what}: {sorted.Length} rounds, the fastest of five {held:F3} ms; "
+            + $"median {sorted[sorted.Length / 2]:F3} ms, "
+            + $"p99 {sorted[(int)Math.Ceiling(sorted.Length * 0.99) - 1]:F3} ms, "
+            + $"worst {sorted[^1]:F3} ms");
+
+        return held;
+    }
+
+    /// <summary>The machine's own wake across a pipe, with nothing of Xmip
+    /// in it: a thread blocked on a kernel event is woken, writes one byte
+    /// to a named pipe (a Unix domain socket elsewhere), and the awaiting
+    /// read continues where the test awaits, as a notice's does.</summary>
+    private sealed class PlainWake : IDisposable
+    {
+        private readonly System.IO.Pipes.NamedPipeServerStream reader;
+        private readonly System.IO.Pipes.NamedPipeClientStream writer;
+        private readonly AutoResetEvent told = new(false);
+        private readonly Thread waker;
+        private readonly byte[] heard = new byte[1];
+        private bool done;
+
+        public PlainWake()
+        {
+            string name = $"xmip-plain-wake-test-{Guid.NewGuid():n}";
+            reader = new(
+                name, System.IO.Pipes.PipeDirection.In, 1,
+                System.IO.Pipes.PipeTransmissionMode.Byte,
+                System.IO.Pipes.PipeOptions.Asynchronous);
+            writer = new(
+                ".", name, System.IO.Pipes.PipeDirection.Out,
+                System.IO.Pipes.PipeOptions.Asynchronous);
+            Task connected = reader.WaitForConnectionAsync();
+            writer.Connect(5_000);
+            connected.GetAwaiter().GetResult();
+
+            waker = new(() =>
+            {
+                while (told.WaitOne() && !Volatile.Read(ref done))
+                {
+                    writer.WriteByte(1);
+                    writer.Flush();
+                }
+            })
+            { IsBackground = true, Name = "plain wake" };
+            waker.Start();
+        }
+
+        /// <summary>One wake: the milliseconds from the event set to the
+        /// read continued, and the process's processor time over them. The
+        /// read is waiting before the clocks start, as the watch's is.</summary>
+        public async Task<(double Wall, double Work)> Round()
+        {
+            ValueTask<int> read = reader.ReadAsync(heard);
+            long woken = Stopwatch.GetTimestamp();
+            long from = ProcessorTime.Process();
+            told.Set();
+            Assert.Equal(1, await read.ConfigureAwait(true));
+            return (
+                Stopwatch.GetElapsedTime(woken).TotalMilliseconds,
+                ProcessorTime.Milliseconds(ProcessorTime.Process() - from));
+        }
+
+        public void Dispose()
+        {
+            Volatile.Write(ref done, true);
+            told.Set();
+            waker.Join();
+            writer.Dispose();
+            reader.Dispose();
+            told.Dispose();
+        }
     }
 
     private static bool Reached(string source)
