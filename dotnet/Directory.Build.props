@@ -8,10 +8,10 @@
   -->
 
   <PropertyGroup>
-    <!-- ADR-0014, amendment of 2026-08-30: the .NET 11 preview SDK compiles
+    <!-- ADR-0014, amendment of 2026-08-30: the .NET 11 SDK compiles
          this (global.json), and the target framework is owned by whoever loads
          the assembly. This binding is loaded by three surfaces, and the lowest
-         of them is pwsh 7.6.5, which hosts .NET 10. A net11.0 executable
+         of them is pwsh 7.6.7, which hosts .NET 10. A net11.0 executable
          references a net10.0 library without complaint; a net10.0 host cannot
          load a net11.0 one. So the binding targets what the lowest host runs. -->
     <TargetFramework>net10.0</TargetFramework>

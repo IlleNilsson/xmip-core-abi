@@ -20,12 +20,12 @@
       },
       "Tomlyn.Extensions.Configuration": {
         "type": "Direct",
-        "requested": "[2.0.0, )",
-        "resolved": "2.0.0",
-        "contentHash": "j2tkaXy3yfsMUd3fwg5qEKTwmwUsxcI5NSoBGGgOvrEC6M72FJnta0yuah9M72xj1wNT3scI0oUQAIkDWXeSsQ==",
+        "requested": "[2.0.1, )",
+        "resolved": "2.0.1",
+        "contentHash": "yfYfQnXpVWSNCQzR/YfwDrs5rg0po1FagBbK5Ke3/QHGPyvJOA0YfbePxVG6nBPEFjCJuQYi9M3kZYxkOXh0Ig==",
         "dependencies": {
           "Microsoft.Extensions.Configuration.FileExtensions": "10.0.6",
-          "Tomlyn": "2.3.0"
+          "Tomlyn": "2.10.1"
         }
       },
       "Microsoft.Extensions.Configuration.Abstractions": {
@@ -78,8 +78,8 @@
       },
       "Tomlyn": {
         "type": "Transitive",
-        "resolved": "2.3.0",
-        "contentHash": "kA3P/rsBD4HUio0Q67GUgYuWdfoV273HhQJmIRfJymKiZKEi1+xgjXTRW0OtcdEJqL4vTzDvKxbOMYR4tjBCPw=="
+        "resolved": "2.10.1",
+        "contentHash": "ykjOY3IpYmC4SpPcAZRTl/w2jTmhPMDydHq8xcV7tTBAQ22nKBsOkPqauIrZlMjHm03cmKfV23UOPscKp+J4Og=="
       },
       "xmip.abi": {
         "type": "Project"

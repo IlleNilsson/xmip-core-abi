@@ -1,7 +1,7 @@
 # Xmip Events from Python
 
 `xmip_event` binds `include/xmip_operate.h` section 11 over `ctypes`
-(ADR-0065), with nothing to install beyond Python 3.10 or newer. It crosses
+(ADR-0065), with nothing to install beyond Python 3.15 or newer. It crosses
 the boundary and nothing more: which Events a filter matches, whether a
 subscriber may see them, the queue and the audit are the runtime's.
 
