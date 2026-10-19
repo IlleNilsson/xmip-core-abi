@@ -13,19 +13,17 @@ them, the queue and the audit are the runtime's.
 | `Action`, `Outcome` | `XmipAction` and `XmipOutcome` with the header's numbers. |
 | `EventException` | Any status other than `XMIP_OK`, with the gate's sentence when a subscription is refused. |
 
-## Java 21, preview
+## Java 27
 
-The foreign function and memory API is final in Java 22 and a preview API in
-Java 21, the JDK the estate installs. The binding compiles with
-`--release 21 --enable-preview` and runs with `--enable-preview`, and it uses
-only the API that is the same in 21's preview and 22's final release:
-`Arena`, `Linker.nativeLinker`, `SymbolLookup.libraryLookup(Path, Arena)`,
-`MemorySegment.reinterpret`, `get` and `set` with a `ValueLayout`,
-`MemorySegment.copy` with byte arrays, and `allocate(size, alignment)`. It
-avoids the string helpers, whose names changed between the two. Classes
-compiled with `--enable-preview` on 21 run only on 21; on 22 or newer the same
-sources compile without the flag. The binding supports 64-bit platforms,
-where `size_t` is a Java `long`.
+The foreign function and memory API is final since Java 22. The binding
+compiles with `--release 27`, the current JDK the estate installs
+(ADR-0021), and runs with `--enable-native-access=ALL-UNNAMED`, which grants
+the restricted methods it exists to call; javac's `restricted` lint is off
+for the same reason. It uses `Arena`, `Linker.nativeLinker`,
+`SymbolLookup.libraryLookup(Path, Arena)`, `MemorySegment.reinterpret`, `get`
+and `set` with a `ValueLayout`, `MemorySegment.copy` with byte arrays, and
+`allocate(size, alignment)`. The binding supports 64-bit platforms, where
+`size_t` is a Java `long`.
 
 ## Use
 
@@ -51,8 +49,8 @@ From the repository root, without a build tool (the test is a `main` that
 exits non-zero on a failure):
 
 ```sh
-javac --release 21 --enable-preview -d build/java $(find java -name '*.java')
-java --enable-preview --enable-native-access=ALL-UNNAMED -cp build/java \
+javac --release 27 -d build/java $(find java -name '*.java')
+java --enable-native-access=ALL-UNNAMED -cp build/java \
     se.xmip.event.EventBindingTest <runtime library> <audit directory> include
 ```
 

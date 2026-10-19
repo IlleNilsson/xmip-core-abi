@@ -8,9 +8,8 @@
     subscribes, publishes through xmip_event_publish_v1, receives the Event
     by next and by callback, and holds publish to receive to a millisecond
     beside a plain thread wake measured under the same load. C and C++ build
-    with zig (prerequisite.toml, c), Java with the JDK's javac (FFM is a
-    preview API in 21, so --release 21 --enable-preview), Python with
-    python. Build output goes to build/, which git ignores; each test audits
+    with zig (prerequisite.toml, c), Java with the JDK's javac (--release
+    27, where FFM is final), Python 3.15 with python. Build output goes to build/, which git ignores; each test audits
     into a fresh folder under the system's temporary directory, removed
     afterwards, never the operating system's log. Exit 0 when every test
     passed.
@@ -185,10 +184,12 @@ if ($Language -contains 'Java') {
     [bool] $ok = Invoke-XmipBindingTest -Name 'Java' -Build {
         Remove-Item -LiteralPath $out -Recurse -Force -ErrorAction SilentlyContinue
         [string[]] $sources = (Get-ChildItem -Path java -Recurse -Filter '*.java').FullName
-        & $javac --release 21 --enable-preview '-Xlint:all,-preview' -Werror -d $out @sources
+        # Every restricted method is the binding's purpose, and the run grants
+        # it by --enable-native-access, so that one lint is off.
+        & $javac --release 27 '-Xlint:all,-restricted' -Werror -d $out @sources
     } -Run {
         param($audit)
-        & $java --enable-preview --enable-native-access=ALL-UNNAMED -cp $out `
+        & $java --enable-native-access=ALL-UNNAMED -cp $out `
             se.xmip.event.EventBindingTest $Library $audit $include
     }
     if (-not $ok) {
@@ -198,7 +199,7 @@ if ($Language -contains 'Java') {
 
 if ($Language -contains 'Python') {
     [bool] $ok = Invoke-XmipBindingTest -Name 'Python' -Build {
-        & python -c 'import sys; sys.exit(sys.version_info < (3, 10))'
+        & python -c 'import sys; sys.exit(sys.version_info < (3, 15))'
     } -Run {
         param($audit)
         $env:XMIP_RUNTIME_LIBRARY = $Library

@@ -27,7 +27,7 @@ import java.util.regex.Pattern;
  * back through an upcall, and an Event that reaches its subscriber within a
  * millisecond of its publish.
  *
- * <pre>java --enable-preview -cp build/java se.xmip.event.EventBindingTest
+ * <pre>java --enable-native-access=ALL-UNNAMED -cp build/java se.xmip.event.EventBindingTest
  *     &lt;runtime library&gt; &lt;audit directory&gt; &lt;include directory&gt;</pre>
  *
  * Exit 0 when every check is OK.

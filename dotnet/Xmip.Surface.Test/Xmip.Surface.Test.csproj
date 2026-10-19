@@ -22,15 +22,15 @@
     <NoWarn>$(NoWarn);CS1591</NoWarn>
 
     <!-- The library targets net10.0 because pwsh hosts .NET 10; an estate
-         machine installs only the .NET 11 preview SDK, so the test host runs
+         machine installs only the .NET 11 SDK, so the test host runs
          the net10.0 assemblies on the newest runtime present. -->
     <RollForward>LatestMajor</RollForward>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />
     <PackageReference Include="xunit" Version="2.9.3" />
-    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.1">
+    <PackageReference Include="xunit.runner.visualstudio" Version="4.0.1">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
     </PackageReference>

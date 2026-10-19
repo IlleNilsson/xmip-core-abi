@@ -33,8 +33,8 @@ bound here for every language that subscribes in process: `c/` shows
 `xmip_operate.h` section 11 from C, with a loader header, an example and a
 test; `include/xmip_event.hpp` is a header-only C++17 wrapper whose
 subscriptions and batches release themselves; `java/` is the `se.xmip.event`
-package over the foreign function and memory API (Java 21 with
-`--enable-preview`); `python/xmip_event` binds it over ctypes; and .NET's is
+package over the foreign function and memory API (Java 27, where it is
+final); `python/xmip_event` binds it over ctypes (Python 3.15); and .NET's is
 `Xmip.Abi`'s `RuntimeEvents`, below. Each binding only crosses the boundary —
 the matching, the authorization, the queue and the audit are
 `xmip-core-event`'s, forwarded by the runtime's library. Each has a test that

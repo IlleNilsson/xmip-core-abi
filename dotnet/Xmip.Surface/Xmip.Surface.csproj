@@ -34,14 +34,14 @@
   <ItemGroup>
     <!-- On disk the estate is TOML; JSON is reserved for memory and the wire.
          One reader, here, for a host's configuration and for a published
-         snapshot alike. The versions are the ones Tomlyn 2.0.0 itself rests
+         snapshot alike. The versions are the ones Tomlyn 2.0.1 itself rests
          on, which is what a net10.0 library can carry. -->
-    <PackageReference Include="Tomlyn.Extensions.Configuration" Version="2.0.0" />
+    <PackageReference Include="Tomlyn.Extensions.Configuration" Version="2.0.1" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.6" />
 
     <!-- A program that cannot reach the audit capability at all writes to
          the Windows Event Log itself (ADR-0062 clause 3; OperatingSystemLog).
-         10.0.0, the floor, because pwsh 7.6.5 carries its own copy and a
+         10.0.0, the floor, because pwsh 7.6.7 carries its own copy and a
          module asking for a newer one than its host holds does not load. -->
     <PackageReference Include="System.Diagnostics.EventLog" Version="10.0.0" />
   </ItemGroup>
