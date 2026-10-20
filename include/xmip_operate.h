@@ -1726,6 +1726,36 @@ typedef XmipStatus (*XmipOperatorSignFn)(XmipStr configuration, XmipStr request,
 #define XMIP_OPERATOR_KEEP_ENTRYPOINT "xmip_operator_keep_v1"
 #define XMIP_OPERATOR_SIGN_ENTRYPOINT "xmip_operator_sign_v1"
 
+/* ===================================================================== */
+/* 20. A database's schema: its upgrade between two releases             */
+/* ===================================================================== */
+
+/*
+ * Every Xmip database records the schema version it holds (open problem 41;
+ * ADR-0015, amendment 2026-10-20), and a node publishes each database it
+ * keeps at <node>/storage/<domain> - runtime, administration, audit - its
+ * evidence "schema version <n> on <engine>". A release's schema only adds
+ * to the one before; its upgrade is the difference between the two, and
+ * the schema, its versions and the scripts are xmip-core-persist's.
+ *
+ * xmip_database_upgrade_v1 writes the scripts that bring each database on
+ * server - postgresql, mssql or mariadb - from schema version from to to,
+ * zero for this build's: JSON, {"version", "scripts": [{"name", "text"}]},
+ * version this build's schema version, and one script to each database,
+ * named 04-<domain>-upgrade-<from>-<to>.sql, for IT to run as the schema's
+ * owner. XMIP_OK with the answer; XMIP_E_INVALID with the refusal, one
+ * sentence - a server Xmip Storage keeps no database on, from not a version
+ * before to, to past this build's; XMIP_E_MALFORMED when server is not
+ * UTF-8. The answer goes into out, its true byte length in out_len whether
+ * or not it fit. Pure, as section 7: no handle, any thread. A node's build
+ * only, as sections 10 to 16. Optional symbol; XMIP_OPERATE_VERSION is
+ * unchanged.
+ */
+typedef XmipStatus (*XmipDatabaseUpgradeFn)(XmipStr server, uint32_t from, uint32_t to,
+                                            uint8_t *out, size_t cap, size_t *out_len);
+
+#define XMIP_DATABASE_UPGRADE_ENTRYPOINT "xmip_database_upgrade_v1"
+
 #ifdef __cplusplus
 }
 #endif

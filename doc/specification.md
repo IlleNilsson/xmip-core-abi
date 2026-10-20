@@ -549,6 +549,17 @@ invalid. A surface over a publication acts through section 14's
 `xmip_order_v1`, noun `journey`, act `retry` or `dismiss`. The Rust mirror is
 `.src/operate/journey.rs`; .NET binds it as `RuntimeJourneys`.
 
+Section 20 is a database's schema (open problem 41; ADR-0015, amendment
+2026-10-20). Every Xmip database records the schema version it holds, and a
+node publishes each database it keeps at `<node>/storage/<domain>`, its
+evidence `schema version <n> on <engine>`. `xmip_database_upgrade_v1` writes
+the scripts that bring each database on a server — `postgresql`, `mssql` or
+`mariadb` — from one schema version to a later one, zero for this build's:
+one to each database, `04-<domain>-upgrade-<from>-<to>.sql`, adding only,
+with this build's version beside them. An upgrade that is none, or a server
+Xmip Storage keeps no database on, is refused in words. The schema and its
+versions are `xmip-core-persist`'s; .NET binds it as `RuntimeDatabases`.
+
 Section 9 is a program's audit record (ADR-0062): `xmip_audit_v1` hands one
 to `xmip-core-audit`, and since 2026-09-29 `xmip_audit_read_v1` answers, as
 JSON in memory, the records an audit query asks for — who (a location and
