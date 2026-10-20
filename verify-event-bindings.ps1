@@ -9,10 +9,17 @@
     by next and by callback, and holds publish to receive to a millisecond
     beside a plain thread wake measured under the same load. C and C++ build
     with zig (prerequisite.toml, c), Java with the JDK's javac (--release
-    27, where FFM is final), Python 3.15 with python. Build output goes to build/, which git ignores; each test audits
-    into a fresh folder under the system's temporary directory, removed
-    afterwards, never the operating system's log. Exit 0 when every test
-    passed.
+    27, where FFM is final), Python 3.15 with python. Build output goes to
+    build/, which git ignores; each test audits into a fresh folder under
+    the system's temporary directory, removed afterwards, never the
+    operating system's log. Exit 0 when every test that ran passed.
+
+    Every language but Rust is optional for Xmip itself (the owner,
+    2026-10-20: *every language except Rust is optional*), so each tool is
+    an optional prerequisite (prerequisite.toml): a binding whose tool is
+    absent here, or older than its floor, is SKIPPED and said so in words —
+    "SKIPPED: Java not installed; the Java Event binding is not verified" —
+    and fails nothing.
 
     .PARAMETER Library
     The runtime's library, xmip_core_runtime. Defaults to
@@ -79,6 +86,51 @@ function New-XmipAuditDirectory {
     return $path
 }
 
+function Get-XmipBindingAbsence {
+    <#
+        .SYNOPSIS
+        Why a binding's tool is not here, in words; empty when it is.
+    #>
+    [CmdletBinding()]
+    [OutputType([string])]
+    param(
+        [Parameter(Mandatory)]
+        [ValidateSet('C', 'Cpp', 'Java', 'Python')]
+        [string] $Name,
+
+        [Parameter(Mandatory)]
+        [AllowEmptyString()]
+        [string] $Javac
+    )
+
+    switch ($Name) {
+        { $_ -in 'C', 'Cpp' } {
+            if (-not (Get-Command -Name 'zig' -ErrorAction SilentlyContinue)) {
+                return 'zig not installed'
+            }
+        }
+        'Java' {
+            if (-not (Get-Command -Name $Javac -ErrorAction SilentlyContinue)) {
+                return 'Java not installed'
+            }
+            [string] $said = "$(& $Javac -version 2>&1)"
+            if ($said -notmatch '(\d+)' -or [int] $Matches[1] -lt 27) {
+                return "Java 27 not installed ($said found)"
+            }
+        }
+        'Python' {
+            if (-not (Get-Command -Name 'python' -ErrorAction SilentlyContinue)) {
+                return 'Python not installed'
+            }
+            & python -c 'import sys; sys.exit(sys.version_info < (3, 15))' 2>&1 | Out-Null
+            if ($LASTEXITCODE -ne 0) {
+                return "Python 3.15 not installed ($(& python --version 2>&1) found)"
+            }
+        }
+    }
+    return ''
+}
+
 function Invoke-XmipBindingTest {
     [CmdletBinding()]
     [OutputType([bool])]
@@ -137,7 +189,27 @@ if ($IsWindows) {
 [string[]] $warnings = @('-Wall', '-Wextra', '-Werror')
 [string[]] $failed = @()
 
-if ($Language -contains 'C') {
+[string] $bin = ''
+if ($env:JAVA_HOME -and (Test-Path -LiteralPath $env:JAVA_HOME)) {
+    $bin = Join-Path $env:JAVA_HOME 'bin'
+}
+[string] $javac = if ($bin) { Join-Path $bin 'javac' } else { 'javac' }
+[string] $java = if ($bin) { Join-Path $bin 'java' } else { 'java' }
+
+# A binding whose tool is absent is said and left out; it fails nothing.
+[hashtable] $spoken = @{ C = 'C'; Cpp = 'C++'; Java = 'Java'; Python = 'Python' }
+[string[]] $absent = @(
+    foreach ($name in $Language) {
+        [string] $why = Get-XmipBindingAbsence -Name $name -Javac $javac
+        if ($why) {
+            Write-Host "SKIPPED: $why; the $($spoken[$name]) Event binding is not verified"
+            $name
+        }
+    }
+)
+[string[]] $present = @($Language | Where-Object { $_ -notin $absent })
+
+if ($present -contains 'C') {
     [string] $out = Join-Path $build 'c'
     [bool] $ok = Invoke-XmipBindingTest -Name 'C' -Build {
         New-Item -ItemType Directory -Force -Path $out | Out-Null
@@ -158,7 +230,7 @@ if ($Language -contains 'C') {
     }
 }
 
-if ($Language -contains 'Cpp') {
+if ($present -contains 'Cpp') {
     [string] $out = Join-Path $build 'cpp'
     [bool] $ok = Invoke-XmipBindingTest -Name 'Cpp' -Build {
         New-Item -ItemType Directory -Force -Path $out | Out-Null
@@ -173,13 +245,7 @@ if ($Language -contains 'Cpp') {
     }
 }
 
-if ($Language -contains 'Java') {
-    [string] $bin = ''
-    if ($env:JAVA_HOME -and (Test-Path -LiteralPath $env:JAVA_HOME)) {
-        $bin = Join-Path $env:JAVA_HOME 'bin'
-    }
-    [string] $javac = if ($bin) { Join-Path $bin 'javac' } else { 'javac' }
-    [string] $java = if ($bin) { Join-Path $bin 'java' } else { 'java' }
+if ($present -contains 'Java') {
     [string] $out = Join-Path $build 'java'
     [bool] $ok = Invoke-XmipBindingTest -Name 'Java' -Build {
         Remove-Item -LiteralPath $out -Recurse -Force -ErrorAction SilentlyContinue
@@ -197,7 +263,7 @@ if ($Language -contains 'Java') {
     }
 }
 
-if ($Language -contains 'Python') {
+if ($present -contains 'Python') {
     [bool] $ok = Invoke-XmipBindingTest -Name 'Python' -Build {
         & python -c 'import sys; sys.exit(sys.version_info < (3, 15))'
     } -Run {
@@ -222,5 +288,9 @@ if ($failed.Count -gt 0) {
     Write-Host "FAILED. $($failed -join ', ')"
     exit 1
 }
-Write-Host "OK. $($Language -join ', ')"
+if ($present.Count -eq 0) {
+    Write-Host 'OK. No binding verified here: every tool is absent, as said above.'
+    exit 0
+}
+Write-Host "OK. $($present -join ', ')"
 exit 0
