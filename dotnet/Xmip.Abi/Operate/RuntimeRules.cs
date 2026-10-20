@@ -25,7 +25,8 @@ namespace Xmip.Abi.Operate;
 /// <see cref="Design"/>; section 11, Events
 /// subscribed, is <see cref="Events"/>; section 12, the technologies the
 /// runtime carries, is <see cref="Catalogue"/>; section 13, a System
-/// Process declared, is <see cref="Processes"/>.
+/// Process declared, is <see cref="Processes"/>; section 20, a database's
+/// schema upgraded, is <see cref="Databases"/>.
 /// </summary>
 /// <remarks>
 /// Pure calls: none reads the snapshot or holds a table, so one instance
@@ -78,6 +79,7 @@ public sealed unsafe partial class RuntimeRules
     private readonly RuntimeSubscriptions? _subscriptions;
     private readonly RuntimeDeadMessages? _deadMessages;
     private readonly RuntimeJourneys? _journeys;
+    private readonly RuntimeDatabases? _databases;
 
     private RuntimeRules(nint library, string path)
     {
@@ -140,6 +142,8 @@ public sealed unsafe partial class RuntimeRules
             library, RuntimeDeadMessages.Entrypoints, () => new RuntimeDeadMessages(library));
         _journeys = Node(
             library, RuntimeJourneys.Entrypoints, () => new RuntimeJourneys(library));
+        _databases = Node(
+            library, RuntimeDatabases.Entrypoints, () => new RuntimeDatabases(library));
         Remotes = new RuntimeRemotes(library);
         SecurityRoles = new RuntimeSecurityRoles(library);
         Certificates = new RuntimeCertificates(library);
@@ -222,6 +226,12 @@ public sealed unsafe partial class RuntimeRules
     /// <summary>Section 19: a person's key and request made, and signed on a
     /// node's build by its authority (ADR-0034, amendment 2026-10-15).</summary>
     public RuntimeCertificates Certificates { get; }
+
+    /// <summary>Section 20: the scripts that upgrade each database on a server
+    /// from one schema version to a later one (ADR-0015, amendment
+    /// 2026-10-20). A node's build only.</summary>
+    public RuntimeDatabases Databases =>
+        _databases ?? throw RemoteBuild.Refused(_library, RuntimeDatabases.Entrypoints);
 
     /// <summary>The stage words, in message-path order — the segments a
     /// scope names a stage by: <c>node::Stage::WORDS</c>, read once when the

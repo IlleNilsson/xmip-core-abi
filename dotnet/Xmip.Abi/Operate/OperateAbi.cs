@@ -363,4 +363,9 @@ public static class OperateAbi
     /// <summary>A person's request signed by the authority a node's
     /// <c>[provision.operator]</c> names: section 19.</summary>
     public const string OperatorSignEntrypoint = "xmip_operator_sign_v1";
+
+    /// <summary>The scripts that upgrade each database on a server from one
+    /// schema version to a later one: section 20 (ADR-0015, amendment
+    /// 2026-10-20).</summary>
+    public const string DatabaseUpgradeEntrypoint = "xmip_database_upgrade_v1";
 }

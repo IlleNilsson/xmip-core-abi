@@ -24,7 +24,10 @@ carries and the settings each declares, ADR-0064 amendment 2026-09-26),
 which the language server calls and `RuntimeRules.Catalogue` binds, and section
 13's System Process declaration (`operate::process`: a process declares itself
 and the declarations standing in a directory are read, both `xmip-core-node`'s,
-ADR-0053), which `RuntimeRules.Processes` binds. `examples/conforming.rs`
+ADR-0053), which `RuntimeRules.Processes` binds, and section 20's upgrade
+of a database's schema (`xmip_database_upgrade_v1`, the scripts
+`xmip-core-persist` writes; ADR-0015, amendment 2026-10-20), which
+`RuntimeRules.Databases` binds. `examples/conforming.rs`
 builds as a cdylib and is the conforming artifact a loader probe is tested
 against.
 
