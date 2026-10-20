@@ -51,7 +51,7 @@ public enum XmipStatus
     /// <summary>The peer refused, or is down.</summary>
     Unavailable = -22,
 
-    /// <summary>Authentication or authorisation was refused.</summary>
+    /// <summary>Authentication or authorization was refused.</summary>
     Auth = -23,
 
     /// <summary>A quota, limit or resource was exhausted.</summary>

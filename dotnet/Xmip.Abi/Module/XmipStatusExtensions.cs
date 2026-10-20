@@ -51,7 +51,7 @@ public static class XmipStatusExtensions
             XmipStatus.Io => "an input or output fault",
             XmipStatus.Timeout => "the call did not answer in time",
             XmipStatus.Unavailable => "the peer refused, or is down",
-            XmipStatus.Auth => "authentication or authorisation was refused",
+            XmipStatus.Auth => "authentication or authorization was refused",
             XmipStatus.Capacity => "a quota, limit or resource was exhausted",
 
             XmipStatus.Cancelled => "the host asked for cancellation",

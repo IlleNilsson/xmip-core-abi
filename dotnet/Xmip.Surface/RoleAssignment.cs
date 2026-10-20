@@ -50,7 +50,7 @@ public sealed class RoleAssignment(Role? stated, IDirectory? directory)
     }
 
     /// <summary>
-    /// The role named in configuration, or Observer when unrecognised — the
+    /// The role named in configuration, or Observer when unrecognized — the
     /// safe default, so a misconfiguration never grants privilege.
     /// </summary>
     public static Role Parse(string? text)

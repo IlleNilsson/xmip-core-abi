@@ -74,7 +74,7 @@ typedef XmipStr XmipScope;
 /* ===================================================================== */
 
 /*
- * observability-model.md section 6. Health is a mood, not a colour: it names
+ * observability-model.md section 6. Health is a mood, not a color: it names
  * what a human gets out of a resource under load, and a surface renders it. The
  * leaf moods, worsening: FINE (results flowing), PAUSED (a deliberate hold - an
  * operator is working on it), WORKING (handling the load), STRESSED (strained -

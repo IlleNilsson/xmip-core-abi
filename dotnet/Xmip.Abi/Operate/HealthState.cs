@@ -1,7 +1,7 @@
 namespace Xmip.Abi.Operate;
 
 /// <summary>
-/// The mood of a scope — observability-model.md section 6. A mood, not a colour
+/// The mood of a scope — observability-model.md section 6. A mood, not a color
 /// (the surface paints it): what a human gets out of a resource under load. Five
 /// leaf moods, worsening, then Holding, the rollup (ADR-0041). The values are
 /// the header's <c>XMIP_HEALTH_*</c>.

@@ -19,21 +19,21 @@ node = "xmip:///C1"
 scope = "xmip:///C1/node/R1/capability"
 state = "fine"
 severity = 0
-evidence = "declares receiving; online; authentication and runtime capability are not modelled"
+evidence = "declares receiving; online; authentication and runtime capability are not modeled"
 observed_unix_nanos = 1789111688000000000
 
 [[records]]
 scope = "xmip:///C1/node/P1/capability"
 state = "fine"
 severity = 0
-evidence = "declares processing,sending; offline; authentication and runtime capability are not modelled"
+evidence = "declares processing,sending; offline; authentication and runtime capability are not modeled"
 observed_unix_nanos = 1789111688000000000
 
 [[records]]
 scope = "xmip:///C1/node/S1/capability"
 state = "fine"
 severity = 0
-evidence = "declares sending; offline; authentication and runtime capability are not modelled"
+evidence = "declares sending; offline; authentication and runtime capability are not modeled"
 observed_unix_nanos = 1789111688000000000
 
 [[records]]

@@ -93,7 +93,7 @@ public static unsafe class ModuleProbe
     /// <remarks>
     /// ThreadStatic rather than passed through, because the callback crosses
     /// native code and an UnmanagedCallersOnly method captures nothing. One
-    /// probe per thread at a time is the contract, and every surface honours
+    /// probe per thread at a time is the contract, and every surface honors
     /// it by construction.
     /// </remarks>
     [ThreadStatic]
@@ -214,7 +214,7 @@ public static unsafe class ModuleProbe
 
     // ----------------------------------------------------------------------
     // Host callbacks. These are called from native code, so nothing may throw
-    // across them — an exception unwinding into C is undefined behaviour, the
+    // across them — an exception unwinding into C is undefined behavior, the
     // same rule the header applies to a Rust panic.
     // ----------------------------------------------------------------------
 

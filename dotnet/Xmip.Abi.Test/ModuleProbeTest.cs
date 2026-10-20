@@ -7,7 +7,7 @@ namespace Xmip.Abi.Test;
 /// What a probe judges of a module that answered, once for <c>xmip-cli
 /// probe</c> and <c>Get-XmipModuleDescriptor</c>, and the two boundaries both
 /// report. Probing a real library is the conformance fixture's; these hold
-/// the judgement over what a module said.
+/// the judgment over what a module said.
 /// </summary>
 public sealed class ModuleProbeTest
 {

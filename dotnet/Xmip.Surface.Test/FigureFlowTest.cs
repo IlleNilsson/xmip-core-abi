@@ -90,7 +90,7 @@ public sealed class FigureFlowTest
     public void RetryingAndFailedAreRatesOnTheSameRuleAsTheStages()
     {
         // The owner named all five letters when he capped the numbers, and T
-        // and F were left as totals on the assistant's judgement rather than
+        // and F were left as totals on the assistant's judgment rather than
         // his (2026-09-20). A retry total says a run has had trouble; a retry
         // rate says it is having trouble now.
         FigureFlow flow = FigureFlow.Between(

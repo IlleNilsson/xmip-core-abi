@@ -6,7 +6,7 @@ runtime, operator surfaces, and loadable Modules.
 `include/xmip_module.h`, `include/xmip_operate.h` and `doc/specification.md`
 are normative. The Rust crate, whose source sits aside under `.src`
 (ADR-0049), is a convenience binding over that boundary and must not introduce
-Rust-specific types into the ABI: the descriptor and the two judgements a
+Rust-specific types into the ABI: the descriptor and the two judgments a
 load makes of it — `validate_module_abi`, whether it is well formed, and
 `accepts`, ADR-0012's compatibility rule against the capability loading it,
 which the runtime's loader calls — the manifest, the FFI shapes and the
@@ -50,7 +50,7 @@ The .NET binding is here too: `dotnet/Xmip.Abi`, one class library declaring
 both headers for every operator surface — the cli, the PowerShell module and
 the GUI reference it as a project and bind nothing themselves (ADR-0014,
 amendment of 2026-08-26). `Module/` carries the module boundary, its probe
-and the probe's judgement of whether a library loaded at all
+and the probe's judgment of whether a library loaded at all
 (`ModuleProbe.Result.Unloadable`) and whether a module conforms, and `StatusMeaning`,
 what a status code means; `Operate/` the operator boundary and its records,
 and `RuntimeRules`, section 7 bound once: scope containment, a scope's

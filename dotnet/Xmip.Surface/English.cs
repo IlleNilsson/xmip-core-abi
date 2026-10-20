@@ -212,7 +212,7 @@ public static class English
 
     /// <summary>What follows the name of a cluster, a group or a record whose
     /// run declared itself hidden, where a reader asked to see it: " · test",
-    /// in words and never by colour alone (ADR-0052, amendment 2026-09-30);
+    /// in words and never by color alone (ADR-0052, amendment 2026-09-30);
     /// nothing for everything else.</summary>
     public static string Test(bool hidden)
     {

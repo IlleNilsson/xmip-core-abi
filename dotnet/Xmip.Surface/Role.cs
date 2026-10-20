@@ -3,7 +3,7 @@ namespace Xmip.Surface;
 /// <summary>
 /// A security role — what a person may do in Xmip (ADR-0009), least first:
 /// Observer watches; Operator also acts and configures; Developer also builds. Each
-/// includes what the one before it can do. Colours are never roles; this is who
+/// includes what the one before it can do. Colors are never roles; this is who
 /// is at the keyboard.
 ///
 /// A screen shapes what it offers by it — an Observer is shown monitoring only,

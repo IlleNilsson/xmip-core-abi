@@ -76,7 +76,7 @@ public sealed class ProgramAuditTest
     }
 
     [Fact]
-    public void WhatAProgramRecordedItReadsBackByTheQuerysWords()
+    public void WhatAProgramRecordedItReadsBackByTheWordsOfTheQuery()
     {
         string directory = Scratch();
         ProgramAudit audit = new("Xmip.Surface.Test", directory);
