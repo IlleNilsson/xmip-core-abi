@@ -95,7 +95,7 @@ public sealed class ClusterSnapshotTest
         Assert.True(received.Online);
         Assert.Equal("receiving · online", received.Line());
         Assert.Contains(
-            "authentication and runtime capability are not modelled",
+            "authentication and runtime capability are not modeled",
             received.Evidence,
             StringComparison.Ordinal);
 
@@ -330,7 +330,7 @@ public sealed class ClusterSnapshotTest
     }
 
     [Fact]
-    public void TheNodesRollupIsTheBranchsOwnRecordAndNeverANodeBesideThem()
+    public void TheNodesRollupIsTheRecordOfTheBranchAndNeverANodeBesideThem()
     {
         ScopeIndex index = new SnapshotOperator(Fixture).Index();
 

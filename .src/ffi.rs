@@ -3,7 +3,7 @@
 //! ADR-0012 clause 1: the header is normative and this is not. Every layout,
 //! name and number below follows the header, less the `Xmip` prefix where the
 //! crate already supplies it — and where the two ever disagree, the header is
-//! right and this is a defect. `ffi` because that is the recognised standard
+//! right and this is a defect. `ffi` because that is the recognized standard
 //! name for exactly this layer, the same rule ADR-0011 applies to protocol
 //! names.
 //!

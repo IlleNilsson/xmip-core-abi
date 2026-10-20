@@ -16,7 +16,7 @@ pub struct ModuleIdentity {
 
 /// What language or host the implementation actually runs in.
 ///
-/// This is not a licence or a trust statement, only a loading fact: it tells
+/// This is not a license or a trust statement, only a loading fact: it tells
 /// the host which loader to use and whether a bridge process is needed.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]

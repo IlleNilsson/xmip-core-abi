@@ -29,7 +29,7 @@ pub const XMIP_WAIT_CHANGE_ENTRYPOINT: &str = "xmip_wait_change_v1";
 /// clause 4, with a Party as a query filter and never a level.
 pub type Scope = Str;
 
-/// Header section 3, as it crosses: an `int`. Health is a mood, not a colour
+/// Header section 3, as it crosses: an `int`. Health is a mood, not a color
 /// (observability-model §6). The leaf moods in worsening order, then `HOLDING`,
 /// the rollup mood a parent shows when anything below it is not `FINE` (ADR-0041).
 pub mod health {
@@ -72,7 +72,7 @@ pub mod counted {
 pub struct HealthEntry {
     pub scope: Scope,
     pub health: i32,
-    /// How far from healthy, 0 to 100, shading the colour. Paused is 30.
+    /// How far from healthy, 0 to 100, shading the color. Paused is 30.
     pub severity: u8,
     pub evidence: Str,
     pub observed_unix_nanos: i64,

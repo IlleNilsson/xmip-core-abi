@@ -10,14 +10,14 @@
  * here. A module written in C, C++, Zig, Go or Rust is the same module to the
  * host, and the host cannot tell which it loaded.
  *
- * Licence. AGPL-3.0-or-later, like the rest of Xmip. There is no exception for
- * the boundary. A user takes Xmip under Xmip's licence, and may additionally have
- * to satisfy the licences of what Xmip itself depends on. Reconciling that is the
+ * License. AGPL-3.0-or-later, like the rest of Xmip. There is no exception for
+ * the boundary. A user takes Xmip under Xmip's license, and may additionally have
+ * to satisfy the licenses of what Xmip itself depends on. Reconciling that is the
  * user's business, not Xmip's.
  *
  * The boundary is still a boundary in the sense that matters here: it is a C ABI,
  * it is language-neutral, and no implementer is obliged to write Rust or link
- * Xmip code. It is not a licence exemption.
+ * Xmip code. It is not a license exemption.
  */
 
 #ifndef XMIP_MODULE_H

@@ -49,7 +49,7 @@ public sealed class RuntimeAuditTest
     public void AQueryTheCapabilityDoesNotTakeIsRefusedInItsWords()
     {
         ArgumentException refused = Assert.Throws<ArgumentException>(() =>
-            RuntimeRulesTest.Rules.Audit.Read(null, [new("colour", "red")]));
+            RuntimeRulesTest.Rules.Audit.Read(null, [new("color", "red")]));
 
         Assert.StartsWith("REFUSED", refused.Message, StringComparison.Ordinal);
     }
