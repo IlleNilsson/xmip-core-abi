@@ -1756,6 +1756,119 @@ typedef XmipStatus (*XmipDatabaseUpgradeFn)(XmipStr server, uint32_t from, uint3
 
 #define XMIP_DATABASE_UPGRADE_ENTRYPOINT "xmip_database_upgrade_v1"
 
+/* ===================================================================== */
+/* 21. A web host's secure surface, protected by Xmip itself             */
+/* ===================================================================== */
+
+/*
+ * A web host - the web GUI, a .NET web server - hands the protection of
+ * its connections to the runtime and keeps HTTP, so a browser is served by
+ * Xmip's own stack and never the platform's (ADR-0009, amendment
+ * 2026-10-21; the owner, 2026-09-26: Xmip uses its own tool chain). The
+ * protection is a parameter, never a name (the owner, 2026-10-21:
+ * technology and security should not be in functions, parameters is ok):
+ * XMIP_PROTECTION_TLS, xmip-core-library-tls, is the one built, and any
+ * other is answered XMIP_E_UNSUPPORTED with why in report. The host presents its
+ * certificate and asks every browser for one: one that reaches the anchors
+ * names the browser's caller, one that does not ends the handshake here,
+ * and a browser that presents none is let through as no one, who only
+ * watches. HTTP/1.1 is the one protocol agreed (ALPN, RFC 7301).
+ *
+ * xmip_host_issue_v1 keeps the authority in the folder authority -
+ * authority.key and authority.pem, private files, made there and called
+ * name where none is kept, as the cluster's own authority is - and issues
+ * host a fresh key and a certificate under it for server authentication
+ * alone, its subject and only alternative name host: an IP address as an
+ * iPAddress (RFC 5280), which a browser checks https://127.0.0.1 against,
+ * any other name as a dNSName. Written into folder (created where absent)
+ * as host.key and host.pem, the chain leaf first, private files in place of
+ * what was there: issued anew at each call. The answer is JSON,
+ * {"certificate","key","anchor"}, the three files' paths, the anchor the
+ * authority's certificate. XMIP_E_INVALID with the refusal. The same
+ * authority signs a tester's operator request (section 19, a configuration
+ * whose [provision.operator] authority names the folder).
+ *
+ * xmip_listener_open_v1 listens on listen, host:port, protected by
+ * protection, presenting certificate (a PEM chain, leaf first) with key
+ * (its PEM private key) and verifying a browser's certificate against
+ * anchors (PEM): XMIP_OK with the handle in out; XMIP_E_IO with why in
+ * report - an identity that does not read or pair, anchors holding no
+ * certificate, an address not bound. xmip_listener_address_v1 says where
+ * it listens, host:port, the port a bind to port 0 was given included.
+ *
+ * xmip_listener_accept_v1 waits for the next connection whose handshake has
+ * finished and hands it over as a session in out. Each handshake runs on a
+ * thread of its own, bounded at ten seconds, so a browser that connects and
+ * says nothing holds up no other. XMIP_OK with the session; XMIP_E_AUTH
+ * with why in report for a browser whose certificate the anchors refused -
+ * a host tells its audit; XMIP_E_IO for one that did not finish for any
+ * other reason - it stopped, spoke no TLS, ran out of time. Neither ends
+ * the listener: the host accepts again. XMIP_E_CANCELLED once the listener
+ * is stopped. xmip_listener_stop_v1 stops it from any thread, while an accept
+ * may be in flight on another, waking every accept; xmip_listener_free_v1
+ * frees it once every call on it has returned, stopping it where it was
+ * not. A session already handed over stays its holder's.
+ *
+ * A session is read on one thread and written on another at once, as a
+ * web server pumps a connection. xmip_session_peer_v1 writes the leaf
+ * certificate its browser presented, DER, empty where it presented none;
+ * xmip_session_ends_v1 where it was accepted and where its browser is,
+ * host:port each, one space between. xmip_session_read_v1 waits for what the
+ * browser sent next, at most cap bytes into out, their count in out_len,
+ * 0 once the connection has ended - closed, cleanly or not, or reset;
+ * XMIP_E_IO where a record could not be read. xmip_session_write_v1 writes
+ * bytes whole and sends them; XMIP_E_IO where the connection has ended.
+ * xmip_session_close_v1 closes it from any thread - the browser told where
+ * no write holds the connection, the socket shut both ways - waking a read
+ * waiting on another; xmip_session_free_v1 frees it once every call
+ * on it has returned.
+ *
+ * Answers that do not fit are cut at cap, their true length in out_len,
+ * except a read's, which reads at most cap. XMIP_E_INVALID for no handle;
+ * XMIP_E_MALFORMED when a string is not UTF-8. A node's build only, as
+ * sections 10 to 16. Optional symbols; XMIP_OPERATE_VERSION is unchanged.
+ */
+#define XMIP_PROTECTION_TLS 1
+
+typedef struct XmipListener XmipListener;
+typedef struct XmipSession XmipSession;
+
+typedef XmipStatus (*XmipHostIssueFn)(XmipStr authority, XmipStr name, XmipStr host,
+                                      XmipStr folder, uint8_t *out, size_t cap,
+                                      size_t *out_len);
+typedef XmipStatus (*XmipListenerOpenFn)(int32_t protection, XmipStr listen,
+                                         XmipStr certificate, XmipStr key, XmipStr anchors,
+                                         XmipListener **out, uint8_t *report, size_t cap,
+                                         size_t *out_len);
+typedef XmipStatus (*XmipListenerAddressFn)(const XmipListener *listener, uint8_t *out,
+                                            size_t cap, size_t *out_len);
+typedef XmipStatus (*XmipListenerAcceptFn)(const XmipListener *listener, XmipSession **out,
+                                           uint8_t *report, size_t cap, size_t *report_len);
+typedef void (*XmipListenerStopFn)(const XmipListener *listener);
+typedef void (*XmipListenerFreeFn)(XmipListener *listener);
+typedef XmipStatus (*XmipSessionPeerFn)(const XmipSession *session, uint8_t *out,
+                                        size_t cap, size_t *out_len);
+typedef XmipStatus (*XmipSessionEndsFn)(const XmipSession *session, uint8_t *out,
+                                        size_t cap, size_t *out_len);
+typedef XmipStatus (*XmipSessionReadFn)(const XmipSession *session, uint8_t *out,
+                                        size_t cap, size_t *out_len);
+typedef XmipStatus (*XmipSessionWriteFn)(const XmipSession *session, XmipSlice bytes);
+typedef void (*XmipSessionCloseFn)(const XmipSession *session);
+typedef void (*XmipSessionFreeFn)(XmipSession *session);
+
+#define XMIP_HOST_ISSUE_ENTRYPOINT       "xmip_host_issue_v1"
+#define XMIP_LISTENER_OPEN_ENTRYPOINT    "xmip_listener_open_v1"
+#define XMIP_LISTENER_ADDRESS_ENTRYPOINT "xmip_listener_address_v1"
+#define XMIP_LISTENER_ACCEPT_ENTRYPOINT  "xmip_listener_accept_v1"
+#define XMIP_LISTENER_STOP_ENTRYPOINT    "xmip_listener_stop_v1"
+#define XMIP_LISTENER_FREE_ENTRYPOINT    "xmip_listener_free_v1"
+#define XMIP_SESSION_PEER_ENTRYPOINT     "xmip_session_peer_v1"
+#define XMIP_SESSION_ENDS_ENTRYPOINT     "xmip_session_ends_v1"
+#define XMIP_SESSION_READ_ENTRYPOINT     "xmip_session_read_v1"
+#define XMIP_SESSION_WRITE_ENTRYPOINT    "xmip_session_write_v1"
+#define XMIP_SESSION_CLOSE_ENTRYPOINT    "xmip_session_close_v1"
+#define XMIP_SESSION_FREE_ENTRYPOINT     "xmip_session_free_v1"
+
 #ifdef __cplusplus
 }
 #endif

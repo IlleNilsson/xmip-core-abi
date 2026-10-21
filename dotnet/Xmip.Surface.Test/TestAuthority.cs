@@ -13,6 +13,12 @@ namespace Xmip.Surface.Test;
 /// </summary>
 internal sealed class TestAuthority : IDisposable
 {
+    /// <summary>The purpose a server's certificate is for.</summary>
+    public const string ServerAuthentication = "1.3.6.1.5.5.7.3.1";
+
+    /// <summary>The purpose a client's certificate is for.</summary>
+    public const string ClientAuthentication = "1.3.6.1.5.5.7.3.2";
+
     private readonly ECDsa key = ECDsa.Create(ECCurve.NamedCurves.nistP256);
 
     private readonly X509Certificate2 anchor;
@@ -46,13 +52,21 @@ internal sealed class TestAuthority : IDisposable
     /// certificate and a key file.</summary>
     public (string Certificate, string PrivateKey) Server()
     {
-        return Issue("server", SurfaceTls.ServerAuthentication);
+        return Issue("server", ServerAuthentication);
     }
 
     /// <summary>A client certificate for a remote surface.</summary>
     public (string Certificate, string PrivateKey) Client()
     {
-        return Issue("client", SurfaceTls.ClientAuthentication);
+        return Issue("client", ClientAuthentication);
+    }
+
+    /// <summary>A client certificate whose subject is
+    /// <c>CN=xmip-&lt;name&gt;</c>, a person's as an operator certificate
+    /// names one.</summary>
+    public (string Certificate, string PrivateKey) Client(string name)
+    {
+        return Issue(name, ClientAuthentication);
     }
 
     /// <summary>

@@ -28,7 +28,7 @@ public sealed class OperatorKeptTest
         using MemoryKeeper keeper = new();
         string chain = Path.Combine(authority.Directory, "phone", "operator.pem");
         string anchors = Path.Combine(authority.Directory, "phone", "anchor.pem");
-        SurfaceTls tls = SurfaceTls.Kept(chain, anchors, keeper);
+        SecureSurface tls = SecureSurface.Kept(chain, anchors, keeper);
 
         Assert.Contains(
             "No certificate is kept", tls.KeptPem(out _, out _), StringComparison.Ordinal);

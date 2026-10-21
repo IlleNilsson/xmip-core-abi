@@ -4,15 +4,15 @@ namespace Xmip.Surface;
 /// The surface over a node on another machine, reached at its operate
 /// address over gRPC inside Xmip's mutual TLS (ADR-0014, amendment
 /// 2026-10-12; ADR-0063): a <see cref="ListenerOperator"/> that presents the
-/// certificate its <see cref="SurfaceTls"/> names and takes the node only
+/// certificate its <see cref="SecureSurface"/> names and takes the node only
 /// where its certificate reaches the anchors named with it. The node takes
 /// every act as the subject that certificate proves. Where the key is kept
-/// by the platform's keeper (<see cref="SurfaceTls.Keeper"/>), the keeper
+/// by the platform's keeper (<see cref="SecureSurface.Keeper"/>), the keeper
 /// signs each handshake through the runtime and the key never leaves it.
 /// </summary>
 /// <param name="address">The node's operate address, <c>host:port</c>.</param>
 /// <param name="tls">What this side presents and trusts.</param>
-public sealed class RemoteOperator(string address, SurfaceTls tls)
+public sealed class RemoteOperator(string address, SecureSurface tls)
     : ListenerOperator("REMOTE", address, Opened(address, tls, out string reason), reason)
 {
     /// <summary>What every surface says when <c>--remote</c> or
@@ -26,7 +26,7 @@ public sealed class RemoteOperator(string address, SurfaceTls tls)
     }
 
     private static Abi.Operate.RemoteNode? Opened(
-        string address, SurfaceTls tls, out string reason)
+        string address, SecureSurface tls, out string reason)
     {
         ArgumentNullException.ThrowIfNull(address);
         ArgumentNullException.ThrowIfNull(tls);

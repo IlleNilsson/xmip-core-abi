@@ -1,9 +1,9 @@
 namespace Xmip.Surface;
 
-// SurfaceTls where this end's key is kept by its platform's keeper and
+// SecureSurface where this end's key is kept by its platform's keeper and
 // never read (ADR-0034, amendment 2026-10-15): the chain and the anchors are
 // files, the key the IOperatorKeeper's.
-public sealed partial class SurfaceTls
+public sealed partial class SecureSurface
 {
     /// <summary>
     /// The chain at <paramref name="certificatePath"/>, whose key
@@ -14,14 +14,14 @@ public sealed partial class SurfaceTls
     /// remote surface opens (<see cref="KeptPem"/>). What this end presents is
     /// for a node's operate listener only: a web host serves nothing with it.
     /// </summary>
-    public static SurfaceTls Kept(
+    public static SecureSurface Kept(
         string certificatePath, string? trustAnchorPath, IOperatorKeeper keeper)
     {
         ArgumentNullException.ThrowIfNull(certificatePath);
         ArgumentNullException.ThrowIfNull(keeper);
 
         // Neither file need be there yet: both are read as a remote opens.
-        return new SurfaceTls(null, [], [], (certificatePath, null, trustAnchorPath))
+        return new SecureSurface((certificatePath, null, trustAnchorPath))
         {
             Keeper = keeper,
         };

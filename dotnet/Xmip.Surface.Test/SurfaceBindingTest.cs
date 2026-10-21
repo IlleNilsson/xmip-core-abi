@@ -16,7 +16,7 @@ public sealed class SurfaceBindingTest
     [InlineData("http://[::1]:5087")]
     public void PlainHttpOnLoopbackIsBoundAndAnswered(string address)
     {
-        Assert.Equal([address], SurfaceBinding.Check([address], SurfaceTls.None));
+        Assert.Equal([address], SurfaceBinding.Check([address], SecureSurface.None));
     }
 
     [Theory]
@@ -27,7 +27,7 @@ public sealed class SurfaceBindingTest
     public void PlainHttpBeyondThisMachineIsRefused(string address)
     {
         InvalidOperationException refused = Assert.Throws<InvalidOperationException>(
-            () => SurfaceBinding.Check([address], SurfaceTls.None));
+            () => SurfaceBinding.Check([address], SecureSurface.None));
 
         Assert.StartsWith("REFUSED.", refused.Message, StringComparison.Ordinal);
         Assert.Contains("ADR-0063 clause 1", refused.Message, StringComparison.Ordinal);
@@ -37,9 +37,22 @@ public sealed class SurfaceBindingTest
     public void HttpsWithNoCertificateIsRefused()
     {
         InvalidOperationException refused = Assert.Throws<InvalidOperationException>(
-            () => SurfaceBinding.Check(["https://0.0.0.0:5443"], SurfaceTls.None));
+            () => SurfaceBinding.Check(["https://0.0.0.0:5443"], SecureSurface.None));
 
-        Assert.Contains(SurfaceTls.CertificateKey, refused.Message, StringComparison.Ordinal);
+        Assert.Contains(SecureSurface.CertificateKey, refused.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void HttpsWithNoAnchorsToVerifyABrowserAgainstIsRefused()
+    {
+        using TestAuthority authority = new("anchorless");
+        (string certificate, string privateKey) = authority.Server();
+        SecureSurface tls = SecureSurface.Load(certificate, privateKey, null);
+
+        InvalidOperationException refused = Assert.Throws<InvalidOperationException>(
+            () => SurfaceBinding.Check(["https://127.0.0.1:5443"], tls));
+
+        Assert.Contains(SecureSurface.TrustAnchorKey, refused.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -47,7 +60,7 @@ public sealed class SurfaceBindingTest
     {
         using TestAuthority authority = new("binding");
         (string certificate, string privateKey) = authority.Server();
-        SurfaceTls tls = SurfaceTls.Load(certificate, privateKey, authority.Anchor);
+        SecureSurface tls = SecureSurface.Load(certificate, privateKey, authority.Anchor);
 
         Assert.Empty(SurfaceBinding.Check(["https://0.0.0.0:5443", "https://*:5443"], tls));
     }
@@ -71,7 +84,10 @@ public sealed class SurfaceBindingTest
         using TestAuthority authority = new("half");
         (string certificate, _) = authority.Server();
 
-        Assert.Throws<InvalidOperationException>(() => SurfaceTls.Load(certificate, null, null));
+        Assert.Throws<InvalidOperationException>(() => SecureSurface.Load(certificate, null, null));
+        InvalidOperationException gone = Assert.Throws<InvalidOperationException>(
+            () => SecureSurface.Load(certificate, certificate, certificate + ".gone"));
+        Assert.Contains("is not there", gone.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -79,16 +95,14 @@ public sealed class SurfaceBindingTest
     {
         using TestAuthority authority = new("document");
         (string certificate, string privateKey) = authority.Server();
-        SurfaceTls tls = SurfaceTls.From(
+        SecureSurface tls = SecureSurface.From(
             Configured(
-                (SurfaceTls.CertificateKey, Path.GetFileName(certificate)),
-                (SurfaceTls.PrivateKeyKey, Path.GetFileName(privateKey)),
-                (SurfaceTls.TrustAnchorKey, Path.GetFileName(authority.Anchor))),
+                (SecureSurface.CertificateKey, Path.GetFileName(certificate)),
+                (SecureSurface.PrivateKeyKey, Path.GetFileName(privateKey)),
+                (SecureSurface.TrustAnchorKey, Path.GetFileName(authority.Anchor))),
             authority.Directory);
 
-        Assert.Equal("CN=xmip-server", tls.Certificate?.Subject);
-        Assert.True(tls.Certificate?.HasPrivateKey);
-        Assert.Single(tls.Anchors);
+        Assert.Equal((certificate, privateKey, authority.Anchor), tls.Paths);
     }
 
     private static IConfiguration Configured(params (string Key, string Value)[] pairs)
