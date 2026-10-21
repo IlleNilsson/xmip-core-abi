@@ -154,12 +154,12 @@ public sealed class RemoteOperatorTest
 
         (string certificate, string key) = stranger.Client();
         using RemoteOperator untrusted = new(
-            served.Address, SurfaceTls.Load(certificate, key, authority.Anchor));
+            served.Address, SecureSurface.Load(certificate, key, authority.Anchor));
         Assert.False(untrusted.Connect());
 
         (certificate, key) = authority.Client();
         using RemoteOperator distrusting = new(
-            served.Address, SurfaceTls.Load(certificate, key, stranger.Anchor));
+            served.Address, SecureSurface.Load(certificate, key, stranger.Anchor));
         Assert.False(distrusting.Connect());
         Assert.Contains(" unreachable: ", distrusting.Source, StringComparison.Ordinal);
     }
@@ -170,7 +170,7 @@ public sealed class RemoteOperatorTest
         using TestAuthority authority = new("words");
 
         using RemoteOperator bare = new(
-            "127.0.0.1:9", SurfaceTls.Load(null, null, authority.Anchor));
+            "127.0.0.1:9", SecureSurface.Load(null, null, authority.Anchor));
         Assert.False(bare.Connect());
         Assert.Contains("presents a certificate", bare.Reason, StringComparison.Ordinal);
 
@@ -210,7 +210,7 @@ public sealed class RemoteOperatorTest
     private static RemoteOperator Remote(TestAuthority authority, string address)
     {
         (string certificate, string key) = authority.Client();
-        return new RemoteOperator(address, SurfaceTls.Load(certificate, key, authority.Anchor));
+        return new RemoteOperator(address, SecureSurface.Load(certificate, key, authority.Anchor));
     }
 
     /// <summary>A loopback address nothing serves.</summary>

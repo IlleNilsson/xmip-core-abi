@@ -80,6 +80,7 @@ public sealed unsafe partial class RuntimeRules
     private readonly RuntimeDeadMessages? _deadMessages;
     private readonly RuntimeJourneys? _journeys;
     private readonly RuntimeDatabases? _databases;
+    private readonly RuntimeSecureSurface? _hosting;
 
     private RuntimeRules(nint library, string path)
     {
@@ -144,6 +145,8 @@ public sealed unsafe partial class RuntimeRules
             library, RuntimeJourneys.Entrypoints, () => new RuntimeJourneys(library));
         _databases = Node(
             library, RuntimeDatabases.Entrypoints, () => new RuntimeDatabases(library));
+        _hosting = Node(
+            library, RuntimeSecureSurface.Entrypoints, () => new RuntimeSecureSurface(library));
         Remotes = new RuntimeRemotes(library);
         SecurityRoles = new RuntimeSecurityRoles(library);
         Certificates = new RuntimeCertificates(library);
@@ -232,6 +235,12 @@ public sealed unsafe partial class RuntimeRules
     /// 2026-10-20). A node's build only.</summary>
     public RuntimeDatabases Databases =>
         _databases ?? throw RemoteBuild.Refused(_library, RuntimeDatabases.Entrypoints);
+
+    /// <summary>Section 21: a web host's HTTPS in Xmip's own TLS, and its
+    /// certificate under an authority kept in a folder (ADR-0009, amendment
+    /// 2026-10-21). A node's build only.</summary>
+    public RuntimeSecureSurface Hosting =>
+        _hosting ?? throw RemoteBuild.Refused(_library, RuntimeSecureSurface.Entrypoints);
 
     /// <summary>The stage words, in message-path order — the segments a
     /// scope names a stage by: <c>node::Stage::WORDS</c>, read once when the

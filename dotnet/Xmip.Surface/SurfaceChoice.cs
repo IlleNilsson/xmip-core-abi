@@ -10,7 +10,7 @@ namespace Xmip.Surface;
 /// <c>"snapshot"</c> — a file at <c>Snapshot</c> — or <c>"remote"</c> — a
 /// node's operate listener at <c>Address</c>, followed over gRPC (ADR-0014,
 /// amendment 2026-10-12), presenting and trusting what
-/// <see cref="SurfaceTls"/> reads from the same table (ADR-0063 clause 1).
+/// <see cref="SecureSurface"/> reads from the same table (ADR-0063 clause 1).
 /// Nothing is chosen by finding a file in a temp directory, and a
 /// configuration that names none is refused rather than defaulted. The
 /// runtime library, found by <see cref="RuntimeLibrary"/>'s rule, is what
@@ -58,7 +58,7 @@ public static class SurfaceChoice
     /// configuration's paths are written from. A remote surface presents a
     /// key <paramref name="keeper"/> holds where one is given and the
     /// configuration names a certificate and no private key
-    /// (<see cref="SurfaceTls.Kept"/>).</summary>
+    /// (<see cref="SecureSurface.Kept"/>).</summary>
     /// <exception cref="InvalidOperationException">The configuration names no
     /// surface, a surface this build does not know, or a snapshot with no
     /// path.</exception>
@@ -93,7 +93,7 @@ public static class SurfaceChoice
             string? address = configuration[AddressKey];
 
             return RemoteOperator.Refusal(address) is null
-                ? new RemoteOperator(address!, SurfaceTls.From(configuration, basePath, keeper))
+                ? new RemoteOperator(address!, SecureSurface.From(configuration, basePath, keeper))
                 : throw new InvalidOperationException(
                     $"{SurfaceKey} is \"{Remote}\" and {AddressKey} names no node");
         }
@@ -224,7 +224,7 @@ public static class SurfaceChoice
         _ = RuntimeLibrary.Stated(line.Runtime, document, basePath, besideExecutable);
 
         return !string.IsNullOrWhiteSpace(line.Remote)
-            ? new RemoteOperator(line.Remote, SurfaceTls.From(document, basePath))
+            ? new RemoteOperator(line.Remote, SecureSurface.From(document, basePath))
             : !string.IsNullOrWhiteSpace(line.Local)
                 ? new LocalOperator(line.Local)
                 : !string.IsNullOrWhiteSpace(line.Snapshot)

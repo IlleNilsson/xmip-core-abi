@@ -1,7 +1,4 @@
 using System.Net;
-using System.Net.Security;
-using System.Security.Cryptography;
-using System.Security.Cryptography.X509Certificates;
 using Microsoft.Extensions.Configuration;
 
 namespace Xmip.Surface;
@@ -9,27 +6,29 @@ namespace Xmip.Surface;
 /// <summary>
 /// What a surface presents and what it trusts when it crosses a network
 /// (ADR-0063 clause 1: internal traffic is mutual TLS, a loopback connection
-/// inside one machine the one exception, said where it is made). A web host
-/// serves its pages over HTTPS with this certificate and checks the one a
-/// browser presents; a <see cref="RemoteOperator"/> hands the runtime the
-/// same files (<see cref="Pem(out string, out string, out string)"/>), and
-/// the runtime presents this certificate to a node's operate listener and
-/// checks the node's against these anchors in Xmip's own TLS. The rule is
-/// here, once, for every .NET surface.
+/// inside one machine the one exception, said where it is made): the files a
+/// host's document names, handed to the runtime, whose TLS is Xmip's own
+/// (<c>xmip-core-library-tls</c>). A web host serves its pages over HTTPS in
+/// it (<c>xmip_operate.h</c> section 21), presenting this certificate and
+/// verifying the one a browser presents against these anchors; a
+/// <see cref="RemoteOperator"/> hands the runtime the same files
+/// (<see cref="Pem(out string, out string, out string)"/>), and the runtime
+/// presents this certificate to a node's operate listener and checks the
+/// node's against these anchors. The rule is here, once, for every .NET
+/// surface; no .NET TLS stack reads these files.
 /// </summary>
 /// <remarks>
 /// The certificate and its trust come the way <c>xmip-core-library-tls</c>
 /// takes them (ADR-0033, ADR-0034): a PEM chain and its PEM private key, and
-/// the anchors a peer's chain must reach — a PEM file of them, else the
-/// operating system's trust store, because the organizations Xmip is aimed
-/// at run their own certificate authorities. Where the files came from —
-/// an internal CA, ACME, the Playground's stand-in — is provisioning's, not
-/// this. In the host's <c>[Xmip]</c> table: <c>Certificate</c>,
+/// the anchors a peer's chain must reach, a PEM file of them — never the
+/// operating system's trust store (ADR-0063). Where the files came from —
+/// an internal CA, ACME, the Playground's roll authority — is provisioning's,
+/// not this. In the host's <c>[Xmip]</c> table: <c>Certificate</c>,
 /// <c>PrivateKey</c> and <c>TrustAnchor</c>, each else its environment
 /// variable. Revocation is not checked here yet: the estate's revocation is
 /// by held CRLs (ADR-0045), and none is configured for a surface.
 /// </remarks>
-public sealed partial class SurfaceTls
+public sealed partial class SecureSurface
 {
     /// <summary>The key naming this end's PEM certificate chain, leaf first.</summary>
     public const string CertificateKey = "Xmip:Certificate";
@@ -55,43 +54,18 @@ public sealed partial class SurfaceTls
         $"REFUSED. A remote surface trusts a node by the anchors {TrustAnchorKey} "
         + $"or {TrustAnchorVariable} names, never the operating system's (ADR-0063)";
 
-    /// <summary>The purpose a server's certificate must be for.</summary>
-    public const string ServerAuthentication = "1.3.6.1.5.5.7.3.1";
-
-    /// <summary>The purpose a client's certificate must be for.</summary>
-    public const string ClientAuthentication = "1.3.6.1.5.5.7.3.2";
-
-    private SurfaceTls(
-        X509Certificate2? certificate,
-        X509Certificate2Collection chain,
-        X509Certificate2Collection anchors,
-        (string? Certificate, string? PrivateKey, string? TrustAnchor) paths = default)
+    private SecureSurface((string? Certificate, string? PrivateKey, string? TrustAnchor) paths)
     {
-        Certificate = certificate;
-        Chain = chain;
-        Anchors = anchors;
         Paths = paths;
     }
 
-    /// <summary>Nothing presented, and the operating system's anchors trusted.</summary>
-    public static SurfaceTls None { get; } = new(null, [], []);
+    /// <summary>Nothing presented and nothing trusted.</summary>
+    public static SecureSurface None { get; } = new((null, null, null));
 
     /// <summary>The files this was read from, each null where none was
-    /// named.</summary>
+    /// named: a web host serves no HTTPS without the three, and a remote
+    /// surface presents nothing without the first two.</summary>
     public (string? Certificate, string? PrivateKey, string? TrustAnchor) Paths { get; }
-
-    /// <summary>What this end presents, with its private key; null where
-    /// nothing is configured, and then a web host serves no HTTPS and a
-    /// remote surface presents nothing.</summary>
-    public X509Certificate2? Certificate { get; }
-
-    /// <summary>The certificates between <see cref="Certificate"/> and its
-    /// anchor, as the chain file lists them after the leaf.</summary>
-    public X509Certificate2Collection Chain { get; }
-
-    /// <summary>The anchors a peer's chain must reach; empty is the
-    /// operating system's trust store.</summary>
-    public X509Certificate2Collection Anchors { get; }
 
     /// <summary>Whether <paramref name="host"/> is this machine: <c>localhost</c>
     /// or a loopback address. <c>0.0.0.0</c>, <c>*</c> and <c>+</c> are every
@@ -146,9 +120,9 @@ public sealed partial class SurfaceTls
     /// <paramref name="basePath"/>. None of them named is <see cref="None"/>.
     /// </summary>
     /// <exception cref="InvalidOperationException">A certificate without its
-    /// key or the reverse, or a file that cannot be read as PEM; the message
-    /// names the file.</exception>
-    public static SurfaceTls From(IConfiguration configuration, string basePath)
+    /// key or the reverse, or a file that is not there; the message names
+    /// it.</exception>
+    public static SecureSurface From(IConfiguration configuration, string basePath)
     {
         return From(configuration, basePath, null);
     }
@@ -163,7 +137,7 @@ public sealed partial class SurfaceTls
     /// </summary>
     /// <exception cref="InvalidOperationException">As
     /// <see cref="From(IConfiguration, string)"/>.</exception>
-    public static SurfaceTls From(
+    public static SecureSurface From(
         IConfiguration configuration, string basePath, IOperatorKeeper? keeper)
     {
         ArgumentNullException.ThrowIfNull(configuration);
@@ -180,11 +154,13 @@ public sealed partial class SurfaceTls
     /// <summary>
     /// The certificate chain at <paramref name="certificatePath"/> with the key
     /// at <paramref name="privateKeyPath"/>, and the anchors at
-    /// <paramref name="trustAnchorPath"/>; all PEM, any of them null.
+    /// <paramref name="trustAnchorPath"/>; all PEM, any of them null. What
+    /// they hold the runtime reads, and refuses in words, as it is handed
+    /// them.
     /// </summary>
     /// <exception cref="InvalidOperationException">As
     /// <see cref="From(IConfiguration, string)"/>.</exception>
-    public static SurfaceTls Load(
+    public static SecureSurface Load(
         string? certificatePath, string? privateKeyPath, string? trustAnchorPath)
     {
         if ((certificatePath is null) != (privateKeyPath is null))
@@ -193,47 +169,15 @@ public sealed partial class SurfaceTls
                 $"{CertificateKey} and {PrivateKeyKey} are named together or not at all");
         }
 
-        X509Certificate2Collection anchors = trustAnchorPath is null ? [] : Pem(trustAnchorPath);
-
-        if (trustAnchorPath is not null && anchors.Count == 0)
+        foreach (string? named in new[] { certificatePath, privateKeyPath, trustAnchorPath })
         {
-            throw new InvalidOperationException($"{trustAnchorPath} holds no certificate");
+            if (named is not null && !File.Exists(named))
+            {
+                throw new InvalidOperationException($"{named} is not there");
+            }
         }
 
-        if (certificatePath is null || privateKeyPath is null)
-        {
-            return new SurfaceTls(null, [], anchors, (null, null, trustAnchorPath));
-        }
-
-        X509Certificate2Collection chain = Pem(certificatePath);
-
-        if (chain.Count == 0)
-        {
-            throw new InvalidOperationException($"{certificatePath} holds no certificate");
-        }
-
-        X509Certificate2 leaf;
-
-        try
-        {
-            using X509Certificate2 paired =
-                X509Certificate2.CreateFromPemFile(certificatePath, privateKeyPath);
-
-            // Windows's TLS stack will not present a key held only in memory,
-            // which is what a PEM key becomes; a PKCS#12 round trip gives it one
-            // the stack can use, as Kestrel's own PEM loader does.
-            leaf = X509CertificateLoader.LoadPkcs12(paired.Export(X509ContentType.Pkcs12), null);
-        }
-        catch (CryptographicException unreadable)
-        {
-            throw new InvalidOperationException(
-                $"{certificatePath} with {privateKeyPath}: {unreadable.Message}", unreadable);
-        }
-
-        chain.RemoveAt(0);
-
-        return new SurfaceTls(
-            leaf, chain, anchors, (certificatePath, privateKeyPath, trustAnchorPath));
+        return new SecureSurface((certificatePath, privateKeyPath, trustAnchorPath));
     }
 
     /// <summary>
@@ -263,81 +207,6 @@ public sealed partial class SurfaceTls
         privateKey = File.ReadAllText(Paths.PrivateKey);
         trustAnchor = File.ReadAllText(Paths.TrustAnchor);
         return null;
-    }
-
-    /// <summary>
-    /// Whether the certificate a peer presented reaches one of
-    /// <see cref="Anchors"/> and is for <paramref name="purpose"/> —
-    /// <see cref="ServerAuthentication"/> or <see cref="ClientAuthentication"/>.
-    /// Where the peer is a server, the platform's own check that it is the
-    /// host asked for must have passed too: <paramref name="errors"/> is what
-    /// the platform found, and only its chain verdict is replaced by this one.
-    /// </summary>
-    public bool Accepts(
-        X509Certificate? presented,
-        X509Chain? sent,
-        SslPolicyErrors errors,
-        string purpose,
-        out string reason)
-    {
-        if (presented is null || errors.HasFlag(SslPolicyErrors.RemoteCertificateNotAvailable))
-        {
-            reason = "the peer presented no certificate";
-            return false;
-        }
-
-        if (errors.HasFlag(SslPolicyErrors.RemoteCertificateNameMismatch))
-        {
-            reason = $"{presented.Subject} does not name the host asked for";
-            return false;
-        }
-
-        using X509Certificate2 peer =
-            X509CertificateLoader.LoadCertificate(presented.GetRawCertData());
-        using X509Chain chain = new();
-        chain.ChainPolicy.RevocationMode = X509RevocationMode.NoCheck;
-        chain.ChainPolicy.ApplicationPolicy.Add(new Oid(purpose));
-
-        if (Anchors.Count > 0)
-        {
-            chain.ChainPolicy.TrustMode = X509ChainTrustMode.CustomRootTrust;
-            chain.ChainPolicy.CustomTrustStore.AddRange(Anchors);
-        }
-
-        if (sent is not null)
-        {
-            foreach (X509ChainElement element in sent.ChainElements)
-            {
-                chain.ChainPolicy.ExtraStore.Add(element.Certificate);
-            }
-        }
-
-        if (chain.Build(peer))
-        {
-            reason = string.Empty;
-            return true;
-        }
-
-        string said = string.Join(
-            "; ", chain.ChainStatus.Select(status => status.StatusInformation.Trim()));
-        reason = $"{peer.Subject} is not trusted: {said}";
-        return false;
-    }
-
-    private static X509Certificate2Collection Pem(string path)
-    {
-        X509Certificate2Collection read = [];
-
-        try
-        {
-            read.ImportFromPemFile(path);
-        }
-        catch (Exception unreadable) when (unreadable is CryptographicException or IOException)
-        {
-            throw new InvalidOperationException($"{path}: {unreadable.Message}", unreadable);
-        }
-
-        return read;
     }
 
     private static string? Named(

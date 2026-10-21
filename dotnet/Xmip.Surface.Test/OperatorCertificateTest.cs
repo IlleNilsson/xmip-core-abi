@@ -41,7 +41,7 @@ public sealed class OperatorCertificateTest
         using ServedNode served = RemoteOperatorTest.Serve(
             authority, RemoteOperatorTest.Fixture("snapshot.toml"));
         using RemoteOperator phone = new(
-            served.Address, SurfaceTls.Load(chain, requested.Key, authority.Anchor));
+            served.Address, SecureSurface.Load(chain, requested.Key, authority.Anchor));
         JourneyOperation refused = phone.Act(node, "j1", JourneyAct.Retry, "a name");
 
         Assert.False(refused.Applied);

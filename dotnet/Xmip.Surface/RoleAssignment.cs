@@ -30,8 +30,10 @@ public sealed class RoleAssignment(Role? stated, IDirectory? directory)
     /// else <see cref="EnvironmentVariable"/>, a word that is no role being
     /// Observer; and the directory <see cref="DirectoryKey"/> names, of which
     /// the one built is <see cref="TesterDirectory.Kind"/>, allowing the
-    /// operating system user the host runs as. A kind not built is no
-    /// directory, so a misstatement grants nothing.
+    /// operating system user the host runs as and the subject of the
+    /// tester's operator certificate <see cref="TesterDirectory.TesterKey"/>
+    /// names. A kind not built is no directory, so a misstatement grants
+    /// nothing.
     /// </summary>
     public static RoleAssignment From(IConfiguration configuration)
     {
@@ -43,7 +45,8 @@ public sealed class RoleAssignment(Role? stated, IDirectory? directory)
                 configuration[DirectoryKey]?.Trim(),
                 TesterDirectory.Kind,
                 StringComparison.OrdinalIgnoreCase)
-            ? new TesterDirectory(GatedOperator.HostUser)
+            ? new TesterDirectory(
+                [GatedOperator.HostUser, configuration[TesterDirectory.TesterKey]])
             : null;
 
         return new RoleAssignment(string.IsNullOrWhiteSpace(said) ? null : Parse(said), asked);

@@ -161,8 +161,19 @@ callback. `Xmip.Surface`'s `OperatorCertificate` writes their files once,
 for `xmip-cli certificate` and `New-XmipCertificate`, and makes a request
 over a keeper's key and keeps the chain signed for it (`RequestKept`,
 `Keep`, `KeepAnchors`); `IOperatorKeeper` is the one interface each
-platform's keeper implements, and `SurfaceTls` names a keeper's key where a
-host's document names a `Certificate` and no `PrivateKey`.
+platform's keeper implements, and `SecureSurface` names a keeper's key where a
+host's document names a `Certificate` and no `PrivateKey`. Section 21 — a
+web host's secure surface, protected by Xmip itself (ADR-0009, amendment
+2026-10-21) — is `RuntimeRules.Hosting` (`RuntimeSecureSurface`), a node's
+build only: `Issue` keeps an authority in a folder, made there where none is,
+and issues a host a certificate for `127.0.0.1` under it
+(`SecureSurfaceIssued`), and `Open` gives a `SecureSurfaceListener` taking
+the `Protection` as a parameter (`Protection.Tls`, `XMIP_PROTECTION_TLS`, the
+one built — the owner, 2026-10-21: *technology and security should not be in
+functions, parameters is ok*), whose `Accept` hands over each browser's
+`SecureSurfaceSession` with its handshake finished, or says a certificate the
+anchors refused (`SecureSurfaceAccepted`); a session is read on one thread and
+written on another, and its `Presented` is the browser's certificate, DER.
 Section 10 — the
 cluster's `xmip.toml` read, edited and sliced — is `RuntimeRules.Design`
 (`RuntimeDesign`): `TryViews`, `TryEdit`, `TrySlices`, `TryFilterStructure`
@@ -337,15 +348,16 @@ answer even when it lists none; *Unlisted* is a source that cannot list;
   and what a surface says of a scope it holds nothing at, beneath or measured)
   and `SurfaceChange` (one coalescing change stream that wakes every
   surface when a published snapshot advances).
-- **TLS.** `SurfaceTls`, what a surface presents and trusts when it
+- **TLS.** `SecureSurface`, what a surface presents and trusts when it
   crosses a network (ADR-0063 clause 1): a PEM chain and key and the anchors
   a peer's chain must reach — `Xmip:Certificate`, `Xmip:PrivateKey` and
   `Xmip:TrustAnchor`, else `XMIP_CERTIFICATE`, `XMIP_PRIVATE_KEY` and
-  `XMIP_TRUST_ANCHOR`, else nothing presented and the operating system's
-  trust store — the check of a peer's certificate for server or client use,
-  and `Permits`, the one rule for connecting and binding alike: HTTPS always,
-  plain HTTP to this machine only. `RemoteOperator` presents and checks
-  through it, and says a refused certificate in its reason.
+  `XMIP_TRUST_ANCHOR`, else nothing presented and nothing trusted — the
+  paths alone (`Paths`), handed to the runtime, whose TLS reads them; no
+  .NET TLS stack does — and `Permits`, the one rule for connecting and
+  binding alike: HTTPS always, plain HTTP to this machine only.
+  `RemoteOperator` presents and checks through it, and says a refused
+  certificate in its reason.
 - **Events.** `EventFeed`, what a .NET face subscribes through: it finds the
   runtime by `RuntimeLibrary`'s one rule, subscribes as a Party's UUID,
   audits where the program's `ProgramAudit` records go, and `Follow` yields
@@ -372,10 +384,15 @@ answer even when it lists none; *Unlisted* is a source that cannot list;
 web host references it, and it serves no surface to other machines — a remote
 surface follows a node, not a web host (ADR-0014, amendment 2026-10-12).
 `SurfaceBinding` is where such a host listens: plain HTTP beyond loopback and HTTPS with no
-certificate refused before anything listens, the plain loopback addresses
-answered for the host to say it binds them, and `UseXmipTls`, every HTTPS
-address presenting the host's certificate and checking a caller's
-(ADR-0063 clause 1); and `ProvenCaller`, who each request proved. Every act a
+certificate or no anchors refused before anything listens, the plain loopback addresses
+answered for the host to say it binds them, and `UseSurface(protection, …)`,
+every HTTPS address bound by `SecureTransport` — a Kestrel transport over the
+runtime's listener (section 21), binding only a `SecureEndPoint` so plain
+loopback keeps Kestrel's sockets — each browser's connection a
+`SecureConnection` carrying the certificate it presented as Kestrel's
+`ITlsConnectionFeature`, one the anchors refused told to the host's audit
+(ADR-0063 clause 1; ADR-0009, amendment 2026-10-21); and `ProvenCaller`, who
+each request proved. Every act a
 screen takes goes through `GatedOperator` in `Xmip.Surface`, over the
 runtime's one gate (`xmip_act_admitted_v1`, section 18): taken only where the
 caller's `RoleContext` may operate, as the subject of the client certificate

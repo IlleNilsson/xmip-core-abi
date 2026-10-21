@@ -30,8 +30,8 @@ internal static class TestHost
 
     /// <summary>What a host or a surface presents and trusts: a pair the
     /// authority issued, and its anchor.</summary>
-    public static SurfaceTls Tls(TestAuthority authority, (string Certificate, string Key) pair)
+    public static SecureSurface Tls(TestAuthority authority, (string Certificate, string Key) pair)
     {
-        return SurfaceTls.Load(pair.Certificate, pair.Key, authority.Anchor);
+        return SecureSurface.Load(pair.Certificate, pair.Key, authority.Anchor);
     }
 }

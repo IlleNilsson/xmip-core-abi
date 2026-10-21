@@ -124,9 +124,29 @@ public sealed class OperateAbiTest
     [InlineData("XMIP_OPERATOR_KEEP_ENTRYPOINT", OperateAbi.OperatorKeepEntrypoint)]
     [InlineData("XMIP_OPERATOR_SIGN_ENTRYPOINT", OperateAbi.OperatorSignEntrypoint)]
     [InlineData("XMIP_DATABASE_UPGRADE_ENTRYPOINT", OperateAbi.DatabaseUpgradeEntrypoint)]
+    [InlineData("XMIP_HOST_ISSUE_ENTRYPOINT", OperateAbi.HostIssueEntrypoint)]
+    [InlineData("XMIP_LISTENER_OPEN_ENTRYPOINT", OperateAbi.ListenerOpenEntrypoint)]
+    [InlineData("XMIP_LISTENER_ADDRESS_ENTRYPOINT", OperateAbi.ListenerAddressEntrypoint)]
+    [InlineData("XMIP_LISTENER_ACCEPT_ENTRYPOINT", OperateAbi.ListenerAcceptEntrypoint)]
+    [InlineData("XMIP_LISTENER_STOP_ENTRYPOINT", OperateAbi.ListenerStopEntrypoint)]
+    [InlineData("XMIP_LISTENER_FREE_ENTRYPOINT", OperateAbi.ListenerFreeEntrypoint)]
+    [InlineData("XMIP_SESSION_PEER_ENTRYPOINT", OperateAbi.SessionPeerEntrypoint)]
+    [InlineData("XMIP_SESSION_ENDS_ENTRYPOINT", OperateAbi.SessionEndsEntrypoint)]
+    [InlineData("XMIP_SESSION_READ_ENTRYPOINT", OperateAbi.SessionReadEntrypoint)]
+    [InlineData("XMIP_SESSION_WRITE_ENTRYPOINT", OperateAbi.SessionWriteEntrypoint)]
+    [InlineData("XMIP_SESSION_CLOSE_ENTRYPOINT", OperateAbi.SessionCloseEntrypoint)]
+    [InlineData("XMIP_SESSION_FREE_ENTRYPOINT", OperateAbi.SessionFreeEntrypoint)]
     public void NamesEachSymbolTheHeaderDeclares(string define, string symbol)
     {
         Assert.Equal(Header.Define("xmip_operate.h", define), symbol);
+    }
+
+    [Fact]
+    public void NamesEachProtectionTheHeaderDefines()
+    {
+        Assert.Equal(
+            Header.Define("xmip_operate.h", "XMIP_PROTECTION_TLS"),
+            ((int)Protection.Tls).ToString(System.Globalization.CultureInfo.InvariantCulture));
     }
 
     [Fact]

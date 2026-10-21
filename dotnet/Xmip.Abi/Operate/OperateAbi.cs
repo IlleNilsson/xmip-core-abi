@@ -10,7 +10,7 @@ namespace Xmip.Abi.Operate;
 /// too: the header is normative and this is not; where they differ, the
 /// header is right and this is a defect.
 /// </remarks>
-public static class OperateAbi
+public static partial class OperateAbi
 {
     /// <summary>The operator boundary version this build speaks. Not the
     /// module boundary's version, on purpose.</summary>
