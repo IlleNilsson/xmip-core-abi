@@ -1,4 +1,3 @@
-using System.Net;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -10,7 +9,8 @@ namespace Xmip.Surface.Relay;
 /// (ADR-0009, amendment 2026-10-06): the remote surface over the hub and the
 /// browser's circuit alike, by <see cref="GatedOperator.Proven"/>, the one
 /// rule — a client certificate the handshake checked against the host's
-/// anchors, else this machine's loopback, the host's own user, else no one.
+/// anchors, else no one, over this machine's loopback as from anywhere
+/// else (ADR-0009, amendment 2026-10-21).
 /// A browser's circuit outlives the request that opened it, so the proven
 /// caller rides the request's user, which Blazor hands the circuit as its
 /// authentication state; nothing here is the platform's sign-in.
@@ -24,9 +24,7 @@ public static class ProvenCaller
     /// <summary>Who <paramref name="connection"/> proved, or null.</summary>
     public static string? Of(ConnectionInfo? connection)
     {
-        return GatedOperator.Proven(
-            connection?.ClientCertificate?.Subject,
-            connection?.RemoteIpAddress is { } from && IPAddress.IsLoopback(from));
+        return GatedOperator.Proven(connection?.ClientCertificate?.Subject);
     }
 
     /// <summary>The request's user: the proven caller, or no one. Whatever

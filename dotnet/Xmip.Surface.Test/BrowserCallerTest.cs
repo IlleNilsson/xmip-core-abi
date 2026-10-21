@@ -19,7 +19,9 @@ namespace Xmip.Surface.Test;
 /// host's assignment grants it, and the act passes <see cref="GatedOperator"/>
 /// as that caller and is audited as them. An unstated role grants nothing;
 /// the Playground's tester is allowed by the fake directory its
-/// configuration names, and by nothing else.
+/// configuration names, and by nothing else. A browser on this machine's
+/// loopback is proven by nothing but a certificate, as one from anywhere
+/// else (open problem 35).
 /// </summary>
 public sealed class BrowserCallerTest : IDisposable
 {
@@ -165,15 +167,18 @@ public sealed class BrowserCallerTest : IDisposable
     }
 
     [Fact]
-    public void ThePlaygroundsTesterActsOnLoopbackByTheFakeDirectory()
+    public void ABrowserOnLoopbackIsNoOneWithoutACertificateEvenToTheTesterDirectory()
     {
+        // Loopback proves where a caller is, not who (open problem 35, the
+        // owner, 2026-10-19): a browser on this machine presents a
+        // certificate like one from anywhere else.
         RoleContext caller = Circuit(
             Configured((RoleAssignment.DirectoryKey, TesterDirectory.Kind)),
             Request(IPAddress.Loopback, certificate: null));
 
-        Assert.Equal(GatedOperator.HostUser, caller.Who);
-        Assert.Equal(Role.Developer, caller.Role);
-        Assert.True(Pause(caller).Applied);
+        Assert.Null(caller.Who);
+        Assert.Equal(Role.Observer, caller.Role);
+        Assert.False(Pause(caller).Applied);
     }
 
     [Fact]
@@ -196,7 +201,7 @@ public sealed class BrowserCallerTest : IDisposable
         using HttpClient proving = new(presenting);
 
         Assert.Equal(
-            GatedOperator.HostUser,
+            "nobody",
             await loopback.GetStringAsync(Who(plain)).ConfigureAwait(true));
         Assert.Equal(subject, await proving.GetStringAsync(Who(secured)).ConfigureAwait(true));
     }

@@ -379,8 +379,9 @@ address presenting the host's certificate and checking a caller's
 screen takes goes through `GatedOperator` in `Xmip.Surface`, over the
 runtime's one gate (`xmip_act_admitted_v1`, section 18): taken only where the
 caller's `RoleContext` may operate, as the subject of the client certificate
-the connection proved, else on loopback as the operating system user the host
-runs as (`GatedOperator.Proven`), and refused in words otherwise; taken or
+the connection proved (`GatedOperator.Proven`) — over loopback as from
+anywhere, since loopback proves where a caller is and not who (open problem
+35) — and refused in words otherwise; taken or
 refused, audited through the host's `ProgramAudit` (ADR-0009). `Role`,
 `Roles` and `RoleContext` are `Xmip.Surface`'s, beneath both GUIs.
 
@@ -397,8 +398,8 @@ port — plain, and over mutual TLS with certificates a test authority issued,
 where a client certificate the host does not trust, a host certificate the
 surface does not trust and no certificate at all are each refused — the
 hub's role gate, where an Observer host refuses every act, an Operator host
-takes each as the certificate's subject or, on loopback without one, as the
-host's own user, and an act from elsewhere without one is refused, over
+takes each as the certificate's subject, and an act without one is refused,
+from loopback as from elsewhere, over
 the test cluster's names from `test/xmip.toml` (`TestCluster`) — and where a
 host may bind. It tests no rule the runtime owns: it proves the surface returns what
 the runtime's export returns, and those rules are tested once, where they are
