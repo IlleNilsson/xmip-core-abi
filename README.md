@@ -162,7 +162,13 @@ for `xmip-cli certificate` and `New-XmipCertificate`, and makes a request
 over a keeper's key and keeps the chain signed for it (`RequestKept`,
 `Keep`, `KeepAnchors`); `IOperatorKeeper` is the one interface each
 platform's keeper implements, and `SecureSurface` names a keeper's key where a
-host's document names a `Certificate` and no `PrivateKey`. Section 21 — a
+host's document names a `Certificate` and no `PrivateKey`. Section 22 is
+`RuntimeCertificates.Issue`, a node's build only: a node's key and
+certificate from the cluster's own authority kept in a folder, made there
+where none is, written as `node.pem`, `node.key` and `anchors.pem`
+(`NodeIssued`), which `Xmip.Surface`'s `NodeCertificate` calls for
+`xmip-cli certificate --node` and `New-XmipCertificate -Node` (ADR-0015,
+amendment 2026-10-21). Section 21 — a
 web host's secure surface, protected by Xmip itself (ADR-0009, amendment
 2026-10-21) — is `RuntimeRules.Hosting` (`RuntimeSecureSurface`), a node's
 build only: `Issue` keeps an authority in a folder, made there where none is,

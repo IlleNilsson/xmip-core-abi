@@ -10,7 +10,10 @@ namespace Xmip.Surface;
 /// it. A publication with no such table is <see cref="None"/>, and a surface
 /// shows nothing for it. <see cref="Hidden"/> is what the run declared of
 /// itself when it was started (ADR-0028, amendment 2026-09-30): an assistant's
-/// test run, which a view leaves out until asked to show it.
+/// test run, which a view leaves out until asked to show it. <see cref="Real"/>
+/// are the nodes on machines of their own, never spawned, and every other
+/// node is simulated (ADR-0028, amendment 2026-10-21): a green board means
+/// two different things in the two cases, and the line says which.
 /// </summary>
 public sealed record RunHeader(
     string Cluster,
@@ -19,10 +22,15 @@ public sealed record RunHeader(
     IReadOnlyList<string> Roles,
     IReadOnlyList<string> Online,
     string Stress,
-    bool Hidden = false)
+    bool Hidden = false,
+    IReadOnlyList<string>? Real = null)
 {
     /// <summary>What a publication that says nothing of its run is read as.</summary>
     public static RunHeader None { get; } = new(string.Empty, [], [], [], [], string.Empty);
+
+    /// <summary>The nodes on machines of their own; none where the run
+    /// simulated every node.</summary>
+    public IReadOnlyList<string> RealNodes => Real ?? [];
 
     /// <summary>Whether the publisher said anything.</summary>
     public bool Said =>
@@ -87,6 +95,13 @@ public sealed record RunHeader(
         if (Nodes.Count > 0)
         {
             parts.Add(Online.Count > 0 ? $"online {string.Join(' ', Online)}" : "none online");
+
+            // On one computer every node is simulated, and the line is what
+            // it was; a run that found real nodes says which.
+            if (RealNodes.Count > 0)
+            {
+                parts.Add($"real {string.Join(' ', RealNodes)}, the rest simulated");
+            }
         }
 
         if (Stress.Length > 0)
@@ -111,7 +126,7 @@ public sealed record RunHeader(
             ? None
             : new RunHeader(
                 run.Cluster, run.Tests, run.Nodes, run.Roles, run.Online, run.Stress,
-                run.Hidden);
+                run.Hidden, run.Real);
     }
 
     /// <summary>A node as the run line names it: the publisher's own

@@ -541,7 +541,9 @@ typedef enum {
     XMIP_RUN_TESTS  = 0,
     XMIP_RUN_NODES  = 1,
     XMIP_RUN_ROLES  = 2,
-    XMIP_RUN_ONLINE = 3
+    XMIP_RUN_ONLINE = 3,
+    /* the nodes on machines of their own, never spawned; the rest simulated */
+    XMIP_RUN_REAL   = 4
 } XmipRunList;
 
 /*
@@ -1868,6 +1870,39 @@ typedef void (*XmipSessionFreeFn)(XmipSession *session);
 #define XMIP_SESSION_WRITE_ENTRYPOINT    "xmip_session_write_v1"
 #define XMIP_SESSION_CLOSE_ENTRYPOINT    "xmip_session_close_v1"
 #define XMIP_SESSION_FREE_ENTRYPOINT     "xmip_session_free_v1"
+
+/* ===================================================================== */
+/* 22. A node's certificate, issued by the cluster's own authority       */
+/* ===================================================================== */
+
+/*
+ * A node put on a machine of its own by an environment template is given
+ * its certificate from the cluster's own authority, Xmip's internal CA and
+ * never the platform's, issued on the operator's machine before the node
+ * is installed (ADR-0015, amendment 2026-10-21), since a node starts no
+ * provisioner of its own yet.
+ *
+ * xmip_node_issue_v1 keeps the authority in the folder authority -
+ * authority.key and authority.pem, private files, made there and called
+ * name where none is kept, as section 21's - and issues node a fresh key
+ * and a certificate under it for server and client authentication both,
+ * which mutual TLS between nodes needs, its subject node and its names
+ * node and every one of names, comma separated: what the node is reached
+ * by, its own name and its cluster's, as each resolves. Written into folder
+ * (created where absent) as node.pem, the chain leaf first, node.key and
+ * anchors.pem, the authority's certificate, private files in place of what
+ * was there: the folder is what a node's [operate] certificate, key and
+ * anchors name, shipped whole. The answer is JSON,
+ * {"certificate","key","anchors"}, the three files' paths. XMIP_E_INVALID
+ * with the refusal; XMIP_E_MALFORMED when a string is not UTF-8. Pure, as
+ * section 7. A node's build only, as section 19's signing. Optional
+ * symbol; XMIP_OPERATE_VERSION is unchanged.
+ */
+typedef XmipStatus (*XmipNodeIssueFn)(XmipStr authority, XmipStr name, XmipStr node,
+                                      XmipStr names, XmipStr folder, uint8_t *out,
+                                      size_t cap, size_t *out_len);
+
+#define XMIP_NODE_ISSUE_ENTRYPOINT "xmip_node_issue_v1"
 
 #ifdef __cplusplus
 }

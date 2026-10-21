@@ -15,7 +15,8 @@ namespace Xmip.Abi.Operate;
 /// Where the key never leaves its platform's keeper, the request is made in
 /// two halves around the keeper's signature, <see cref="Information"/> and
 /// <see cref="Assemble"/>, which every build carries too, so no surface
-/// writes DER.
+/// writes DER. Section 22 beside it: a node's key and certificate issued by
+/// the cluster's own authority, <see cref="Issue"/>, a node's build only.
 /// The rules are <c>xmip-core-provision</c>'s; nothing here keeps one.
 /// </summary>
 /// <remarks>Pure in the header's sense: one instance serves a whole process
@@ -36,6 +37,8 @@ public sealed unsafe class RuntimeCertificates
         _assemble;
     private readonly delegate* unmanaged[Cdecl]<XmipStr, XmipStr, byte, byte*, nuint, nuint*, int>
         _keep;
+    private readonly delegate* unmanaged[Cdecl]<
+        XmipStr, XmipStr, XmipStr, XmipStr, XmipStr, byte*, nuint, nuint*, int> _issue;
 
     internal RuntimeCertificates(nint library)
     {
@@ -53,6 +56,12 @@ public sealed unsafe class RuntimeCertificates
         _sign = signs
             ? (delegate* unmanaged[Cdecl]<XmipStr, XmipStr, byte*, nuint, nuint*, int>)sign
             : null;
+        bool issues = NativeLibrary.TryGetExport(
+            library, OperateAbi.NodeIssueEntrypoint, out nint issue);
+        _issue = issues
+            ? (delegate* unmanaged[Cdecl]<
+                XmipStr, XmipStr, XmipStr, XmipStr, XmipStr, byte*, nuint, nuint*, int>)issue
+            : null;
     }
 
     /// <summary>The symbols every build exports.</summary>
@@ -66,7 +75,7 @@ public sealed unsafe class RuntimeCertificates
 
     /// <summary>The symbols only a node's build exports.</summary>
     public static IReadOnlyList<string> NodeEntrypoints { get; } =
-        [OperateAbi.OperatorSignEntrypoint];
+        [OperateAbi.OperatorSignEntrypoint, OperateAbi.NodeIssueEntrypoint];
 
     /// <summary>
     /// A fresh key and an operator's request for <paramref name="person"/>,
@@ -196,6 +205,54 @@ public sealed unsafe class RuntimeCertificates
         chain = status == 0 ? text : string.Empty;
         refused = status == 0 ? string.Empty : Refusal(status, text);
         return status == 0;
+    }
+
+    /// <summary>
+    /// A fresh key and certificate for the node <paramref name="node"/>,
+    /// issued by the authority kept in <paramref name="authority"/> — made
+    /// there, called <paramref name="name"/>, where none is — for every one
+    /// of <paramref name="names"/> and the node's own, written by the
+    /// runtime into <paramref name="folder"/> as <c>node.pem</c>,
+    /// <c>node.key</c> and <c>anchors.pem</c>, private files, and their
+    /// paths; or false with the runtime's sentence in
+    /// <paramref name="refused"/>.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">The library is a remote
+    /// build, which issues nothing.</exception>
+    public bool Issue(
+        string authority, string name, string node, IReadOnlyList<string> names, string folder,
+        out NodeIssued issued, out string refused)
+    {
+        ArgumentNullException.ThrowIfNull(authority);
+        ArgumentNullException.ThrowIfNull(name);
+        ArgumentNullException.ThrowIfNull(node);
+        ArgumentNullException.ThrowIfNull(names);
+        ArgumentNullException.ThrowIfNull(folder);
+
+        if (_issue is null)
+        {
+            throw RemoteBuild.Refused(_library, NodeEntrypoints);
+        }
+
+        (int status, string text) = Answer(
+            [authority, name, node, string.Join(',', names), folder],
+            (pack, data, written, cap, length) => _issue(
+                pack.Borrow(data, 0), pack.Borrow(data, 1), pack.Borrow(data, 2),
+                pack.Borrow(data, 3), pack.Borrow(data, 4), written, cap, length));
+        issued = new NodeIssued(string.Empty, string.Empty, string.Empty);
+        refused = string.Empty;
+
+        if (status != 0)
+        {
+            refused = Refusal(status, text);
+            return false;
+        }
+
+        using JsonDocument answer = JsonDocument.Parse(text);
+        string Written(string file) =>
+            answer.RootElement.GetProperty(file).GetString() ?? string.Empty;
+        issued = new NodeIssued(Written("certificate"), Written("key"), Written("anchors"));
+        return true;
     }
 
     private delegate int Call(Utf8Pack pack, byte* data, byte* written, nuint cap, nuint* length);

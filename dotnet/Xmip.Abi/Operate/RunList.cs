@@ -15,4 +15,8 @@ public enum RunList
 
     /// <summary>The nodes that may assume the internet.</summary>
     Online = 3,
+
+    /// <summary>The nodes on machines of their own, never spawned: every
+    /// other node is simulated.</summary>
+    Real = 4,
 }

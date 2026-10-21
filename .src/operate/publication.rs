@@ -86,6 +86,7 @@ pub mod run_list {
     pub const NODES: u32 = 1;
     pub const ROLES: u32 = 2;
     pub const ONLINE: u32 = 3;
+    pub const REAL: u32 = 4;
 }
 
 /// A read publication, opaque: only the runtime knows what is behind it.
@@ -310,6 +311,7 @@ mod tests {
             ("XMIP_RUN_NODES", run_list::NODES),
             ("XMIP_RUN_ROLES", run_list::ROLES),
             ("XMIP_RUN_ONLINE", run_list::ONLINE),
+            ("XMIP_RUN_REAL", run_list::REAL),
         ] {
             assert_eq!(i64::from(value), defined(name), "{name}");
         }
