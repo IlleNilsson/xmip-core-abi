@@ -137,6 +137,43 @@ public sealed class RuntimeCertificatesTest
         }
     }
 
+    [Fact]
+    public void ANodeIsIssuedForItsNamesWithItsAnchorsAndAnUnnamedOneIsRefused()
+    {
+        string place = Directory.CreateTempSubdirectory("xmip-abi-node-").FullName;
+
+        try
+        {
+            string authority = Path.Combine(place, "authority");
+            string folder = Path.Combine(place, "identity", "node");
+            Assert.True(
+                Certificates.Issue(
+                    authority, "test cluster authority", "node", ["node.example"], folder,
+                    out NodeIssued issued, out string refused),
+                refused);
+            Assert.Equal(Path.Combine(folder, "node.pem"), issued.Certificate);
+            Assert.Equal(Path.Combine(folder, "anchors.pem"), issued.Anchors);
+
+            using X509Certificate2 leaf = X509Certificate2.CreateFromPemFile(
+                issued.Certificate, issued.Key);
+            Assert.Equal("CN=node", leaf.Subject);
+            string named = leaf.Extensions.OfType<X509SubjectAlternativeNameExtension>()
+                .Single().EnumerateDnsNames().Aggregate(string.Empty, (all, one) => all + one);
+            Assert.Contains("node.example", named, StringComparison.Ordinal);
+            Assert.Equal(
+                File.ReadAllText(Path.Combine(authority, "authority.pem")),
+                File.ReadAllText(issued.Anchors));
+
+            Assert.False(Certificates.Issue(
+                authority, "test cluster authority", " ", [], folder, out _, out string none));
+            Assert.Contains("node", none, StringComparison.Ordinal);
+        }
+        finally
+        {
+            Directory.Delete(place, recursive: true);
+        }
+    }
+
     // An authority made here, kept as the runtime reads one, and a node's
     // configuration naming it in [provision.operator]; its path.
     internal static string Authority(string place)

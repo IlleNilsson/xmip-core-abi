@@ -79,6 +79,15 @@ public sealed class ClusterSnapshotTest
             $"Filing · {Cluster.Name} · nodes {Receiver} · none online · harsh",
             new RunHeader(Cluster.Name, ["Filing"], [Receiver], [], [], "harsh").Line());
         Assert.Equal(NodeCapability.None, run.Capability(Receiver));
+
+        // A run that found a node on a machine of its own says which, and
+        // that the rest are simulated (ADR-0028, amendment 2026-10-21).
+        Assert.Equal(
+            $"Filing · {Cluster.Name} · nodes {Receiver} · none online · real {Receiver}, "
+                + "the rest simulated · harsh",
+            new RunHeader(
+                Cluster.Name, ["Filing"], [Receiver], [], [], "harsh", false, [Receiver])
+                .Line());
     }
 
     [Fact]

@@ -303,7 +303,8 @@ public sealed unsafe class PublicationReader
             Listed(handle, RunList.Roles),
             Listed(handle, RunList.Online),
             head.Stress.Read(),
-            head.Hidden != 0);
+            head.Hidden != 0,
+            Listed(handle, RunList.Real));
     }
 
     private string[] Listed(nint handle, RunList list)
