@@ -5,7 +5,7 @@ namespace Xmip.Surface;
 /// <summary>
 /// What a surface asks of the Event subscriptions it lists (ADR-0065,
 /// amendment 2026-09-29), in the words every surface uses: the Event
-/// subscriptions view's address, <c>xmip-cli event-subscriptions</c>'s
+/// subscriptions view's address, <c>xmip event-subscriptions</c>'s
 /// arguments and <c>Get-XmipEventSubscription</c>'s parameters are these
 /// names. Where the drill stands — a cluster, a node, one Event
 /// subscription — the scope pattern over

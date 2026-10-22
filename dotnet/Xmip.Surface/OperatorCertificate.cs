@@ -8,7 +8,7 @@ namespace Xmip.Surface;
 /// A person's certificate for every .NET surface (ADR-0034, amendment
 /// 2026-10-15): a key and a request made into a folder, and a request signed
 /// by the authority a node's <c>[provision.operator]</c> names, for
-/// <c>xmip-cli certificate</c> and <c>New-XmipCertificate</c>. The key's and
+/// <c>xmip certificate</c> and <c>New-XmipCertificate</c>. The key's and
 /// the request's files, their names and their protection, what a request
 /// names and what is signed are the runtime's (<c>xmip_operate.h</c> section
 /// 19), and so is how the chain and the anchors a surface keeps are written

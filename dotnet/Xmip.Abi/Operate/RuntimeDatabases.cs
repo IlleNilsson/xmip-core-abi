@@ -11,7 +11,7 @@ namespace Xmip.Abi.Operate;
 /// a later one, adding only (open problem 41; ADR-0015, amendment
 /// 2026-10-20). The schema, its versions and the scripts are
 /// <c>xmip-core-persist</c>'s; this binds the one call for
-/// <c>xmip-cli database</c> and <c>Get-XmipDatabaseScript</c>, which write
+/// <c>xmip database</c> and <c>Get-XmipDatabaseScript</c>, which write
 /// none of their own.
 /// </summary>
 /// <remarks>Pure in the header's sense: one instance serves a whole process

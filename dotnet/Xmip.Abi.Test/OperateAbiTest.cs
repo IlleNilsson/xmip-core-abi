@@ -124,6 +124,7 @@ public sealed class OperateAbiTest
     [InlineData("XMIP_OPERATOR_KEEP_ENTRYPOINT", OperateAbi.OperatorKeepEntrypoint)]
     [InlineData("XMIP_OPERATOR_SIGN_ENTRYPOINT", OperateAbi.OperatorSignEntrypoint)]
     [InlineData("XMIP_NODE_ISSUE_ENTRYPOINT", OperateAbi.NodeIssueEntrypoint)]
+    [InlineData("XMIP_AUTHORITY_ENTRYPOINT", OperateAbi.AuthorityEntrypoint)]
     [InlineData("XMIP_DATABASE_UPGRADE_ENTRYPOINT", OperateAbi.DatabaseUpgradeEntrypoint)]
     [InlineData("XMIP_HOST_ISSUE_ENTRYPOINT", OperateAbi.HostIssueEntrypoint)]
     [InlineData("XMIP_LISTENER_OPEN_ENTRYPOINT", OperateAbi.ListenerOpenEntrypoint)]

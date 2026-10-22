@@ -49,7 +49,7 @@ public sealed class RuntimeLibraryTest
     [Fact]
     public void ALibraryStatedForTheInvocationWinsOverEverything()
     {
-        // xmip-cli --runtime and a cmdlet's -Library: the one precedence,
+        // xmip --runtime and a cmdlet's -Library: the one precedence,
         // taken from the current directory, over the document.
         IConfiguration document = Configured("configured.dll");
 

@@ -167,7 +167,7 @@ public sealed class SurfaceChoiceTest
         Assert.Contains("Xmip:Snapshot names no file", refused.Message, StringComparison.Ordinal);
     }
 
-    // The line over the document: one precedence for xmip-cli's --remote,
+    // The line over the document: one precedence for xmip's --remote,
     // --snapshot and --runtime, a cmdlet's -Remote, -Snapshot and -Library,
     // and the snapshot the prompt is told to follow (ADR-0052, amendments
     // 2026-09-18 and 2026-09-20). Held here since 2026-09-24; the executable's

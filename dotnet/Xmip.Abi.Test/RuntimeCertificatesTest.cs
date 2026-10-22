@@ -174,6 +174,38 @@ public sealed class RuntimeCertificatesTest
         }
     }
 
+    [Fact]
+    public void AnActOnTheAuthorityCrossesAsJsonAndAnActThatIsNoneIsRefused()
+    {
+        string place = Directory.CreateTempSubdirectory("xmip-abi-authority-").FullName;
+
+        try
+        {
+            string authority = Path.Combine(place, "authority");
+            string arguments = System.Text.Json.JsonSerializer.Serialize(
+                new Dictionary<string, string>
+                {
+                    ["authority"] = authority,
+                    ["name"] = "test cluster authority",
+                });
+            Assert.True(
+                Certificates.Authority("set-up", arguments, out string answer, out string refused),
+                refused);
+            using System.Text.Json.JsonDocument read = System.Text.Json.JsonDocument.Parse(answer);
+            Assert.Equal(
+                "test cluster authority", read.RootElement.GetProperty("subject").GetString());
+
+            Assert.False(Certificates.Authority("rotate", "{}", out _, out string none));
+            Assert.Contains("no act", none, StringComparison.Ordinal);
+            Assert.False(Certificates.Authority("inspect", "not json", out _, out string bad));
+            Assert.Contains("JSON", bad, StringComparison.Ordinal);
+        }
+        finally
+        {
+            Directory.Delete(place, recursive: true);
+        }
+    }
+
     // An authority made here, kept as the runtime reads one, and a node's
     // configuration naming it in [provision.operator]; its path.
     internal static string Authority(string place)

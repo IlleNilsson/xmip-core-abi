@@ -368,6 +368,11 @@ public static partial class OperateAbi
     /// authority, for a node put on a machine of its own: section 22.</summary>
     public const string NodeIssueEntrypoint = "xmip_node_issue_v1";
 
+    /// <summary>An act on the cluster's authority kept in a folder, or on a
+    /// node's certificate carried across an air gap, its arguments and its
+    /// answer JSON: section 23 (ADR-0034, amendment 2026-10-22).</summary>
+    public const string AuthorityEntrypoint = "xmip_authority_v1";
+
     /// <summary>The scripts that upgrade each database on a server from one
     /// schema version to a later one: section 20 (ADR-0015, amendment
     /// 2026-10-20).</summary>

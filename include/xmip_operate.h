@@ -684,7 +684,7 @@ typedef void (*XmipCurveFreeFn)(XmipCurve *curve);
  * a thin forwarder into audit::program_audit::ProgramAudit - the record, its
  * policy, its sink and the fallback are the capability's, never the caller's.
  *
- * program names the program (Xmip.Gui.Web, xmip-cli); directory is where its
+ * program names the program (Xmip.Gui.Web, xmip); directory is where its
  * records go when the caller was told one (empty: the capability decides -
  * XMIP_AUDIT_DIRECTORY, else the operating system's log). action is what it
  * did, message what it says about it, empty for none. properties holds
@@ -1904,6 +1904,53 @@ typedef XmipStatus (*XmipNodeIssueFn)(XmipStr authority, XmipStr name, XmipStr n
                                       size_t cap, size_t *out_len);
 
 #define XMIP_NODE_ISSUE_ENTRYPOINT "xmip_node_issue_v1"
+
+/* ===================================================================== */
+/* 23. The cluster's authority, and certificates across an air gap       */
+/* ===================================================================== */
+
+/*
+ * The cluster's own authority kept in a folder, and a node's certificate
+ * carried to it and back where no network route reaches it (ADR-0034,
+ * amendment 2026-10-22). The authority keeps a register beside its key:
+ * every certificate it signs - by ACME, by section 22, by a carried
+ * request, a person's by section 19 - each revocation, and the revocation
+ * list it publishes at the plain-HTTP address its leaves name.
+ *
+ * xmip_authority_v1 does the act act on arguments, a JSON object, and
+ * answers JSON. The acts, and the members each reads:
+ *   set-up   authority, name, publish (optional, http://host:port): the
+ *            authority kept in authority, made there called name where
+ *            none is, and the address it publishes at; answered as inspect.
+ *   inspect  authority: the authority, its list, and every certificate it
+ *            signed with its standing - current, renewal due, expired or
+ *            revoked.
+ *   read     certificate: a chain file's leaf and its standing.
+ *   revoke   authority, serial (hexadecimal), reason (an RFC 5280 word,
+ *            unspecified unless said): revoked and listed at once.
+ *   export   authority, path, format (pem, der or crl): the authority's
+ *            certificate or its list written to path, never over a file.
+ *   back-up  authority, folder: the whole authority copied into an empty
+ *            folder, each file private; the copy is the same authority.
+ *   request  node, names (an array), folder: a fresh key, node.next.key,
+ *            and a request for it, node.csr, written on the node.
+ *   sign     authority, request (a file), names (an array; the request
+ *            must ask for exactly these where any are given), out
+ *            (optional, a file, never over one): the request verified and
+ *            signed for ninety days, server and client authentication.
+ *   import   certificate (a file), folder: the chain checked - every
+ *            signature, the leaf for node.next.key and the request's
+ *            names, valid now, reaching anchors.pem where the folder holds
+ *            one - and written as node.pem, node.key and anchors.pem.
+ * Every act is the capability's; nothing is decided here. XMIP_E_INVALID
+ * with the refusal in words; XMIP_E_MALFORMED when a string is not UTF-8.
+ * Pure, as section 7. A node's build only, as section 22. Optional symbol;
+ * XMIP_OPERATE_VERSION is unchanged.
+ */
+typedef XmipStatus (*XmipAuthorityFn)(XmipStr act, XmipStr arguments, uint8_t *out,
+                                      size_t cap, size_t *out_len);
+
+#define XMIP_AUTHORITY_ENTRYPOINT "xmip_authority_v1"
 
 #ifdef __cplusplus
 }

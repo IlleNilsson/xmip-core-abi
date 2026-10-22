@@ -158,7 +158,7 @@ halves around the keeper's signature, every build carrying them, and
 `RuntimeRemotes.OpenKept` (section 17's `xmip_remote_open_kept_v1`) reaches a
 node presenting the chain with the keeper signing each handshake through a
 callback. `Xmip.Surface`'s `OperatorCertificate` writes their files once,
-for `xmip-cli certificate` and `New-XmipCertificate`, and makes a request
+for `xmip certificate` and `New-XmipCertificate`, and makes a request
 over a keeper's key and keeps the chain signed for it (`RequestKept`,
 `Keep`, `KeepAnchors`); `IOperatorKeeper` is the one interface each
 platform's keeper implements, and `SecureSurface` names a keeper's key where a
@@ -167,8 +167,14 @@ host's document names a `Certificate` and no `PrivateKey`. Section 22 is
 certificate from the cluster's own authority kept in a folder, made there
 where none is, written as `node.pem`, `node.key` and `anchors.pem`
 (`NodeIssued`), which `Xmip.Surface`'s `NodeCertificate` calls for
-`xmip-cli certificate --node` and `New-XmipCertificate -Node` (ADR-0015,
-amendment 2026-10-21). Section 21 — a
+`xmip certificate --node` and `New-XmipCertificate -Node` (ADR-0015,
+amendment 2026-10-21). Section 23 is `RuntimeCertificates.Authority`, a node's
+build only: an act on the cluster's authority kept in a folder — set up,
+inspect, revoke, export, back up — or on a node's certificate carried across
+an air gap — request, sign, import, read — its arguments and answer JSON,
+which `Xmip.Surface`'s `AuthorityCertificate` reads into records for
+`xmip certificate`, `New-` and `Get-XmipCertificate` and the desktop's
+Authority page (ADR-0034, amendment 2026-10-22). Section 21 — a
 web host's secure surface, protected by Xmip itself (ADR-0009, amendment
 2026-10-21) — is `RuntimeRules.Hosting` (`RuntimeSecureSurface`), a node's
 build only: `Issue` keeps an authority in a folder, made there where none is,
@@ -201,7 +207,7 @@ refusal of a purpose that is no word; `Read` brings back the declarations
 standing in a directory as `ProcessDeclarations` of `ProcessStanding`. In a
 composed
 estate the project copies the runtime's built library beside everything that
-references it. `AbiBoundaries` says both boundaries at once. `xmip-cli abi`, `status` and
+references it. `AbiBoundaries` says both boundaries at once. `xmip abi`, `status` and
 `probe` render those and `Get-XmipAbi`, `ConvertFrom-XmipStatus` and
 `Get-XmipModuleDescriptor` emit them, so neither face judges a code or a
 module on its own (ADR-0052, amendment 2026-09-24). `dotnet/Xmip.Abi.Test`
@@ -294,7 +300,7 @@ answer even when it lists none; *Unlisted* is a source that cannot list;
   the drill-down, and `ScopeItem` for one row of it — its mood, its figures
   and the leaf that explains it (`Worst`), the next scope on the way to the
   cause — whether it `Exists`, and `Selected`, the rows a selection names,
-  worst first under a wildcard, which `xmip-cli show` and `Get-XmipScope`
+  worst first under a wildcard, which `xmip show` and `Get-XmipScope`
   both answer with. Every drill starts at `IOperatorSurface.Root`, the scope the
   publisher publishes at (a Playground cluster, never the root above it); a
   stage card counts `IOperatorSurface.Stage` and lists `Locations`, and the
@@ -314,7 +320,7 @@ answer even when it lists none; *Unlisted* is a source that cannot list;
   board's stage cards alike — so the rate is computed once.
 - **Following.** `SurfaceFollow`, the one follow: the answer now, then a new
   one whenever the publication advances and the answer changed, a wildcard
-  matched again at every notice, until cancelled — `xmip-cli --follow` and
+  matched again at every notice, until cancelled — `xmip --follow` and
   `Get-XmipHealth -Follow` / `Get-XmipScope -Follow` run it.
 - **What a run says.** `RunHeader` for the `[run]` table a publisher writes —
   `Hidden` where the run declared itself hidden, and `ClusterSurfaces` lists,
@@ -379,7 +385,7 @@ answer even when it lists none; *Unlisted* is a source that cannot list;
   .NET program and the estate's script module — each
   a call into `xmip_audit_v1` and never a record of its own; and
   `Read(AuditQuery)`, every .NET surface's read of the records back — the
-  Audit view, `xmip-cli audit` and `Get-XmipAudit` — through
+  Audit view, `xmip audit` and `Get-XmipAudit` — through
   `xmip_audit_read_v1` (ADR-0062, amendment 2026-09-29), `AuditQuery.Verify`
   asking each writer's audit chain walked (ADR-0070 clause 5); and
   `OperatingSystemLog`, the one .NET writer to the Windows Event Log or the

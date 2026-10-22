@@ -43,7 +43,7 @@ public interface IOperatorSurface
     /// Playground roll's cluster, <c>xmip:///&lt;cluster&gt;</c>, where the publication
     /// says so; the root otherwise. Until 2026-09-26 every drill started at
     /// the root, above the cluster, so the first level of every surface was
-    /// one row — the cluster — and <c>xmip-cli list</c> with no scope listed
+    /// one row — the cluster — and <c>xmip list</c> with no scope listed
     /// that one row.
     /// </summary>
     public string Root()

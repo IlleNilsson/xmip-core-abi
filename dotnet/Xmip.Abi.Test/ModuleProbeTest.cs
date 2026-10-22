@@ -4,7 +4,7 @@ using Xmip.Abi.Operate;
 namespace Xmip.Abi.Test;
 
 /// <summary>
-/// What a probe judges of a module that answered, once for <c>xmip-cli
+/// What a probe judges of a module that answered, once for <c>xmip
 /// probe</c> and <c>Get-XmipModuleDescriptor</c>, and the two boundaries both
 /// report. Probing a real library is the conformance fixture's; these hold
 /// the judgment over what a module said.

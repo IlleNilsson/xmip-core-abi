@@ -7,7 +7,7 @@ namespace Xmip.Abi;
 /// The two boundaries this build speaks: the module boundary a Module plugs
 /// into and the operator boundary a surface drives from, versioned apart
 /// (ADR-0027 clause 2). Answered from the binding's constants; nothing is
-/// loaded. <c>xmip-cli abi</c> renders it and <c>Get-XmipAbi</c> emits it, so
+/// loaded. <c>xmip abi</c> renders it and <c>Get-XmipAbi</c> emits it, so
 /// both say both boundaries — until 2026-09-24 the cmdlet said only the first.
 /// </summary>
 /// <param name="ModuleVersion">The module handshake version

@@ -19,7 +19,7 @@ namespace Xmip.Surface;
 /// sink fails, the capability writes to that log, not this.
 /// </remarks>
 /// <param name="program">The program's name, as its README calls it:
-/// <c>Xmip.Gui.Web</c>, <c>xmip-cli</c>, <c>Xmip.PowerShell</c>.</param>
+/// <c>Xmip.Gui.Web</c>, <c>xmip</c>, <c>Xmip.PowerShell</c>.</param>
 /// <param name="directory">Where its records go when it was told one (its
 /// configuration's <see cref="ConfigurationKey"/>); null lets the capability
 /// decide — <c>XMIP_AUDIT_DIRECTORY</c>, else the operating system's log.</param>
