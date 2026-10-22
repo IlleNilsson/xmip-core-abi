@@ -5,7 +5,8 @@
 //! asks the runtime's library, which forwards each call to
 //! `xmip-core-configure`, where the cluster's file, its views, an Xmip
 //! Application's routes, its filters, every edit and the one slicing are
-//! read. Five exports, one shape: text in, the answer written into the
+//! read, and a Work Process design is drawn, edited and compiled. Eight
+//! exports, one shape: text in, the answer written into the
 //! caller's buffer as UTF-8 and its true length in `out_len`, the way
 //! `xmip_validate_v1` writes its report. Declarations only; the runtime's
 //! tests fail to compile if an export drifts from [`DesignFn`].
