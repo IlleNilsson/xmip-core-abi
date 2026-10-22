@@ -73,7 +73,6 @@ public sealed record ConfigurationViews(
         return new ArtifactView(
             Text(view, "kind"),
             Text(view, "title"),
-            view.TryGetProperty("defined", out JsonElement defined) && defined.GetBoolean(),
             view.TryGetProperty("note", out JsonElement note) ? note.GetString() : null,
             [.. Items(view, "entries").Select(Entry)],
             [.. Items(view, "places").Select(place =>
@@ -88,7 +87,18 @@ public sealed record ConfigurationViews(
             Text(entry, "scope"),
             [.. Items(entry, "fields").Select(field =>
                 new ArtifactField(Words(field, "key"), Text(field, "value"), Text(field, "kind")))],
-            [.. Items(entry, "problems").Select(problem => problem.GetString() ?? string.Empty)]);
+            [.. Items(entry, "problems").Select(problem => problem.GetString() ?? string.Empty)],
+            [.. Items(entry, "offered").Select(Offer)]);
+    }
+
+    private static OfferedKey Offer(JsonElement offered)
+    {
+        return new OfferedKey(
+            Text(offered, "key"),
+            Text(offered, "kind"),
+            offered.TryGetProperty("required", out JsonElement required) && required.GetBoolean(),
+            Words(offered, "choices"),
+            [.. Items(offered, "elements").Select(Offer)]);
     }
 
     private static JsonElement[] Items(JsonElement element, string name)
@@ -117,16 +127,12 @@ public sealed record ConfigurationViews(
 /// <param name="Kind">The runtime's word: <c>cluster</c>, <c>node</c>,
 /// <c>receive-port</c>, … <c>process</c>.</param>
 /// <param name="Title">As a person reads it.</param>
-/// <param name="Defined">Whether the configuration defines this kind's
-/// sections; where it does not, <paramref name="Note"/> says so and nothing
-/// is edited.</param>
 /// <param name="Note">What the runtime says of the kind, if anything.</param>
 /// <param name="Entries">The tables the file holds of it.</param>
 /// <param name="Places">Where a new entry of it may be added.</param>
 public sealed record ArtifactView(
     string Kind,
     string Title,
-    bool Defined,
     string? Note,
     IReadOnlyList<ArtifactEntry> Entries,
     IReadOnlyList<ArtifactPlace> Places);
@@ -140,12 +146,30 @@ public sealed record ArtifactView(
 /// <param name="Fields">Its values as the file writes them.</param>
 /// <param name="Problems">Why a Route entry does not read as an Xmip
 /// Application; empty otherwise.</param>
+/// <param name="Offered">What may be set on it, as the runtime offers it
+/// (ADR-0064, amendment 2026-10-22).</param>
 public sealed record ArtifactEntry(
     IReadOnlyList<string> Section,
     string Name,
     string Scope,
     IReadOnlyList<ArtifactField> Fields,
-    IReadOnlyList<string> Problems);
+    IReadOnlyList<string> Problems,
+    IReadOnlyList<OfferedKey> Offered);
+
+/// <summary>A key the runtime offers to set on an entry.</summary>
+/// <param name="Key">The key.</param>
+/// <param name="Kind">Its kind, in the runtime's word.</param>
+/// <param name="Required">Whether the entry is refused without it.</param>
+/// <param name="Choices">The words or names its value may take; empty where
+/// any value of its kind may.</param>
+/// <param name="Elements">For an array of unnamed tables, such as a Party's
+/// identities: the keys one element holds.</param>
+public sealed record OfferedKey(
+    string Key,
+    string Kind,
+    bool Required,
+    IReadOnlyList<string> Choices,
+    IReadOnlyList<OfferedKey> Elements);
 
 /// <summary>One value of an entry.</summary>
 /// <param name="Key">Its key within the entry: one key, or a sub-table's

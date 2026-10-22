@@ -20,13 +20,43 @@ public sealed class ClusterConfigurationTest : IDisposable
         Assert.Equal(Estate.Cluster.Nodes.Take(2), cluster.Nodes);
         Assert.Equal("cluster", cluster.Views.Views[0].Kind);
 
-        // The kinds are the runtime's; one it does not define says so.
-        ArtifactView? undefined = cluster.Views.Views.FirstOrDefault(view => !view.Defined);
-        Assert.NotNull(undefined);
-        Assert.False(string.IsNullOrEmpty(undefined.Note));
+        // The kinds are the runtime's, Parties, Modules and the calls to
+        // compiled units among them.
+        foreach (string kind in new[] { "party", "module", "prepare", "transformation" })
+        {
+            Assert.NotNull(cluster.Views.Of(kind));
+        }
+
         Assert.Contains(
             cluster.Views.Of("receive-location")!.Entries,
             entry => entry.Name == Estate.Location);
+    }
+
+    [Fact]
+    public void AnEntryIsOfferedWhatItMayBeSetAndAPartyAnIdentity()
+    {
+        ClusterConfiguration cluster = Estate.Written(_directory);
+        ArtifactEntry location = cluster.Views.Of("receive-location")!.Entries[0];
+
+        Assert.Contains(location.Offered, offered => offered.Key == "prepare");
+        Assert.True(
+            cluster.TryEdit(
+                new ClusterEdit.AddEntry(["parties"], "partner", [new(["identities"], "[]", "")]),
+                out string refusal),
+            refusal);
+        ArtifactEntry party = cluster.Views.Of("party")!.Entries[0];
+        OfferedKey identities = party.Offered.Single(offered => offered.Key == "identities");
+        Assert.Contains(identities.Elements, inner => inner.Key == "purpose"
+            && inner.Choices.Contains("receive"));
+        Assert.True(
+            cluster.TryEdit(
+                new ClusterEdit.AddElement(
+                    party.Section, ["identities"],
+                    [new(["mechanism"], "\"mutual-tls\"", ""), new(["purpose"], "\"receive\"", ""),
+                     new(["value"], "\"CN=partner\"", "")]),
+                out refusal),
+            refusal);
+        Assert.Contains("CN=partner", cluster.Text, StringComparison.Ordinal);
     }
 
     [Fact]

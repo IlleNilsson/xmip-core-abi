@@ -13,6 +13,7 @@ pub mod descriptor;
 pub mod ffi;
 pub mod manifest;
 pub mod operate;
+pub mod unit;
 
 pub use descriptor::{
     Expectation, ModuleDescriptor, XMIP_ABI_VERSION, XMIP_ENTRYPOINT, accepts, validate_module_abi,
@@ -25,3 +26,4 @@ pub use operate::{
     HealthEntry, Measurement, Operate, OperateFn, Scope, XMIP_OPERATE_ENTRYPOINT,
     XMIP_OPERATE_VERSION,
 };
+pub use unit::{ModuleUnit, UnitCapability, UnitDefault, UnitSetting};
