@@ -29,7 +29,7 @@ namespace Xmip.Surface;
 /// five letters in the quote above, and T and F were left as totals on the
 /// assistant's judgement rather than his. A retry total says a run has had
 /// trouble; a retry rate says it is having trouble now, which is the one an
-/// operator can act on. The total has not gone anywhere — <c>xmip-cli
+/// operator can act on. The total has not gone anywhere — <c>xmip
 /// measure</c> reports it, and a surface that wants *has this run had faults
 /// at all* asks <see cref="Figures"/> rather than this (the owner,
 /// 2026-09-20).

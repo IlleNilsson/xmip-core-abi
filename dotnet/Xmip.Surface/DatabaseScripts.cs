@@ -5,7 +5,7 @@ namespace Xmip.Surface;
 /// <summary>
 /// The upgrade scripts the runtime wrote (<see cref="RuntimeDatabases"/>, section
 /// 20), written once for every surface into the folder an operator names:
-/// <c>xmip-cli database --out</c> and <c>Get-XmipDatabaseScript -Path</c>
+/// <c>xmip database --out</c> and <c>Get-XmipDatabaseScript -Path</c>
 /// (ADR-0015, amendment 2026-10-20). Nothing is overwritten: where any script
 /// is there already, none is written and the refusal names it.
 /// </summary>

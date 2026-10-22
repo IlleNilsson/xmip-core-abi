@@ -5,7 +5,7 @@ namespace Xmip.Surface;
 /// <summary>
 /// What a surface asks of the Subscriptions it lists (ADR-0013, amendment
 /// 2026-09-30), in the words every surface uses: the Subscriptions view's
-/// address, <c>xmip-cli subscriptions</c>'s arguments and
+/// address, <c>xmip subscriptions</c>'s arguments and
 /// <c>Get-XmipSubscription</c>'s parameters are these names. Where the drill
 /// stands — a cluster, a node, one Subscription — the scope pattern over
 /// each Subscription's node and name, and the order: written once, here, for

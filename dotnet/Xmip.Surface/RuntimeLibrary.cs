@@ -106,7 +106,7 @@ public static class RuntimeLibrary
 
     /// <summary>
     /// The library an operator stated, over the rule: a path typed for this
-    /// one invocation — <c>xmip-cli --runtime</c>, <c>-Library</c> on a cmdlet
+    /// one invocation — <c>xmip --runtime</c>, <c>-Library</c> on a cmdlet
     /// — wins and is taken from the current directory; a blank one is no
     /// statement, and then <paramref name="configuration"/>, the environment
     /// and <paramref name="besideExecutable"/> decide as <see cref="Choose"/>

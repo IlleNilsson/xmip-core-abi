@@ -4,7 +4,7 @@ namespace Xmip.Surface.Test;
 
 /// <summary>
 /// Which rows a selection names and in what order, once for
-/// <c>xmip-cli show</c> and <c>Get-XmipScope</c>: a scope exists when health
+/// <c>xmip show</c> and <c>Get-XmipScope</c>: a scope exists when health
 /// was recorded at or beneath it or it has a figure, and a wildcard's rows
 /// come worst first. Until 2026-09-27 the cmdlet held both rules and the
 /// command line neither.

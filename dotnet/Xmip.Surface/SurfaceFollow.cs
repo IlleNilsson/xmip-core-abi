@@ -14,7 +14,7 @@ namespace Xmip.Surface;
 /// the latest truth.
 /// </summary>
 /// <remarks>
-/// What an answer is stays the face's: <c>xmip-cli --follow</c> writes a JSON
+/// What an answer is stays the face's: <c>xmip --follow</c> writes a JSON
 /// Lines document, <c>Get-XmipHealth -Follow</c> and <c>Get-XmipScope
 /// -Follow</c> write the objects. The loop, the rematch and the "changed"
 /// test are here, so the faces cannot follow differently. Cancelling ends the

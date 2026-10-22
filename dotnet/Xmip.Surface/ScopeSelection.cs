@@ -8,7 +8,7 @@ namespace Xmip.Surface;
 /// PowerShell one — an argument that <em>selects among scopes that already
 /// exist</em> takes a wildcard — and the match is <see cref="ScopePattern"/>
 /// (ADR-0052, amendment 2026-09-19). One selection for every surface that
-/// takes a scope from an operator: <c>xmip-cli</c>'s health, measure, list,
+/// takes a scope from an operator: <c>xmip</c>'s health, measure, list,
 /// show, pause and resume, and <c>Get-XmipHealth</c>, <c>Suspend-XmipScope</c>
 /// and <c>Resume-XmipScope</c>. Until 2026-09-24 it lived in the executable
 /// and the cmdlets took a scope literally.

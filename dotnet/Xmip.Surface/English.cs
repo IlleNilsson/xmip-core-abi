@@ -158,14 +158,14 @@ public static class English
     /// <summary>A figure as a person reads it: thousands separated, and a
     /// dash — never a zero — when the publisher has not published it
     /// (ADR-0052, amendment 2026-09-14). The one spelling the board, the
-    /// topology inspector and <c>xmip-cli</c> give a count.</summary>
+    /// topology inspector and <c>xmip</c> give a count.</summary>
     public static string Figure(ulong? value)
     {
         return value?.ToString("N0", CultureInfo.InvariantCulture) ?? "–";
     }
 
     /// <summary>The six figures on one line, in the order every surface says
-    /// them, an unpublished one a dash: what <c>xmip-cli</c> prints beside a
+    /// them, an unpublished one a dash: what <c>xmip</c> prints beside a
     /// row and the web's drill beside a branch.</summary>
     public static string Figures(Figures figures)
     {

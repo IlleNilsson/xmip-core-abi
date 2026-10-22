@@ -6,7 +6,7 @@ namespace Xmip.Surface.Test;
 /// A scope argument that selects among scopes that exist takes a wildcard
 /// (ADR-0059 clause 7, read for every surface), matched by the one
 /// <see cref="ScopePattern"/>. What an argument selects is decided here once
-/// for <c>xmip-cli</c> and the cmdlets alike, and a pattern that names nothing
+/// for <c>xmip</c> and the cmdlets alike, and a pattern that names nothing
 /// is REFUSED — success with silence would read as all clear. Held in
 /// <c>Xmip.Cli.Test</c> until 2026-09-24, when the rule moved here.
 /// </summary>

@@ -10,7 +10,7 @@ public sealed record ScopeOperation(
 {
     /// <summary>
     /// Who the runtime records as having acted — the evidence of the Paused
-    /// mood: the name an operator stated (<c>xmip-cli pause --who</c>,
+    /// mood: the name an operator stated (<c>xmip pause --who</c>,
     /// <c>Suspend-XmipScope -Who</c>), else the user this process runs as.
     /// One rule for every surface; until 2026-09-27 the GUI said
     /// <c>operator</c> for everyone and only the cmdlet could be told a name.

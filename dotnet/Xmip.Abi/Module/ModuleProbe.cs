@@ -25,7 +25,7 @@ public static unsafe class ModuleProbe
 {
     /// <summary>
     /// What a module said when asked, or why it could not be asked: the one
-    /// object <c>xmip-cli probe</c> renders and <c>Get-XmipModuleDescriptor</c>
+    /// object <c>xmip probe</c> renders and <c>Get-XmipModuleDescriptor</c>
     /// emits.
     /// </summary>
     /// <param name="Library">The library probed, as given.</param>

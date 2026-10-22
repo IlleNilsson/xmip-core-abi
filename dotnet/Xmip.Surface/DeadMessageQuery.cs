@@ -5,7 +5,7 @@ namespace Xmip.Surface;
 /// <summary>
 /// What a surface asks of the Dead Message Queues it lists (ADR-0052,
 /// amendment 2026-10-01), in the words every surface uses: the Dead Message
-/// Queue view's address, <c>xmip-cli dead-messages</c>'s arguments and
+/// Queue view's address, <c>xmip dead-messages</c>'s arguments and
 /// <c>Get-XmipDeadMessage</c>'s parameters are these names. Where the drill
 /// stands — a cluster, a node, one Message — the scope pattern over each
 /// entry's node and Message, and the order: written once, here, for every

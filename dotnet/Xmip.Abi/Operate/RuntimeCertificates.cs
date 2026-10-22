@@ -17,6 +17,9 @@ namespace Xmip.Abi.Operate;
 /// <see cref="Assemble"/>, which every build carries too, so no surface
 /// writes DER. Section 22 beside it: a node's key and certificate issued by
 /// the cluster's own authority, <see cref="Issue"/>, a node's build only.
+/// Section 23 beside them: the authority kept in a folder and a node's
+/// certificate carried across an air gap, <see cref="Authority"/>, a node's
+/// build only.
 /// The rules are <c>xmip-core-provision</c>'s; nothing here keeps one.
 /// </summary>
 /// <remarks>Pure in the header's sense: one instance serves a whole process
@@ -39,6 +42,8 @@ public sealed unsafe class RuntimeCertificates
         _keep;
     private readonly delegate* unmanaged[Cdecl]<
         XmipStr, XmipStr, XmipStr, XmipStr, XmipStr, byte*, nuint, nuint*, int> _issue;
+    private readonly delegate* unmanaged[Cdecl]<XmipStr, XmipStr, byte*, nuint, nuint*, int>
+        _authority;
 
     internal RuntimeCertificates(nint library)
     {
@@ -62,6 +67,11 @@ public sealed unsafe class RuntimeCertificates
             ? (delegate* unmanaged[Cdecl]<
                 XmipStr, XmipStr, XmipStr, XmipStr, XmipStr, byte*, nuint, nuint*, int>)issue
             : null;
+        bool kept = NativeLibrary.TryGetExport(
+            library, OperateAbi.AuthorityEntrypoint, out nint authority);
+        _authority = kept
+            ? (delegate* unmanaged[Cdecl]<XmipStr, XmipStr, byte*, nuint, nuint*, int>)authority
+            : null;
     }
 
     /// <summary>The symbols every build exports.</summary>
@@ -75,7 +85,10 @@ public sealed unsafe class RuntimeCertificates
 
     /// <summary>The symbols only a node's build exports.</summary>
     public static IReadOnlyList<string> NodeEntrypoints { get; } =
-        [OperateAbi.OperatorSignEntrypoint, OperateAbi.NodeIssueEntrypoint];
+        [
+            OperateAbi.OperatorSignEntrypoint, OperateAbi.NodeIssueEntrypoint,
+            OperateAbi.AuthorityEntrypoint,
+        ];
 
     /// <summary>
     /// A fresh key and an operator's request for <paramref name="person"/>,
@@ -253,6 +266,34 @@ public sealed unsafe class RuntimeCertificates
             answer.RootElement.GetProperty(file).GetString() ?? string.Empty;
         issued = new NodeIssued(Written("certificate"), Written("key"), Written("anchors"));
         return true;
+    }
+
+    /// <summary>
+    /// The act <paramref name="act"/> on the cluster's authority, or on a
+    /// node's certificate carried across an air gap, its
+    /// <paramref name="arguments"/> a JSON object: the runtime's answer, JSON,
+    /// in <paramref name="answer"/>; or false with its sentence in
+    /// <paramref name="refused"/> (section 23).
+    /// </summary>
+    /// <exception cref="InvalidOperationException">The library is a remote
+    /// build, which keeps no authority.</exception>
+    public bool Authority(
+        string act, string arguments, out string answer, out string refused)
+    {
+        ArgumentNullException.ThrowIfNull(act);
+        ArgumentNullException.ThrowIfNull(arguments);
+
+        if (_authority is null)
+        {
+            throw RemoteBuild.Refused(_library, NodeEntrypoints);
+        }
+
+        (int status, string text) = Answer(
+            [act, arguments], (pack, data, written, cap, length) =>
+                _authority(pack.Borrow(data, 0), pack.Borrow(data, 1), written, cap, length));
+        answer = status == 0 ? text : string.Empty;
+        refused = status == 0 ? string.Empty : Refusal(status, text);
+        return status == 0;
     }
 
     private delegate int Call(Utf8Pack pack, byte* data, byte* written, nuint cap, nuint* length);

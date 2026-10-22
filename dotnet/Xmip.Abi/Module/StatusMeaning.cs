@@ -3,7 +3,7 @@ namespace Xmip.Abi.Module;
 /// <summary>
 /// What one status code means, as every surface answers it: the code, whether
 /// the header defines it, its name, the binding's one line of English, and
-/// whether it is worth a retry or ends the module instance. <c>xmip-cli
+/// whether it is worth a retry or ends the module instance. <c>xmip
 /// status</c> renders it and <c>ConvertFrom-XmipStatus</c> emits it, so the
 /// two cannot disagree about a code (ADR-0014; ADR-0052 clause 1). Until
 /// 2026-09-24 each built its own, and a code the header does not define was

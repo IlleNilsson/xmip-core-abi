@@ -6,7 +6,7 @@ namespace Xmip.Surface;
 /// A node's certificate for every .NET surface (ADR-0015, amendment
 /// 2026-10-21): a fresh key and a certificate issued by the cluster's own
 /// authority, for a node an environment template puts on a machine of its
-/// own, for <c>xmip-cli certificate --node</c> and
+/// own, for <c>xmip certificate --node</c> and
 /// <c>New-XmipCertificate -Node</c>. The files, their names and protection,
 /// the authority kept or made, and what the certificate is for are the
 /// runtime's (<c>xmip_operate.h</c> section 22).
