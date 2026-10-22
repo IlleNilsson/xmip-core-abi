@@ -457,6 +457,35 @@ typedef struct {
                           XmipStr key, XmipStr *out);
 } XmipContractVtable;
 
+/* ===================================================================== */
+/* 13. Trait: work process                                               */
+/* ===================================================================== */
+
+/*
+ * A Work Process unit: a flow advanced one turn at a time (ADR-0066,
+ * amendment 2026-10-22). The descriptor's module is "work-process" and its
+ * standard the unit's name. The host keeps the Instance in the Ledger and
+ * hands it in whole at every turn; the module keeps nothing between turns,
+ * so any thread may call advance at any time, many at once.
+ *
+ * declared answers what the unit declares - its name, its Correlation Rule
+ * and the names it reads of a Message - in xmip-core-process's declared
+ * form, borrowed until destroy.
+ *
+ * advance takes one turn - the Instance, the event and the time, in
+ * xmip-core-process's turn form - and writes the answer, the Instance as
+ * the turn left it and the acts the host carries out, or why it refused,
+ * into out. Where cap is too small it writes nothing, sets out_len to the
+ * bytes needed and returns XMIP_E_CAPACITY, and the host asks again.
+ */
+typedef struct {
+    XmipVtableHeader header;
+
+    XmipStatus (*declared)(void *state, XmipSlice *out);
+    XmipStatus (*advance)(void *state, XmipSlice turn,
+                          uint8_t *out, size_t cap, size_t *out_len);
+} XmipWorkProcessVtable;
+
 #ifdef __cplusplus
 }  /* extern "C" */
 #endif

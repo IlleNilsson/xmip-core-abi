@@ -374,6 +374,22 @@ contract implies its delimiters. `XMIP_E_NOT_FOUND` where the standard implies
 nothing about the key. This is what keeps artifact configuration short and what
 stops an operator setting a delimiter that the standard already fixed.
 
+### Work process
+
+Header section 13 (ADR-0066, amendment 2026-10-22). A Work Process unit is a
+flow advanced one turn at a time: the descriptor's module is `work-process` and
+its standard the unit's name. `declared` lends what the unit declares — its
+name, the correlation sets it follows, the names its decisions read — in
+`xmip-core-process`'s declared form, until `destroy`. `advance` takes one turn,
+the Instance, the event and the time in `xmip-core-process`'s turn form, and
+writes into the host's buffer the Instance as the turn left it and the acts the
+host carries out, or why it refused; where the buffer is too small it writes
+nothing, sets `out_len` to the bytes needed and answers `XMIP_E_CAPACITY`. The
+host keeps the Instance in the Ledger and hands it in whole every turn: the
+module keeps nothing between turns, so any thread may call `advance` at any
+time, many at once. A unit compiled from a design carries its program and runs
+`xmip-core-process`'s engine over it; a unit written by hand runs its own.
+
 ---
 
 ## 11. Conformance
@@ -539,7 +555,7 @@ that failed there with why: the identifier an act names. There is no list of
 failed Journeys. `xmip_journey_act_v1` applies `retry` or `dismiss`, exact,
 to one by its node and identifier, by who acts: Retry writes it Active, its
 tries begun anew, and sends it again from the end of its Port's queue — or
-from its place, where it blocks a Sequential Send Port; Dismiss writes it
+from its place, where it blocks its sequence; Dismiss writes it
 Dismissed, terminal, its history, Message and Stream kept, and takes it out
 of the queue. Each is one write under a claim, audited with who acted, as
 `journey.retry` or `journey.dismiss`. A node not running here, no such

@@ -290,9 +290,39 @@ pub struct ContractVtable {
     >,
 }
 
+/// Header section 13: a Work Process unit, advanced one turn at a time.
+/// `declared` borrows what the unit declares until `destroy`; `advance`
+/// writes a turn's answer into the host's buffer, or answers `CAPACITY`
+/// with the bytes it needs in `out_len`. The module keeps nothing between
+/// turns, so `advance` is called from any thread, many at once.
+#[repr(C)]
+pub struct WorkProcessVtable {
+    pub header: VtableHeader,
+    pub declared:
+        Option<unsafe extern "C" fn(state: *mut core::ffi::c_void, out: *mut Slice) -> i32>,
+    pub advance: Option<
+        unsafe extern "C" fn(
+            state: *mut core::ffi::c_void,
+            turn: Slice,
+            out: *mut u8,
+            cap: usize,
+            out_len: *mut usize,
+        ) -> i32,
+    >,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_work_process_table_is_the_headers_shape() {
+        let pointer = core::mem::size_of::<usize>();
+        assert_eq!(
+            core::mem::size_of::<WorkProcessVtable>(),
+            core::mem::size_of::<VtableHeader>() + 2 * pointer
+        );
+    }
 
     #[test]
     fn the_contract_table_is_the_headers_shape() {
