@@ -68,6 +68,26 @@ public abstract record ClusterEdit
         }
     }
 
+    /// <summary>Append to the array at <paramref name="Key"/> of the table at
+    /// <paramref name="Section"/> one element of <paramref name="Values"/>,
+    /// each TOML: a Party's identity, say (ADR-0064, amendment
+    /// 2026-10-22).</summary>
+    public sealed record AddElement(
+        IReadOnlyList<string> Section, IReadOnlyList<string> Key,
+        IReadOnlyList<ArtifactField> Values) : ClusterEdit
+    {
+        /// <inheritdoc />
+        public override string ToJson()
+        {
+            return Json("add-element", new
+            {
+                section = Section,
+                key = Key,
+                values = Values.Select(given => new { key = given.Key, value = given.Value }),
+            });
+        }
+    }
+
     /// <summary>Remove the table at <paramref name="Section"/>: an entry of a
     /// list, or a node. Refused while anything in the file names it, saying
     /// what does, unless <paramref name="References"/>, which removes what

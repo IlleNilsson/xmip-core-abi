@@ -44,6 +44,17 @@ pub struct ModuleManifest {
     pub identity: ModuleIdentity,
     pub capabilities: Vec<ModuleCapability>,
     pub entrypoint: ModuleEntrypoint,
+    /// That the module works offline, said explicitly (the owner,
+    /// 2026-10-22: *We can only use standards, code and compiled units that
+    /// explicitly work offline! The offline units may be updated, but on the
+    /// end user's request, after a review.*). Its version, in `identity`, is
+    /// what the configuration pins.
+    pub offline: bool,
+    /// The compiled units it provides, each a function a step entry calls
+    /// (`crate::unit`, ADR-0066 amendment 2026-10-22); none for a Module
+    /// that is a technology alone.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub units: Vec<crate::unit::ModuleUnit>,
 }
 
 /// Where the loader finds the code. A library and a symbol for an in-process
@@ -99,6 +110,8 @@ mod tests {
                 executable_path: None,
                 symbol: Some("xmip_create_module_v1".to_string()),
             },
+            offline: true,
+            units: Vec::new(),
         }
     }
 
