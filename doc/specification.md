@@ -552,7 +552,8 @@ invalid. A surface over a publication acts through section 14's
 Section 20 is a database's schema (open problem 41; ADR-0015, amendment
 2026-10-20). Every Xmip database records the schema version it holds, and a
 node publishes each database it keeps at `<node>/storage/<domain>`, its
-evidence `schema version <n> on <engine>`. `xmip_database_upgrade_v1` writes
+evidence `schema version <n> on <engine>`, and at `<node>/storage` which
+Storage it uses and whether it answers (ADR-0056, amendment 2026-10-22). `xmip_database_upgrade_v1` writes
 the scripts that bring each database on a server — `postgresql`, `mssql` or
 `mariadb` — from one schema version to a later one, zero for this build's:
 one to each database, `04-<domain>-upgrade-<from>-<to>.sql`, adding only,
