@@ -379,7 +379,7 @@ stops an operator setting a delimiter that the standard already fixed.
 Header section 13 (ADR-0066, amendment 2026-10-22). A Work Process unit is a
 flow advanced one turn at a time: the descriptor's module is `work-process` and
 its standard the unit's name. `declared` lends what the unit declares — its
-name, the correlation sets it follows, the names its decisions read — in
+name, the Correlations it follows, the names its decisions read — in
 `xmip-core-process`'s declared form, until `destroy`. `advance` takes one turn,
 the Instance, the event and the time in `xmip-core-process`'s turn form, and
 writes into the host's buffer the Instance as the turn left it and the acts the
