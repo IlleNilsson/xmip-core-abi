@@ -28,12 +28,17 @@ public sealed record FailedJourneyRecord(
 /// next page reads from, or null where the index was read to its end or the
 /// list is a publication's, which carries only its node's window.</param>
 /// <param name="Journeys">Those listed, oldest first.</param>
+/// <param name="Blocked">Whether one of them blocks its sequence now: its
+/// Send Port, or a Send Location it may leave by, names a correlation set
+/// whose <c>on_failure</c> is <c>block</c>, so every Journey of its key waits
+/// behind it until an operator retries or dismisses it.</param>
 public sealed record FailedJourneyPort(
     string Node,
     string SendPort,
     ulong Count,
     ulong? Next,
-    IReadOnlyList<FailedJourneyRecord> Journeys);
+    IReadOnlyList<FailedJourneyRecord> Journeys,
+    bool Blocked = false);
 
 /// <summary>
 /// The Journeys that failed at the Send Ports a node or a publication
@@ -100,6 +105,7 @@ public sealed record FailedJourneyList(
                         journey.GetProperty("journey").GetString() ?? string.Empty,
                         journey.GetProperty("sequence").GetUInt64(),
                         journey.GetProperty("reason").GetString() ?? string.Empty)),
-            ]);
+            ],
+            port.GetProperty("blocked").GetBoolean());
     }
 }
