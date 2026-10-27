@@ -73,17 +73,22 @@ pub enum UnitCapability {
     /// Validation, by a format or a custom contract; whether it runs is
     /// still the attaching artifact's `validate`.
     Validate,
+    /// A Debatch: a Message split into a Message per record, fed its bytes a
+    /// chunk at a time, on receive and in a Work Process (the owner,
+    /// 2026-10-27).
+    Debatch,
 }
 
 impl UnitCapability {
     /// Every capability, in the order a person reads them.
-    pub const ALL: [Self; 6] = [
+    pub const ALL: [Self; 7] = [
         Self::Prepare,
         Self::Promote,
         Self::Demote,
         Self::Transform,
         Self::WorkProcess,
         Self::Validate,
+        Self::Debatch,
     ];
 
     /// Its word, as the manifest writes it.
@@ -96,6 +101,7 @@ impl UnitCapability {
             Self::Transform => "transform",
             Self::WorkProcess => "work-process",
             Self::Validate => "validate",
+            Self::Debatch => "debatch",
         }
     }
 }
@@ -164,5 +170,6 @@ mod tests {
             Some(UnitDefault::Text("gzip".into()))
         );
         assert_eq!(UnitCapability::ALL.map(UnitCapability::word)[5], "validate");
+        assert_eq!(UnitCapability::ALL.map(UnitCapability::word)[6], "debatch");
     }
 }
