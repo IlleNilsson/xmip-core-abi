@@ -11,7 +11,7 @@ public enum JourneyAct
 {
     /// <summary>Write it Active, its tries begun anew, and send it again from
     /// the end of its Send Port's queue — or from its place, where it blocks
-    /// a Sequential Send Port.</summary>
+    /// its sequence.</summary>
     Retry,
 
     /// <summary>Write it Dismissed — terminal, its history, Message and
