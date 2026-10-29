@@ -133,7 +133,7 @@ public sealed class RemoteOperatorTest
         {
             JourneyOperation refused = remote.Act(node, "j1", JourneyAct.Retry, "a name");
             Assert.False(refused.Applied);
-            Assert.StartsWith("REFUSED. CN=xmip-client may not retry", refused.Result,
+            Assert.StartsWith("REFUSED. CN=xmip-client may not act", refused.Result,
                 StringComparison.Ordinal);
             Assert.DoesNotContain("a name", refused.Result, StringComparison.Ordinal);
         }

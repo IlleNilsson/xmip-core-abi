@@ -46,7 +46,7 @@ public sealed class OperatorCertificateTest
 
         Assert.False(refused.Applied);
         Assert.StartsWith(
-            $"REFUSED. CN={Person} may not retry", refused.Result, StringComparison.Ordinal);
+            $"REFUSED. CN={Person} may not act", refused.Result, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -58,7 +58,7 @@ public sealed class OperatorKeptTest
 
         Assert.False(refused.Applied);
         Assert.StartsWith(
-            $"REFUSED. CN={Person} may not retry", refused.Result, StringComparison.Ordinal);
+            $"REFUSED. CN={Person} may not act", refused.Result, StringComparison.Ordinal);
         Assert.True(keeper.Signed > 2, $"{keeper.Signed}");
     }
 
