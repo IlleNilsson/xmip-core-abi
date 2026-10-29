@@ -32,7 +32,7 @@ namespace Xmip.Surface;
 /// it, and refuses it in words otherwise (ADR-0009). The <c>who</c> an act
 /// is given here does not leave this process.
 /// </remarks>
-public abstract class ListenerOperator : IOperatorSurface, IDisposable
+public abstract partial class ListenerOperator : IOperatorSurface, IDisposable
 {
     /// <summary>How long a watch's one wait lasts before it looks whether
     /// the watch ended; a change wakes it at once.</summary>

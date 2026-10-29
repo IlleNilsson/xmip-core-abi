@@ -61,6 +61,11 @@ public sealed unsafe class RuntimeRemotes
         Act = (delegate* unmanaged[Cdecl]<
             nint, XmipStr, XmipStr, XmipStr, XmipStr, byte*, nuint, nuint*, int>)
             NativeLibrary.GetExport(library, OperateAbi.RemoteActEntrypoint);
+        SetSecret = (delegate* unmanaged[Cdecl]<
+            nint, XmipStr, XmipStr, XmipStr, XmipStr, byte*, nuint, nuint*, int>)
+            NativeLibrary.GetExport(library, OperateAbi.SecretEntrypoint);
+        Secrets = (delegate* unmanaged[Cdecl]<nint, XmipStr, byte*, nuint, nuint*, int>)
+            NativeLibrary.GetExport(library, OperateAbi.SecretsEntrypoint);
         End = (delegate* unmanaged[Cdecl]<nint, void>)
             NativeLibrary.GetExport(library, OperateAbi.RemoteEndEntrypoint);
         Free = (delegate* unmanaged[Cdecl]<nint, void>)
@@ -97,6 +102,8 @@ public sealed unsafe class RuntimeRemotes
         OperateAbi.RemotePublicationEntrypoint,
         OperateAbi.RemoteWaitEntrypoint,
         OperateAbi.RemoteActEntrypoint,
+        OperateAbi.SecretEntrypoint,
+        OperateAbi.SecretsEntrypoint,
         OperateAbi.RemoteEndEntrypoint,
         OperateAbi.RemoteFreeEntrypoint,
     ];
@@ -121,6 +128,12 @@ public sealed unsafe class RuntimeRemotes
 
     internal readonly delegate* unmanaged[Cdecl]<
         nint, XmipStr, XmipStr, XmipStr, XmipStr, byte*, nuint, nuint*, int> Act;
+
+    internal readonly delegate* unmanaged[Cdecl]<
+        nint, XmipStr, XmipStr, XmipStr, XmipStr, byte*, nuint, nuint*, int> SetSecret;
+
+    internal readonly delegate* unmanaged[Cdecl]<nint, XmipStr, byte*, nuint, nuint*, int>
+        Secrets;
 
     internal readonly delegate* unmanaged[Cdecl]<nint, void> End;
 

@@ -1952,6 +1952,52 @@ typedef XmipStatus (*XmipAuthorityFn)(XmipStr act, XmipStr arguments, uint8_t *o
 
 #define XMIP_AUTHORITY_ENTRYPOINT "xmip_authority_v1"
 
+/* ===================================================================== */
+/* 24. A secret a Location presents, set through a node                  */
+/* ===================================================================== */
+
+/*
+ * A Location that connects to a party - SFTP, FTP and FTPS, HTTP and
+ * HTTPS, a database - names the proof it presents with secret = "<name>"
+ * (ADR-0019, amendment 2026-10-29). The secret is never in the TOML: it is
+ * kept in the Xmip Administration Database, in its own table, sealed at
+ * rest on an embedded Storage node, and read by the node as the Location
+ * next connects. Its kinds: password, key (an SSH private key, PEM,
+ * OpenSSH's form, unencrypted) and certificate (a PEM chain, leaf first,
+ * with its private key).
+ *
+ * xmip_secret_v1 sets the secret name of kind to value through the node at
+ * node, over a handle of section 17, as the identity the handle's
+ * connection proves. The value crosses inside the operate listener's TLS,
+ * or on the local endpoint the operating system guards, and is never said
+ * back. The node admits the act by the role it grants that identity
+ * (section 18) and audits it with the name, never the value. A secret of
+ * the same name is replaced and keeps its identifier. XMIP_OK set;
+ * XMIP_E_AUTH refused by role; XMIP_E_NOT_FOUND refused by the node -
+ * no such node, a name or a kind that is none, a value not of its kind -
+ * opening REFUSED; XMIP_E_IO, opening FAILED, Xmip Storage did not take
+ * it; XMIP_E_UNAVAILABLE the node did not answer; XMIP_E_MALFORMED a
+ * string not UTF-8. The sentence in said.
+ *
+ * xmip_secrets_v1 lists the secrets the node at node keeps, as JSON in
+ * out, its true length in out_len whether or not it fit:
+ *
+ *   {"secrets":[{"name","kind","set_unix_nanos","set_by"}]}
+ *
+ * never a value. XMIP_OK; XMIP_E_TRUNCATED where it did not fit;
+ * XMIP_E_NOT_FOUND no such node, XMIP_E_IO Xmip Storage did not answer,
+ * XMIP_E_UNAVAILABLE the node did not answer, each with why in out.
+ *
+ * Optional symbols, as section 7's are; XMIP_OPERATE_VERSION is unchanged.
+ */
+typedef XmipStatus (*XmipSecretFn)(const XmipRemote *remote, XmipScope node, XmipStr name,
+                                   XmipStr kind, XmipStr value, uint8_t *said, size_t cap,
+                                   size_t *said_len);
+typedef XmipStatus (*XmipSecretsFn)(const XmipRemote *remote, XmipScope node, uint8_t *out,
+                                    size_t cap, size_t *out_len);
+
+#define XMIP_SECRET_ENTRYPOINT  "xmip_secret_v1"
+#define XMIP_SECRETS_ENTRYPOINT "xmip_secrets_v1"
 #ifdef __cplusplus
 }
 #endif

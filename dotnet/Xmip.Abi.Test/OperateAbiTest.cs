@@ -106,6 +106,8 @@ public sealed class OperateAbiTest
     [InlineData("XMIP_REMOTE_WAIT_ENTRYPOINT", OperateAbi.RemoteWaitEntrypoint)]
     [InlineData("XMIP_REMOTE_ACT_ENTRYPOINT", OperateAbi.RemoteActEntrypoint)]
     [InlineData("XMIP_REMOTE_END_ENTRYPOINT", OperateAbi.RemoteEndEntrypoint)]
+    [InlineData("XMIP_SECRET_ENTRYPOINT", OperateAbi.SecretEntrypoint)]
+    [InlineData("XMIP_SECRETS_ENTRYPOINT", OperateAbi.SecretsEntrypoint)]
     [InlineData("XMIP_REMOTE_FREE_ENTRYPOINT", OperateAbi.RemoteFreeEntrypoint)]
     [InlineData("XMIP_OPERATE_SERVE_ENTRYPOINT", OperateAbi.OperateServeEntrypoint)]
     [InlineData(
