@@ -1984,8 +1984,8 @@ typedef XmipStatus (*XmipAuthorityFn)(XmipStr act, XmipStr arguments, uint8_t *o
  *
  *   {"secrets":[{"name","kind","set_unix_nanos","set_by"}]}
  *
- * never a value. XMIP_OK; XMIP_E_TRUNCATED where it did not fit;
- * XMIP_E_NOT_FOUND no such node, XMIP_E_IO Xmip Storage did not answer,
+ * never a value, to an Operator and up. XMIP_OK; XMIP_E_TRUNCATED where it
+ * did not fit; XMIP_E_AUTH refused by role; XMIP_E_NOT_FOUND no such node, XMIP_E_IO Xmip Storage did not answer,
  * XMIP_E_UNAVAILABLE the node did not answer, each with why in out.
  *
  * Optional symbols, as section 7's are; XMIP_OPERATE_VERSION is unchanged.
