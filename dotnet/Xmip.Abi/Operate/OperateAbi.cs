@@ -316,6 +316,14 @@ public static partial class OperateAbi
     /// <summary>The follow ended and every wait woken: section 17.</summary>
     public const string RemoteEndEntrypoint = "xmip_remote_end_v1";
 
+    /// <summary>A secret a Location presents, set through a remote node:
+    /// section 24 (ADR-0019, amendment 2026-10-29).</summary>
+    public const string SecretEntrypoint = "xmip_secret_v1";
+
+    /// <summary>The secrets a remote node keeps, never a value: section
+    /// 24.</summary>
+    public const string SecretsEntrypoint = "xmip_secrets_v1";
+
     /// <summary>A remote node released: section 17.</summary>
     public const string RemoteFreeEntrypoint = "xmip_remote_free_v1";
 

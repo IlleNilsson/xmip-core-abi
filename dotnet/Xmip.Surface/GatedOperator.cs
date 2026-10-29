@@ -226,6 +226,26 @@ public sealed class GatedOperator(
     }
 
     /// <inheritdoc />
+    public IReadOnlyList<SecretRecord> Secrets(string node)
+    {
+        return inner.Secrets(node);
+    }
+
+    /// <inheritdoc />
+    public SecretOperation SetSecret(
+        string node, string name, string kind, string value, string who)
+    {
+        ArgumentNullException.ThrowIfNull(node);
+        ArgumentNullException.ThrowIfNull(name);
+
+        string target = $"the secret '{name}' at {(node.Length == 0 ? "the node" : node)}";
+
+        return Admits(SecretOperation.Act, target, out string proven, out string refused)
+            ? inner.SetSecret(node, name, kind, value, proven)
+            : SecretOperation.Declined(node, name, refused);
+    }
+
+    /// <inheritdoc />
     public string PauseScope(string scope, string who)
     {
         return Admits("pause", scope, out string proven, out string refused)

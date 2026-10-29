@@ -155,6 +155,96 @@ public sealed unsafe class RemoteNode : IDisposable
         }
     }
 
+    /// <summary>
+    /// Set the secret <paramref name="name"/> of <paramref name="kind"/> to
+    /// <paramref name="value"/> through the node at <paramref name="node"/>
+    /// — empty, the one node it runs — section 24: the value crosses inside
+    /// the handle's connection and is never said back. The statuses are
+    /// <see cref="Act"/>'s; the sentence in <paramref name="said"/>.
+    /// </summary>
+    public XmipStatus SetSecret(
+        string node, string name, string kind, string value, out string said)
+    {
+        said = "disposed";
+
+        if (!Enter())
+        {
+            return XmipStatus.Unavailable;
+        }
+
+        try
+        {
+            Utf8Pack pack = new([node, name, kind, value]);
+            byte[] text = new byte[RuntimeRemotes.Room];
+            nuint length = 0;
+            int status;
+
+            fixed (byte* data = pack.Bytes)
+            fixed (byte* written = text)
+            {
+                status = calls.SetSecret(
+                    handle, pack.Borrow(data, 0), pack.Borrow(data, 1), pack.Borrow(data, 2),
+                    pack.Borrow(data, 3), written, (nuint)text.Length, &length);
+            }
+
+            // The value was packed beside the rest: overwritten once crossed.
+            Array.Clear(pack.Bytes);
+            said = RuntimeRemotes.Said(text, length);
+            return (XmipStatus)status;
+        }
+        finally
+        {
+            Exit();
+        }
+    }
+
+    /// <summary>
+    /// The secrets the node at <paramref name="node"/> keeps — empty, the
+    /// one node it runs — as JSON in <paramref name="text"/>, never a value
+    /// (section 24); where not <see cref="XmipStatus.Ok"/>, why.
+    /// </summary>
+    public XmipStatus Secrets(string node, out string text)
+    {
+        text = "disposed";
+
+        if (!Enter())
+        {
+            return XmipStatus.Unavailable;
+        }
+
+        try
+        {
+            Utf8Pack pack = new([node]);
+            byte[] read = new byte[64 * 1024];
+
+            while (true)
+            {
+                nuint length = 0;
+                int status;
+
+                fixed (byte* data = pack.Bytes)
+                fixed (byte* written = read)
+                {
+                    status = calls.Secrets(
+                        handle, pack.Borrow(data, 0), written, (nuint)read.Length, &length);
+                }
+
+                if (status == (int)XmipStatus.Truncated && length > (nuint)read.Length)
+                {
+                    read = new byte[(int)length];
+                    continue;
+                }
+
+                text = RuntimeRemotes.Said(read, length);
+                return (XmipStatus)status;
+            }
+        }
+        finally
+        {
+            Exit();
+        }
+    }
+
     /// <inheritdoc />
     public void Dispose()
     {
