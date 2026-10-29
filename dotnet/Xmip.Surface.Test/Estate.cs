@@ -32,8 +32,6 @@ internal static class Estate
 
             [[receive_locations]]
             name = "{Location}"
-            start = true
-            transport = "file"
             address = "C:/xmip/in"
 
             [nodes.{Cluster.Nodes[0]}]

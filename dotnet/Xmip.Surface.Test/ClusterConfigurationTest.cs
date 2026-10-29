@@ -91,10 +91,9 @@ public sealed class ClusterConfigurationTest : IDisposable
         // designer creates says start = true (the owner, 2026-10-13).
         Assert.False(
             cluster.TryEdit(new ClusterEdit.AddEntry(place.Section, "out"), out string r0));
-        Assert.Contains("transport", r0, StringComparison.Ordinal);
+        Assert.Contains("address", r0, StringComparison.Ordinal);
         ArtifactField[] values =
         [
-            new(["transport"], "\"file\"", ""),
             new(["address"], "\"C:/xmip/out\"", ""),
         ];
         Assert.True(
