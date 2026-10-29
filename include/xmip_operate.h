@@ -1960,8 +1960,8 @@ typedef XmipStatus (*XmipAuthorityFn)(XmipStr act, XmipStr arguments, uint8_t *o
  * A Location that connects to a party - SFTP, FTP and FTPS, HTTP and
  * HTTPS, a database - names the proof it presents with secret = "<name>"
  * (ADR-0019, amendment 2026-10-29). The secret is never in the TOML: it is
- * kept in the Xmip Administration Database, in its own table, sealed at
- * rest on an embedded Storage node, and read by the node as the Location
+ * kept in the Xmip Administration Database, in its own table, its value
+ * sealed by Xmip whatever store keeps it, and read by the node as the Location
  * next connects. Its kinds: password, key (an SSH private key, PEM,
  * OpenSSH's form, unencrypted) and certificate (a PEM chain, leaf first,
  * with its private key).
