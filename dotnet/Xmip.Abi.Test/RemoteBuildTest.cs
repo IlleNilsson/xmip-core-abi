@@ -55,7 +55,7 @@ public sealed class RemoteBuildTest
         Assert.Contains(
             RuntimeEvents.Entrypoints[0], refused.Message, StringComparison.Ordinal);
         Assert.Throws<InvalidOperationException>(() => Rules.Design);
-        Assert.Throws<InvalidOperationException>(() => Rules.Journeys);
+        Assert.Throws<InvalidOperationException>(() => Rules.Messages);
     }
 
     [Fact]

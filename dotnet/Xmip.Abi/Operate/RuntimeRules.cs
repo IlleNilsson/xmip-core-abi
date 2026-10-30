@@ -78,7 +78,7 @@ public sealed unsafe partial class RuntimeRules
     private readonly RuntimeEventSubscriptions? _eventSubscriptions;
     private readonly RuntimeSubscriptions? _subscriptions;
     private readonly RuntimeDeadMessages? _deadMessages;
-    private readonly RuntimeJourneys? _journeys;
+    private readonly RuntimeMessages? _journeys;
     private readonly RuntimeDatabases? _databases;
     private readonly RuntimeSecureSurface? _hosting;
 
@@ -142,7 +142,7 @@ public sealed unsafe partial class RuntimeRules
         _deadMessages = Node(
             library, RuntimeDeadMessages.Entrypoints, () => new RuntimeDeadMessages(library));
         _journeys = Node(
-            library, RuntimeJourneys.Entrypoints, () => new RuntimeJourneys(library));
+            library, RuntimeMessages.Entrypoints, () => new RuntimeMessages(library));
         _databases = Node(
             library, RuntimeDatabases.Entrypoints, () => new RuntimeDatabases(library));
         _hosting = Node(
@@ -211,11 +211,11 @@ public sealed unsafe partial class RuntimeRules
     public RuntimeDeadMessages DeadMessages =>
         _deadMessages ?? throw RemoteBuild.Refused(_library, RuntimeDeadMessages.Entrypoints);
 
-    /// <summary>Section 16: Retry and Dismiss on a Journey that failed, sent
+    /// <summary>Section 16: Retry and Dismiss on a Message that failed, sent
     /// by a node running in this process (runtime-model.md section 13;
     /// ADR-0013).</summary>
-    public RuntimeJourneys Journeys =>
-        _journeys ?? throw RemoteBuild.Refused(_library, RuntimeJourneys.Entrypoints);
+    public RuntimeMessages Messages =>
+        _journeys ?? throw RemoteBuild.Refused(_library, RuntimeMessages.Entrypoints);
 
     /// <summary>Section 17: a node reached at its operate address over gRPC
     /// inside Xmip's mutual TLS, and this process's node served on an operate

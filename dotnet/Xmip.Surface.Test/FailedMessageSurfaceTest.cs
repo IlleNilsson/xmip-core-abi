@@ -3,13 +3,13 @@ using Xmip.Abi.Operate;
 namespace Xmip.Surface.Test;
 
 /// <summary>
-/// The Journeys that failed as a surface reading a publication lists them
+/// The Messages that failed as a surface reading a publication lists them
 /// (runtime-model.md section 13; <c>xmip_operate.h</c> section 16): each Send
 /// Port's count and its Journeys with why, as the publication carries them,
 /// drilled to a node or one Port by its scope and paged by place; and where
 /// an act on one is left.
 /// </summary>
-public sealed class FailedJourneySurfaceTest : IDisposable
+public sealed class FailedMessageSurfaceTest : IDisposable
 {
     private static readonly TestCluster Cluster = TestCluster.Read();
 
@@ -21,7 +21,7 @@ public sealed class FailedJourneySurfaceTest : IDisposable
     private readonly string scratch =
         Path.Combine(Path.GetTempPath(), $"xmip-failed-{Guid.NewGuid():N}");
 
-    public FailedJourneySurfaceTest()
+    public FailedMessageSurfaceTest()
     {
         Directory.CreateDirectory(scratch);
     }
@@ -38,37 +38,37 @@ public sealed class FailedJourneySurfaceTest : IDisposable
             node = "{Cluster.Scope}"
             orders = "{orders}"
 
-            [[failed_journeys]]
+            [[failed_messages]]
             node = "{Sending}"
             send_port = "invoices"
             count = 3
 
-            [[failed_journeys.journeys]]
+            [[failed_messages.messages]]
             journey = "j-1"
             sequence = 2
             reason = "invoices: refused"
 
-            [[failed_journeys.journeys]]
+            [[failed_messages.messages]]
             journey = "j-2"
             sequence = 5
             reason = "invoices: refused again"
 
-            [[failed_journeys]]
+            [[failed_messages]]
             node = "{Sending}"
             send_port = "orders"
             count = 1
 
-            [[failed_journeys.journeys]]
+            [[failed_messages.messages]]
             journey = "j-9"
             sequence = 1
             reason = "orders: the share did not answer"
 
-            [[failed_journeys]]
+            [[failed_messages]]
             node = "{Receiving}"
             send_port = "audit"
             count = 1
 
-            [[failed_journeys.journeys]]
+            [[failed_messages.messages]]
             journey = "j-7"
             sequence = 4
             reason = "audit: refused"
@@ -84,17 +84,17 @@ public sealed class FailedJourneySurfaceTest : IDisposable
     {
         SnapshotOperator surface = Published();
 
-        FailedJourneyList cluster = surface.FailedJourneys(Cluster.Scope);
+        FailedMessageList cluster = surface.FailedMessages(Cluster.Scope);
         Assert.Equal(3, cluster.Ports.Count);
 
-        FailedJourneyList node = surface.FailedJourneys(Sending);
+        FailedMessageList node = surface.FailedMessages(Sending);
         Assert.Equal(["invoices", "orders"], node.Ports.Select(port => port.SendPort));
 
-        FailedJourneyPort port = Assert.Single(
-            surface.FailedJourneys($"{Sending}/send/invoices").Ports);
+        FailedMessagePort port = Assert.Single(
+            surface.FailedMessages($"{Sending}/send/invoices").Ports);
         Assert.Equal((3ul, (ulong?)null), (port.Count, port.Next));
-        Assert.Equal(["j-1", "j-2"], port.Journeys.Select(journey => journey.Journey));
-        FailedJourneyRecord first = port.Journeys[0];
+        Assert.Equal(["j-1", "j-2"], port.Messages.Select(journey => journey.Journey));
+        FailedMessageRecord first = port.Messages[0];
         Assert.Equal(
             (Sending, "invoices", 2ul, "invoices: refused"),
             (first.Node, first.SendPort, first.Sequence, first.Reason));
@@ -105,10 +105,10 @@ public sealed class FailedJourneySurfaceTest : IDisposable
     {
         SnapshotOperator surface = Published();
 
-        FailedJourneyPort paged = Assert.Single(
-            surface.FailedJourneys($"{Sending}/send/invoices", from: 3, most: 1).Ports);
+        FailedMessagePort paged = Assert.Single(
+            surface.FailedMessages($"{Sending}/send/invoices", from: 3, most: 1).Ports);
 
-        Assert.Equal(["j-2"], paged.Journeys.Select(journey => journey.Journey));
+        Assert.Equal(["j-2"], paged.Messages.Select(journey => journey.Journey));
         Assert.Equal(3ul, paged.Count);
     }
 
@@ -117,14 +117,14 @@ public sealed class FailedJourneySurfaceTest : IDisposable
     {
         SnapshotOperator surface = Published();
 
-        FailedJourneyList none = surface.FailedJourneys($"{Sending}/send/nothing");
+        FailedMessageList none = surface.FailedMessages($"{Sending}/send/nothing");
         Assert.True(none.Listed);
-        Assert.Empty(none.Journeys);
+        Assert.Empty(none.Messages);
 
-        FailedJourneyList unread = new SnapshotOperator(
-            Path.Combine(scratch, "not-published-yet.toml")).FailedJourneys(Cluster.Scope);
+        FailedMessageList unread = new SnapshotOperator(
+            Path.Combine(scratch, "not-published-yet.toml")).FailedMessages(Cluster.Scope);
         Assert.False(unread.Listed);
-        Assert.False(FailedJourneyList.Unlisted.Listed);
+        Assert.False(FailedMessageList.Unlisted.Listed);
     }
 
     [Fact]
@@ -132,53 +132,55 @@ public sealed class FailedJourneySurfaceTest : IDisposable
     {
         string port = $"{Sending}/send/invoices";
 
-        FailedJourneyList failed = JourneyOperation.Read(
+        FailedMessageList failed = MessageOperation.Read(
             port, () => throw new InvalidOperationException("Xmip Storage is not open"));
 
         Assert.False(failed.Listed);
-        Assert.Empty(failed.Journeys);
-        Assert.NotSame(FailedJourneyList.Unlisted, failed);
+        Assert.Empty(failed.Messages);
+        Assert.NotSame(FailedMessageList.Unlisted, failed);
         Assert.Equal(
-            $"FAILED: the Journeys that failed at {port} could not be read: "
+            $"FAILED: the Messages that failed at {port} could not be read: "
                 + "Xmip Storage is not open",
             failed.Failure);
-        Assert.Empty(FailedJourneyList.Unlisted.Failure);
+        Assert.Empty(FailedMessageList.Unlisted.Failure);
 
         SnapshotOperator surface = Published();
-        FailedJourneyList answered =
-            JourneyOperation.Read(port, () => surface.FailedJourneys(port));
+        FailedMessageList answered =
+            MessageOperation.Read(port, () => surface.FailedMessages(port));
         Assert.True(answered.Listed);
         Assert.Empty(answered.Failure);
 
         // Said in one sentence on every surface: none for an answer.
-        Assert.Empty(JourneyOperation.Unlisted(answered, port, surface.Source));
-        Assert.Equal(failed.Failure, JourneyOperation.Unlisted(failed, port, "here"));
+        Assert.Empty(MessageOperation.Unlisted(answered, port, surface.Source));
+        Assert.Equal(failed.Failure, MessageOperation.Unlisted(failed, port, "here"));
         Assert.StartsWith(
             "NOT LISTED: here cannot list",
-            JourneyOperation.Unlisted(FailedJourneyList.Unlisted, port, "here"),
+            MessageOperation.Unlisted(FailedMessageList.Unlisted, port, "here"),
             StringComparison.Ordinal);
     }
 
     [Fact]
-    public void TheFailedJourneysInAPortsQueueNowAreReadFromItsEvidence()
+    public void TheFailedMessagesInAPortsQueueNowAreReadFromItsEvidence()
     {
         Assert.Equal(
             2ul,
-            JourneyOperation.FailingIn(
-                "sent 4, failed 3, waiting 0, failed in its queue 2; the Journey j-1 failed: x"));
+            MessageOperation.FailingIn(
+                "sent 4, failed 3, waiting 0, failed in its queue 2; the Message of the "
+                + "Journey j-1 failed: x"));
         Assert.Equal(
             0ul,
-            JourneyOperation.FailingIn(
-                "sent 4, failed 3, waiting 0, failed in its queue 0; the Journey j-1 failed: x"));
-        Assert.Null(JourneyOperation.FailingIn("sent 4, failed 3, waiting 0"));
-        Assert.Null(JourneyOperation.FailingIn(null));
+            MessageOperation.FailingIn(
+                "sent 4, failed 3, waiting 0, failed in its queue 0; the Message of the "
+                + "Journey j-1 failed: x"));
+        Assert.Null(MessageOperation.FailingIn("sent 4, failed 3, waiting 0"));
+        Assert.Null(MessageOperation.FailingIn(null));
     }
 
     [Fact]
     public void AScopeNamesItsNodeAndItsSendPort()
     {
-        Assert.Equal((Sending, "invoices"), JourneyOperation.PortAt($"{Sending}/send/invoices"));
-        Assert.Equal((Sending, string.Empty), JourneyOperation.PortAt(Sending));
-        Assert.Equal((string.Empty, string.Empty), JourneyOperation.PortAt(Cluster.Scope));
+        Assert.Equal((Sending, "invoices"), MessageOperation.PortAt($"{Sending}/send/invoices"));
+        Assert.Equal((Sending, string.Empty), MessageOperation.PortAt(Sending));
+        Assert.Equal((string.Empty, string.Empty), MessageOperation.PortAt(Cluster.Scope));
     }
 }

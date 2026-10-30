@@ -43,7 +43,7 @@ public sealed unsafe class PublicationReader
     private readonly delegate* unmanaged[Cdecl]<nint, byte*, nuint, nuint*, int>
         _eventSubscriptions;
     private readonly delegate* unmanaged[Cdecl]<nint, byte*, nuint, nuint*, int> _deadMessages;
-    private readonly delegate* unmanaged[Cdecl]<nint, byte*, nuint, nuint*, int> _failedJourneys;
+    private readonly delegate* unmanaged[Cdecl]<nint, byte*, nuint, nuint*, int> _failedMessages;
 
     internal PublicationReader(nint library)
     {
@@ -81,8 +81,8 @@ public sealed unsafe class PublicationReader
             NativeLibrary.GetExport(library, OperateAbi.PublicationEventSubscriptionsEntrypoint);
         _deadMessages = (delegate* unmanaged[Cdecl]<nint, byte*, nuint, nuint*, int>)
             NativeLibrary.GetExport(library, OperateAbi.PublicationDeadMessagesEntrypoint);
-        _failedJourneys = (delegate* unmanaged[Cdecl]<nint, byte*, nuint, nuint*, int>)
-            NativeLibrary.GetExport(library, OperateAbi.PublicationFailedJourneysEntrypoint);
+        _failedMessages = (delegate* unmanaged[Cdecl]<nint, byte*, nuint, nuint*, int>)
+            NativeLibrary.GetExport(library, OperateAbi.PublicationFailedMessagesEntrypoint);
     }
 
     /// <summary>Section 8's symbols, each of which a runtime must export.</summary>
@@ -105,7 +105,7 @@ public sealed unsafe class PublicationReader
         OperateAbi.PublicationSubscriptionsEntrypoint,
         OperateAbi.PublicationEventSubscriptionsEntrypoint,
         OperateAbi.PublicationDeadMessagesEntrypoint,
-        OperateAbi.PublicationFailedJourneysEntrypoint,
+        OperateAbi.PublicationFailedMessagesEntrypoint,
     ];
 
     /// <summary>
@@ -255,7 +255,7 @@ public sealed unsafe class PublicationReader
             SubscriptionList.Parse(Listed(_subscriptions, handle)),
             EventSubscriptionList.Parse(Listed(_eventSubscriptions, handle)),
             DeadMessageList.Parse(Listed(_deadMessages, handle)),
-            FailedJourneyList.Parse(Listed(_failedJourneys, handle)));
+            FailedMessageList.Parse(Listed(_failedMessages, handle)));
     }
 
     // Section 11's, 14's, 15's or 16's list over this handle: JSON, asked again at its length.

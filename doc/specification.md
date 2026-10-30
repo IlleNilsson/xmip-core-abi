@@ -532,7 +532,7 @@ an accepted Message that no Subscription matched is kept in the Ledger with
 its entry — its receive context, what its gates concluded, its promoted
 properties and every Subscription's reason for declining — and an Operator
 replays it once a Subscription is added or fixed. It is not a dead letter
-queue: a failed Journey never goes there. `xmip_dead_messages_v1` answers, as
+queue: a failed Message never goes there. `xmip_dead_messages_v1` answers, as
 JSON in memory, what the queues of every node running in the process keep,
 the oldest hundred of each, each entry's verdicts, properties and declines
 as name and value pairs in the order written; `xmip_dead_message_replay_v1`
@@ -546,24 +546,26 @@ noun `dead-message`, act `replay`. The Rust mirror is
 `.src/operate/dead_message.rs`; .NET binds the first two as
 `RuntimeDeadMessages` and the third in `PublicationReader`.
 
-Section 16 is a Journey that failed (runtime-model.md section 13; ADR-0013,
-amendment 2026-08-26): a Journey leads to one Send Port, and when every Send
-Location of its Port failed its tries it is written Failed, with why, and
+Section 16 is a Message that failed (runtime-model.md section 13; ADR-0013,
+amendment 2026-08-26): a Message travels to one Send Port on each Journey, and
+when every Send Location of its Port failed its tries it is written Failed, with why, and
 waits in its Port's queue for an Operator. A node's publication carries, at
-`<node>/send/<Port>`, what the Port sent, what failed and the last Journey
-that failed there with why: the identifier an act names. There is no list of
-failed Journeys. `xmip_journey_act_v1` applies `retry` or `dismiss`, exact,
-to one by its node and identifier, by who acts: Retry writes it Active, its
+`<node>/send/<Port>`, what the Port sent, what failed and the last Message
+that failed there with why, its Journey's identifier the one an act names.
+`xmip_failed_messages_v1` lists every failed Message of a Send Port from Xmip
+Storage a page at a time, and `xmip_publication_failed_messages_v1` what a
+read publication carries of them. `xmip_message_act_v1` applies `retry` or
+`dismiss`, exact, to one by its node and its Journey's identifier, by who acts: Retry writes it Active, its
 tries begun anew, and sends it again from the end of its Port's queue — or
 from its place, where it blocks its sequence; Dismiss writes it
 Dismissed, terminal, its history, Message and Stream kept, and takes it out
 of the queue. Each is one write under a claim, audited with who acted, as
-`journey.retry` or `journey.dismiss`. A node not running here, no such
-Journey, one that has not failed, or a node that does not send its Port is
-refused in words, opening REFUSED; a word that is no act on a Journey is
-invalid. A surface over a publication acts through section 14's
-`xmip_order_v1`, noun `journey`, act `retry` or `dismiss`. The Rust mirror is
-`.src/operate/journey.rs`; .NET binds it as `RuntimeJourneys`.
+`message.retry` or `message.dismiss`. A node not running here, no such
+Journey, one whose Message has not failed, or a node that does not send its Port is
+refused in words, opening REFUSED; a word that is no act on a failed Message
+is invalid. A surface over a publication acts through section 14's
+`xmip_order_v1`, noun `message`, act `retry` or `dismiss`. The Rust mirror is
+`.src/operate/message.rs`; .NET binds it as `RuntimeMessages`.
 
 Section 20 is a database's schema (open problem 41; ADR-0015, amendment
 2026-10-20). Every Xmip database records the schema version it holds, and a

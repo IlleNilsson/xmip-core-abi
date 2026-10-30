@@ -3,11 +3,11 @@ using Xmip.Abi.Operate;
 namespace Xmip.Surface;
 
 /// <summary>
-/// What an Operator does to a Journey that failed (runtime-model.md section
-/// 13; ADR-0013): <c>observe::Act</c> as <c>observe::Noun::Journey</c> takes
+/// What an Operator does to a Message that failed (runtime-model.md section
+/// 13; ADR-0013): <c>observe::Act</c> as <c>observe::Noun::Message</c> takes
 /// it, whose word — the name, lower case — is what crosses to the runtime.
 /// </summary>
-public enum JourneyAct
+public enum MessageAct
 {
     /// <summary>Write it Active, its tries begun anew, and send it again from
     /// the end of its Send Port's queue — or from its place, where it blocks
@@ -20,21 +20,21 @@ public enum JourneyAct
 }
 
 /// <summary>
-/// What came of a <see cref="JourneyAct"/> on the Journey
+/// What came of a <see cref="MessageAct"/> on the Message whose Journey is
 /// <paramref name="Journey"/> sent by the node at <paramref name="Node"/>:
 /// whether it was applied — or, through a publication, left for the node —
 /// and what was said. The executable and the PowerShell module emit this one
 /// shape, as they emit a <see cref="DeadMessageOperation"/>.
 /// </summary>
-public sealed record JourneyOperation(
-    string Node, string Journey, JourneyAct Act, bool Applied, string Result)
+public sealed record MessageOperation(
+    string Node, string Journey, MessageAct Act, bool Applied, string Result)
 {
-    /// <summary>The noun an order on a Journey is left under:
-    /// <c>observe::Noun::Journey</c>'s word.</summary>
-    public const string Noun = "journey";
+    /// <summary>The noun an order on a failed Message is left under:
+    /// <c>observe::Noun::Message</c>'s word.</summary>
+    public const string Noun = "message";
 
     /// <summary>The word the runtime names <paramref name="act"/> by.</summary>
-    public static string Word(JourneyAct act)
+    public static string Word(MessageAct act)
     {
         return act.ToString().ToLowerInvariant();
     }
@@ -65,7 +65,7 @@ public sealed record JourneyOperation(
     /// <paramref name="scope"/>: every Port of its node, or the one Port it
     /// names, or every Port of the nodes beneath a scope on no node.
     /// </summary>
-    public static FailedJourneyList Within(FailedJourneyList failed, string scope)
+    public static FailedMessageList Within(FailedMessageList failed, string scope)
     {
         ArgumentNullException.ThrowIfNull(failed);
         ArgumentNullException.ThrowIfNull(scope);
@@ -87,12 +87,12 @@ public sealed record JourneyOperation(
     }
 
     /// <summary>
-    /// The Journeys that failed at <paramref name="scope"/>, as
+    /// The Messages that failed at <paramref name="scope"/>, as
     /// <paramref name="read"/> lists them — or, where Xmip Storage did not
-    /// answer it, <see cref="FailedJourneyList.Unanswered"/> in the runtime's
+    /// answer it, <see cref="FailedMessageList.Unanswered"/> in the runtime's
     /// words: said, not thrown, so a screen or a command shows it and goes on.
     /// </summary>
-    public static FailedJourneyList Read(string scope, Func<FailedJourneyList> read)
+    public static FailedMessageList Read(string scope, Func<FailedMessageList> read)
     {
         ArgumentNullException.ThrowIfNull(read);
 
@@ -102,47 +102,47 @@ public sealed record JourneyOperation(
         }
         catch (InvalidOperationException unanswered)
         {
-            return FailedJourneyList.Unanswered(
-                $"the Journeys that failed at {scope} could not be read: {unanswered.Message}");
+            return FailedMessageList.Unanswered(
+                $"the Messages that failed at {scope} could not be read: {unanswered.Message}");
         }
     }
 
     /// <summary>
-    /// What a list of the Journeys that failed at <paramref name="scope"/>
+    /// What a list of the Messages that failed at <paramref name="scope"/>
     /// says where it is no answer, read from <paramref name="source"/>: what
     /// the surface was told where it asked (<c>FAILED:</c>), or that it
     /// cannot list them, so nothing is known of the queue (<c>NOT
     /// LISTED:</c>). Empty where the list is an answer. The one sentence
     /// every surface says it with.
     /// </summary>
-    public static string Unlisted(FailedJourneyList failed, string scope, string source)
+    public static string Unlisted(FailedMessageList failed, string scope, string source)
     {
         ArgumentNullException.ThrowIfNull(failed);
 
         return failed.Failure.Length > 0 ? failed.Failure
             : failed.Listed ? string.Empty
-            : $"NOT LISTED: {source} cannot list the Journeys that failed, so whether any "
+            : $"NOT LISTED: {source} cannot list the Messages that failed, so whether any "
                 + $"wait at or beneath {scope} is not known — not that none do.";
     }
 
     /// <summary>The act not taken, and why.</summary>
-    public static JourneyOperation Declined(
-        string node, string journey, JourneyAct act, string why)
+    public static MessageOperation Declined(
+        string node, string journey, MessageAct act, string why)
     {
-        return new JourneyOperation(node, journey, act, false, why);
+        return new MessageOperation(node, journey, act, false, why);
     }
 
     /// <summary>
-    /// The last Journey that failed at a Send Port, read from the evidence
+    /// The last Message that failed at a Send Port, read from the evidence
     /// its node publishes at the Port's scope — the clause
-    /// <c>; the Journey &lt;id&gt; failed: &lt;why&gt;</c> the runtime's
+    /// <c>; the Message of the Journey &lt;id&gt; failed: &lt;why&gt;</c> the runtime's
     /// <c>send_step::PortFigures::evidence</c> writes — or null where the
     /// evidence names none. The one reader of that clause; every surface
-    /// that offers an act on the Journey asks it.
+    /// that offers an act on the Message asks it.
     /// </summary>
     public static string? FailedIn(string? evidence)
     {
-        const string Opening = "; the Journey ";
+        const string Opening = "; the Message of the Journey ";
         const string Closing = " failed: ";
 
         int start = evidence?.IndexOf(Opening, StringComparison.Ordinal) ?? -1;
@@ -161,13 +161,13 @@ public sealed record JourneyOperation(
     }
 
     /// <summary>
-    /// How many Journeys that failed wait in a Send Port's queue now, read
+    /// How many Messages that failed wait in a Send Port's queue now, read
     /// from the evidence its node publishes at the Port's scope — the figure
     /// <c>failed in its queue &lt;n&gt;</c> the runtime's
     /// <c>send_step::PortFigures::evidence</c> writes — or null where the
     /// evidence says none. Unlike <see cref="FailedIn"/>, which names the
-    /// last Journey that ever failed there, this is the queue as it stands:
-    /// zero once every failed Journey was retried or dismissed.
+    /// last Message that ever failed there, this is the queue as it stands:
+    /// zero once every failed Message was retried or dismissed.
     /// </summary>
     public static ulong? FailingIn(string? evidence)
     {
@@ -201,12 +201,12 @@ public sealed record JourneyOperation(
     /// Take <paramref name="act"/> on <paramref name="journey"/> through
     /// <paramref name="acting"/> with the scope of the node
     /// <paramref name="scope"/> is on — the node itself, or a Send Port's
-    /// scope beneath it, as an operator sees the Journey there
+    /// scope beneath it, as an operator sees the Message there
     /// (<see cref="ScopeTree.NodeScope"/>); declined in words, before any
     /// node is asked, where it is on no node or no Journey is named.
     /// </summary>
-    public static JourneyOperation OnNode(
-        string scope, string journey, JourneyAct act, Func<string, JourneyOperation> acting)
+    public static MessageOperation OnNode(
+        string scope, string journey, MessageAct act, Func<string, MessageOperation> acting)
     {
         ArgumentNullException.ThrowIfNull(scope);
         ArgumentNullException.ThrowIfNull(journey);
@@ -214,7 +214,8 @@ public sealed record JourneyOperation(
 
         if (journey.Length == 0)
         {
-            return Declined(scope, journey, act, $"REFUSED: to {Word(act)} a Journey, name it");
+            return Declined(
+                scope, journey, act, $"REFUSED: to {Word(act)} a Message, name its Journey");
         }
 
         string node = ScopeTree.NodeScope(scope);
@@ -223,7 +224,7 @@ public sealed record JourneyOperation(
             ? acting(node)
             : Declined(
                 scope, journey, act,
-                $"REFUSED: {scope} is on no node; name the node that sends the Journey's "
+                $"REFUSED: {scope} is on no node; name the node that sends the Message's "
                 + "Send Port, or the Send Port's scope beneath it");
     }
 }

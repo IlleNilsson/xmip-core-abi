@@ -104,29 +104,29 @@ is `RuntimeRules.DeadMessages` (`RuntimeDeadMessages`): `Standing`, the
 keeps, each with its gate verdicts, promoted properties and declines as name
 and value pairs, and `Replay`, one by its node and Message; a `Publication`
 carries its own `DeadMessages`, and a Replay over one is `Order` on the noun
-`dead-message`. Section 16 — a Journey that failed (runtime-model.md section
-13; ADR-0013) — is `RuntimeRules.Journeys` (`RuntimeJourneys`): `Act`, retry
-or dismiss one by its node and identifier, by who acts; over a publication
-it is `Order` on the noun `journey` — and `Failed`, the `FailedJourneyList`
-of every Journey that failed at the Send Ports of the nodes running in the
-process, each Port's `FailedJourneyPort` with its count, the place its next
-page reads from and its `FailedJourneyRecord`s, read from Xmip Storage a page
-at a time; a `Publication` carries its own `FailedJourneys`, each Port's
+`dead-message`. Section 16 — a Message that failed (runtime-model.md section
+13; ADR-0013) — is `RuntimeRules.Messages` (`RuntimeMessages`): `Act`, retry
+or dismiss one by its node and its Journey's identifier, by who acts; over a publication
+it is `Order` on the noun `message` — and `Failed`, the `FailedMessageList`
+of every Message that failed at the Send Ports of the nodes running in the
+process, each Port's `FailedMessagePort` with its count, the place its next
+page reads from and its `FailedMessageRecord`s, read from Xmip Storage a page
+at a time; a `Publication` carries its own `FailedMessages`, each Port's
 count and oldest hundred. `Xmip.Surface` lists them through
-`IOperatorSurface.FailedJourneys` at a cluster, a node or one Send Port's
-scope (`JourneyOperation.PortAt`, `JourneyOperation.Within`). A Port's page
+`IOperatorSurface.FailedMessages` at a cluster, a node or one Send Port's
+scope (`MessageOperation.PortAt`, `MessageOperation.Within`). A Port's page
 may be empty with a next place, where the stretch the node read held no
-failed Journey: the place, not the Journeys, says whether more remain. A
-list is an answer (`FailedJourneyList.Listed`) even when it lists none;
-`FailedJourneyList.Unlisted` is a surface that cannot list them — no node
+failed Message: the place, not the Messages, says whether more remain. A
+list is an answer (`FailedMessageList.Listed`) even when it lists none;
+`FailedMessageList.Unlisted` is a surface that cannot list them — no node
 reached, no runtime loaded, no publication read yet — and
-`FailedJourneyList.Unanswered` one that asked and was not answered, its
+`FailedMessageList.Unanswered` one that asked and was not answered, its
 `Failure` the sentence, opening `FAILED:`, in the runtime's words: where Xmip
-Storage does not answer, a surface says so through `JourneyOperation.Read`
+Storage does not answer, a surface says so through `MessageOperation.Read`
 rather than throwing. The evidence a Send
-Port publishes is read in one place each: the last Journey that ever failed
-there by `JourneyOperation.FailedIn`, how many wait in its queue now by
-`JourneyOperation.FailingIn`.
+Port publishes is read in one place each: the last Message that ever failed
+there by `MessageOperation.FailedIn`, how many wait in its queue now by
+`MessageOperation.FailingIn`.
 Section 17 — a node reached at its operate listener (ADR-0014, amendments
 2026-10-12 and 2026-10-13) — is `RuntimeRules.Remotes` (`RuntimeRemotes`):
 `Open` gives a `RemoteNode` over `host:port` with PEM certificate, key and
@@ -233,14 +233,14 @@ is:
 | --- | --- | --- | --- |
 | Reads | a node's publication on this machine, over gRPC to its operate listener's local endpoint — a named pipe on Windows, a Unix domain socket elsewhere (section 17) | a node's published `snapshot.toml` | a node's publication on another machine, over gRPC to its operate listener in Xmip's mutual TLS (section 17) |
 | Topology | the node's publication's | the publication's, where it carries one | the node's publication's |
-| Failed Journeys | what the node's publication carries: each Port's count and its oldest hundred; Unlisted while the node is unreachable | Listed: each Port's count and its oldest hundred; Unlisted with no file read | as local |
-| A Journey's Retry or Dismiss; a Subscription's or an Event subscription's pause and resume; a Dead Message's Replay | asked of the node, which takes it as the user this process runs as behind the role its `[operate]` grants (section 18's gate), applies it at once and audits it; refused in its words otherwise | submitted as an order where the publication says its node takes them, taken within a round; declined where it names none | as local, the act the certificate's subject's |
+| Failed Messages | what the node's publication carries: each Port's count and its oldest hundred; Unlisted while the node is unreachable | Listed: each Port's count and its oldest hundred; Unlisted with no file read | as local |
+| A failed Message's Retry or Dismiss; a Subscription's or an Event subscription's pause and resume; a Dead Message's Replay | asked of the node, which takes it as the user this process runs as behind the role its `[operate]` grants (section 18's gate), applies it at once and audits it; refused in its words otherwise | submitted as an order where the publication says its node takes them, taken within a round; declined where it names none | as local, the act the certificate's subject's |
 | A scope's pause and resume | declined: a node's operate listener takes the acts on what it publishes, not a scope's pause | declined: a snapshot cannot be paused | declined, as local |
 
 *Listed* is an
 answer even when it lists none; *Unlisted* is a source that cannot list;
 *Unanswered* one that asked and was not answered, its sentence opening
-`FAILED:` (`FailedJourneyList`).
+`FAILED:` (`FailedMessageList`).
 
 - **Surfaces.** `IOperatorSurface` with its implementations —
   `ListenerOperator` over a node's operate listener, the runtime's surface

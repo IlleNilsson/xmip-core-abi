@@ -311,7 +311,7 @@ pub mod catalogue;
 pub mod dead_message;
 pub mod design;
 pub mod event;
-pub mod journey;
+pub mod message;
 pub mod process;
 pub mod publication;
 pub mod remote;

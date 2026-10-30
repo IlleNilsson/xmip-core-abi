@@ -3,7 +3,7 @@ using Xmip.Abi.Module;
 namespace Xmip.Surface.Test;
 
 /// <summary>
-/// Retry and Dismiss on a Journey that failed as every surface takes them
+/// Retry and Dismiss on a Message that failed as every surface takes them
 /// (runtime-model.md section 13; ADR-0013): a snapshot leaves the act for the
 /// node that sends the Journey's Send Port — named by the node or by the
 /// Send Port's scope beneath it, where the node publishes the last Journey
@@ -13,7 +13,7 @@ namespace Xmip.Surface.Test;
 /// elsewhere passes the one role check, taken as the proven caller and never
 /// the name given (ADR-0009, amendment 2026-10-03).
 /// </summary>
-public sealed class JourneySurfaceTest : IDisposable
+public sealed class MessageSurfaceTest : IDisposable
 {
     // The name a caller claims, which no act may carry.
     private const string Claimed = "claimed-by-the-caller";
@@ -31,7 +31,7 @@ public sealed class JourneySurfaceTest : IDisposable
     private readonly string scratch =
         Path.Combine(Path.GetTempPath(), $"xmip-journey-{Guid.NewGuid():N}");
 
-    public JourneySurfaceTest()
+    public MessageSurfaceTest()
     {
         Directory.CreateDirectory(scratch);
     }
@@ -41,31 +41,32 @@ public sealed class JourneySurfaceTest : IDisposable
     private string Audit => Path.Combine(scratch, "audit");
 
     [Theory]
-    [InlineData(JourneyAct.Retry)]
-    [InlineData(JourneyAct.Dismiss)]
-    public void ASnapshotLeavesTheActForTheNodeThatSendsThePort(JourneyAct act)
+    [InlineData(MessageAct.Retry)]
+    [InlineData(MessageAct.Dismiss)]
+    public void ASnapshotLeavesTheActForTheNodeThatSendsThePort(MessageAct act)
     {
-        JourneyOperation done = Over(Orders).Act(Port, Journey, act, "ilian");
+        MessageOperation done = Over(Orders).Act(Port, Journey, act, "ilian");
 
         Assert.True(done.Applied, done.Result);
         Assert.Equal(Sending, done.Node);
         Assert.Equal(
-            $"{JourneyOperation.Word(act)} of the Journey {Journey} left for {Sender} to take",
+            $"{MessageOperation.Word(act)} of the Message of the Journey {Journey} left for "
+                + $"{Sender} to take",
             done.Result);
         string order = File.ReadAllText(
             Assert.Single(Directory.GetFiles(Path.Combine(Orders, Sender), "*.toml")));
-        Assert.Contains(JourneyOperation.Noun, order, StringComparison.Ordinal);
+        Assert.Contains(MessageOperation.Noun, order, StringComparison.Ordinal);
         Assert.Contains(Journey, order, StringComparison.Ordinal);
     }
 
     [Fact]
     public void ASnapshotDeclinesWhereItsPublisherTakesNoOrdersOrTheScopeIsOnNoNode()
     {
-        JourneyOperation untaken = Over(string.Empty).Act(Port, Journey, JourneyAct.Retry, "ilian");
-        JourneyOperation nowhere = Over(Orders).Act(
-            Cluster.Scope, Journey, JourneyAct.Dismiss, "ilian");
-        JourneyOperation unnamed = Over(Orders).Act(
-            Port, string.Empty, JourneyAct.Dismiss, "ilian");
+        MessageOperation untaken = Over(string.Empty).Act(Port, Journey, MessageAct.Retry, "ilian");
+        MessageOperation nowhere = Over(Orders).Act(
+            Cluster.Scope, Journey, MessageAct.Dismiss, "ilian");
+        MessageOperation unnamed = Over(Orders).Act(
+            Port, string.Empty, MessageAct.Dismiss, "ilian");
 
         Assert.False(untaken.Applied);
         Assert.Contains("takes no orders", untaken.Result, StringComparison.Ordinal);
@@ -80,15 +81,15 @@ public sealed class JourneySurfaceTest : IDisposable
     [Fact]
     public void RetryAndDismissAreTheActsAndWordsTheRuntimeTakes()
     {
-        Assert.Equal(["Retry", "Dismiss"], Enum.GetNames<JourneyAct>());
+        Assert.Equal(["Retry", "Dismiss"], Enum.GetNames<MessageAct>());
         Assert.Equal(Sending, ScopeTree.NodeScope(Port));
         Assert.Equal(Sending, ScopeTree.NodeScope(Sending));
         Assert.Equal(string.Empty, ScopeTree.NodeScope(Cluster.Scope));
 
-        foreach (JourneyAct act in Enum.GetValues<JourneyAct>())
+        foreach (MessageAct act in Enum.GetValues<MessageAct>())
         {
-            XmipStatus status = RuntimeLibrary.Rules.Journeys.Act(
-                Sending, Journey, JourneyOperation.Word(act), "ilian", out string said);
+            XmipStatus status = RuntimeLibrary.Rules.Messages.Act(
+                Sending, Journey, MessageOperation.Word(act), "ilian", out string said);
 
             Assert.True(status == XmipStatus.NotFound, $"{status} {said}");
             Assert.StartsWith("REFUSED", said, StringComparison.Ordinal);
@@ -96,15 +97,16 @@ public sealed class JourneySurfaceTest : IDisposable
     }
 
     [Fact]
-    public void TheLastJourneyThatFailedIsReadFromTheSendPortsEvidence()
+    public void TheLastMessageThatFailedIsReadFromTheSendPortsEvidence()
     {
         Assert.Equal(
             Journey,
-            JourneyOperation.FailedIn(
-                $"started; tcp at 127.0.0.1:9; sent 4, failed 1, waiting 0; the Journey "
-                + $"{Journey} failed: every Send Location failed its tries; the Journey before"));
-        Assert.Null(JourneyOperation.FailedIn("started; sent 4, failed 0, waiting 0"));
-        Assert.Null(JourneyOperation.FailedIn(null));
+            MessageOperation.FailedIn(
+                $"started; tcp at 127.0.0.1:9; sent 4, failed 1, waiting 0; the Message of the "
+                + $"Journey {Journey} failed: every Send Location failed its tries; the Message "
+                + "of the Journey before"));
+        Assert.Null(MessageOperation.FailedIn("started; sent 4, failed 0, waiting 0"));
+        Assert.Null(MessageOperation.FailedIn(null));
     }
 
     [Fact]
@@ -113,12 +115,12 @@ public sealed class JourneySurfaceTest : IDisposable
         ProgramAudit audit = new("Xmip.Surface.Test", Audit);
         SnapshotOperator inner = Over(Orders);
 
-        JourneyOperation observed = new GatedOperator(
+        MessageOperation observed = new GatedOperator(
                 inner, new RoleContext(Role.Observer, "operator"), audit)
-            .Act(Port, Journey, JourneyAct.Retry, Claimed);
-        JourneyOperation unproven = new GatedOperator(
+            .Act(Port, Journey, MessageAct.Retry, Claimed);
+        MessageOperation unproven = new GatedOperator(
                 inner, new RoleContext(Role.Operator, null), audit)
-            .Act(Port, Journey, JourneyAct.Dismiss, Claimed);
+            .Act(Port, Journey, MessageAct.Dismiss, Claimed);
 
         Assert.All([observed, unproven], refused =>
         {
@@ -127,9 +129,9 @@ public sealed class JourneySurfaceTest : IDisposable
         });
         Assert.False(Directory.Exists(Orders));
 
-        JourneyOperation taken = new GatedOperator(
+        MessageOperation taken = new GatedOperator(
                 inner, new RoleContext(Role.Operator, "operator"), audit)
-            .Act(Port, Journey, JourneyAct.Retry, Claimed);
+            .Act(Port, Journey, MessageAct.Retry, Claimed);
 
         Assert.True(taken.Applied, taken.Result);
         string order = File.ReadAllText(

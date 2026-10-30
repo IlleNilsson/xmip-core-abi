@@ -1318,7 +1318,7 @@ typedef XmipStatus (*XmipOrderFn)(XmipStr orders, XmipScope node, XmipStr noun,
  * with its entry in its node's Dead Message Queue: its receive context, what
  * its gates concluded, its promoted properties and every Subscription's
  * reason for declining, written with the Message in one write. It is not a
- * dead letter queue: a failed Journey never goes there. An Operator replays
+ * dead letter queue: a failed Message never goes there. An Operator replays
  * one once a Subscription is added or fixed: its promoted properties are
  * routed against the node's Subscriptions of now, a Journey opened for each
  * match and held in its Subscription's queue, and the entry taken out, in
@@ -1374,14 +1374,14 @@ typedef XmipStatus (*XmipPublicationDeadMessagesFn)(const XmipPublication *publi
 #define XMIP_PUBLICATION_DEAD_MESSAGES_ENTRYPOINT "xmip_publication_dead_messages_v1"
 
 /*
- * 16. The Journeys that failed, listed; Retry and Dismiss (runtime-model.md
+ * 16. The Messages that failed, listed; Retry and Dismiss (runtime-model.md
  * section 13; ADR-0013, amendment 2026-08-26).
  *
- * A Journey leads to one Send Port - a Send Port Group's Journeys are one per
- * Port - and when every Send Location of its Port failed its tries it is
- * written Failed, with why, and waits in its Port's queue for an operator.
+ * A Message travels to one Send Port on each Journey - a Send Port Group's
+ * Journeys are one per Port - and when every Send Location of its Port failed
+ * its tries it is written Failed, with why, and waits in its Port's queue for an operator.
  * A node's publication carries, at <node>/send/<Port>, what the Port sent,
- * what failed, how many failed wait in its queue, and the last Journey that
+ * what failed, how many failed wait in its queue, and the last Message that
  * failed with why - Done while any waits, Fine once none does; and beside
  * its records, for every Port it sends, how many wait now (zero where none),
  * whether one blocks its sequence, and the oldest with why - the node's
@@ -1389,75 +1389,76 @@ typedef XmipStatus (*XmipPublicationDeadMessagesFn)(const XmipPublication *publi
  * act names; apart from them the last that failed there since the node
  * started, as history.
  * Xmip Storage keeps the count and every one of them in the queue's index
- * of failed Journeys, written with the failure, so one that failed before
+ * of failed Messages, written with the failure, so one that failed before
  * the node restarted, or on another node sending the Port, is among them.
  *
  * A list is JSON, written into out as UTF-8, its true byte length in out_len
  * whether or not it fit:
  *
  *   {"orders":"<where acts are left, empty for none>",
- *    "failed_journeys":[{"node","send_port","count","blocked","next",
- *                        "journeys":[{"journey","sequence","reason"}],
+ *    "failed_messages":[{"node","send_port","count","blocked","next",
+ *                        "messages":[{"journey","sequence","reason"}],
  *                        "last_failure":{"journey","reason"}|null}]}
  *
  * node is the scope of the node that sends the Port and send_port its
- * configured name; count how many failed Journeys wait in its queue now,
+ * configured name; count how many failed Messages wait in its queue now,
  * as Xmip Storage counts them, zero where none; blocked whether one of them
- * blocks a Sequential Port's sequence now; journeys those listed, oldest
- * first - journey the identifier an act names, sequence its place in the
+ * blocks a Sequential Port's sequence now; messages those listed, oldest
+ * first - journey its Journey's identifier, the one an act names, sequence its place in the
  * queue, reason why it failed, in words; next the place in the queue's
- * index of failed Journeys the next page reads from, or null where the
- * index was read to its end or the list is a publication's; last_failure the last Journey that failed at the Port
- * since its node started, and why - history, which may since have been
- * retried or dismissed - or null where none has.
+ * index of failed Messages the next page reads from, or null where the
+ * index was read to its end or the list is a publication's; last_failure
+ * the last Message that failed at the Port since its node started, and why -
+ * history, which may since have been retried or dismissed - or null where none
+ * has.
  *
- * xmip_failed_journeys_v1 lists, for every node running in this process at
- * or beneath node (empty: every one), the Journeys that failed at its Send
+ * xmip_failed_messages_v1 lists, for every node running in this process at
+ * or beneath node (empty: every one), the Messages that failed at its Send
  * Port port (empty: every Port it sends), read from Xmip Storage from the
- * place from on in each Port's index of failed Journeys (0: the oldest), at
+ * place from on in each Port's index of failed Messages (0: the oldest), at
  * most most of each Port (0: a hundred), each page one read of the index.
  * orders is empty. XMIP_OK; XMIP_E_MALFORMED
  * when node or port is not UTF-8; XMIP_E_IO with the reason, opening FAILED,
  * when Xmip Storage did not answer.
  *
- * xmip_publication_failed_journeys_v1 lists what a read publication (section
+ * xmip_publication_failed_messages_v1 lists what a read publication (section
  * 8) carries, orders as it says, next null. XMIP_E_INVALID for no handle.
  *
- * xmip_journey_act_v1 applies act - retry or dismiss, exact - to the Journey
- * journey (its identifier) sent by the node at node in this process, by who.
+ * xmip_message_act_v1 applies act - retry or dismiss, exact - to the Message
+ * whose Journey is journey (its identifier), sent by the node at node in this process, by who.
  * Retry writes it Active, its tries begun anew, and moves it to the end of
  * its Send Port's queue, from where it is sent again; where it blocks a
  * Sequential Send Port it keeps its place. Dismiss writes it Dismissed -
  * terminal, its history, Message and Stream kept - and takes it out of the
  * queue, so a Sequential Port's next of its order key goes. Each is one
  * write under a claim, audited with who acted. XMIP_OK with what came of it
- * in said, one sentence - also for a Journey dismissed already; XMIP_E_NOT_FOUND
+ * in said, one sentence - also for a Message dismissed already; XMIP_E_NOT_FOUND
  * with the refusal, opening REFUSED, when that node does not run here, the
- * Ledger holds no such Journey, it has not failed, or that node does not
+ * Ledger holds no such Journey, its Message has not failed, or that node does not
  * send its Send Port; XMIP_E_INVALID with the refusal for a word that is no
- * act on a Journey; XMIP_E_IO, opening FAILED, when Xmip Storage did not
+ * act on a Message; XMIP_E_IO, opening FAILED, when Xmip Storage did not
  * answer or take it and nothing changed.
  *
  * A surface over a publication acts through section 14's xmip_order_v1,
- * noun journey, target the Journey's identifier, act retry or dismiss. Who
+ * noun message, target the Journey's identifier, act retry or dismiss. Who
  * may act is the surface's to decide by role.
  *
  * Optional symbols, as section 7's are; XMIP_OPERATE_VERSION is unchanged.
  */
-typedef XmipStatus (*XmipJourneyActFn)(XmipScope node, XmipStr journey, XmipStr act,
+typedef XmipStatus (*XmipMessageActFn)(XmipScope node, XmipStr journey, XmipStr act,
                                        XmipStr who, uint8_t *said, size_t said_cap,
                                        size_t *said_len);
 
-typedef XmipStatus (*XmipFailedJourneysFn)(XmipScope node, XmipStr port, uint64_t from,
+typedef XmipStatus (*XmipFailedMessagesFn)(XmipScope node, XmipStr port, uint64_t from,
                                            uint32_t most, uint8_t *out, size_t cap,
                                            size_t *out_len);
-typedef XmipStatus (*XmipPublicationFailedJourneysFn)(const XmipPublication *publication,
+typedef XmipStatus (*XmipPublicationFailedMessagesFn)(const XmipPublication *publication,
                                                       uint8_t *out, size_t cap,
                                                       size_t *out_len);
 
-#define XMIP_JOURNEY_ACT_ENTRYPOINT                 "xmip_journey_act_v1"
-#define XMIP_FAILED_JOURNEYS_ENTRYPOINT             "xmip_failed_journeys_v1"
-#define XMIP_PUBLICATION_FAILED_JOURNEYS_ENTRYPOINT "xmip_publication_failed_journeys_v1"
+#define XMIP_MESSAGE_ACT_ENTRYPOINT                 "xmip_message_act_v1"
+#define XMIP_FAILED_MESSAGES_ENTRYPOINT             "xmip_failed_messages_v1"
+#define XMIP_PUBLICATION_FAILED_MESSAGES_ENTRYPOINT "xmip_publication_failed_messages_v1"
 
 /*
  * 17. A node reached at its operate listener (ADR-0014, amendments

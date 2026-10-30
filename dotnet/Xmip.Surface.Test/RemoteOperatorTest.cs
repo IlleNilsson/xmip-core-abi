@@ -131,7 +131,7 @@ public sealed class RemoteOperatorTest
         using (ServedNode observed = Serve(authority, Fixture("snapshot.toml")))
         using (RemoteOperator remote = Remote(authority, observed.Address))
         {
-            JourneyOperation refused = remote.Act(node, "j1", JourneyAct.Retry, "a name");
+            MessageOperation refused = remote.Act(node, "j1", MessageAct.Retry, "a name");
             Assert.False(refused.Applied);
             Assert.StartsWith("REFUSED. CN=xmip-client may not act", refused.Result,
                 StringComparison.Ordinal);
@@ -140,7 +140,7 @@ public sealed class RemoteOperatorTest
 
         using ServedNode operated = Serve(authority, Fixture("snapshot.toml"), "operator");
         using RemoteOperator acting = Remote(authority, operated.Address);
-        JourneyOperation taken = acting.Act(node, "j1", JourneyAct.Retry, "a name");
+        MessageOperation taken = acting.Act(node, "j1", MessageAct.Retry, "a name");
         Assert.False(taken.Applied);
         Assert.Equal($"REFUSED: no node at {node} runs in this process", taken.Result);
     }
