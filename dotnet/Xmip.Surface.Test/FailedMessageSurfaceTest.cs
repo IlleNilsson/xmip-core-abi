@@ -5,7 +5,7 @@ namespace Xmip.Surface.Test;
 /// <summary>
 /// The Messages that failed as a surface reading a publication lists them
 /// (runtime-model.md section 13; <c>xmip_operate.h</c> section 16): each Send
-/// Port's count and its Journeys with why, as the publication carries them,
+/// Port's count and its Messages with why, as the publication carries them,
 /// drilled to a node or one Port by its scope and paged by place; and where
 /// an act on one is left.
 /// </summary>

@@ -28,7 +28,7 @@ observed_unix_nanos = 1789111684000000000
 scope = "xmip:///R1/process/approval"
 state = "stressed"
 severity = 55
-evidence = "3 Journeys waiting longer than 5 minutes"
+evidence = "3 Messages waiting longer than 5 minutes"
 observed_unix_nanos = 1789111686000000000
 
 [[records]]

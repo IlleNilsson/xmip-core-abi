@@ -5,8 +5,8 @@ namespace Xmip.Surface.Test;
 /// <summary>
 /// Retry and Dismiss on a Message that failed as every surface takes them
 /// (runtime-model.md section 13; ADR-0013): a snapshot leaves the act for the
-/// node that sends the Journey's Send Port — named by the node or by the
-/// Send Port's scope beneath it, where the node publishes the last Journey
+/// node that sends the Message's Send Port — named by the node or by the
+/// Send Port's scope beneath it, where the node publishes the last Message
 /// that failed — where its publication says its publisher takes orders, and
 /// declines where it says nowhere or the scope is on no node; Retry and
 /// Dismiss are the acts and words the runtime takes; and an act from
