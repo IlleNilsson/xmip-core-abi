@@ -7,7 +7,7 @@ namespace Xmip.Abi.Test;
 /// <see cref="RuntimeMessages"/> crosses section 16 to the runtime this
 /// estate built and back (runtime-model.md section 13; ADR-0013): no node
 /// runs in a test's process, so a Retry or a Dismiss on a node is refused in
-/// words and a word that is no act on a Journey is invalid; and either act is
+/// words and a word that is no act on a Message is invalid; and either act is
 /// left as an order on the noun message where a publication says, no other
 /// act taken on it. What a Retry sends again is the runtime's and tested
 /// there; these prove the crossing.

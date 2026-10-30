@@ -30,7 +30,7 @@ public sealed record FailedMessageRecord(
 /// <param name="Messages">Those listed, oldest first.</param>
 /// <param name="Blocked">Whether one of them blocks its sequence now: its
 /// Send Port, or a Send Location it may leave by, names a Correlation
-/// whose <c>on_failure</c> is <c>block</c>, so every Journey of its key waits
+/// whose <c>on_failure</c> is <c>block</c>, so every Message of its key waits
 /// behind it until an operator retries or dismisses it.</param>
 public sealed record FailedMessagePort(
     string Node,
