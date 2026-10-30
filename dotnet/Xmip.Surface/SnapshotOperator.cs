@@ -270,29 +270,29 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
     /// <remarks>What the publication carries: each Port's count and its
     /// window of the oldest; <paramref name="from"/>, a place in the Port's
     /// queue, and <paramref name="most"/> page within them, and no Port names
-    /// a next (<see cref="IOperatorSurface.FailedJourneys"/> says
+    /// a next (<see cref="IOperatorSurface.FailedMessages"/> says
     /// why).</remarks>
-    public FailedJourneyList FailedJourneys(string scope, ulong from = 0, uint most = 0)
+    public FailedMessageList FailedMessages(string scope, ulong from = 0, uint most = 0)
     {
-        return Read().FailedJourneysWithin(scope, from, most);
+        return Read().FailedMessagesWithin(scope, from, most);
     }
 
-    /// <inheritdoc cref="IOperatorSurface.Act(string, string, JourneyAct, string)" />
+    /// <inheritdoc cref="IOperatorSurface.Act(string, string, MessageAct, string)" />
     /// <remarks>A snapshot touches no node. Where its publication says where
     /// its publisher takes orders — one place for every noun — the act is
-    /// left there for the node that sends the Journey's Send Port, which takes
+    /// left there for the node that sends the Message's Send Port, which takes
     /// it, applies it and publishes what came of it
     /// (<c>observe::Order</c>, runtime-model.md section 13); where it says
     /// nowhere, the act is declined.</remarks>
-    public JourneyOperation Act(string scope, string journey, JourneyAct act, string who)
+    public MessageOperation Act(string scope, string journey, MessageAct act, string who)
     {
-        return JourneyOperation.OnNode(scope, journey, act, node =>
+        return MessageOperation.OnNode(scope, journey, act, node =>
         {
             (bool left, string said) = SnapshotOrder.Leave(
-                Read().DeadMessages.Orders, node, JourneyOperation.Noun, journey,
-                JourneyOperation.Word(act), who, $"the Journey {journey}");
+                Read().DeadMessages.Orders, node, MessageOperation.Noun, journey,
+                MessageOperation.Word(act), who, $"the Message of the Journey {journey}");
 
-            return new JourneyOperation(node, journey, act, left, said);
+            return new MessageOperation(node, journey, act, left, said);
         });
     }
 

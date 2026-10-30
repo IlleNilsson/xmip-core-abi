@@ -10,7 +10,7 @@ namespace Xmip.Surface;
 /// as <paramref name="inner"/> reads; each act — pause and resume a scope,
 /// pause and resume a Subscription, pause, resume and remove an Event
 /// subscription, replay a Message from a Dead Message Queue,
-/// retry or dismiss a Journey that failed — is refused in words, and nothing
+/// retry or dismiss a Message that failed — is refused in words, and nothing
 /// reaches <paramref name="inner"/>, unless <paramref name="caller"/> was
 /// proven and the role <see cref="RoleAssignment"/> granted them may operate.
 /// Every act, taken or refused, is audited as that caller (ADR-0062).
@@ -207,22 +207,22 @@ public sealed class GatedOperator(
     }
 
     /// <inheritdoc />
-    public FailedJourneyList FailedJourneys(string scope, ulong from = 0, uint most = 0)
+    public FailedMessageList FailedMessages(string scope, ulong from = 0, uint most = 0)
     {
-        return inner.FailedJourneys(scope, from, most);
+        return inner.FailedMessages(scope, from, most);
     }
 
     /// <inheritdoc />
-    public JourneyOperation Act(string scope, string journey, JourneyAct act, string who)
+    public MessageOperation Act(string scope, string journey, MessageAct act, string who)
     {
         ArgumentNullException.ThrowIfNull(scope);
         ArgumentNullException.ThrowIfNull(journey);
 
-        string target = $"the Journey {journey} sent at {scope}";
+        string target = $"the Message of the Journey {journey} sent at {scope}";
 
-        return Admits(JourneyOperation.Word(act), target, out string proven, out string refused)
+        return Admits(MessageOperation.Word(act), target, out string proven, out string refused)
             ? inner.Act(scope, journey, act, proven)
-            : JourneyOperation.Declined(scope, journey, act, refused);
+            : MessageOperation.Declined(scope, journey, act, refused);
     }
 
     /// <inheritdoc />

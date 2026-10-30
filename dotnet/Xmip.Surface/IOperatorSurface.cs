@@ -301,32 +301,32 @@ public interface IOperatorSurface
     }
 
     /// <summary>
-    /// Retry or Dismiss the Journey <paramref name="journey"/> that failed,
-    /// sent by the node at <paramref name="scope"/> — the node, or the Send
-    /// Port's scope beneath it, where the node publishes the last Journey that
-    /// failed there — by <paramref name="who"/>, and say what came of it
+    /// Retry or Dismiss the Message that failed whose Journey is
+    /// <paramref name="journey"/>, sent by the node at <paramref name="scope"/> —
+    /// the node, or the Send Port's scope beneath it, where the node publishes the
+    /// last Message that failed there — by <paramref name="who"/>, and say what came of it
     /// (runtime-model.md section 13; ADR-0013). Who may act is decided by role
     /// (ADR-0009): by the screen in its own process, and by
     /// <see cref="GatedOperator"/> for an act from elsewhere; the node applies
     /// what reaches it and audits it. The default declines: this surface
     /// reaches no node.
     /// </summary>
-    public JourneyOperation Act(string scope, string journey, JourneyAct act, string who)
+    public MessageOperation Act(string scope, string journey, MessageAct act, string who)
     {
-        return JourneyOperation.Declined(
-            scope, journey, act, $"{Source} does not act on Journeys");
+        return MessageOperation.Declined(
+            scope, journey, act, $"{Source} does not act on failed Messages");
     }
 
     /// <summary>
-    /// The Journeys that failed at the Send Ports at or beneath
+    /// The Messages that failed at the Send Ports at or beneath
     /// <paramref name="scope"/> — a cluster, a node, or one Send Port's
-    /// scope — each Port's count and its Journeys, oldest first, read from
+    /// scope — each Port's count and its Messages, oldest first, read from
     /// the place <paramref name="from"/> on, at most <paramref name="most"/>
     /// of each Port (0: a hundred), and where an act is left when this
     /// surface reads a publication (runtime-model.md section 13).
     /// <para><paramref name="from"/> is a place in one of two lines, because
     /// the two lists are kept in two places. In the process that runs the
-    /// node they are read from the Port's index of failed Journeys in Xmip
+    /// node they are read from the Port's index of failed Messages in Xmip
     /// Storage, in the order they failed, a page at a time, each page one
     /// read: <paramref name="from"/> is a place in that index, 0 the oldest,
     /// and each Port names the place its next page reads from, or none at the
@@ -337,14 +337,14 @@ public interface IOperatorSurface
     /// before it passed over, and no Port names a next, the window being all
     /// it carries. Either way <paramref name="from"/> 0 is the start, and a
     /// next place is only ever passed back to the surface that gave it.</para>
-    /// <see cref="FailedJourneyList.Unlisted"/> where this surface cannot list
+    /// <see cref="FailedMessageList.Unlisted"/> where this surface cannot list
     /// them, which a caller tells from an answer that lists none;
-    /// <see cref="FailedJourneyList.Unanswered"/>, with what it was told,
+    /// <see cref="FailedMessageList.Unanswered"/>, with what it was told,
     /// where it asked and Xmip Storage did not answer.
     /// </summary>
-    public FailedJourneyList FailedJourneys(string scope, ulong from = 0, uint most = 0)
+    public FailedMessageList FailedMessages(string scope, ulong from = 0, uint most = 0)
     {
-        return FailedJourneyList.Unlisted;
+        return FailedMessageList.Unlisted;
     }
 
     /// <summary>

@@ -249,7 +249,7 @@ public static partial class OperateAbi
     public const string PublicationSubscriptionsEntrypoint = "xmip_publication_subscriptions_v1";
 
     /// <summary>An act on a Subscription, an Event subscription, a Message
-    /// in a Dead Message Queue or a Journey that failed, left for a node read
+    /// in a Dead Message Queue or a Message that failed, left for a node read
     /// through its publication: section 14, <c>observe::Order::leave</c>.</summary>
     public const string OrderEntrypoint = "xmip_order_v1";
 
@@ -265,19 +265,19 @@ public static partial class OperateAbi
     /// section 15 over section 8's handle.</summary>
     public const string PublicationDeadMessagesEntrypoint = "xmip_publication_dead_messages_v1";
 
-    /// <summary>Retry or Dismiss a Journey that failed: section 16
+    /// <summary>Retry or Dismiss a Message that failed: section 16
     /// (runtime-model.md section 13; ADR-0013).</summary>
-    public const string JourneyActEntrypoint = "xmip_journey_act_v1";
+    public const string MessageActEntrypoint = "xmip_message_act_v1";
 
-    /// <summary>The Journeys that failed at the Send Ports of the nodes
+    /// <summary>The Messages that failed at the Send Ports of the nodes
     /// running in this process, read from Xmip Storage a page at a time:
     /// section 16.</summary>
-    public const string FailedJourneysEntrypoint = "xmip_failed_journeys_v1";
+    public const string FailedMessagesEntrypoint = "xmip_failed_messages_v1";
 
-    /// <summary>The Journeys that failed a read publication carries: section
+    /// <summary>The Messages that failed a read publication carries: section
     /// 16 over section 8's handle.</summary>
-    public const string PublicationFailedJourneysEntrypoint =
-        "xmip_publication_failed_journeys_v1";
+    public const string PublicationFailedMessagesEntrypoint =
+        "xmip_publication_failed_messages_v1";
 
     /// <summary>The technologies the runtime carries and the settings each
     /// declares: section 12 (ADR-0064, amendment 2026-09-26).</summary>

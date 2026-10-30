@@ -18,7 +18,7 @@ internal sealed record PublicationReading(
     SubscriptionList Subscriptions,
     EventSubscriptionList EventSubscriptions,
     DeadMessageList DeadMessages,
-    FailedJourneyList FailedJourneys)
+    FailedMessageList FailedMessages)
 {
     /// <summary>Nothing published, said by <paramref name="source"/>.</summary>
     public static PublicationReading Nothing(string source)
@@ -31,7 +31,7 @@ internal sealed record PublicationReading(
             SubscriptionList.Empty,
             EventSubscriptionList.Empty,
             DeadMessageList.Empty,
-            FailedJourneyList.Unlisted);
+            FailedMessageList.Unlisted);
     }
 
     /// <summary>
@@ -74,21 +74,21 @@ internal sealed record PublicationReading(
             read.Subscriptions,
             read.EventSubscriptions,
             read.DeadMessages,
-            read.FailedJourneys);
+            read.FailedMessages);
     }
 
     /// <summary>
-    /// The Journeys that failed at or beneath <paramref name="scope"/> as the
+    /// The Messages that failed at or beneath <paramref name="scope"/> as the
     /// publication carries them — each Port's count and its window of the
     /// oldest — those from the place <paramref name="from"/> in the Port's
     /// queue on, at most <paramref name="most"/> of each Port (0: every one
     /// carried). A publication carries no place in the Port's index of failed
-    /// Journeys, which a node's own list pages by, so its list names no next
-    /// (<see cref="IOperatorSurface.FailedJourneys"/>).
+    /// Messages, which a node's own list pages by, so its list names no next
+    /// (<see cref="IOperatorSurface.FailedMessages"/>).
     /// </summary>
-    public FailedJourneyList FailedJourneysWithin(string scope, ulong from, uint most)
+    public FailedMessageList FailedMessagesWithin(string scope, ulong from, uint most)
     {
-        FailedJourneyList within = JourneyOperation.Within(FailedJourneys, scope);
+        FailedMessageList within = MessageOperation.Within(FailedMessages, scope);
         int take = most == 0 ? int.MaxValue : (int)Math.Min(most, int.MaxValue);
 
         return within with
@@ -97,7 +97,7 @@ internal sealed record PublicationReading(
             [
                 .. within.Ports.Select(port => port with
                 {
-                    Journeys = [.. port.Journeys.Where(j => j.Sequence >= from).Take(take)],
+                    Messages = [.. port.Messages.Where(j => j.Sequence >= from).Take(take)],
                 }),
             ],
         };

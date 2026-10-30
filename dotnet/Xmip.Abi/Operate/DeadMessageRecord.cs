@@ -10,7 +10,7 @@ namespace Xmip.Abi.Operate;
 /// its receive context, what its gates concluded, its promoted properties
 /// and every Subscription's reason for declining; an Operator replays it
 /// once a Subscription is added or fixed. It is not a dead letter queue: a
-/// failed Journey never goes there.
+/// failed Message never goes there.
 /// </summary>
 /// <param name="Node">The node whose queue keeps it:
 /// <c>xmip:///&lt;cluster&gt;/node/&lt;name&gt;</c>.</param>

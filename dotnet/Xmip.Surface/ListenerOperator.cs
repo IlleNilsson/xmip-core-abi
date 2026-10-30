@@ -201,22 +201,22 @@ public abstract partial class ListenerOperator : IOperatorSurface, IDisposable
     /// <inheritdoc />
     /// <remarks>What the node's publication carries: each Port's count and
     /// its window of the oldest, <paramref name="from"/> a place in the
-    /// Port's queue and no next (<see cref="IOperatorSurface.FailedJourneys"/>
+    /// Port's queue and no next (<see cref="IOperatorSurface.FailedMessages"/>
     /// says why).</remarks>
-    public FailedJourneyList FailedJourneys(string scope, ulong from = 0, uint most = 0)
+    public FailedMessageList FailedMessages(string scope, ulong from = 0, uint most = 0)
     {
-        return Read().FailedJourneysWithin(scope, from, most);
+        return Read().FailedMessagesWithin(scope, from, most);
     }
 
     /// <inheritdoc />
-    public JourneyOperation Act(string scope, string journey, JourneyAct act, string who)
+    public MessageOperation Act(string scope, string journey, MessageAct act, string who)
     {
-        return JourneyOperation.OnNode(scope, journey, act, at =>
+        return MessageOperation.OnNode(scope, journey, act, at =>
         {
             (bool taken, string said) = Asked(
-                at, JourneyOperation.Noun, journey, JourneyOperation.Word(act));
+                at, MessageOperation.Noun, journey, MessageOperation.Word(act));
 
-            return new JourneyOperation(at, journey, act, taken, said);
+            return new MessageOperation(at, journey, act, taken, said);
         });
     }
 

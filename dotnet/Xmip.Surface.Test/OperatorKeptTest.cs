@@ -54,7 +54,7 @@ public sealed class OperatorKeptTest
         using ServedNode served = RemoteOperatorTest.Serve(
             authority, RemoteOperatorTest.Fixture("snapshot.toml"));
         using RemoteOperator phone = new(served.Address, tls);
-        JourneyOperation refused = phone.Act(node, "j1", JourneyAct.Retry, "a name");
+        MessageOperation refused = phone.Act(node, "j1", MessageAct.Retry, "a name");
 
         Assert.False(refused.Applied);
         Assert.StartsWith(

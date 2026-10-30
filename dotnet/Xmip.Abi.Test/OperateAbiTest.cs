@@ -94,7 +94,7 @@ public sealed class OperateAbiTest
     [InlineData("XMIP_DEAD_MESSAGE_REPLAY_ENTRYPOINT", OperateAbi.DeadMessageReplayEntrypoint)]
     [InlineData(
         "XMIP_PUBLICATION_DEAD_MESSAGES_ENTRYPOINT", OperateAbi.PublicationDeadMessagesEntrypoint)]
-    [InlineData("XMIP_JOURNEY_ACT_ENTRYPOINT", OperateAbi.JourneyActEntrypoint)]
+    [InlineData("XMIP_MESSAGE_ACT_ENTRYPOINT", OperateAbi.MessageActEntrypoint)]
     [InlineData(
         "XMIP_TECHNOLOGY_CATALOGUE_ENTRYPOINT", OperateAbi.TechnologyCatalogueEntrypoint)]
     [InlineData("XMIP_PROCESS_DECLARE_ENTRYPOINT", OperateAbi.ProcessDeclareEntrypoint)]
