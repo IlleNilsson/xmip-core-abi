@@ -7,10 +7,12 @@ namespace Xmip.Surface.Relay;
 /// <summary>
 /// Who a request to a web host proved, carried to what it acts through
 /// (ADR-0009, amendment 2026-10-06): the remote surface over the hub and the
-/// browser's circuit alike, by <see cref="GatedOperator.Proven"/>, the one
-/// rule — a client certificate the handshake checked against the host's
-/// anchors, else no one, over this machine's loopback as from anywhere
-/// else (ADR-0009, amendment 2026-10-21).
+/// browser's circuit alike, the one rule — the identity the runtime's
+/// authentication gate answered for the client certificate the handshake
+/// checked against the host's anchors (<see cref="ProvenConnection"/>,
+/// <c>xmip_caller_proven_v1</c>; ADR-0009, amendment 2026-11-01), else no
+/// one, over this machine's loopback as from anywhere else (ADR-0009,
+/// amendment 2026-10-21). A certificate's subject read here proves nothing.
 /// A browser's circuit outlives the request that opened it, so the proven
 /// caller rides the request's user, which Blazor hands the circuit as its
 /// authentication state; nothing here is the platform's sign-in.
@@ -21,10 +23,13 @@ public static class ProvenCaller
     /// and the only one <see cref="Who"/> reads.</summary>
     public const string AuthenticationType = "xmip-proven";
 
-    /// <summary>Who <paramref name="connection"/> proved, or null.</summary>
-    public static string? Of(ConnectionInfo? connection)
+    /// <summary>Who <paramref name="context"/>'s connection proved, as the
+    /// runtime answered, or null.</summary>
+    public static string? Of(HttpContext? context)
     {
-        return GatedOperator.Proven(connection?.ClientCertificate?.Subject);
+        string? who = context?.Features.Get<ProvenConnection>()?.Who;
+
+        return string.IsNullOrWhiteSpace(who) ? null : who;
     }
 
     /// <summary>The request's user: the proven caller, or no one. Whatever
@@ -34,7 +39,7 @@ public static class ProvenCaller
     {
         ArgumentNullException.ThrowIfNull(context);
 
-        string? who = Of(context.Connection);
+        string? who = Of(context);
         context.User = who is null
             ? new ClaimsPrincipal(new ClaimsIdentity())
             : new ClaimsPrincipal(new ClaimsIdentity(

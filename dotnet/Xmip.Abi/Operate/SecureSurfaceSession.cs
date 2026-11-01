@@ -35,6 +35,15 @@ public sealed unsafe class SecureSurfaceSession : IDisposable
 
         fixed (byte* written = room)
         {
+            _ = calls.Caller(handle, written, (nuint)room.Length, &length);
+        }
+
+        string caller = RuntimeRemotes.Said(room, length);
+        Caller = caller.Length == 0 ? null : caller;
+        Array.Clear(room);
+
+        fixed (byte* written = room)
+        {
             _ = calls.Ends(handle, written, (nuint)room.Length, &length);
         }
 
@@ -47,6 +56,13 @@ public sealed unsafe class SecureSurfaceSession : IDisposable
     /// runtime has verified against the listener's anchors; empty where it
     /// presented none.</summary>
     public byte[] Presented { get; }
+
+    /// <summary>Who the browser is, proven: the identity the runtime's
+    /// authentication gate answered for its certificate
+    /// (<c>xmip_caller_proven_v1</c>), a distinguished name; null where it
+    /// presented none or the gate refused it (ADR-0009, amendment
+    /// 2026-11-01).</summary>
+    public string? Caller { get; }
 
     /// <summary>Where the connection was accepted, <c>host:port</c>.</summary>
     public string Local { get; }

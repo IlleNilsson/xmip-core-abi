@@ -1628,11 +1628,15 @@ typedef void (*XmipOperateServeStopFn)(XmipServed *served);
  * to case, Observer for any other word, so a misconfiguration grants
  * nothing. xmip_security_role_words_v1 writes what a role is called and
  * what it may do in the words a host's badge uses, both static;
- * XMIP_E_INVALID for no role. xmip_act_admitted_v1 is the gate a node's
- * operate listener and every surface's acts pass: whether who - proven
- * where proven is non-zero, the identity a connection proved and never a
- * name a caller gave - holding role may act on target. XMIP_OK with nothing
- * said; XMIP_E_AUTH with the refusal in said, opening REFUSED.
+ * XMIP_E_INVALID for no role. xmip_act_admitted_v1 is the gate every
+ * surface's acts pass, by the rule a node's operate listener asks of the
+ * identity the authentication gate answered for its connection: whether
+ * who - the caller the host's runtime proved, what xmip_caller_proven_v1
+ * (section 21) answered for a web host's connection or the operating
+ * system user a desktop runs as, never a name a caller gave; empty for no
+ * one - holding role may act on target (ADR-0009, amendment 2026-11-01).
+ * XMIP_OK with nothing said; XMIP_E_AUTH with the refusal in said, opening
+ * REFUSED.
  *
  * Pure, as section 7: no handle, any thread. Optional symbols;
  * XMIP_OPERATE_VERSION is unchanged.
@@ -1640,7 +1644,7 @@ typedef void (*XmipOperateServeStopFn)(XmipServed *served);
 typedef XmipStatus (*XmipSecurityRoleNamedFn)(XmipStr word, int32_t *out);
 typedef XmipStatus (*XmipSecurityRoleWordsFn)(int32_t role, XmipStr *out_word,
                                               XmipStr *out_description);
-typedef XmipStatus (*XmipActAdmittedFn)(XmipStr who, uint8_t proven, int32_t role, XmipStr act,
+typedef XmipStatus (*XmipActAdmittedFn)(XmipStr who, int32_t role, XmipStr act,
                                         XmipStr target, uint8_t *said, size_t cap,
                                         size_t *said_len);
 
@@ -1816,8 +1820,12 @@ typedef XmipStatus (*XmipDatabaseUpgradeFn)(XmipStr server, uint32_t from, uint3
  * A session is read on one thread and written on another at once, as a
  * web server pumps a connection. xmip_session_peer_v1 writes the leaf
  * certificate its browser presented, DER, empty where it presented none;
- * xmip_session_ends_v1 where it was accepted and where its browser is,
- * host:port each, one space between. xmip_session_read_v1 waits for what the
+ * xmip_caller_proven_v1 who that browser is, proven: the certificate run
+ * through the authentication gate and the identity it answered, a
+ * distinguished name, empty where it presented none or the gate refused it
+ * - the one caller a web host acts as, never a subject it reads itself
+ * (ADR-0009, amendment 2026-11-01); xmip_session_ends_v1 where it was
+ * accepted and where its browser is, host:port each, one space between. xmip_session_read_v1 waits for what the
  * browser sent next, at most cap bytes into out, their count in out_len,
  * 0 once the connection has ended - closed, cleanly or not, or reset;
  * XMIP_E_IO where a record could not be read. xmip_session_write_v1 writes
@@ -1852,6 +1860,8 @@ typedef void (*XmipListenerStopFn)(const XmipListener *listener);
 typedef void (*XmipListenerFreeFn)(XmipListener *listener);
 typedef XmipStatus (*XmipSessionPeerFn)(const XmipSession *session, uint8_t *out,
                                         size_t cap, size_t *out_len);
+typedef XmipStatus (*XmipCallerProvenFn)(const XmipSession *session, uint8_t *out,
+                                         size_t cap, size_t *out_len);
 typedef XmipStatus (*XmipSessionEndsFn)(const XmipSession *session, uint8_t *out,
                                         size_t cap, size_t *out_len);
 typedef XmipStatus (*XmipSessionReadFn)(const XmipSession *session, uint8_t *out,
@@ -1867,6 +1877,7 @@ typedef void (*XmipSessionFreeFn)(XmipSession *session);
 #define XMIP_LISTENER_STOP_ENTRYPOINT    "xmip_listener_stop_v1"
 #define XMIP_LISTENER_FREE_ENTRYPOINT    "xmip_listener_free_v1"
 #define XMIP_SESSION_PEER_ENTRYPOINT     "xmip_session_peer_v1"
+#define XMIP_CALLER_PROVEN_ENTRYPOINT    "xmip_caller_proven_v1"
 #define XMIP_SESSION_ENDS_ENTRYPOINT     "xmip_session_ends_v1"
 #define XMIP_SESSION_READ_ENTRYPOINT     "xmip_session_read_v1"
 #define XMIP_SESSION_WRITE_ENTRYPOINT    "xmip_session_write_v1"

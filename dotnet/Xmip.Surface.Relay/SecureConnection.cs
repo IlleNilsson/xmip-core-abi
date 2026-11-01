@@ -15,9 +15,10 @@ namespace Xmip.Surface.Relay;
 /// is sent from another, so the two directions never wait on each other.
 /// It carries an <see cref="ITlsConnectionFeature"/> holding the certificate
 /// the browser presented, which the runtime verified against the host's
-/// anchors, so <c>ConnectionInfo.ClientCertificate</c> and
-/// <see cref="ProvenCaller"/> read it as before, and Kestrel's scheme is
-/// <c>https</c>.
+/// anchors, so <c>ConnectionInfo.ClientCertificate</c> reads it and Kestrel's
+/// scheme is <c>https</c>, and a <see cref="ProvenConnection"/> holding who
+/// the runtime's authentication gate answered the browser is, the one thing
+/// <see cref="ProvenCaller"/> reads.
 /// </summary>
 internal sealed class SecureConnection
     : ConnectionContext, ITlsConnectionFeature, IConnectionLifetimeFeature
@@ -50,6 +51,7 @@ internal sealed class SecureConnection
             ? null
             : X509CertificateLoader.LoadCertificate(session.Presented);
         ConnectionClosed = closed.Token;
+        Features.Set(new ProvenConnection(session.Caller));
         Features.Set<ITlsConnectionFeature>(this);
         Features.Set<IConnectionLifetimeFeature>(this);
     }
