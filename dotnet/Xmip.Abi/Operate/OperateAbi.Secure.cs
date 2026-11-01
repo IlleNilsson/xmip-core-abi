@@ -26,6 +26,10 @@ public static partial class OperateAbi
     /// <summary>The certificate a session's browser presented: section 21.</summary>
     public const string SessionPeerEntrypoint = "xmip_session_peer_v1";
 
+    /// <summary>Who a session's browser is, proven by the runtime's
+    /// authentication gate: section 21.</summary>
+    public const string CallerProvenEntrypoint = "xmip_caller_proven_v1";
+
     /// <summary>Where a session was accepted and where its browser is:
     /// section 21.</summary>
     public const string SessionEndsEntrypoint = "xmip_session_ends_v1";

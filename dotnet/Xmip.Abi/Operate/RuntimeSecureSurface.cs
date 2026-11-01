@@ -42,6 +42,8 @@ public sealed unsafe class RuntimeSecureSurface
             NativeLibrary.GetExport(library, OperateAbi.ListenerFreeEntrypoint);
         Peer = (delegate* unmanaged[Cdecl]<nint, byte*, nuint, nuint*, int>)
             NativeLibrary.GetExport(library, OperateAbi.SessionPeerEntrypoint);
+        Caller = (delegate* unmanaged[Cdecl]<nint, byte*, nuint, nuint*, int>)
+            NativeLibrary.GetExport(library, OperateAbi.CallerProvenEntrypoint);
         Ends = (delegate* unmanaged[Cdecl]<nint, byte*, nuint, nuint*, int>)
             NativeLibrary.GetExport(library, OperateAbi.SessionEndsEntrypoint);
         Read = (delegate* unmanaged[Cdecl]<nint, byte*, nuint, nuint*, int>)
@@ -64,6 +66,7 @@ public sealed unsafe class RuntimeSecureSurface
         OperateAbi.ListenerStopEntrypoint,
         OperateAbi.ListenerFreeEntrypoint,
         OperateAbi.SessionPeerEntrypoint,
+        OperateAbi.CallerProvenEntrypoint,
         OperateAbi.SessionEndsEntrypoint,
         OperateAbi.SessionReadEntrypoint,
         OperateAbi.SessionWriteEntrypoint,
@@ -81,6 +84,8 @@ public sealed unsafe class RuntimeSecureSurface
     internal readonly delegate* unmanaged[Cdecl]<nint, void> Free;
 
     internal readonly delegate* unmanaged[Cdecl]<nint, byte*, nuint, nuint*, int> Peer;
+
+    internal readonly delegate* unmanaged[Cdecl]<nint, byte*, nuint, nuint*, int> Caller;
 
     internal readonly delegate* unmanaged[Cdecl]<nint, byte*, nuint, nuint*, int> Ends;
 

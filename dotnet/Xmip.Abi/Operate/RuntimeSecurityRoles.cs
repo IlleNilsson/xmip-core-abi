@@ -18,7 +18,7 @@ public sealed unsafe class RuntimeSecurityRoles
     private readonly delegate* unmanaged[Cdecl]<XmipStr, int*, int> _named;
     private readonly delegate* unmanaged[Cdecl]<int, XmipStr*, XmipStr*, int> _words;
     private readonly delegate* unmanaged[Cdecl]<
-        XmipStr, byte, int, XmipStr, XmipStr, byte*, nuint, nuint*, int> _admitted;
+        XmipStr, int, XmipStr, XmipStr, byte*, nuint, nuint*, int> _admitted;
 
     internal RuntimeSecurityRoles(nint library)
     {
@@ -27,7 +27,7 @@ public sealed unsafe class RuntimeSecurityRoles
         _words = (delegate* unmanaged[Cdecl]<int, XmipStr*, XmipStr*, int>)
             NativeLibrary.GetExport(library, OperateAbi.SecurityRoleWordsEntrypoint);
         _admitted = (delegate* unmanaged[Cdecl]<
-            XmipStr, byte, int, XmipStr, XmipStr, byte*, nuint, nuint*, int>)
+            XmipStr, int, XmipStr, XmipStr, byte*, nuint, nuint*, int>)
             NativeLibrary.GetExport(library, OperateAbi.ActAdmittedEntrypoint);
     }
 
@@ -69,8 +69,10 @@ public sealed unsafe class RuntimeSecurityRoles
     }
 
     /// <summary>
-    /// Whether <paramref name="who"/> — the identity the connection proved,
-    /// null where nothing did — holding <paramref name="role"/> may
+    /// Whether <paramref name="who"/> — the caller the runtime proved, what
+    /// <c>xmip_caller_proven_v1</c> answered for a web host's connection or
+    /// the operating system user a desktop runs as; null where nothing
+    /// proved anyone — holding <paramref name="role"/> may
     /// <paramref name="act"/> on <paramref name="target"/>; where not, the
     /// refusal in <paramref name="refused"/>.
     /// </summary>
@@ -88,7 +90,7 @@ public sealed unsafe class RuntimeSecurityRoles
         fixed (byte* written = text)
         {
             status = _admitted(
-                pack.Borrow(data, 0), who is null ? (byte)0 : (byte)1, role, pack.Borrow(data, 1),
+                pack.Borrow(data, 0), role, pack.Borrow(data, 1),
                 pack.Borrow(data, 2), written, (nuint)text.Length, &length);
         }
 

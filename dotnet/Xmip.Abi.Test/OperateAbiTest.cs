@@ -135,6 +135,7 @@ public sealed class OperateAbiTest
     [InlineData("XMIP_LISTENER_STOP_ENTRYPOINT", OperateAbi.ListenerStopEntrypoint)]
     [InlineData("XMIP_LISTENER_FREE_ENTRYPOINT", OperateAbi.ListenerFreeEntrypoint)]
     [InlineData("XMIP_SESSION_PEER_ENTRYPOINT", OperateAbi.SessionPeerEntrypoint)]
+    [InlineData("XMIP_CALLER_PROVEN_ENTRYPOINT", OperateAbi.CallerProvenEntrypoint)]
     [InlineData("XMIP_SESSION_ENDS_ENTRYPOINT", OperateAbi.SessionEndsEntrypoint)]
     [InlineData("XMIP_SESSION_READ_ENTRYPOINT", OperateAbi.SessionReadEntrypoint)]
     [InlineData("XMIP_SESSION_WRITE_ENTRYPOINT", OperateAbi.SessionWriteEntrypoint)]

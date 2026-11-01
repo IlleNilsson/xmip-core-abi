@@ -403,14 +403,17 @@ runtime's listener (section 21), binding only a `SecureEndPoint` so plain
 loopback keeps Kestrel's sockets — each browser's connection a
 `SecureConnection` carrying the certificate it presented as Kestrel's
 `ITlsConnectionFeature`, one the anchors refused told to the host's audit
-(ADR-0063 clause 1; ADR-0009, amendment 2026-10-21); and `ProvenCaller`, who
-each request proved. Every act a
+(ADR-0063 clause 1; ADR-0009, amendment 2026-10-21), and who the runtime's
+authentication gate answered the browser is (`xmip_caller_proven_v1`,
+`SecureSurfaceSession.Caller`) as a `ProvenConnection`; and `ProvenCaller`,
+who each request proved, read from that feature alone, so a certificate's
+subject the host reads proves nothing (ADR-0009, amendment 2026-11-01).
+Every act a
 screen takes goes through `GatedOperator` in `Xmip.Surface`, over the
 runtime's one gate (`xmip_act_admitted_v1`, section 18): taken only where the
-caller's `RoleContext` may operate, as the subject of the client certificate
-the connection proved (`GatedOperator.Proven`) — over loopback as from
-anywhere, since loopback proves where a caller is and not who (open problem
-35) — and refused in words otherwise; taken or
+caller's `RoleContext` may operate, as the caller the runtime proved for the
+connection — over loopback as from anywhere, since loopback proves where a
+caller is and not who (open problem 35) — and refused in words otherwise; taken or
 refused, audited through the host's `ProgramAudit` (ADR-0009). `Role`,
 `Roles` and `RoleContext` are `Xmip.Surface`'s, beneath both GUIs.
 

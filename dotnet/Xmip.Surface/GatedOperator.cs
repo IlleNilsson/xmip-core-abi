@@ -17,11 +17,12 @@ namespace Xmip.Surface;
 /// </summary>
 /// <remarks>
 /// The <c>who</c> a caller passes to an act is not read: the act is
-/// <paramref name="caller"/>'s, the identity the connection proved, by
-/// <see cref="Proven"/>: a client certificate's subject, wherever the
-/// connection came from; the desktop's, the operating system user running
-/// it. Where nothing was proven, every act is refused rather than taken on
-/// the caller's word.
+/// <paramref name="caller"/>'s, the identity the connection proved: on a web
+/// host what the runtime's authentication gate answered for the client
+/// certificate (<c>xmip_caller_proven_v1</c>; ADR-0009, amendment
+/// 2026-11-01), wherever the connection came from; the desktop's, the
+/// operating system user running it. Where nothing was proven, every act is
+/// refused rather than taken on the caller's word.
 /// </remarks>
 /// <param name="inner">The surface read and acted through.</param>
 /// <param name="caller">Who asks and the role they hold (<see cref="RoleAssignment.For"/>).</param>
@@ -39,21 +40,6 @@ public sealed class GatedOperator(
     public static string HostUser => OperatingSystem.IsWindows()
         ? $"{Environment.UserDomainName}\\{Environment.UserName}"
         : Environment.UserName;
-
-    /// <summary>
-    /// Who a connection to a web host proved, the one rule (ADR-0009,
-    /// amendments 2026-10-03 and 2026-10-21): the subject of the client
-    /// certificate it presented; else no one, and no act is taken. Where it
-    /// came from proves nothing: a connection over this machine's loopback
-    /// presents a certificate like one from anywhere else — decided by the
-    /// owner, 2026-10-19, *tcp loopback is no longer trusted by itself*
-    /// (open problem 35). A surface on the node's machine is proven by the
-    /// operating system on the node's local endpoint instead.
-    /// </summary>
-    public static string? Proven(string? certificateSubject)
-    {
-        return string.IsNullOrWhiteSpace(certificateSubject) ? null : certificateSubject;
-    }
 
     /// <inheritdoc />
     public string Source => inner.Source;

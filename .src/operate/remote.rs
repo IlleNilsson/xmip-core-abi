@@ -196,7 +196,6 @@ pub type SecurityRoleWordsFn =
 /// `xmip_act_admitted_v1`: whether a caller holding a role may act.
 pub type ActAdmittedFn = unsafe extern "C" fn(
     who: Str,
-    proven: u8,
     role: i32,
     act: Str,
     target: Str,
