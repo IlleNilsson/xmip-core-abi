@@ -119,6 +119,10 @@ public sealed class OperateAbiTest
     [InlineData(
         "XMIP_SECURITY_ROLE_WORDS_ENTRYPOINT", OperateAbi.SecurityRoleWordsEntrypoint)]
     [InlineData("XMIP_ACT_ADMITTED_ENTRYPOINT", OperateAbi.ActAdmittedEntrypoint)]
+    [InlineData("XMIP_CALLER_HOLD_ENTRYPOINT", OperateAbi.CallerHoldEntrypoint)]
+    [InlineData("XMIP_CALLER_RELEASE_ENTRYPOINT", OperateAbi.CallerReleaseEntrypoint)]
+    [InlineData("XMIP_CALLER_NAMED_ENTRYPOINT", OperateAbi.CallerNamedEntrypoint)]
+    [InlineData("XMIP_CALLER_PROCESS_ENTRYPOINT", OperateAbi.CallerProcessEntrypoint)]
     [InlineData("XMIP_OPERATOR_REQUEST_ENTRYPOINT", OperateAbi.OperatorRequestEntrypoint)]
     [InlineData(
         "XMIP_OPERATOR_INFORMATION_ENTRYPOINT", OperateAbi.OperatorInformationEntrypoint)]

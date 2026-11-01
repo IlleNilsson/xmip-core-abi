@@ -17,12 +17,15 @@ namespace Xmip.Surface;
 /// </summary>
 /// <remarks>
 /// The <c>who</c> a caller passes to an act is not read: the act is
-/// <paramref name="caller"/>'s, the identity the connection proved: on a web
-/// host what the runtime's authentication gate answered for the client
+/// <paramref name="caller"/>'s, a caller the runtime proved and holds,
+/// carried to the gate as its handle and never as a name: on a web host
+/// what the runtime's authentication gate answered for the client
 /// certificate (<c>xmip_caller_proven_v1</c>; ADR-0009, amendment
 /// 2026-11-01), wherever the connection came from; the desktop's, the
-/// operating system user running it. Where nothing was proven, every act is
-/// refused rather than taken on the caller's word.
+/// account the runtime read from the operating system
+/// (<c>xmip_caller_process_v1</c>). Where nothing was proven, or the handle
+/// was released, every act is refused rather than taken on the caller's
+/// word.
 /// </remarks>
 /// <param name="inner">The surface read and acted through.</param>
 /// <param name="caller">Who asks and the role they hold (<see cref="RoleAssignment.For"/>).</param>
@@ -32,14 +35,6 @@ public sealed class GatedOperator(
 {
     /// <summary>The audit action every act through the gate records.</summary>
     public const string AuditAction = "act";
-
-    /// <summary>
-    /// The operating system user this process runs as: <c>DOMAIN\user</c> on
-    /// Windows, the user name elsewhere.
-    /// </summary>
-    public static string HostUser => OperatingSystem.IsWindows()
-        ? $"{Environment.UserDomainName}\\{Environment.UserName}"
-        : Environment.UserName;
 
     /// <inheritdoc />
     public string Source => inner.Source;
@@ -257,9 +252,10 @@ public sealed class GatedOperator(
             : new ScopeOperation(scope, action, false, refused);
     }
 
-    // The one check, the runtime's (xmip_act_admitted_v1): a proven caller,
-    // and a role that may act. Audited either way, with who, what, on what
-    // and the role it was judged by.
+    // The one check, the runtime's (xmip_act_admitted_v1): a caller the
+    // runtime holds, by its handle, and a role that may act. Audited either
+    // way, with who — the runtime's name for the caller — what, on what and
+    // the role it was judged by.
     private bool Admits(string act, string target, out string proven, out string refused)
     {
         ArgumentNullException.ThrowIfNull(caller);
@@ -272,7 +268,7 @@ public sealed class GatedOperator(
         // of every act that reaches it from another machine (ADR-0014,
         // amendment 2026-10-12).
         bool admitted = RuntimeLibrary.Rules.SecurityRoles.Admitted(
-            who, (int)role, act, target, out refused);
+            caller.Caller, (int)role, act, target, out refused);
 
         audit.Record(
             AuditAction,

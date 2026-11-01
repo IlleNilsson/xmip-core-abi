@@ -40,6 +40,14 @@ pub const SECURITY_ROLE_NAMED_ENTRYPOINT: &str = "xmip_security_role_named_v1";
 pub const SECURITY_ROLE_WORDS_ENTRYPOINT: &str = "xmip_security_role_words_v1";
 /// `xmip_act_admitted_v1`.
 pub const ACT_ADMITTED_ENTRYPOINT: &str = "xmip_act_admitted_v1";
+/// Another holder of a held caller (section 18).
+pub const CALLER_HOLD_ENTRYPOINT: &str = "xmip_caller_hold_v1";
+/// A held caller released (section 18).
+pub const CALLER_RELEASE_ENTRYPOINT: &str = "xmip_caller_release_v1";
+/// Who a held caller is, for display (section 18).
+pub const CALLER_NAMED_ENTRYPOINT: &str = "xmip_caller_named_v1";
+/// The caller this process is, held (section 18, a node's build).
+pub const CALLER_PROCESS_ENTRYPOINT: &str = "xmip_caller_process_v1";
 
 /// A node reached at its operate address, opaque.
 #[repr(C)]
@@ -193,15 +201,34 @@ pub type SecurityRoleNamedFn = unsafe extern "C" fn(word: Str, out: *mut i32) ->
 pub type SecurityRoleWordsFn =
     unsafe extern "C" fn(role: i32, out_word: *mut Str, out_description: *mut Str) -> i32;
 
-/// `xmip_act_admitted_v1`: whether a caller holding a role may act.
+/// `xmip_act_admitted_v1`: whether the caller a handle holds, holding a
+/// role, may act.
 pub type ActAdmittedFn = unsafe extern "C" fn(
-    who: Str,
+    caller: u64,
     role: i32,
     act: Str,
     target: Str,
     said: *mut u8,
     cap: usize,
     said_len: *mut usize,
+) -> i32;
+
+/// `xmip_caller_hold_v1`: another holder's handle for a held caller.
+pub type CallerHoldFn = unsafe extern "C" fn(caller: u64, out_caller: *mut u64) -> i32;
+
+/// `xmip_caller_release_v1`: a held caller released.
+pub type CallerReleaseFn = extern "C" fn(caller: u64);
+
+/// `xmip_caller_named_v1`: who a held caller is.
+pub type CallerNamedFn =
+    unsafe extern "C" fn(caller: u64, out: *mut u8, cap: usize, out_len: *mut usize) -> i32;
+
+/// `xmip_caller_process_v1`: the caller this process is, held.
+pub type CallerProcessFn = unsafe extern "C" fn(
+    out_caller: *mut u64,
+    out: *mut u8,
+    cap: usize,
+    out_len: *mut usize,
 ) -> i32;
 
 #[cfg(test)]
@@ -241,6 +268,10 @@ mod tests {
                 SECURITY_ROLE_WORDS_ENTRYPOINT,
             ),
             ("XMIP_ACT_ADMITTED_ENTRYPOINT", ACT_ADMITTED_ENTRYPOINT),
+            ("XMIP_CALLER_HOLD_ENTRYPOINT", CALLER_HOLD_ENTRYPOINT),
+            ("XMIP_CALLER_RELEASE_ENTRYPOINT", CALLER_RELEASE_ENTRYPOINT),
+            ("XMIP_CALLER_NAMED_ENTRYPOINT", CALLER_NAMED_ENTRYPOINT),
+            ("XMIP_CALLER_PROCESS_ENTRYPOINT", CALLER_PROCESS_ENTRYPOINT),
         ] {
             let line = HEADER
                 .lines()

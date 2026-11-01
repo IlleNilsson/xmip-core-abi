@@ -24,8 +24,9 @@ public sealed unsafe class RuntimeSecureSurface
     private readonly delegate* unmanaged[Cdecl]<
         int, XmipStr, XmipStr, XmipStr, XmipStr, nint*, byte*, nuint, nuint*, int> _open;
 
-    internal RuntimeSecureSurface(nint library)
+    internal RuntimeSecureSurface(nint library, RuntimeSecurityRoles callers)
     {
+        Callers = callers;
         _issue = (delegate* unmanaged[Cdecl]<
             XmipStr, XmipStr, XmipStr, XmipStr, byte*, nuint, nuint*, int>)
             NativeLibrary.GetExport(library, OperateAbi.HostIssueEntrypoint);
@@ -42,7 +43,7 @@ public sealed unsafe class RuntimeSecureSurface
             NativeLibrary.GetExport(library, OperateAbi.ListenerFreeEntrypoint);
         Peer = (delegate* unmanaged[Cdecl]<nint, byte*, nuint, nuint*, int>)
             NativeLibrary.GetExport(library, OperateAbi.SessionPeerEntrypoint);
-        Caller = (delegate* unmanaged[Cdecl]<nint, byte*, nuint, nuint*, int>)
+        Caller = (delegate* unmanaged[Cdecl]<nint, ulong*, byte*, nuint, nuint*, int>)
             NativeLibrary.GetExport(library, OperateAbi.CallerProvenEntrypoint);
         Ends = (delegate* unmanaged[Cdecl]<nint, byte*, nuint, nuint*, int>)
             NativeLibrary.GetExport(library, OperateAbi.SessionEndsEntrypoint);
@@ -85,7 +86,10 @@ public sealed unsafe class RuntimeSecureSurface
 
     internal readonly delegate* unmanaged[Cdecl]<nint, byte*, nuint, nuint*, int> Peer;
 
-    internal readonly delegate* unmanaged[Cdecl]<nint, byte*, nuint, nuint*, int> Caller;
+    internal readonly delegate* unmanaged[Cdecl]<nint, ulong*, byte*, nuint, nuint*, int> Caller;
+
+    // Section 18's held callers, which a session's proven caller is one of.
+    internal RuntimeSecurityRoles Callers { get; }
 
     internal readonly delegate* unmanaged[Cdecl]<nint, byte*, nuint, nuint*, int> Ends;
 

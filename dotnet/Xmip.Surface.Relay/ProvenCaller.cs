@@ -1,65 +1,93 @@
+using System.Globalization;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Http;
+using Xmip.Abi.Operate;
 
 namespace Xmip.Surface.Relay;
 
 /// <summary>
 /// Who a request to a web host proved, carried to what it acts through
-/// (ADR-0009, amendment 2026-10-06): the remote surface over the hub and the
-/// browser's circuit alike, the one rule — the identity the runtime's
-/// authentication gate answered for the client certificate the handshake
-/// checked against the host's anchors (<see cref="ProvenConnection"/>,
-/// <c>xmip_caller_proven_v1</c>; ADR-0009, amendment 2026-11-01), else no
+/// (ADR-0009, amendments 2026-10-06 and 2026-11-01): the remote surface over
+/// the hub and the browser's circuit alike, the one rule — the caller the
+/// runtime's authentication gate proved for the client certificate the
+/// handshake checked against the host's anchors, and holds behind a handle
+/// (<see cref="ProvenConnection"/>, <c>xmip_caller_proven_v1</c>), else no
 /// one, over this machine's loopback as from anywhere else (ADR-0009,
-/// amendment 2026-10-21). A certificate's subject read here proves nothing.
-/// A browser's circuit outlives the request that opened it, so the proven
-/// caller rides the request's user, which Blazor hands the circuit as its
-/// authentication state; nothing here is the platform's sign-in.
+/// amendment 2026-10-21). A certificate's subject read here proves nothing,
+/// and neither does a name: the handle is what the gate takes back. A
+/// browser's circuit outlives the request that opened it, so the request's
+/// user carries the handle, which Blazor hands the circuit as its
+/// authentication state, and the circuit holds a handle of its own
+/// (<see cref="HeldCaller.Hold"/>) for its life; nothing here is the
+/// platform's sign-in.
 /// </summary>
 public static class ProvenCaller
 {
     /// <summary>The authentication type a proven caller's identity carries,
-    /// and the only one <see cref="Who"/> reads.</summary>
+    /// and the only one <see cref="Held"/> reads.</summary>
     public const string AuthenticationType = "xmip-proven";
 
-    /// <summary>Who <paramref name="context"/>'s connection proved, as the
-    /// runtime answered, or null.</summary>
-    public static string? Of(HttpContext? context)
-    {
-        string? who = context?.Features.Get<ProvenConnection>()?.Who;
+    /// <summary>The claim the runtime's handle for the caller rides in.</summary>
+    public const string HandleClaim = "xmip-caller";
 
-        return string.IsNullOrWhiteSpace(who) ? null : who;
+    /// <summary>The caller <paramref name="context"/>'s connection proved,
+    /// held by the runtime, or null.</summary>
+    public static HeldCaller? Of(HttpContext? context)
+    {
+        HeldCaller? caller = context?.Features.Get<ProvenConnection>()?.Caller;
+
+        return caller is { Handle: not 0 } ? caller : null;
     }
 
-    /// <summary>The request's user: the proven caller, or no one. Whatever
-    /// the request carried before is replaced, so nothing else names the
-    /// caller.</summary>
+    /// <summary>The request's user: the proven caller — its name to show and
+    /// its handle — or no one. Whatever the request carried before is
+    /// replaced, so nothing else names the caller.</summary>
     public static void Prove(HttpContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
 
-        string? who = Of(context);
-        context.User = who is null
+        HeldCaller? caller = Of(context);
+        context.User = caller is null
             ? new ClaimsPrincipal(new ClaimsIdentity())
             : new ClaimsPrincipal(new ClaimsIdentity(
-                [new Claim(ClaimTypes.Name, who)], AuthenticationType));
+                [
+                    new Claim(ClaimTypes.Name, caller.Name),
+                    new Claim(
+                        HandleClaim, caller.Handle.ToString(CultureInfo.InvariantCulture)),
+                ],
+                AuthenticationType));
     }
 
-    /// <summary>The proven caller <paramref name="user"/> carries, or null.</summary>
+    /// <summary>Who the proven caller <paramref name="user"/> carries is, to
+    /// show; null for no one.</summary>
     public static string? Who(ClaimsPrincipal? user)
     {
+        return Held(user) == 0 ? null : user!.Identity!.Name;
+    }
+
+    /// <summary>The runtime's handle <paramref name="user"/> carries; 0 for
+    /// no one. A handle the runtime did not hand out is no one at the
+    /// gate.</summary>
+    public static ulong Held(ClaimsPrincipal? user)
+    {
         return user?.Identity is { IsAuthenticated: true, AuthenticationType: AuthenticationType }
-            identity
-            ? identity.Name
-            : null;
+            && ulong.TryParse(
+                user.FindFirst(HandleClaim)?.Value,
+                NumberStyles.None,
+                CultureInfo.InvariantCulture,
+                out ulong handle)
+            ? handle
+            : 0;
     }
 
     /// <summary>
     /// The caller of a browser's circuit, from the authentication state
-    /// Blazor handed it from the request that opened it, and the role
-    /// <paramref name="roles"/> grants them. A circuit whose state is not
-    /// yet known is no one, and acts on nothing.
+    /// Blazor handed it from the request that opened it — a handle of the
+    /// circuit's own, held from the request's, released when the circuit
+    /// ends — and the role <paramref name="roles"/> grants them. A circuit
+    /// whose state is not yet known, or whose request's caller is no longer
+    /// held, is no one, and acts on nothing.
     /// </summary>
     public static RoleContext Of(RoleAssignment roles, AuthenticationStateProvider state)
     {
@@ -78,6 +106,11 @@ public static class ProvenCaller
             // Asked before the circuit was handed a state: no one.
         }
 
-        return roles.For(Who(user));
+        ulong handle = Held(user);
+        HeldCaller? caller = handle == 0
+            ? null
+            : RuntimeLibrary.Rules.SecurityRoles.Hold(handle);
+
+        return roles.For(caller);
     }
 }
