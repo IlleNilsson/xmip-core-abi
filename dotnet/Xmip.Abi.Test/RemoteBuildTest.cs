@@ -43,6 +43,10 @@ public sealed class RemoteBuildTest
         Assert.Equal(1, Rules.SecurityRoles.Named(" Operator "));
         Assert.Equal(("Developer", "also builds"), Rules.SecurityRoles.Words(2));
         Assert.False(Rules.SecurityRoles.Admitted(null, 2, "pause", "x", out _));
+
+        // A remote build runs no gate of its own: it proves no caller.
+        Assert.Null(Rules.SecurityRoles.Process(out string refused));
+        Assert.Contains("remote build", refused, StringComparison.Ordinal);
     }
 
     [Fact]

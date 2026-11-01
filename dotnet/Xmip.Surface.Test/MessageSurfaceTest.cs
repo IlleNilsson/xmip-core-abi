@@ -15,6 +15,9 @@ namespace Xmip.Surface.Test;
 /// </summary>
 public sealed class MessageSurfaceTest : IDisposable
 {
+    // The caller the runtime proved, this process's account, as it names it.
+    private static readonly string Me = RoleAssignment.ProcessCaller()?.Name ?? "nobody";
+
     // The name a caller claims, which no act may carry.
     private const string Claimed = "claimed-by-the-caller";
 
@@ -116,7 +119,7 @@ public sealed class MessageSurfaceTest : IDisposable
         SnapshotOperator inner = Over(Orders);
 
         MessageOperation observed = new GatedOperator(
-                inner, new RoleContext(Role.Observer, "operator"), audit)
+                inner, new RoleContext(Role.Observer, RoleAssignment.ProcessCaller()), audit)
             .Act(Port, Journey, MessageAct.Retry, Claimed);
         MessageOperation unproven = new GatedOperator(
                 inner, new RoleContext(Role.Operator, null), audit)
@@ -130,13 +133,13 @@ public sealed class MessageSurfaceTest : IDisposable
         Assert.False(Directory.Exists(Orders));
 
         MessageOperation taken = new GatedOperator(
-                inner, new RoleContext(Role.Operator, "operator"), audit)
+                inner, new RoleContext(Role.Operator, RoleAssignment.ProcessCaller()), audit)
             .Act(Port, Journey, MessageAct.Retry, Claimed);
 
         Assert.True(taken.Applied, taken.Result);
         string order = File.ReadAllText(
             Assert.Single(Directory.GetFiles(Orders, "*.toml", SearchOption.AllDirectories)));
-        Assert.Contains("operator", order, StringComparison.Ordinal);
+        Assert.Contains(Me, order, StringComparison.Ordinal);
         Assert.DoesNotContain(Claimed, order, StringComparison.Ordinal);
     }
 

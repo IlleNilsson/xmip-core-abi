@@ -1628,29 +1628,62 @@ typedef void (*XmipOperateServeStopFn)(XmipServed *served);
  * to case, Observer for any other word, so a misconfiguration grants
  * nothing. xmip_security_role_words_v1 writes what a role is called and
  * what it may do in the words a host's badge uses, both static;
- * XMIP_E_INVALID for no role. xmip_act_admitted_v1 is the gate every
- * surface's acts pass, by the rule a node's operate listener asks of the
- * identity the authentication gate answered for its connection: whether
- * who - the caller the host's runtime proved, what xmip_caller_proven_v1
- * (section 21) answered for a web host's connection or the operating
- * system user a desktop runs as, never a name a caller gave; empty for no
- * one - holding role may act on target (ADR-0009, amendment 2026-11-01).
- * XMIP_OK with nothing said; XMIP_E_AUTH with the refusal in said, opening
- * REFUSED.
+ * XMIP_E_INVALID for no role.
  *
- * Pure, as section 7: no handle, any thread. Optional symbols;
+ * A caller crosses as an opaque handle, never a name (ADR-0009, amendment
+ * 2026-11-01): a number the runtime hands out for a caller its
+ * authentication gate proved, and keeps the identity of - drawn from the
+ * operating system's random source, never 0, which is no one. A handle
+ * unknown, released, revoked or expired is no one too. Each holder has a
+ * handle of its own and releases it: it lives until then, never past the
+ * certificate that proved it, and is revoked with every handle the same
+ * listener proved when that listener stops (section 21). At most 65536 are
+ * held at once; past that a new caller is no one.
+ *
+ * xmip_act_admitted_v1 is the gate every surface's acts pass, by the rule
+ * a node's operate listener asks of the identity the authentication gate
+ * answered for its connection: whether the caller the handle caller holds
+ * - from xmip_caller_proven_v1 (section 21) for a web host's connection,
+ * xmip_caller_process_v1 for the account a desktop runs as, or
+ * xmip_caller_hold_v1 - holding role may act on target. XMIP_OK with
+ * nothing said; XMIP_E_AUTH with the refusal in said, opening REFUSED.
+ * xmip_caller_hold_v1 hands another holder - a browser's circuit, which
+ * outlives the connection that proved it - a handle of its own in
+ * out_caller, for as long and revoked by the same: XMIP_OK; XMIP_E_AUTH
+ * with 0 where caller is no one. xmip_caller_release_v1 releases one: no
+ * one after; releasing 0 or one not held does nothing.
+ * xmip_caller_named_v1 writes who the caller is, the identity the gate
+ * answered, for a host to show and a directory to look a role up by; empty
+ * for no one. xmip_caller_process_v1 is the caller this process is: the
+ * account it runs as, read from the operating system - its own token on
+ * Windows, its effective user on Unix, never the environment - verified as
+ * peer-credentials by the authentication gate and held, the handle in
+ * out_caller and the identity in out; XMIP_E_AUTH with 0 and the refusal
+ * in out. A node's build only; the rest of this section every build.
+ *
+ * Pure, as section 7: no object handle, any thread. Optional symbols;
  * XMIP_OPERATE_VERSION is unchanged.
  */
 typedef XmipStatus (*XmipSecurityRoleNamedFn)(XmipStr word, int32_t *out);
 typedef XmipStatus (*XmipSecurityRoleWordsFn)(int32_t role, XmipStr *out_word,
                                               XmipStr *out_description);
-typedef XmipStatus (*XmipActAdmittedFn)(XmipStr who, int32_t role, XmipStr act,
+typedef XmipStatus (*XmipActAdmittedFn)(uint64_t caller, int32_t role, XmipStr act,
                                         XmipStr target, uint8_t *said, size_t cap,
                                         size_t *said_len);
+typedef XmipStatus (*XmipCallerHoldFn)(uint64_t caller, uint64_t *out_caller);
+typedef void (*XmipCallerReleaseFn)(uint64_t caller);
+typedef XmipStatus (*XmipCallerNamedFn)(uint64_t caller, uint8_t *out, size_t cap,
+                                        size_t *out_len);
+typedef XmipStatus (*XmipCallerProcessFn)(uint64_t *out_caller, uint8_t *out, size_t cap,
+                                          size_t *out_len);
 
 #define XMIP_SECURITY_ROLE_NAMED_ENTRYPOINT "xmip_security_role_named_v1"
 #define XMIP_SECURITY_ROLE_WORDS_ENTRYPOINT "xmip_security_role_words_v1"
 #define XMIP_ACT_ADMITTED_ENTRYPOINT "xmip_act_admitted_v1"
+#define XMIP_CALLER_HOLD_ENTRYPOINT "xmip_caller_hold_v1"
+#define XMIP_CALLER_RELEASE_ENTRYPOINT "xmip_caller_release_v1"
+#define XMIP_CALLER_NAMED_ENTRYPOINT "xmip_caller_named_v1"
+#define XMIP_CALLER_PROCESS_ENTRYPOINT "xmip_caller_process_v1"
 
 /* ===================================================================== */
 /* 19. A person's certificate: requested, and signed                     */
@@ -1821,10 +1854,13 @@ typedef XmipStatus (*XmipDatabaseUpgradeFn)(XmipStr server, uint32_t from, uint3
  * web server pumps a connection. xmip_session_peer_v1 writes the leaf
  * certificate its browser presented, DER, empty where it presented none;
  * xmip_caller_proven_v1 who that browser is, proven: the certificate run
- * through the authentication gate and the identity it answered, a
- * distinguished name, empty where it presented none or the gate refused it
- * - the one caller a web host acts as, never a subject it reads itself
- * (ADR-0009, amendment 2026-11-01); xmip_session_ends_v1 where it was
+ * through the authentication gate and held as a caller (section 18), the
+ * handle in out_caller - the one caller a web host acts as, never a subject
+ * it reads itself - and the identity it answered in out, a distinguished
+ * name, for display alone; 0 and empty where it presented none or the gate
+ * refused it. Each call hands out a handle of its own, its caller's to
+ * release; it is no one past the certificate's validity and once the
+ * listener is stopped (ADR-0009, amendment 2026-11-01); xmip_session_ends_v1 where it was
  * accepted and where its browser is, host:port each, one space between. xmip_session_read_v1 waits for what the
  * browser sent next, at most cap bytes into out, their count in out_len,
  * 0 once the connection has ended - closed, cleanly or not, or reset;
@@ -1860,8 +1896,8 @@ typedef void (*XmipListenerStopFn)(const XmipListener *listener);
 typedef void (*XmipListenerFreeFn)(XmipListener *listener);
 typedef XmipStatus (*XmipSessionPeerFn)(const XmipSession *session, uint8_t *out,
                                         size_t cap, size_t *out_len);
-typedef XmipStatus (*XmipCallerProvenFn)(const XmipSession *session, uint8_t *out,
-                                         size_t cap, size_t *out_len);
+typedef XmipStatus (*XmipCallerProvenFn)(const XmipSession *session, uint64_t *out_caller,
+                                         uint8_t *out, size_t cap, size_t *out_len);
 typedef XmipStatus (*XmipSessionEndsFn)(const XmipSession *session, uint8_t *out,
                                         size_t cap, size_t *out_len);
 typedef XmipStatus (*XmipSessionReadFn)(const XmipSession *session, uint8_t *out,

@@ -22,8 +22,8 @@ public sealed class BrowserOverTlsTest
     {
         using TestAuthority authority = new("browser");
         using TestAuthority theirs = new("theirs");
-        using X509Certificate2 client = Presentable(authority.Client());
-        using X509Certificate2 stranger = Presentable(theirs.Client());
+        using X509Certificate2 client = ProvenSession.Presentable(authority.Client());
+        using X509Certificate2 stranger = ProvenSession.Presentable(theirs.Client());
         List<string> refused = [];
         using SemaphoreSlim told = new(0);
 
@@ -113,16 +113,5 @@ public sealed class BrowserOverTlsTest
         };
 
         return new HttpClient(handler);
-    }
-
-    // A certificate and its key as a client presents them: Windows's TLS stack
-    // presents no key held only in memory, which a PEM key becomes, so the
-    // pair goes through PKCS#12 first.
-    private static X509Certificate2 Presentable((string Certificate, string Key) pair)
-    {
-        using X509Certificate2 paired =
-            X509Certificate2.CreateFromPemFile(pair.Certificate, pair.Key);
-
-        return X509CertificateLoader.LoadPkcs12(paired.Export(X509ContentType.Pkcs12), null);
     }
 }

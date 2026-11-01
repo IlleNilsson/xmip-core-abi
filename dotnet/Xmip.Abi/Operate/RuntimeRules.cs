@@ -145,10 +145,13 @@ public sealed unsafe partial class RuntimeRules
             library, RuntimeMessages.Entrypoints, () => new RuntimeMessages(library));
         _databases = Node(
             library, RuntimeDatabases.Entrypoints, () => new RuntimeDatabases(library));
-        _hosting = Node(
-            library, RuntimeSecureSurface.Entrypoints, () => new RuntimeSecureSurface(library));
-        Remotes = new RuntimeRemotes(library);
         SecurityRoles = new RuntimeSecurityRoles(library);
+        RuntimeSecurityRoles callers = SecurityRoles;
+        _hosting = Node(
+            library,
+            RuntimeSecureSurface.Entrypoints,
+            () => new RuntimeSecureSurface(library, callers));
+        Remotes = new RuntimeRemotes(library);
         Certificates = new RuntimeCertificates(library);
 
         delegate* unmanaged[Cdecl]<XmipStr*, nuint, nuint*, int> words =

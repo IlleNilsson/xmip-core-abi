@@ -5,10 +5,12 @@ namespace Xmip.Abi.Operate;
 
 /// <summary>
 /// Section 18 of <c>include/xmip_operate.h</c>, crossed by P/Invoke
-/// (ADR-0009, amendments 2026-10-03 and 2026-10-06): the role a word names,
-/// what a role is called and may do, and the one check every act passes —
-/// the gate a node's operate listener asks too, so a screen and a node
-/// refuse in the same words. A role crosses as its number, least first:
+/// (ADR-0009, amendments 2026-10-03, 2026-10-06 and 2026-11-01): the role a
+/// word names, what a role is called and may do, the callers the runtime
+/// proved, held behind opaque handles (<see cref="HeldCaller"/>), and the
+/// one check every act passes — the gate a node's operate listener asks
+/// too, so a screen and a node refuse in the same words and no name a host
+/// passes is a caller. A role crosses as its number, least first:
 /// 0 Observer, 1 Operator, 2 Developer.
 /// </summary>
 /// <remarks>Pure in the header's sense: one instance serves a whole process
@@ -18,7 +20,13 @@ public sealed unsafe class RuntimeSecurityRoles
     private readonly delegate* unmanaged[Cdecl]<XmipStr, int*, int> _named;
     private readonly delegate* unmanaged[Cdecl]<int, XmipStr*, XmipStr*, int> _words;
     private readonly delegate* unmanaged[Cdecl]<
-        XmipStr, int, XmipStr, XmipStr, byte*, nuint, nuint*, int> _admitted;
+        ulong, int, XmipStr, XmipStr, byte*, nuint, nuint*, int> _admitted;
+    private readonly delegate* unmanaged[Cdecl]<ulong, ulong*, int> _hold;
+    private readonly delegate* unmanaged[Cdecl]<ulong, void> _release;
+    private readonly delegate* unmanaged[Cdecl]<ulong, byte*, nuint, nuint*, int> _callerNamed;
+
+    // A node's build only: null in a remote build.
+    private readonly delegate* unmanaged[Cdecl]<ulong*, byte*, nuint, nuint*, int> _process;
 
     internal RuntimeSecurityRoles(nint library)
     {
@@ -27,16 +35,31 @@ public sealed unsafe class RuntimeSecurityRoles
         _words = (delegate* unmanaged[Cdecl]<int, XmipStr*, XmipStr*, int>)
             NativeLibrary.GetExport(library, OperateAbi.SecurityRoleWordsEntrypoint);
         _admitted = (delegate* unmanaged[Cdecl]<
-            XmipStr, int, XmipStr, XmipStr, byte*, nuint, nuint*, int>)
+            ulong, int, XmipStr, XmipStr, byte*, nuint, nuint*, int>)
             NativeLibrary.GetExport(library, OperateAbi.ActAdmittedEntrypoint);
+        _hold = (delegate* unmanaged[Cdecl]<ulong, ulong*, int>)
+            NativeLibrary.GetExport(library, OperateAbi.CallerHoldEntrypoint);
+        _release = (delegate* unmanaged[Cdecl]<ulong, void>)
+            NativeLibrary.GetExport(library, OperateAbi.CallerReleaseEntrypoint);
+        _callerNamed = (delegate* unmanaged[Cdecl]<ulong, byte*, nuint, nuint*, int>)
+            NativeLibrary.GetExport(library, OperateAbi.CallerNamedEntrypoint);
+        _process = NativeLibrary.TryGetExport(
+                library, OperateAbi.CallerProcessEntrypoint, out nint process)
+            ? (delegate* unmanaged[Cdecl]<ulong*, byte*, nuint, nuint*, int>)process
+            : null;
     }
 
-    /// <summary>The symbols this binds, each of which a runtime must export.</summary>
+    /// <summary>The symbols this binds, each of which a runtime must export;
+    /// <c>xmip_caller_process_v1</c>, a node's build's alone, is bound where
+    /// it is exported.</summary>
     public static IReadOnlyList<string> Entrypoints { get; } =
     [
         OperateAbi.SecurityRoleNamedEntrypoint,
         OperateAbi.SecurityRoleWordsEntrypoint,
         OperateAbi.ActAdmittedEntrypoint,
+        OperateAbi.CallerHoldEntrypoint,
+        OperateAbi.CallerReleaseEntrypoint,
+        OperateAbi.CallerNamedEntrypoint,
     ];
 
     /// <summary>The role <paramref name="word"/> names, Observer's (0) for
@@ -69,19 +92,65 @@ public sealed unsafe class RuntimeSecurityRoles
     }
 
     /// <summary>
-    /// Whether <paramref name="who"/> — the caller the runtime proved, what
-    /// <c>xmip_caller_proven_v1</c> answered for a web host's connection or
-    /// the operating system user a desktop runs as; null where nothing
-    /// proved anyone — holding <paramref name="role"/> may
-    /// <paramref name="act"/> on <paramref name="target"/>; where not, the
-    /// refusal in <paramref name="refused"/>.
+    /// The caller this process is: the account it runs as, read by the
+    /// runtime from the operating system and verified by its authentication
+    /// gate (<c>xmip_caller_process_v1</c>) — the desktop's caller, never
+    /// the environment's word. Null, with the refusal in
+    /// <paramref name="refused"/>, where the gate refused it or the runtime
+    /// is a remote build, which runs no gate.
     /// </summary>
-    public bool Admitted(string? who, int role, string act, string target, out string refused)
+    public HeldCaller? Process(out string refused)
+    {
+        if (_process is null)
+        {
+            refused = "this runtime is a remote build: it proves no caller of its own";
+            return null;
+        }
+
+        byte[] text = new byte[RuntimeRemotes.Room];
+        ulong caller = 0;
+        nuint length = 0;
+        int status;
+
+        fixed (byte* written = text)
+        {
+            status = _process(&caller, written, (nuint)text.Length, &length);
+        }
+
+        string said = RuntimeRemotes.Said(text, length);
+        refused = status == 0 ? string.Empty : said;
+        return status == 0 && caller != 0 ? new HeldCaller(this, caller, said) : null;
+    }
+
+    /// <summary>Who the caller <paramref name="caller"/> holds is, as the
+    /// runtime's gate answered; empty for no one.</summary>
+    public string CallerName(ulong caller)
+    {
+        byte[] text = new byte[RuntimeRemotes.Room];
+        nuint length = 0;
+
+        fixed (byte* written = text)
+        {
+            _ = _callerNamed(caller, written, (nuint)text.Length, &length);
+        }
+
+        return RuntimeRemotes.Said(text, length);
+    }
+
+    /// <summary>
+    /// Whether <paramref name="caller"/> — a caller the runtime proved and
+    /// holds; null, or one released, revoked or expired, for no one —
+    /// holding <paramref name="role"/> may <paramref name="act"/> on
+    /// <paramref name="target"/>; where not, the refusal in
+    /// <paramref name="refused"/>.
+    /// </summary>
+    public bool Admitted(
+        HeldCaller? caller, int role, string act, string target, out string refused)
     {
         ArgumentNullException.ThrowIfNull(act);
         ArgumentNullException.ThrowIfNull(target);
 
-        Utf8Pack pack = new([who ?? string.Empty, act, target]);
+        Utf8Pack pack = new([act, target]);
         byte[] text = new byte[RuntimeRemotes.Room];
         nuint length = 0;
         int status;
@@ -90,8 +159,8 @@ public sealed unsafe class RuntimeSecurityRoles
         fixed (byte* written = text)
         {
             status = _admitted(
-                pack.Borrow(data, 0), role, pack.Borrow(data, 1),
-                pack.Borrow(data, 2), written, (nuint)text.Length, &length);
+                caller?.Handle ?? 0, role, pack.Borrow(data, 0),
+                pack.Borrow(data, 1), written, (nuint)text.Length, &length);
         }
 
         refused = RuntimeRemotes.Said(text, length);
@@ -102,5 +171,29 @@ public sealed unsafe class RuntimeSecurityRoles
             _ => throw new InvalidOperationException(
                 $"the runtime answered an act's admission with {(XmipStatus)status}"),
         };
+    }
+
+    // A caller the runtime handed out, held: the handle and who it is.
+    internal HeldCaller? Held(ulong caller, string name)
+    {
+        return caller == 0 ? null : new HeldCaller(this, caller, name);
+    }
+
+    /// <summary>A holder of its own for the caller <paramref name="caller"/>
+    /// holds — a handle carried where an object cannot be, as a request's
+    /// claim — released when disposed; null where it is no one: released,
+    /// revoked, expired or never handed out.</summary>
+    public HeldCaller? Hold(ulong caller)
+    {
+        ulong again = 0;
+
+        return _hold(caller, &again) == 0 && again != 0
+            ? new HeldCaller(this, again, CallerName(again))
+            : null;
+    }
+
+    internal void Release(ulong caller)
+    {
+        _release(caller);
     }
 }

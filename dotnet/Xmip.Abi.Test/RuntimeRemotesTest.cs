@@ -82,10 +82,36 @@ public sealed class RuntimeRemotesTest
         Assert.Equal(1, Rules.SecurityRoles.Named(" Operator "));
         Assert.Equal(0, Rules.SecurityRoles.Named("admin"));
         Assert.Equal(("Developer", "also builds"), Rules.SecurityRoles.Words(2));
-        Assert.True(Rules.SecurityRoles.Admitted("CN=a", 1, "pause", "x", out _));
         Assert.False(Rules.SecurityRoles.Admitted(null, 2, "pause", "x", out string refused));
         Assert.StartsWith("REFUSED. Nothing proved who asks to pause x", refused,
             StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TheGateTakesTheCallerTheRuntimeHoldsAndNoOneOnceReleased()
+    {
+        // ADR-0009, amendment 2026-11-01: a caller crosses as a handle the
+        // runtime handed out, never a name; this process's own account, as
+        // the runtime read it from the operating system, is one.
+        HeldCaller me = Rules.SecurityRoles.Process(out string refused)
+            ?? throw new InvalidOperationException(refused);
+        Assert.False(string.IsNullOrEmpty(me.Name));
+        Assert.Equal(me.Name, Rules.SecurityRoles.CallerName(me.Handle));
+        Assert.True(Rules.SecurityRoles.Admitted(me, 1, "pause", "x", out _));
+        Assert.False(Rules.SecurityRoles.Admitted(me, 0, "pause", "x", out string observer));
+        Assert.StartsWith($"REFUSED. {me.Name} may not pause x", observer,
+            StringComparison.Ordinal);
+
+        HeldCaller other = me.Hold() ?? throw new InvalidOperationException("not held");
+        Assert.NotEqual(me.Handle, other.Handle);
+        me.Dispose();
+        Assert.Equal(0ul, me.Handle);
+        Assert.True(Rules.SecurityRoles.Admitted(other, 1, "pause", "x", out _));
+        ulong released = other.Handle;
+        other.Dispose();
+        Assert.Null(Rules.SecurityRoles.Hold(released));
+        Assert.Equal(string.Empty, Rules.SecurityRoles.CallerName(released));
+        Assert.False(Rules.SecurityRoles.Admitted(other, 1, "pause", "x", out _));
     }
 
     /// <summary>A test authority, in memory: its anchor as PEM, and a leaf

@@ -408,11 +408,18 @@ authentication gate answered the browser is (`xmip_caller_proven_v1`,
 `SecureSurfaceSession.Caller`) as a `ProvenConnection`; and `ProvenCaller`,
 who each request proved, read from that feature alone, so a certificate's
 subject the host reads proves nothing (ADR-0009, amendment 2026-11-01).
+A caller crosses as an opaque handle the runtime handed out, never a name
+(`HeldCaller`, section 18): the session holds the one it proved, a circuit
+takes its own (`HeldCaller.Hold`, `xmip_caller_hold_v1`) and releases it
+when it ends, the desktop's is the account the runtime read from the
+operating system (`RoleAssignment.ProcessCaller`, `xmip_caller_process_v1`),
+and a handle released, revoked with its listener, past its certificate or
+forged is no one; `HeldCaller.Name` is for display alone.
 Every act a
 screen takes goes through `GatedOperator` in `Xmip.Surface`, over the
 runtime's one gate (`xmip_act_admitted_v1`, section 18): taken only where the
-caller's `RoleContext` may operate, as the caller the runtime proved for the
-connection — over loopback as from anywhere, since loopback proves where a
+caller's `RoleContext` may operate, as the caller the runtime holds for the
+connection, by its handle — over loopback as from anywhere, since loopback proves where a
 caller is and not who (open problem 35) — and refused in words otherwise; taken or
 refused, audited through the host's `ProgramAudit` (ADR-0009). `Role`,
 `Roles` and `RoleContext` are `Xmip.Surface`'s, beneath both GUIs.

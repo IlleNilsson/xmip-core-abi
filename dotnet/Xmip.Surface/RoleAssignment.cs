@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Configuration;
+using Xmip.Abi.Operate;
 
 namespace Xmip.Surface;
 
@@ -45,11 +46,29 @@ public sealed class RoleAssignment(Role? stated, IDirectory? directory)
                 configuration[DirectoryKey]?.Trim(),
                 TesterDirectory.Kind,
                 StringComparison.OrdinalIgnoreCase)
-            ? new TesterDirectory(
-                [GatedOperator.HostUser, configuration[TesterDirectory.TesterKey]])
+            ? new TesterDirectory([ProcessAccount(), configuration[TesterDirectory.TesterKey]])
             : null;
 
         return new RoleAssignment(string.IsNullOrWhiteSpace(said) ? null : Parse(said), asked);
+    }
+
+    /// <summary>
+    /// The caller this process is — the desktop's: the account it runs as,
+    /// read by the runtime from the operating system and proven by its
+    /// authentication gate, held (<c>xmip_caller_process_v1</c>); never the
+    /// environment's word. Null where the runtime proved no one.
+    /// </summary>
+    public static HeldCaller? ProcessCaller()
+    {
+        return RuntimeLibrary.Rules.SecurityRoles.Process(out _);
+    }
+
+    // The name the runtime proved this process's account by, for the tester
+    // directory to know it; null where it proved none.
+    private static string? ProcessAccount()
+    {
+        using HeldCaller? process = ProcessCaller();
+        return process?.Name;
     }
 
     /// <summary>
@@ -61,14 +80,16 @@ public sealed class RoleAssignment(Role? stated, IDirectory? directory)
         return (Role)RuntimeLibrary.Rules.SecurityRoles.Named(text ?? string.Empty);
     }
 
-    /// <summary>The caller <paramref name="who"/> — the identity a connection
-    /// proved, or null — and the role this assignment grants them.</summary>
-    public RoleContext For(string? who)
+    /// <summary>The caller <paramref name="caller"/> — one the runtime proved
+    /// and holds, or null — and the role this assignment grants them, the
+    /// directory asked by the name the runtime's gate answered. The context
+    /// holds the caller from here and releases it when disposed.</summary>
+    public RoleContext For(HeldCaller? caller)
     {
-        Role role = who is null
+        Role role = caller is null
             ? Role.Observer
-            : stated ?? directory?.RoleOf(who) ?? Role.Observer;
+            : stated ?? directory?.RoleOf(caller.Name) ?? Role.Observer;
 
-        return new RoleContext(role, who);
+        return new RoleContext(role, caller);
     }
 }

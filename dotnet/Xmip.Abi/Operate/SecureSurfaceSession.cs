@@ -33,13 +33,14 @@ public sealed unsafe class SecureSurfaceSession : IDisposable
         Presented = room[..(int)Math.Min(length, (nuint)room.Length)];
         Array.Clear(room);
 
+        ulong held = 0;
+
         fixed (byte* written = room)
         {
-            _ = calls.Caller(handle, written, (nuint)room.Length, &length);
+            _ = calls.Caller(handle, &held, written, (nuint)room.Length, &length);
         }
 
-        string caller = RuntimeRemotes.Said(room, length);
-        Caller = caller.Length == 0 ? null : caller;
+        Caller = calls.Callers.Held(held, RuntimeRemotes.Said(room, length));
         Array.Clear(room);
 
         fixed (byte* written = room)
@@ -57,12 +58,14 @@ public sealed unsafe class SecureSurfaceSession : IDisposable
     /// presented none.</summary>
     public byte[] Presented { get; }
 
-    /// <summary>Who the browser is, proven: the identity the runtime's
-    /// authentication gate answered for its certificate
-    /// (<c>xmip_caller_proven_v1</c>), a distinguished name; null where it
-    /// presented none or the gate refused it (ADR-0009, amendment
-    /// 2026-11-01).</summary>
-    public string? Caller { get; }
+    /// <summary>Who the browser is, proven: the caller the runtime's
+    /// authentication gate answered for its certificate, held behind a
+    /// handle (<c>xmip_caller_proven_v1</c>), its name a distinguished name
+    /// for display; null where it presented none or the gate refused it
+    /// (ADR-0009, amendment 2026-11-01). The session's own: released when
+    /// the session is disposed, so whatever outlives it holds its
+    /// own (<see cref="HeldCaller.Hold"/>).</summary>
+    public HeldCaller? Caller { get; }
 
     /// <summary>Where the connection was accepted, <c>host:port</c>.</summary>
     public string Local { get; }
@@ -168,6 +171,7 @@ public sealed unsafe class SecureSurfaceSession : IDisposable
         }
 
         calls.SessionFree(held);
+        Caller?.Dispose();
     }
 
     // The handle, counted as a call in flight so it is never freed under the
