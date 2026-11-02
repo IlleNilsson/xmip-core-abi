@@ -1535,11 +1535,16 @@ typedef XmipStatus (*XmipPublicationFailedMessagesFn)(const XmipPublication *pub
  * it by the role it grants that identity (section 18) and audits it, taken
  * or refused. Where caller is a handle this process holds a caller by
  * (section 18) - a browser's, proven by a certificate - the act is that
- * caller's, relayed (ADR-0009, amendment 2026-11-01): the runtime hands
- * the node the certificate once (Vouch) and the node, where its [operate]
- * relay names this side's identity, verifies it against its own [operate]
- * anchors, runs it through its own authentication gate and answers a
- * handle of its own, kept with the caller and named on every call for it;
+ * caller's, relayed (ADR-0009, amendments 2026-11-01 and 2026-11-02): as
+ * the browser's session started, its handshake was bound to a fresh nonce
+ * of this node (Nonces) and handed to it (Vouch), and the node, where its
+ * [operate] relay names this side's identity, found the browser's
+ * CertificateVerify signed with its certificate's key, its own nonce
+ * bound, the server this side's own listener, the chain under its own
+ * [operate] anchors and the identity through its own authentication gate,
+ * and answered a handle of its own, kept with the caller and named on
+ * every call for it; a node the session was not proven to acts for the
+ * caller on nothing;
  * the node admits the act by the role it grants that caller, never this
  * side's, audits who and through, and is told when the last holder lets
  * the caller go (Unvouch). 0 is this side itself, and so is a caller the
@@ -1872,7 +1877,11 @@ typedef XmipStatus (*XmipDatabaseUpgradeFn)(XmipStr server, uint32_t from, uint3
  * name, for display alone; 0 and empty where it presented none or the gate
  * refused it. Each call hands out a handle of its own, its caller's to
  * release; it is no one past the certificate's validity and once the
- * listener is stopped (ADR-0009, amendment 2026-11-01); xmip_session_ends_v1 where it was
+ * listener is stopped (ADR-0009, amendment 2026-11-01). The listener proves
+ * possession (ADR-0009, amendment 2026-11-02): each handshake is bound to a
+ * fresh nonce of every node this process follows, recorded, and handed to
+ * those nodes before its session is accepted; no session is resumed, so
+ * every browser connection makes a full handshake; xmip_session_ends_v1 where it was
  * accepted and where its browser is, host:port each, one space between. xmip_session_read_v1 waits for what the
  * browser sent next, at most cap bytes into out, their count in out_len,
  * 0 once the connection has ended - closed, cleanly or not, or reset;
