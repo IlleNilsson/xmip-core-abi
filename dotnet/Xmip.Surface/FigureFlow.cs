@@ -6,7 +6,7 @@ namespace Xmip.Surface;
 /// What a scope is moving now: five figures as a rate per second, between two
 /// publications a reader saw. The owner, 2026-09-20: *the
 /// CLI/PowerShell status number does not mean anything over time. There has to
-/// be a logical cap on summarising the R, P, S, T and F numbers.* A total is
+/// be a logical cap on summarizing the R, P, S, T and F numbers.* A total is
 /// bounded by uptime and says nothing an operator can act on; a rate is bounded
 /// by throughput, and it can say <c>0/s</c> — stalled — which a rising total
 /// can never say.
