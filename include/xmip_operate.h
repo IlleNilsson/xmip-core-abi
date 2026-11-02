@@ -1533,7 +1533,19 @@ typedef XmipStatus (*XmipPublicationFailedMessagesFn)(const XmipPublication *pub
  * as the identity the certificate proves, or on the local endpoint the
  * user the operating system says this process runs as; no name crosses. The node admits
  * it by the role it grants that identity (section 18) and audits it, taken
- * or refused. XMIP_OK taken; XMIP_E_AUTH refused by role; XMIP_E_NOT_FOUND
+ * or refused. Where caller is a handle this process holds a caller by
+ * (section 18) - a browser's, proven by a certificate - the act is that
+ * caller's, relayed (ADR-0009, amendment 2026-11-01): the runtime hands
+ * the node the certificate once (Vouch) and the node, where its [operate]
+ * relay names this side's identity, verifies it against its own [operate]
+ * anchors, runs it through its own authentication gate and answers a
+ * handle of its own, kept with the caller and named on every call for it;
+ * the node admits the act by the role it grants that caller, never this
+ * side's, audits who and through, and is told when the last holder lets
+ * the caller go (Unvouch). 0 is this side itself, and so is a caller the
+ * operating system proved for this process. A caller that is no one, or a
+ * node that relays for no one, is refused: XMIP_E_AUTH, the refusal in
+ * said. XMIP_OK taken; XMIP_E_AUTH refused by role; XMIP_E_NOT_FOUND
  * refused by the node, opening REFUSED; XMIP_E_INVALID no act the noun
  * takes; XMIP_E_IO, opening FAILED, Xmip Storage did not answer and nothing
  * changed; XMIP_E_UNAVAILABLE the node did not answer. The sentence in said.
@@ -1587,9 +1599,9 @@ typedef XmipStatus (*XmipRemoteWaitFn)(const XmipRemote *remote, uint64_t seen,
                                        uint32_t timeout_ms, uint64_t *out_told,
                                        uint64_t *out_revision, uint8_t *out_reachable,
                                        uint8_t *reason, size_t cap, size_t *reason_len);
-typedef XmipStatus (*XmipRemoteActFn)(const XmipRemote *remote, XmipScope node, XmipStr noun,
-                                      XmipStr target, XmipStr act, uint8_t *said, size_t cap,
-                                      size_t *said_len);
+typedef XmipStatus (*XmipRemoteActFn)(const XmipRemote *remote, uint64_t caller, XmipScope node,
+                                      XmipStr noun, XmipStr target, XmipStr act, uint8_t *said,
+                                      size_t cap, size_t *said_len);
 typedef void (*XmipRemoteEndFn)(const XmipRemote *remote);
 typedef void (*XmipRemoteFreeFn)(XmipRemote *remote);
 typedef XmipStatus (*XmipOperateServeFn)(XmipStr listen, XmipStr certificate, XmipStr key,
@@ -2016,7 +2028,8 @@ typedef XmipStatus (*XmipAuthorityFn)(XmipStr act, XmipStr arguments, uint8_t *o
  *
  * xmip_secret_v1 sets the secret name of kind to value through the node at
  * node, over a handle of section 17, as the identity the handle's
- * connection proves. The value crosses inside the operate listener's TLS,
+ * connection proves - or, for caller, the caller this process holds by it,
+ * relayed as section 17's xmip_remote_act_v1 says; 0 for this side. The value crosses inside the operate listener's TLS,
  * or on the local endpoint the operating system guards, and is never said
  * back. The node admits the act by the role it grants that identity
  * (section 18) and audits it with the name, never the value. A secret of
@@ -2032,17 +2045,17 @@ typedef XmipStatus (*XmipAuthorityFn)(XmipStr act, XmipStr arguments, uint8_t *o
  *
  *   {"secrets":[{"name","kind","set_unix_nanos","set_by"}]}
  *
- * never a value, to an Operator and up. XMIP_OK; XMIP_E_TRUNCATED where it
+ * never a value, to an Operator and up, caller as xmip_secret_v1 takes it. XMIP_OK; XMIP_E_TRUNCATED where it
  * did not fit; XMIP_E_AUTH refused by role; XMIP_E_NOT_FOUND no such node, XMIP_E_IO Xmip Storage did not answer,
  * XMIP_E_UNAVAILABLE the node did not answer, each with why in out.
  *
  * Optional symbols, as section 7's are; XMIP_OPERATE_VERSION is unchanged.
  */
-typedef XmipStatus (*XmipSecretFn)(const XmipRemote *remote, XmipScope node, XmipStr name,
-                                   XmipStr kind, XmipStr value, uint8_t *said, size_t cap,
-                                   size_t *said_len);
-typedef XmipStatus (*XmipSecretsFn)(const XmipRemote *remote, XmipScope node, uint8_t *out,
-                                    size_t cap, size_t *out_len);
+typedef XmipStatus (*XmipSecretFn)(const XmipRemote *remote, uint64_t caller, XmipScope node,
+                                   XmipStr name, XmipStr kind, XmipStr value, uint8_t *said,
+                                   size_t cap, size_t *said_len);
+typedef XmipStatus (*XmipSecretsFn)(const XmipRemote *remote, uint64_t caller, XmipScope node,
+                                    uint8_t *out, size_t cap, size_t *out_len);
 
 #define XMIP_SECRET_ENTRYPOINT  "xmip_secret_v1"
 #define XMIP_SECRETS_ENTRYPOINT "xmip_secrets_v1"

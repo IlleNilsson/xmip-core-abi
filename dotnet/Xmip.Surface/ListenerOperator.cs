@@ -30,7 +30,8 @@ namespace Xmip.Surface;
 /// connection proved — this side's certificate, or on the local endpoint
 /// the user this process runs as — admitted by the role the node grants
 /// it, and refuses it in words otherwise (ADR-0009). The <c>who</c> an act
-/// is given here does not leave this process.
+/// is given here does not leave this process; a <c>caller</c> does: the node
+/// is handed it and decides by its own role (ADR-0009, amendment 2026-11-01).
 /// </remarks>
 public abstract partial class ListenerOperator : IOperatorSurface, IDisposable
 {
@@ -148,11 +149,13 @@ public abstract partial class ListenerOperator : IOperatorSurface, IDisposable
 
     /// <inheritdoc />
     public EventSubscriptionOperation Act(
-        EventSubscriptionRecord subscription, EventSubscriptionAct act, string who)
+        EventSubscriptionRecord subscription, EventSubscriptionAct act, string who,
+        HeldCaller? caller)
     {
         ArgumentNullException.ThrowIfNull(subscription);
 
         (bool taken, string said) = Asked(
+            caller,
             subscription.Node, "event-subscription",
             subscription.Id.ToString(System.Globalization.CultureInfo.InvariantCulture),
             EventSubscriptionOperation.Word(act));
@@ -168,12 +171,13 @@ public abstract partial class ListenerOperator : IOperatorSurface, IDisposable
 
     /// <inheritdoc />
     public SubscriptionOperation Act(
-        SubscriptionRecord subscription, SubscriptionAct act, string who)
+        SubscriptionRecord subscription, SubscriptionAct act, string who, HeldCaller? caller)
     {
         ArgumentNullException.ThrowIfNull(subscription);
 
         (bool taken, string said) = Asked(
-            subscription.Node, "subscription", subscription.Name, SubscriptionOperation.Word(act));
+            caller, subscription.Node, "subscription", subscription.Name,
+            SubscriptionOperation.Word(act));
 
         return new SubscriptionOperation(subscription.Node, subscription.Name, act, taken, said);
     }
@@ -185,11 +189,13 @@ public abstract partial class ListenerOperator : IOperatorSurface, IDisposable
     }
 
     /// <inheritdoc />
-    public DeadMessageOperation Act(DeadMessageRecord message, DeadMessageAct act, string who)
+    public DeadMessageOperation Act(
+        DeadMessageRecord message, DeadMessageAct act, string who, HeldCaller? caller)
     {
         ArgumentNullException.ThrowIfNull(message);
 
         (bool taken, string said) = Asked(
+            caller,
             message.Node,
             DeadMessageOperation.Noun,
             message.Message,
@@ -209,33 +215,35 @@ public abstract partial class ListenerOperator : IOperatorSurface, IDisposable
     }
 
     /// <inheritdoc />
-    public MessageOperation Act(string scope, string journey, MessageAct act, string who)
+    public MessageOperation Act(
+        string scope, string journey, MessageAct act, string who, HeldCaller? caller)
     {
         return MessageOperation.OnNode(scope, journey, act, at =>
         {
             (bool taken, string said) = Asked(
-                at, MessageOperation.Noun, journey, MessageOperation.Word(act));
+                caller, at, MessageOperation.Noun, journey, MessageOperation.Word(act));
 
             return new MessageOperation(at, journey, act, taken, said);
         });
     }
 
     /// <inheritdoc />
-    public string PauseScope(string scope, string who)
+    public string PauseScope(string scope, string who, HeldCaller? caller)
     {
-        return Control(scope, ScopeAction.Pause, who).Result;
+        return Control(scope, ScopeAction.Pause, who, caller).Result;
     }
 
     /// <inheritdoc />
-    public string ResumeScope(string scope)
+    public string ResumeScope(string scope, HeldCaller? caller)
     {
-        return Control(scope, ScopeAction.Resume, string.Empty).Result;
+        return Control(scope, ScopeAction.Resume, string.Empty, caller).Result;
     }
 
     /// <inheritdoc />
     /// <remarks>A node's operate listener takes the acts on what it
     /// publishes, not a pause of a scope: declined in words.</remarks>
-    public ScopeOperation Control(string scope, ScopeAction action, string who)
+    public ScopeOperation Control(
+        string scope, ScopeAction action, string who, HeldCaller? caller)
     {
         return new ScopeOperation(
             scope, action, false,
@@ -337,14 +345,15 @@ public abstract partial class ListenerOperator : IOperatorSurface, IDisposable
         }
     }
 
-    private (bool Taken, string Said) Asked(string at, string noun, string target, string act)
+    private (bool Taken, string Said) Asked(
+        HeldCaller? caller, string at, string noun, string target, string act)
     {
         if (node is null)
         {
             return (false, Source);
         }
 
-        XmipStatus status = node.Act(at, noun, target, act, out string said);
+        XmipStatus status = node.Act(caller, at, noun, target, act, out string said);
 
         if (status == XmipStatus.Unavailable)
         {

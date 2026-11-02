@@ -59,7 +59,8 @@ public sealed class DeadMessageSurfaceTest : IDisposable
             [new("structured", "MessageType is Invoice, not json"), new("edi", "paused")],
             invoice.Declines);
 
-        DeadMessageOperation replayed = surface.Act(invoice, DeadMessageAct.Replay, "ilian");
+        DeadMessageOperation replayed =
+            surface.Act(invoice, DeadMessageAct.Replay, "ilian", caller: null);
 
         Assert.True(replayed.Applied, replayed.Result);
         Assert.Equal(
@@ -76,7 +77,8 @@ public sealed class DeadMessageSurfaceTest : IDisposable
         SnapshotOperator surface = Over(string.Empty);
         DeadMessageRecord kept = surface.DeadMessages().DeadMessages[0];
 
-        DeadMessageOperation declined = surface.Act(kept, DeadMessageAct.Replay, "ilian");
+        DeadMessageOperation declined =
+            surface.Act(kept, DeadMessageAct.Replay, "ilian", caller: null);
 
         Assert.False(declined.Applied);
         Assert.Contains("takes no orders", declined.Result, StringComparison.Ordinal);
@@ -131,10 +133,10 @@ public sealed class DeadMessageSurfaceTest : IDisposable
 
         DeadMessageOperation observed = new GatedOperator(
                 inner, new RoleContext(Role.Observer, RoleAssignment.ProcessCaller()), audit)
-            .Act(kept, DeadMessageAct.Replay, Claimed);
+            .Act(kept, DeadMessageAct.Replay, Claimed, caller: null);
         DeadMessageOperation unproven = new GatedOperator(
                 inner, new RoleContext(Role.Operator, null), audit)
-            .Act(kept, DeadMessageAct.Replay, Claimed);
+            .Act(kept, DeadMessageAct.Replay, Claimed, caller: null);
 
         Assert.All([observed, unproven], refused =>
         {
@@ -145,7 +147,7 @@ public sealed class DeadMessageSurfaceTest : IDisposable
 
         DeadMessageOperation taken = new GatedOperator(
                 inner, new RoleContext(Role.Operator, RoleAssignment.ProcessCaller()), audit)
-            .Act(kept, DeadMessageAct.Replay, Claimed);
+            .Act(kept, DeadMessageAct.Replay, Claimed, caller: null);
 
         Assert.True(taken.Applied, taken.Result);
         string order = File.ReadAllText(

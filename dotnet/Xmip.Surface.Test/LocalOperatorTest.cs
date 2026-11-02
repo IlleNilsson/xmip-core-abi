@@ -118,7 +118,8 @@ public sealed class LocalOperatorTest
         using (ServedNode observed = Serve(Fixture("snapshot.toml")))
         using (LocalOperator local = new(observed.Address))
         {
-            MessageOperation refused = local.Act(node, "j1", MessageAct.Retry, "a name");
+            MessageOperation refused =
+                local.Act(node, "j1", MessageAct.Retry, "a name", caller: null);
             Assert.False(refused.Applied);
             Assert.StartsWith("REFUSED. ", refused.Result, StringComparison.Ordinal);
             Assert.Contains(
@@ -128,7 +129,7 @@ public sealed class LocalOperatorTest
 
         using ServedNode operated = Serve(Fixture("snapshot.toml"), "operator");
         using LocalOperator acting = new(operated.Address);
-        MessageOperation taken = acting.Act(node, "j1", MessageAct.Retry, "a name");
+        MessageOperation taken = acting.Act(node, "j1", MessageAct.Retry, "a name", caller: null);
         Assert.False(taken.Applied);
         Assert.Equal($"REFUSED: no node at {node} runs in this process", taken.Result);
     }

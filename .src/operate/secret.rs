@@ -15,6 +15,7 @@ pub const SECRETS_ENTRYPOINT: &str = "xmip_secrets_v1";
 /// the node at `node`.
 pub type SecretFn = unsafe extern "C" fn(
     remote: *const Remote,
+    caller: u64,
     node: Str,
     name: Str,
     kind: Str,
@@ -27,6 +28,7 @@ pub type SecretFn = unsafe extern "C" fn(
 /// `xmip_secrets_v1`: the secrets the node at `node` keeps, JSON.
 pub type SecretsFn = unsafe extern "C" fn(
     remote: *const Remote,
+    caller: u64,
     node: Str,
     out: *mut u8,
     cap: usize,

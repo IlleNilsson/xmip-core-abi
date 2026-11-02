@@ -414,7 +414,14 @@ takes its own (`HeldCaller.Hold`, `xmip_caller_hold_v1`) and releases it
 when it ends, the desktop's is the account the runtime read from the
 operating system (`RoleAssignment.ProcessCaller`, `xmip_caller_process_v1`),
 and a handle released, revoked with its listener, past its certificate or
-forged is no one; `HeldCaller.Name` is for display alone.
+forged is no one; `HeldCaller.Name` is for display alone. Through a node's
+operate listener the node decides again: an act the gate admitted is taken
+for its caller, a parameter of every act of `IOperatorSurface` (`RemoteNode.Act`,
+`SetSecret` and `Secrets` taking the `HeldCaller`; the command line and the
+PowerShell module pass none), the runtime hands the node the caller's
+certificate, and the node — where its `[operate] relay` names this host —
+acts by the caller's own role and audits who and through (ADR-0009, the
+second amendment of 2026-11-01).
 Every act a
 screen takes goes through `GatedOperator` in `Xmip.Surface`, over the
 runtime's one gate (`xmip_act_admitted_v1`, section 18): taken only where the

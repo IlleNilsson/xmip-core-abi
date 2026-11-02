@@ -18,8 +18,15 @@ namespace Xmip.Surface;
 /// the hot path. Nothing here can make a node wait. ADR-0052: there is no
 /// surface that invents records; a surface that cannot reach anything says
 /// so in <see cref="Source"/> and reports nothing.
+/// <para>Every act takes <c>caller</c>: the caller the host's runtime proved
+/// and holds whom the act is for — a browser's, which
+/// <see cref="GatedOperator"/> admitted — handed through to the node, which
+/// decides again by that caller's own role (ADR-0009, the second amendment of
+/// 2026-11-01); null for this side itself, as the command line and the
+/// PowerShell module act. <c>who</c> is the name an act is recorded by where
+/// no node decides.</para>
 /// </remarks>
-public interface IOperatorSurface
+public partial interface IOperatorSurface
 {
     /// <summary>Where the records come from, shown on screen so nobody
     /// mistakes a stale file for a node.</summary>
@@ -241,7 +248,8 @@ public interface IOperatorSurface
     /// what reaches it and audits it. The default declines: this surface reaches no hub.
     /// </summary>
     public EventSubscriptionOperation Act(
-        EventSubscriptionRecord subscription, EventSubscriptionAct act, string who)
+        EventSubscriptionRecord subscription, EventSubscriptionAct act, string who,
+        HeldCaller? caller)
     {
         return EventSubscriptionOperation.Declined(
             subscription, act, $"{Source} does not act on Event subscriptions");
@@ -268,7 +276,7 @@ public interface IOperatorSurface
     /// reaches no node.
     /// </summary>
     public SubscriptionOperation Act(
-        SubscriptionRecord subscription, SubscriptionAct act, string who)
+        SubscriptionRecord subscription, SubscriptionAct act, string who, HeldCaller? caller)
     {
         return SubscriptionOperation.Declined(
             subscription, act, $"{Source} does not act on Subscriptions");
@@ -294,7 +302,8 @@ public interface IOperatorSurface
     /// what reaches it and audits it. The default declines: this surface
     /// reaches no node.
     /// </summary>
-    public DeadMessageOperation Act(DeadMessageRecord message, DeadMessageAct act, string who)
+    public DeadMessageOperation Act(
+        DeadMessageRecord message, DeadMessageAct act, string who, HeldCaller? caller)
     {
         return DeadMessageOperation.Declined(
             message, act, $"{Source} does not replay from a Dead Message Queue");
@@ -311,7 +320,8 @@ public interface IOperatorSurface
     /// what reaches it and audits it. The default declines: this surface
     /// reaches no node.
     /// </summary>
-    public MessageOperation Act(string scope, string journey, MessageAct act, string who)
+    public MessageOperation Act(
+        string scope, string journey, MessageAct act, string who, HeldCaller? caller)
     {
         return MessageOperation.Declined(
             scope, journey, act, $"{Source} does not act on failed Messages");
@@ -347,51 +357,25 @@ public interface IOperatorSurface
         return FailedMessageList.Unlisted;
     }
 
-    /// <summary>
-    /// The secrets the node at <paramref name="node"/> keeps — empty, the
-    /// one node this surface reaches — by name, kind and when set, never a
-    /// value (ADR-0019, amendment 2026-10-29). Throws
-    /// <see cref="InvalidOperationException"/> with the node's words where it
-    /// refused or did not answer; the default reaches no node.
-    /// </summary>
-    public IReadOnlyList<SecretRecord> Secrets(string node)
-    {
-        throw new InvalidOperationException($"{Source} reaches no node, so lists no secrets");
-    }
-
-    /// <summary>
-    /// Set the secret <paramref name="name"/> of <paramref name="kind"/> to
-    /// <paramref name="value"/> through the node at <paramref name="node"/>
-    /// — empty, the one node this surface reaches — by
-    /// <paramref name="who"/>. The node keeps it in the Administration
-    /// Database and a Location naming it presents it as it next connects.
-    /// Who may act is decided by role, as for every act. The default
-    /// declines: this surface reaches no node.
-    /// </summary>
-    public SecretOperation SetSecret(
-        string node, string name, string kind, string value, string who)
-    {
-        return SecretOperation.Declined(node, name, $"{Source} reaches no node to set a secret");
-    }
-
     /// <summary>Pause everything at and beneath a scope, by <paramref name="who"/>.
     /// The first operation that acts rather than reads. Returns what the runtime
     /// said, for the operator to see.</summary>
-    public string PauseScope(string scope, string who);
+    public string PauseScope(string scope, string who, HeldCaller? caller);
 
     /// <summary>Resume everything at and beneath a scope.</summary>
-    public string ResumeScope(string scope);
+    public string ResumeScope(string scope, HeldCaller? caller);
 
     /// <summary>
     /// Apply one <see cref="ScopeAction"/> and say what came of it. The
     /// default takes the surface at its word; a surface that knows whether
     /// the runtime applied the act overrides this and says so.
     /// </summary>
-    public ScopeOperation Control(string scope, ScopeAction action, string who)
+    public ScopeOperation Control(
+        string scope, ScopeAction action, string who, HeldCaller? caller)
     {
         string said = action == ScopeAction.Pause
-            ? PauseScope(scope, who)
-            : ResumeScope(scope);
+            ? PauseScope(scope, who, caller)
+            : ResumeScope(scope, caller);
 
         return new ScopeOperation(scope, action, true, said);
     }

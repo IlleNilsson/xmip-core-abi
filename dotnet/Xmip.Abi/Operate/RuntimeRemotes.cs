@@ -59,12 +59,12 @@ public sealed unsafe class RuntimeRemotes
             nint, ulong, uint, ulong*, ulong*, byte*, byte*, nuint, nuint*, int>)
             NativeLibrary.GetExport(library, OperateAbi.RemoteWaitEntrypoint);
         Act = (delegate* unmanaged[Cdecl]<
-            nint, XmipStr, XmipStr, XmipStr, XmipStr, byte*, nuint, nuint*, int>)
+            nint, ulong, XmipStr, XmipStr, XmipStr, XmipStr, byte*, nuint, nuint*, int>)
             NativeLibrary.GetExport(library, OperateAbi.RemoteActEntrypoint);
         SetSecret = (delegate* unmanaged[Cdecl]<
-            nint, XmipStr, XmipStr, XmipStr, XmipStr, byte*, nuint, nuint*, int>)
+            nint, ulong, XmipStr, XmipStr, XmipStr, XmipStr, byte*, nuint, nuint*, int>)
             NativeLibrary.GetExport(library, OperateAbi.SecretEntrypoint);
-        Secrets = (delegate* unmanaged[Cdecl]<nint, XmipStr, byte*, nuint, nuint*, int>)
+        Secrets = (delegate* unmanaged[Cdecl]<nint, ulong, XmipStr, byte*, nuint, nuint*, int>)
             NativeLibrary.GetExport(library, OperateAbi.SecretsEntrypoint);
         End = (delegate* unmanaged[Cdecl]<nint, void>)
             NativeLibrary.GetExport(library, OperateAbi.RemoteEndEntrypoint);
@@ -127,12 +127,12 @@ public sealed unsafe class RuntimeRemotes
         nint, ulong, uint, ulong*, ulong*, byte*, byte*, nuint, nuint*, int> Wait;
 
     internal readonly delegate* unmanaged[Cdecl]<
-        nint, XmipStr, XmipStr, XmipStr, XmipStr, byte*, nuint, nuint*, int> Act;
+        nint, ulong, XmipStr, XmipStr, XmipStr, XmipStr, byte*, nuint, nuint*, int> Act;
 
     internal readonly delegate* unmanaged[Cdecl]<
-        nint, XmipStr, XmipStr, XmipStr, XmipStr, byte*, nuint, nuint*, int> SetSecret;
+        nint, ulong, XmipStr, XmipStr, XmipStr, XmipStr, byte*, nuint, nuint*, int> SetSecret;
 
-    internal readonly delegate* unmanaged[Cdecl]<nint, XmipStr, byte*, nuint, nuint*, int>
+    internal readonly delegate* unmanaged[Cdecl]<nint, ulong, XmipStr, byte*, nuint, nuint*, int>
         Secrets;
 
     internal readonly delegate* unmanaged[Cdecl]<nint, void> End;

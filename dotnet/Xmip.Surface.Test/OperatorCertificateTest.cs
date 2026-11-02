@@ -42,7 +42,7 @@ public sealed class OperatorCertificateTest
             authority, RemoteOperatorTest.Fixture("snapshot.toml"));
         using RemoteOperator phone = new(
             served.Address, SecureSurface.Load(chain, requested.Key, authority.Anchor));
-        MessageOperation refused = phone.Act(node, "j1", MessageAct.Retry, "a name");
+        MessageOperation refused = phone.Act(node, "j1", MessageAct.Retry, "a name", caller: null);
 
         Assert.False(refused.Applied);
         Assert.StartsWith(
