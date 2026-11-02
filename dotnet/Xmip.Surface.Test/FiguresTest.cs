@@ -80,8 +80,8 @@ public sealed class FiguresTest
     {
         IOperatorSurface surface = new FakeSurface(new Dictionary<Counted, ulong>());
 
-        ScopeOperation paused = surface.Control(Node, ScopeAction.Pause, "test");
-        ScopeOperation resumed = surface.Control(Node, ScopeAction.Resume, "test");
+        ScopeOperation paused = surface.Control(Node, ScopeAction.Pause, "test", caller: null);
+        ScopeOperation resumed = surface.Control(Node, ScopeAction.Resume, "test", caller: null);
 
         Assert.True(paused.Applied);
         Assert.Equal($"paused {Node} by test", paused.Result);
@@ -109,12 +109,12 @@ public sealed class FiguresTest
                 : null;
         }
 
-        public string PauseScope(string scope, string who)
+        public string PauseScope(string scope, string who, HeldCaller? caller)
         {
             return $"paused {scope} by {who}";
         }
 
-        public string ResumeScope(string scope)
+        public string ResumeScope(string scope, HeldCaller? caller)
         {
             return $"resumed {scope}";
         }

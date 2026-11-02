@@ -60,7 +60,8 @@ public sealed class SubscriptionSurfaceTest
             Assert.True(held.Paused);
             Assert.Equal(9ul, held.Held);
 
-            SubscriptionOperation resumed = surface.Act(held, SubscriptionAct.Resume, "ilian");
+            SubscriptionOperation resumed =
+                surface.Act(held, SubscriptionAct.Resume, "ilian", caller: null);
 
             Assert.True(resumed.Applied, resumed.Result);
             Assert.Contains($"left for {Processor}", resumed.Result, StringComparison.Ordinal);
@@ -84,7 +85,7 @@ public sealed class SubscriptionSurfaceTest
 
             foreach (SubscriptionAct act in Enum.GetValues<SubscriptionAct>())
             {
-                SubscriptionOperation declined = surface.Act(held, act, "ilian");
+                SubscriptionOperation declined = surface.Act(held, act, "ilian", caller: null);
                 Assert.False(declined.Applied);
                 Assert.Contains("takes no orders", declined.Result, StringComparison.Ordinal);
             }

@@ -356,7 +356,10 @@ public sealed class BrowserCallerTest : IDisposable
         GatedOperator gated = new(inner, caller, new ProgramAudit("Xmip.Surface.Test", Audit));
 
         return gated.Act(
-            Assert.Single(gated.Subscriptions().Subscriptions), SubscriptionAct.Pause, Claimed);
+            Assert.Single(gated.Subscriptions().Subscriptions),
+            SubscriptionAct.Pause,
+            Claimed,
+            caller: null);
     }
 
     private string Audited()

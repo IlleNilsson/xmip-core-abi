@@ -139,6 +139,7 @@ pub type WaitFn = unsafe extern "C" fn(
 /// at `node`.
 pub type ActFn = unsafe extern "C" fn(
     remote: *const Remote,
+    caller: u64,
     node: Str,
     noun: Str,
     target: Str,

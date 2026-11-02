@@ -48,7 +48,7 @@ public sealed class MessageSurfaceTest : IDisposable
     [InlineData(MessageAct.Dismiss)]
     public void ASnapshotLeavesTheActForTheNodeThatSendsThePort(MessageAct act)
     {
-        MessageOperation done = Over(Orders).Act(Port, Journey, act, "ilian");
+        MessageOperation done = Over(Orders).Act(Port, Journey, act, "ilian", caller: null);
 
         Assert.True(done.Applied, done.Result);
         Assert.Equal(Sending, done.Node);
@@ -65,11 +65,12 @@ public sealed class MessageSurfaceTest : IDisposable
     [Fact]
     public void ASnapshotDeclinesWhereItsPublisherTakesNoOrdersOrTheScopeIsOnNoNode()
     {
-        MessageOperation untaken = Over(string.Empty).Act(Port, Journey, MessageAct.Retry, "ilian");
+        MessageOperation untaken =
+            Over(string.Empty).Act(Port, Journey, MessageAct.Retry, "ilian", caller: null);
         MessageOperation nowhere = Over(Orders).Act(
-            Cluster.Scope, Journey, MessageAct.Dismiss, "ilian");
+            Cluster.Scope, Journey, MessageAct.Dismiss, "ilian", caller: null);
         MessageOperation unnamed = Over(Orders).Act(
-            Port, string.Empty, MessageAct.Dismiss, "ilian");
+            Port, string.Empty, MessageAct.Dismiss, "ilian", caller: null);
 
         Assert.False(untaken.Applied);
         Assert.Contains("takes no orders", untaken.Result, StringComparison.Ordinal);
@@ -120,10 +121,10 @@ public sealed class MessageSurfaceTest : IDisposable
 
         MessageOperation observed = new GatedOperator(
                 inner, new RoleContext(Role.Observer, RoleAssignment.ProcessCaller()), audit)
-            .Act(Port, Journey, MessageAct.Retry, Claimed);
+            .Act(Port, Journey, MessageAct.Retry, Claimed, caller: null);
         MessageOperation unproven = new GatedOperator(
                 inner, new RoleContext(Role.Operator, null), audit)
-            .Act(Port, Journey, MessageAct.Dismiss, Claimed);
+            .Act(Port, Journey, MessageAct.Dismiss, Claimed, caller: null);
 
         Assert.All([observed, unproven], refused =>
         {
@@ -134,7 +135,7 @@ public sealed class MessageSurfaceTest : IDisposable
 
         MessageOperation taken = new GatedOperator(
                 inner, new RoleContext(Role.Operator, RoleAssignment.ProcessCaller()), audit)
-            .Act(Port, Journey, MessageAct.Retry, Claimed);
+            .Act(Port, Journey, MessageAct.Retry, Claimed, caller: null);
 
         Assert.True(taken.Applied, taken.Result);
         string order = File.ReadAllText(

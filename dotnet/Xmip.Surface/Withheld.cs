@@ -36,13 +36,13 @@ internal sealed class Withheld : IOperatorSurface
     }
 
     /// <inheritdoc />
-    public string PauseScope(string scope, string who)
+    public string PauseScope(string scope, string who, HeldCaller? caller)
     {
         return $"REFUSED. {Source}.";
     }
 
     /// <inheritdoc />
-    public string ResumeScope(string scope)
+    public string ResumeScope(string scope, HeldCaller? caller)
     {
         return $"REFUSED. {Source}.";
     }

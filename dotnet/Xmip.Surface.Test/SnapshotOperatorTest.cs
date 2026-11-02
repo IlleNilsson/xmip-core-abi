@@ -184,8 +184,8 @@ public sealed class SnapshotOperatorTest
     {
         SnapshotOperator surface = new(Fixture);
 
-        string paused = surface.PauseScope(ScopeTree.Root, "ilian");
-        string resumed = surface.ResumeScope(ScopeTree.Root);
+        string paused = surface.PauseScope(ScopeTree.Root, "ilian", caller: null);
+        string resumed = surface.ResumeScope(ScopeTree.Root, caller: null);
 
         Assert.Contains("cannot be paused", paused, StringComparison.Ordinal);
         Assert.Contains("cannot be resumed", resumed, StringComparison.Ordinal);

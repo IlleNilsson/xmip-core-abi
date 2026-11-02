@@ -115,14 +115,18 @@ public sealed unsafe class RemoteNode : IDisposable
     /// Ask the node to apply <paramref name="act"/> to the
     /// <paramref name="noun"/> called <paramref name="target"/> of the node at
     /// <paramref name="node"/>, as the identity this side's certificate
-    /// proves. <see cref="XmipStatus.Ok"/> taken; <see cref="XmipStatus.Auth"/>
-    /// refused by role; <see cref="XmipStatus.NotFound"/> refused by the node;
+    /// proves — or, for <paramref name="caller"/>, a caller this process holds,
+    /// relayed: the node vouches for it and admits the act by its own role
+    /// (section 17; ADR-0009, amendment 2026-11-01); null for this side.
+    /// <see cref="XmipStatus.Ok"/> taken; <see cref="XmipStatus.Auth"/> refused by
+    /// role, or no one; <see cref="XmipStatus.NotFound"/> refused by the node;
     /// <see cref="XmipStatus.Invalid"/> no such act; <see cref="XmipStatus.Io"/>
     /// Xmip Storage did not answer; <see cref="XmipStatus.Unavailable"/> the
     /// node did not. The sentence in <paramref name="said"/>.
     /// </summary>
     public XmipStatus Act(
-        string node, string noun, string target, string act, out string said)
+        HeldCaller? caller, string node, string noun, string target, string act,
+        out string said)
     {
         said = "disposed";
 
@@ -142,8 +146,9 @@ public sealed unsafe class RemoteNode : IDisposable
             fixed (byte* written = text)
             {
                 status = calls.Act(
-                    handle, pack.Borrow(data, 0), pack.Borrow(data, 1), pack.Borrow(data, 2),
-                    pack.Borrow(data, 3), written, (nuint)text.Length, &length);
+                    handle, caller?.Handle ?? 0, pack.Borrow(data, 0), pack.Borrow(data, 1),
+                    pack.Borrow(data, 2), pack.Borrow(data, 3), written, (nuint)text.Length,
+                    &length);
             }
 
             said = RuntimeRemotes.Said(text, length);
@@ -163,7 +168,8 @@ public sealed unsafe class RemoteNode : IDisposable
     /// <see cref="Act"/>'s; the sentence in <paramref name="said"/>.
     /// </summary>
     public XmipStatus SetSecret(
-        string node, string name, string kind, string value, out string said)
+        HeldCaller? caller, string node, string name, string kind, string value,
+        out string said)
     {
         said = "disposed";
 
@@ -183,8 +189,9 @@ public sealed unsafe class RemoteNode : IDisposable
             fixed (byte* written = text)
             {
                 status = calls.SetSecret(
-                    handle, pack.Borrow(data, 0), pack.Borrow(data, 1), pack.Borrow(data, 2),
-                    pack.Borrow(data, 3), written, (nuint)text.Length, &length);
+                    handle, caller?.Handle ?? 0, pack.Borrow(data, 0), pack.Borrow(data, 1),
+                    pack.Borrow(data, 2), pack.Borrow(data, 3), written, (nuint)text.Length,
+                    &length);
             }
 
             // The value was packed beside the rest: overwritten once crossed.
@@ -203,7 +210,7 @@ public sealed unsafe class RemoteNode : IDisposable
     /// one node it runs — as JSON in <paramref name="text"/>, never a value
     /// (section 24); where not <see cref="XmipStatus.Ok"/>, why.
     /// </summary>
-    public XmipStatus Secrets(string node, out string text)
+    public XmipStatus Secrets(HeldCaller? caller, string node, out string text)
     {
         text = "disposed";
 
@@ -226,7 +233,8 @@ public sealed unsafe class RemoteNode : IDisposable
                 fixed (byte* written = read)
                 {
                     status = calls.Secrets(
-                        handle, pack.Borrow(data, 0), written, (nuint)read.Length, &length);
+                        handle, caller?.Handle ?? 0, pack.Borrow(data, 0), written,
+                        (nuint)read.Length, &length);
                 }
 
                 if (status == (int)XmipStatus.Truncated && length > (nuint)read.Length)

@@ -324,12 +324,12 @@ public sealed class ClusterSurfacesTest
             return null;
         }
 
-        public string PauseScope(string scope, string who)
+        public string PauseScope(string scope, string who, HeldCaller? caller)
         {
             return "no";
         }
 
-        public string ResumeScope(string scope)
+        public string ResumeScope(string scope, HeldCaller? caller)
         {
             return "no";
         }

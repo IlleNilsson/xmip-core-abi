@@ -52,7 +52,7 @@ public sealed class RuntimeRemotesTest
 
         Assert.Equal(
             XmipStatus.Auth,
-            remote.Act(Node, "subscription", "orders", "pause", out string said));
+            remote.Act(null, Node, "subscription", "orders", "pause", out string said));
         Assert.StartsWith("REFUSED. CN=surface may not act", said, StringComparison.Ordinal);
 
         // Disposed while a wait is in flight on another thread: the wait

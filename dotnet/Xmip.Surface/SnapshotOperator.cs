@@ -199,15 +199,16 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
         return Read().EventSubscriptions;
     }
 
-    /// <inheritdoc
-    /// cref="IOperatorSurface.Act(EventSubscriptionRecord, EventSubscriptionAct, string)" />
+    /// <inheritdoc cref="IOperatorSurface.Act(EventSubscriptionRecord,
+    /// EventSubscriptionAct, string, HeldCaller)" />
     /// <remarks>A snapshot touches no node. Where its publication says where
     /// its publisher takes orders, the act is left there for the node that
     /// holds the Event subscription, which applies it as it takes it and
     /// publishes what came of it (<c>observe::Order</c>, ADR-0065, amendment
     /// 2026-09-29); where it says nowhere, the act is declined.</remarks>
     public EventSubscriptionOperation Act(
-        EventSubscriptionRecord subscription, EventSubscriptionAct act, string who)
+        EventSubscriptionRecord subscription, EventSubscriptionAct act, string who,
+        HeldCaller? caller)
     {
         ArgumentNullException.ThrowIfNull(subscription);
 
@@ -225,14 +226,15 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
         return Read().Subscriptions;
     }
 
-    /// <inheritdoc cref="IOperatorSurface.Act(SubscriptionRecord, SubscriptionAct, string)" />
+    /// <inheritdoc
+    /// cref="IOperatorSurface.Act(SubscriptionRecord, SubscriptionAct, string, HeldCaller)" />
     /// <remarks>A snapshot touches no node. Where its publication says where
     /// its publisher takes orders, the act is left there for the node that
     /// routes by the Subscription, which applies it as it takes it and
     /// publishes what came of it (<c>observe::Order</c>, ADR-0013, amendment
     /// 2026-09-30); where it says nowhere, the act is declined.</remarks>
     public SubscriptionOperation Act(
-        SubscriptionRecord subscription, SubscriptionAct act, string who)
+        SubscriptionRecord subscription, SubscriptionAct act, string who, HeldCaller? caller)
     {
         ArgumentNullException.ThrowIfNull(subscription);
 
@@ -249,13 +251,15 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
         return Read().DeadMessages;
     }
 
-    /// <inheritdoc cref="IOperatorSurface.Act(DeadMessageRecord, DeadMessageAct, string)" />
+    /// <inheritdoc
+    /// cref="IOperatorSurface.Act(DeadMessageRecord, DeadMessageAct, string, HeldCaller)" />
     /// <remarks>A snapshot touches no node. Where its publication says where
     /// its publisher takes orders, the Replay is left there for the node whose
     /// queue keeps the Message, which takes it, applies it and publishes
     /// what came of it (<c>observe::Order</c>, ADR-0052, amendment
     /// 2026-10-01); where it says nowhere, the act is declined.</remarks>
-    public DeadMessageOperation Act(DeadMessageRecord message, DeadMessageAct act, string who)
+    public DeadMessageOperation Act(
+        DeadMessageRecord message, DeadMessageAct act, string who, HeldCaller? caller)
     {
         ArgumentNullException.ThrowIfNull(message);
 
@@ -277,14 +281,15 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
         return Read().FailedMessagesWithin(scope, from, most);
     }
 
-    /// <inheritdoc cref="IOperatorSurface.Act(string, string, MessageAct, string)" />
+    /// <inheritdoc cref="IOperatorSurface.Act(string, string, MessageAct, string, HeldCaller)" />
     /// <remarks>A snapshot touches no node. Where its publication says where
     /// its publisher takes orders — one place for every noun — the act is
     /// left there for the node that sends the Message's Send Port, which takes
     /// it, applies it and publishes what came of it
     /// (<c>observe::Order</c>, runtime-model.md section 13); where it says
     /// nowhere, the act is declined.</remarks>
-    public MessageOperation Act(string scope, string journey, MessageAct act, string who)
+    public MessageOperation Act(
+        string scope, string journey, MessageAct act, string who, HeldCaller? caller)
     {
         return MessageOperation.OnNode(scope, journey, act, node =>
         {
@@ -297,21 +302,23 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
     }
 
     /// <inheritdoc />
-    public string PauseScope(string scope, string who)
+    public string PauseScope(string scope, string who, HeldCaller? caller)
     {
         return "a snapshot is a record of what was published and cannot be paused";
     }
 
     /// <inheritdoc />
-    public string ResumeScope(string scope)
+    public string ResumeScope(string scope, HeldCaller? caller)
     {
         return "a snapshot is a record of what was published and cannot be resumed";
     }
 
     /// <inheritdoc />
-    public ScopeOperation Control(string scope, ScopeAction action, string who)
+    public ScopeOperation Control(string scope, ScopeAction action, string who, HeldCaller? caller)
     {
-        string said = action == ScopeAction.Pause ? PauseScope(scope, who) : ResumeScope(scope);
+        string said = action == ScopeAction.Pause
+            ? PauseScope(scope, who, caller)
+            : ResumeScope(scope, caller);
 
         return new ScopeOperation(scope, action, false, said);
     }
