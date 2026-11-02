@@ -17,7 +17,7 @@ path = ".src/lib.rs"
 serde = { version = "1", features = ["derive"] }
 
 [dev-dependencies]
-toml = "0.9"
+toml = "1"
 
 # The conformance fixture: a loadable module as small as conformance allows,
 # built as a cdylib so xmip-core-cli's probe and xmip-core-powershell's
