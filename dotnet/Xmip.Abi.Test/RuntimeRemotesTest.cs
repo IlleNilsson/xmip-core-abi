@@ -61,7 +61,8 @@ public sealed class RuntimeRemotesTest
             () => remote.Wait(ulong.MaxValue - 1, TimeSpan.FromSeconds(30)));
         remote.Dispose();
         // Woken, not timed out: WaitAsync throws where it was not.
-        _ = await waiting.WaitAsync(TimeSpan.FromSeconds(2)).ConfigureAwait(true);
+        _ = await waiting.WaitAsync(
+            TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken).ConfigureAwait(true);
         Assert.Equal(XmipStatus.Unavailable, remote.Publication(out _, out _));
     }
 

@@ -43,9 +43,10 @@ public sealed class GatedCallerTest : IDisposable
         ulong secondHandle = second.Caller?.Handle ?? 0;
         Assert.NotEqual(firstHandle, secondHandle);
 
+        CancellationToken cancelled = TestContext.Current.CancellationToken;
         await Task.WhenAll(
-            Task.Run(() => Acting(inner, first, audit, "first", second.Caller)),
-            Task.Run(() => Acting(inner, second, audit, "second", first.Caller)));
+            Task.Run(() => Acting(inner, first, audit, "first", second.Caller), cancelled),
+            Task.Run(() => Acting(inner, second, audit, "second", first.Caller), cancelled));
 
         Assert.Equal(200, inner.Acts.Count);
         Assert.All(inner.Acts, act => Assert.Equal(

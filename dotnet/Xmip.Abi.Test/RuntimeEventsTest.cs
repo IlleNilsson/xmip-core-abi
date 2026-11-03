@@ -126,7 +126,8 @@ public sealed class RuntimeEventsTest
         Assert.True(subscription.IsListening);
         Assert.Equal(1, Events.Publish(audited.Raised(EventOutcome.Timeout)));
 
-        EventRecord raised = await heard.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        EventRecord raised = await heard.Task.WaitAsync(
+            TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
 
         Assert.Equal(EventOutcome.Timeout, raised.Outcome);
         Assert.Null(subscription.Fault);
@@ -148,13 +149,14 @@ public sealed class RuntimeEventsTest
             },
             new EventFilter { Scope = audited.Scope });
 
+        CancellationToken cancelled = TestContext.Current.CancellationToken;
         Events.Publish(audited.Raised(EventOutcome.Failure));
-        await called.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        await called.Task.WaitAsync(TimeSpan.FromSeconds(2), cancelled);
 
         // The fault is kept after the call returns; give it that moment.
         for (int i = 0; i < 200 && subscription.Fault is null; i++)
         {
-            await Task.Delay(1);
+            await Task.Delay(1, cancelled);
         }
 
         Assert.IsType<InvalidOperationException>(subscription.Fault);

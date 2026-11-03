@@ -48,16 +48,20 @@ public sealed class BrowserOverTlsTest
         using HttpClient watching = Browser(authority, null);
         using HttpClient refusedOne = Browser(authority, stranger);
 
-        Assert.Equal("nobody http", await loopback.GetStringAsync(Who(plain)).ConfigureAwait(true));
+        CancellationToken cancelled = TestContext.Current.CancellationToken;
+        Assert.Equal(
+            "nobody http",
+            await loopback.GetStringAsync(Who(plain), cancelled).ConfigureAwait(true));
         Assert.Equal(
             $"{client.Subject} https",
-            await proving.GetStringAsync(new Uri(https, "who")).ConfigureAwait(true));
+            await proving.GetStringAsync(new Uri(https, "who"), cancelled).ConfigureAwait(true));
         Assert.Equal(
             "nobody https",
-            await watching.GetStringAsync(new Uri(https, "who")).ConfigureAwait(true));
+            await watching.GetStringAsync(new Uri(https, "who"), cancelled).ConfigureAwait(true));
         await Assert.ThrowsAsync<HttpRequestException>(
-            () => refusedOne.GetStringAsync(new Uri(https, "who"))).ConfigureAwait(true);
-        Assert.True(await told.WaitAsync(TimeSpan.FromSeconds(5)).ConfigureAwait(true));
+            () => refusedOne.GetStringAsync(new Uri(https, "who"), cancelled)).ConfigureAwait(true);
+        Assert.True(
+            await told.WaitAsync(TimeSpan.FromSeconds(5), cancelled).ConfigureAwait(true));
         Assert.Contains("handshake", Assert.Single(refused), StringComparison.Ordinal);
     }
 
