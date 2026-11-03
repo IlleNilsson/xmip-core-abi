@@ -75,6 +75,7 @@ public sealed class EventFeedTest
         EventFeed feed = new(new ProgramAudit("Xmip.Surface.Test", directory), Party);
         using CancellationTokenSource stop = new();
         List<EventRecord> heard = [];
+        CancellationToken cancelled = TestContext.Current.CancellationToken;
 
         Task following = Task.Run(async () =>
         {
@@ -88,19 +89,19 @@ public sealed class EventFeedTest
                     await stop.CancelAsync();
                 }
             }
-        });
+        }, cancelled);
 
         // The subscription opens when the enumeration starts; until then a
         // publish reaches nobody.
         for (int i = 0; i < 2000 && EventFeed.Publish(Raised(scope, EventOutcome.Success)) == 0;
             i++)
         {
-            await Task.Delay(1);
+            await Task.Delay(1, cancelled);
         }
 
         Assert.Equal(1, EventFeed.Publish(Raised(scope, EventOutcome.Failure)));
         await Assert.ThrowsAnyAsync<OperationCanceledException>(
-            () => following.WaitAsync(TimeSpan.FromSeconds(5)));
+            () => following.WaitAsync(TimeSpan.FromSeconds(5), cancelled));
 
         Assert.Equal([EventOutcome.Success, EventOutcome.Failure], heard.Select(e => e.Outcome));
         Assert.Equal(0, EventFeed.Publish(Raised(scope, EventOutcome.Success)));

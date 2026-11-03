@@ -1,7 +1,7 @@
 {
   "version": 1,
   "dependencies": {
-    "net10.0": {
+    "net11.0": {
       "Tomlyn": {
         "type": "Transitive",
         "resolved": "2.10.1",
