@@ -2,7 +2,7 @@
 namespace Xmip.Surface.Test;
 
 /// <summary>
-/// Saving the cluster's <c>xmip.toml</c> slices it into each node's document
+/// Saving the cluster's <c>cluster.xmip</c> slices it into each node's document
 /// and ships each where it can go (ADR-0031, amendment 2026-10-05). Every
 /// slice is the runtime's one slicing; the node this desktop starts is
 /// shipped by being written where it starts from, and another node's slice

@@ -82,7 +82,7 @@ internal sealed class TestAuthority : IDisposable
         File.WriteAllText(Path.Combine(kept, "authority.pem"), anchor.ExportCertificatePem());
         File.WriteAllText(Path.Combine(kept, "authority.key"), key.ExportPkcs8PrivateKeyPem());
 
-        string configuration = Path.Combine(Directory, "node.toml");
+        string configuration = Path.Combine(Directory, "node.xmip");
         File.WriteAllText(
             configuration,
             "[service]\nname = \"n\"\ncluster_name = \"c\"\nnode_name = \"d\"\n\n"

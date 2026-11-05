@@ -77,7 +77,7 @@ public sealed class RemoteBuildTest
             string request = File.ReadAllText(written);
 
             InvalidOperationException refused = Assert.Throws<InvalidOperationException>(
-                () => Rules.Certificates.Sign("node.toml", request, out _, out _));
+                () => Rules.Certificates.Sign("node.xmip", request, out _, out _));
 
             Assert.StartsWith(RemoteBuild.Sentence, refused.Message, StringComparison.Ordinal);
         }

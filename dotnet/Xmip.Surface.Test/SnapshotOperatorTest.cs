@@ -10,7 +10,7 @@ namespace Xmip.Surface.Test;
 public sealed class SnapshotOperatorTest
 {
     private static readonly string Fixture =
-        Path.Combine(AppContext.BaseDirectory, "Fixture", "snapshot.toml");
+        Path.Combine(AppContext.BaseDirectory, "Fixture", "snapshot.xmip");
 
     private static readonly TestCluster Cluster = TestCluster.Read();
 
@@ -21,7 +21,7 @@ public sealed class SnapshotOperatorTest
     [Fact]
     public void ANewPublicationIsReadAndAnUnchangedOneIsNotParsedAgain()
     {
-        string copy = Path.Combine(Path.GetTempPath(), $"xmip-snapshot-{Guid.NewGuid():N}.toml");
+        string copy = Path.Combine(Path.GetTempPath(), $"xmip-snapshot-{Guid.NewGuid():N}.xmip");
         File.Copy(Fixture, copy);
         SnapshotOperator surface = new(copy);
 
@@ -41,7 +41,7 @@ public sealed class SnapshotOperatorTest
     {
         // 2026-09-18: a file being replaced answers a reader with a sharing
         // violation or access denied. That is a moment, not an empty estate.
-        string copy = Path.Combine(Path.GetTempPath(), $"xmip-snapshot-{Guid.NewGuid():N}.toml");
+        string copy = Path.Combine(Path.GetTempPath(), $"xmip-snapshot-{Guid.NewGuid():N}.xmip");
         File.Copy(Fixture, copy);
         SnapshotOperator surface = new(copy);
         int before = surface.Health(ScopeTree.Root).Count;
@@ -84,11 +84,11 @@ public sealed class SnapshotOperatorTest
         Assert.Equal(ScopeTree.Root, new SnapshotOperator(Fixture).Root());
         Assert.Equal(
             Cluster.Scope,
-            new SnapshotOperator(Path.Combine(AppContext.BaseDirectory, "Fixture", "cluster.toml"))
+            new SnapshotOperator(Path.Combine(AppContext.BaseDirectory, "Fixture", "cluster.xmip"))
                 .Root());
         Assert.Equal(
             ScopeTree.Root,
-            new SnapshotOperator(Path.Combine(Path.GetTempPath(), "no-such-snapshot.toml")).Root());
+            new SnapshotOperator(Path.Combine(Path.GetTempPath(), "no-such-snapshot.xmip")).Root());
     }
 
     [Fact]
@@ -150,7 +150,7 @@ public sealed class SnapshotOperatorTest
     public void AMissingFileIsSaidSoAndReportsNothing()
     {
         string missing = Path.Combine(
-            Path.GetTempPath(), $"no-such-snapshot-{Guid.NewGuid():n}.toml");
+            Path.GetTempPath(), $"no-such-snapshot-{Guid.NewGuid():n}.xmip");
         SnapshotOperator surface = new(missing);
 
         Assert.False(surface.Exists);
@@ -162,7 +162,7 @@ public sealed class SnapshotOperatorTest
     [Fact]
     public void AFileThatAppearsLaterIsReadOnTheNextQuery()
     {
-        string later = Path.Combine(Path.GetTempPath(), $"late-snapshot-{Guid.NewGuid():n}.toml");
+        string later = Path.Combine(Path.GetTempPath(), $"late-snapshot-{Guid.NewGuid():n}.xmip");
         SnapshotOperator surface = new(later);
 
         try

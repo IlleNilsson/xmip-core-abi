@@ -221,7 +221,7 @@ public sealed class RuntimeCertificatesTest
         File.WriteAllText(Path.Combine(kept, "authority.pem"), authority.ExportCertificatePem());
         File.WriteAllText(Path.Combine(kept, "authority.key"), key.ExportPkcs8PrivateKeyPem());
 
-        string configuration = Path.Combine(place, "node.toml");
+        string configuration = Path.Combine(place, "node.xmip");
         File.WriteAllText(
             configuration,
             "[service]\nname = \"n\"\ncluster_name = \"c\"\nnode_name = \"d\"\n\n"

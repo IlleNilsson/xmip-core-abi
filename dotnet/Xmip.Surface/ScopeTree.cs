@@ -106,7 +106,7 @@ public static class ScopeTree
     /// <summary>The stage of the message path a scope sits in — <c>receive</c>,
     /// <c>process</c> or <c>send</c> — beneath its node
     /// (<c>&lt;cluster&gt;/node/&lt;node&gt;/receive/orders</c>) or, on no node,
-    /// beneath its cluster, where the Playground nests a test between
+    /// beneath its cluster, where the Essentials nests a test between
     /// (<c>&lt;cluster&gt;/round-trip/receive/tcp/json</c>); a cluster's or a node's name
     /// is never one. Empty for a scope on no stage.
     /// <c>observe::Scope::stage</c>, called in the runtime.</summary>
@@ -158,7 +158,7 @@ public static class ScopeTree
     /// 0 is the cluster and never the node) — <c>node/&lt;node&gt;/receive/http/json</c>,
     /// <c>filing/s3/xml</c> — or the scope itself when it is the cluster or
     /// the root. Until 2026-09-26 the first two segments were dropped, which
-    /// read a scope as node, stage, name: a Playground scope lost its test
+    /// read a scope as node, stage, name: an Essentials scope lost its test
     /// (<c>filing/s3/xml</c> said <c>s3/xml</c>) and a node's leaf its node
     /// marker, so no view named the exact scope.</summary>
     public static string Name(string scope)
@@ -232,7 +232,7 @@ public static class ScopeTree
     /// <see cref="IOperatorSurface.Root"/> — down to a scope, each step a place
     /// to climb back to. The first step is the top by its own name, and
     /// <c>cluster</c> only where the top is the root itself. Until 2026-09-26
-    /// every trail began at the root, so a Playground cluster's read
+    /// every trail began at the root, so an Essentials cluster's read
     /// <c>cluster / &lt;cluster&gt; / …</c>: one cluster named twice, and a level to click
     /// through that held one row. A scope not beneath the top is trailed from
     /// the root.

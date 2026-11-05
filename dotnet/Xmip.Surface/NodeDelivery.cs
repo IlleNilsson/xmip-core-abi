@@ -1,7 +1,7 @@
 namespace Xmip.Surface;
 
 /// <summary>
-/// What became of one node's slice when the cluster's <c>xmip.toml</c> was
+/// What became of one node's slice when the cluster's <c>cluster.xmip</c> was
 /// saved (ADR-0031, amendment 2026-10-05: <i>the cluster TOML file is
 /// sliced into node TOML files and shipped to each node on save</i>): the
 /// node, how it stands, the file its slice was written to, and the sentence

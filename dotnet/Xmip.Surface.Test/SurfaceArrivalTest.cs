@@ -9,7 +9,7 @@ namespace Xmip.Surface.Test;
 public sealed class SurfaceArrivalTest : IDisposable
 {
     private static readonly string Fixture =
-        Path.Combine(AppContext.BaseDirectory, "Fixture", "snapshot.toml");
+        Path.Combine(AppContext.BaseDirectory, "Fixture", "snapshot.xmip");
 
     private static readonly TimeSpan Patience = TimeSpan.FromSeconds(30);
 
@@ -20,7 +20,7 @@ public sealed class SurfaceArrivalTest : IDisposable
     public async Task ASnapshotWatchBegunBeforeItsDirectoryFollowsOnceItIsMade()
     {
         string directory = Path.Combine(_place, "not", "made");
-        string path = Path.Combine(directory, "snapshot.toml");
+        string path = Path.Combine(directory, "snapshot.xmip");
         SnapshotOperator surface = new(path);
         using CancellationTokenSource stop = new(Patience);
         IAsyncEnumerator<SurfaceChange> follow =

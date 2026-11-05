@@ -3,7 +3,7 @@ using Xmip.Abi.Operate;
 namespace Xmip.Surface.Test;
 
 /// <summary>
-/// The snapshot surface over a Playground cluster as a roll publishes one
+/// The snapshot surface over an Essentials cluster as a roll publishes one
 /// since 2026-09-19: the run says what it was started with, the topology is
 /// cluster, nodes, stages and endpoints with the handoffs between the nodes,
 /// and the nodes' rollup is the record of the branch they hang under.
@@ -11,7 +11,7 @@ namespace Xmip.Surface.Test;
 public sealed class ClusterSnapshotTest
 {
     private static readonly string Fixture =
-        Path.Combine(AppContext.BaseDirectory, "Fixture", "cluster.toml");
+        Path.Combine(AppContext.BaseDirectory, "Fixture", "cluster.xmip");
 
     private static readonly TestCluster Cluster = TestCluster.Read();
 
@@ -64,7 +64,7 @@ public sealed class ClusterSnapshotTest
     [Fact]
     public void ASnapshotWithNoRunTableSaysNothingOfItsRun()
     {
-        string plain = Path.Combine(AppContext.BaseDirectory, "Fixture", "snapshot.toml");
+        string plain = Path.Combine(AppContext.BaseDirectory, "Fixture", "snapshot.xmip");
         RunHeader run = new SnapshotOperator(plain).Run();
 
         Assert.False(run.Said);
@@ -230,7 +230,7 @@ public sealed class ClusterSnapshotTest
             ((IOperatorSurface)new SnapshotOperator(Fixture)).NodeScopes());
 
         // A node's own publication: its nodes stand directly beneath the root.
-        string plain = Path.Combine(AppContext.BaseDirectory, "Fixture", "snapshot.toml");
+        string plain = Path.Combine(AppContext.BaseDirectory, "Fixture", "snapshot.xmip");
 
         Assert.Equal(
             Ordered.Select(node => ScopeTree.Root + node),

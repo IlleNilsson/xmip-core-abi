@@ -59,7 +59,7 @@ internal sealed record PublicationReading(
             revision,
             said);
 
-        // Where a drill starts: the document's node — a Playground roll's
+        // Where a drill starts: the document's node — an Essentials roll's
         // cluster — where a record is published beneath it; the root when it
         // names none, or names a scope nothing is published at.
         string root = read.Node.Length > 0 && index.Health(read.Node).Count > 0

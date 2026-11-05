@@ -39,14 +39,14 @@ public sealed class SurfaceChoiceTest
         using Document document = new("""
             [Xmip]
             Surface = "snapshot"
-            Snapshot = "Fixture/snapshot.toml"
+            Snapshot = "Fixture/snapshot.xmip"
             """);
 
         string beside = AppContext.BaseDirectory;
         IOperatorSurface surface = SurfaceChoice.Open(document.Configuration, beside);
 
         SnapshotOperator snapshot = Assert.IsType<SnapshotOperator>(surface);
-        Assert.Equal(Path.Combine(beside, "Fixture", "snapshot.toml"), snapshot.Path);
+        Assert.Equal(Path.Combine(beside, "Fixture", "snapshot.xmip"), snapshot.Path);
         Assert.Equal(5, snapshot.Health(ScopeTree.Root).Count);
     }
 
@@ -179,18 +179,18 @@ public sealed class SurfaceChoiceTest
     public void WithNothingStatedTheDocumentChooses()
     {
         IOperatorSurface chosen = SurfaceChoice.Stated(
-            SurfaceLine.None, Pairs(("Surface", "snapshot"), ("Snapshot", "a.toml")),
+            SurfaceLine.None, Pairs(("Surface", "snapshot"), ("Snapshot", "a.xmip")),
             Beside, Beside);
 
-        Assert.Equal(Path.Combine(Beside, "a.toml"), Assert.IsType<SnapshotOperator>(chosen).Path);
+        Assert.Equal(Path.Combine(Beside, "a.xmip"), Assert.IsType<SnapshotOperator>(chosen).Path);
     }
 
     [Fact]
     public void ARemoteNodeStatedWinsOverEverything()
     {
         IOperatorSurface chosen = SurfaceChoice.Stated(
-            new SurfaceLine("elsewhere:7401", "b.toml", "mine.dll"),
-            Pairs(("Surface", "snapshot"), ("Snapshot", "a.toml")),
+            new SurfaceLine("elsewhere:7401", "b.xmip", "mine.dll"),
+            Pairs(("Surface", "snapshot"), ("Snapshot", "a.xmip")),
             Beside,
             Beside);
 
@@ -202,13 +202,13 @@ public sealed class SurfaceChoiceTest
     public void ASnapshotStatedNamesWhichClusterAndWinsOverARuntime()
     {
         IOperatorSurface chosen = SurfaceChoice.Stated(
-            new SurfaceLine(Snapshot: "b-snapshot.toml", Runtime: "mine.dll"),
-            Pairs(("Surface", "snapshot"), ("Snapshot", "a.toml")),
+            new SurfaceLine(Snapshot: "b-snapshot.xmip", Runtime: "mine.dll"),
+            Pairs(("Surface", "snapshot"), ("Snapshot", "a.xmip")),
             Beside,
             Beside);
 
         Assert.Equal(
-            Path.Combine(Beside, "b-snapshot.toml"), Assert.IsType<SnapshotOperator>(chosen).Path);
+            Path.Combine(Beside, "b-snapshot.xmip"), Assert.IsType<SnapshotOperator>(chosen).Path);
     }
 
     [Fact]
@@ -216,11 +216,11 @@ public sealed class SurfaceChoiceTest
     {
         IOperatorSurface chosen = SurfaceChoice.Stated(
             new SurfaceLine(Runtime: "mine.dll"),
-            Pairs(("Surface", "snapshot"), ("Snapshot", "a.toml")),
+            Pairs(("Surface", "snapshot"), ("Snapshot", "a.xmip")),
             Beside,
             Beside);
 
-        Assert.Equal(Path.Combine(Beside, "a.toml"), Assert.IsType<SnapshotOperator>(chosen).Path);
+        Assert.Equal(Path.Combine(Beside, "a.xmip"), Assert.IsType<SnapshotOperator>(chosen).Path);
     }
 
     [Fact]
@@ -228,8 +228,8 @@ public sealed class SurfaceChoiceTest
     {
         string endpoint = $"xmip-nobody-{Guid.NewGuid():n}";
         IOperatorSurface chosen = SurfaceChoice.Stated(
-            new SurfaceLine(Snapshot: "b-snapshot.toml", Local: endpoint),
-            Pairs(("Surface", "snapshot"), ("Snapshot", "a.toml")),
+            new SurfaceLine(Snapshot: "b-snapshot.xmip", Local: endpoint),
+            Pairs(("Surface", "snapshot"), ("Snapshot", "a.xmip")),
             Beside,
             Beside);
 
@@ -256,11 +256,11 @@ public sealed class SurfaceChoiceTest
         // moves between them.
         IOperatorSurface chosen = SurfaceChoice.Stated(
             SurfaceLine.None,
-            Pairs(("Surface", "snapshot"), ("Snapshot:0", "a.toml"), ("Snapshot:1", "b.toml")),
+            Pairs(("Surface", "snapshot"), ("Snapshot:0", "a.xmip"), ("Snapshot:1", "b.xmip")),
             Beside,
             Beside);
 
-        Assert.Equal(Path.Combine(Beside, "a.toml"), Assert.IsType<SnapshotOperator>(chosen).Path);
+        Assert.Equal(Path.Combine(Beside, "a.xmip"), Assert.IsType<SnapshotOperator>(chosen).Path);
     }
 
     [Fact]
@@ -276,14 +276,14 @@ public sealed class SurfaceChoiceTest
         using Document document = new("""
             [Xmip]
             Surface = "snapshot"
-            Snapshot = "no-such-snapshot.toml"
+            Snapshot = "no-such-snapshot.xmip"
             """);
-        string file = Path.Combine(document.Directory, "xmip.gui.toml");
+        string file = Path.Combine(document.Directory, "gui.xmip");
 
         Assert.Null(SurfaceChoice.Answering(SurfaceLine.None, file, Beside, out string reason));
-        Assert.Contains("no-such-snapshot.toml", reason, StringComparison.Ordinal);
+        Assert.Contains("no-such-snapshot.xmip", reason, StringComparison.Ordinal);
 
-        string fixture = Path.Combine(AppContext.BaseDirectory, "Fixture", "snapshot.toml");
+        string fixture = Path.Combine(AppContext.BaseDirectory, "Fixture", "snapshot.xmip");
         IOperatorSurface? answered = SurfaceChoice.Answering(
             new SurfaceLine(Snapshot: fixture), file, Beside, out string none);
 
@@ -298,10 +298,10 @@ public sealed class SurfaceChoiceTest
             [Xmip]
             Surface = "sample"
             """);
-        string file = Path.Combine(document.Directory, "xmip.gui.toml");
+        string file = Path.Combine(document.Directory, "gui.xmip");
 
         Assert.Null(SurfaceChoice.Answering(SurfaceLine.None, file, Beside, out string reason));
-        Assert.StartsWith("xmip.gui.toml: ", reason, StringComparison.Ordinal);
+        Assert.StartsWith("gui.xmip: ", reason, StringComparison.Ordinal);
     }
 
     private static IConfiguration Pairs(params (string Key, string Value)[] pairs)
@@ -320,7 +320,7 @@ public sealed class SurfaceChoiceTest
         {
             Directory = Path.Combine(Path.GetTempPath(), $"xmip-surface-choice-{Guid.NewGuid():n}");
             System.IO.Directory.CreateDirectory(Directory);
-            string file = Path.Combine(Directory, "xmip.gui.toml");
+            string file = Path.Combine(Directory, "gui.xmip");
             File.WriteAllText(file, toml);
             Configuration = TomlDocument.Read(file);
         }

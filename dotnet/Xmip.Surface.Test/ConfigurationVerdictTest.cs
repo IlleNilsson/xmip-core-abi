@@ -9,7 +9,7 @@ namespace Xmip.Surface.Test;
 /// </summary>
 public sealed class ConfigurationVerdictTest
 {
-    private const string Toml = "xmip.toml";
+    private const string Toml = "cluster.xmip";
 
     [Fact]
     public void AValidDocumentIsOkAndSaidSo()

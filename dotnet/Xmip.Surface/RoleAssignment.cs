@@ -9,7 +9,7 @@ namespace Xmip.Surface;
 /// nothing proved is an Observer and acts on nothing; a role the run states
 /// is every proven caller's; else the directory the host was handed answers
 /// for the caller; else Observer, so an unstated role grants
-/// nothing. The Playground's permissive identity is its fake directory,
+/// nothing. The Essentials' permissive identity is its fake directory,
 /// <see cref="TesterDirectory"/>, there only where configuration names it.
 /// </summary>
 /// <param name="stated">The role the run states, or null.</param>

@@ -14,7 +14,7 @@ operate types, section 6's start and validate shapes, section
 7's rule exports (`operate::rule`), section 8's publication reader
 (`operate::publication`), section 9's audit record (`operate::audit`,
 with `XMIP_EVENT_SOURCE`, the Windows Event Log source, ADR-0062) and section
-10's five exports over the cluster's `xmip.toml` (`operate::design`: its
+10's five exports over `cluster.xmip` (`operate::design`: its
 views, an Xmip Application's routes among them, a filter's structure and
 text, an edit, and each node's slice — ADR-0064; ADR-0031, amendment
 2026-10-05), which the VS Code extension's language server calls and
@@ -187,7 +187,7 @@ functions, parameters is ok*), whose `Accept` hands over each browser's
 anchors refused (`SecureSurfaceAccepted`); a session is read on one thread and
 written on another, and its `Presented` is the browser's certificate, DER.
 Section 10 — the
-cluster's `xmip.toml` read, edited and sliced — is `RuntimeRules.Design`
+cluster's `cluster.xmip` read, edited and sliced — is `RuntimeRules.Design`
 (`RuntimeDesign`): `TryViews`, `TryEdit`, `TrySlices`, `TryFilterStructure`
 and `TryFilterText`, each the header's JSON or text, or the runtime's
 refusal; `Xmip.Surface` reads them as `ConfigurationViews`, `ClusterEdit` and
@@ -231,7 +231,7 @@ is:
 
 | | `local` (`LocalOperator`) | `snapshot` (`SnapshotOperator`) | `remote` (`RemoteOperator`) |
 | --- | --- | --- | --- |
-| Reads | a node's publication on this machine, over gRPC to its operate listener's local endpoint — a named pipe on Windows, a Unix domain socket elsewhere (section 17) | a node's published `snapshot.toml` | a node's publication on another machine, over gRPC to its operate listener in Xmip's mutual TLS (section 17) |
+| Reads | a node's publication on this machine, over gRPC to its operate listener's local endpoint — a named pipe on Windows, a Unix domain socket elsewhere (section 17) | a node's published `snapshot.xmip` | a node's publication on another machine, over gRPC to its operate listener in Xmip's mutual TLS (section 17) |
 | Topology | the node's publication's | the publication's, where it carries one | the node's publication's |
 | Failed Messages | what the node's publication carries: each Port's count and its oldest hundred; Unlisted while the node is unreachable | Listed: each Port's count and its oldest hundred; Unlisted with no file read | as local |
 | A failed Message's Retry or Dismiss; a Subscription's or an Event subscription's pause and resume; a Dead Message's Replay | asked of the node, which takes it as the user this process runs as behind the role its `[operate]` grants (section 18's gate), applies it at once and audits it; refused in its words otherwise | submitted as an order where the publication says its node takes them, taken within a round; declined where it names none | as local, the act the certificate's subject's |
@@ -302,7 +302,7 @@ answer even when it lists none; *Unlisted* is a source that cannot list;
   cause — whether it `Exists`, and `Selected`, the rows a selection names,
   worst first under a wildcard, which `xmip show` and `Get-XmipScope`
   both answer with. Every drill starts at `IOperatorSurface.Root`, the scope the
-  publisher publishes at (a Playground cluster, never the root above it); a
+  publisher publishes at (an Essentials cluster, never the root above it); a
   stage card counts `IOperatorSurface.Stage` and lists `Locations`, and the
   prompt's letters are `MessagePath`, each stage its own figure (the owner,
   2026-09-26: *drill-down does not work and datapoints are wrong*).
@@ -446,10 +446,10 @@ surface does not trust and no certificate at all are each refused — the
 hub's role gate, where an Observer host refuses every act, an Operator host
 takes each as the certificate's subject, and an act without one is refused,
 from loopback as from elsewhere, over
-the test cluster's names from `test/xmip.toml` (`TestCluster`) — and where a
+the test cluster's names from `test/cluster.xmip` (`TestCluster`) — and where a
 host may bind. It tests no rule the runtime owns: it proves the surface returns what
 the runtime's export returns, and those rules are tested once, where they are
 written. `dotnet test dotnet/Xmip.Surface.Test` runs them, after `cargo build`
 in xmip-core-runtime has left the library the test assemblies load.
 
-`architecture.toml` carries the maturity; this file does not repeat it.
+`architecture.xmip` carries the maturity; this file does not repeat it.

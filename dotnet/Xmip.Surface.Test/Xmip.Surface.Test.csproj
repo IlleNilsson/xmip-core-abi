@@ -51,9 +51,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- A snapshot as a node or the Playground publishes one, beside the
+    <!-- A snapshot as a node or the Essentials publishes one, beside the
          test assembly. -->
-    <None Include="Fixture\*.toml"
+    <None Include="Fixture\*.xmip"
           Link="Fixture\%(Filename)%(Extension)"
           CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>

@@ -5,7 +5,7 @@ using Xmip.Abi.Operate;
 namespace Xmip.Surface;
 
 /// <summary>
-/// The surface over a published snapshot: what a node — or the Playground,
+/// The surface over a published snapshot: what a node — or the Essentials,
 /// after every tick — wrote to a file, read once per publication into a
 /// <see cref="ScopeIndex"/> and answered from that by lookup. The path is
 /// given by whoever chose this surface (ADR-0052 clause 3); nothing here
@@ -18,7 +18,7 @@ namespace Xmip.Surface;
 /// hands the text to the runtime's one reader
 /// (<see cref="PublicationReader"/>, <c>xmip_operate.h</c> section 8) and
 /// walks nothing itself; until 2026-09-24 it parsed the TOML again, and the
-/// Playground's writer and this reader were two writings of one format (open
+/// Essentials' writer and this reader were two writings of one format (open
 /// problem 25). A read-only surface: it reports what was published and never
 /// acts on it, so <see cref="PauseScope"/> and <see cref="ResumeScope"/>
 /// decline. ADR-0027, ADR-0028.
@@ -27,7 +27,7 @@ namespace Xmip.Surface;
 /// 2026-09-15): while anything follows <see cref="WatchAsync"/>, the follow
 /// reads each publication once, before announcing it and off whoever renders,
 /// and every question is answered from that reading without touching the
-/// file. Until 2026-10-03 the page rendered after each Playground tick read
+/// file. Until 2026-10-03 the page rendered after each Essentials tick read
 /// the 2 MB snapshot itself (867 ms, measured 2026-10-02).
 /// </remarks>
 public sealed class SnapshotOperator(string path) : IOperatorSurface
@@ -88,7 +88,7 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
 
     /// <inheritdoc cref="IOperatorSurface.Root" />
     /// <remarks>The document's <c>node</c>, <c>xmip:///&lt;cluster&gt;</c> for a
-    /// Playground roll of that cluster, where a record is published beneath it; the root when
+    /// Essentials roll of that cluster, where a record is published beneath it; the root when
     /// it names none, or names a scope nothing is published at — a drill
     /// cannot start where there is nothing to drill.</remarks>
     public string Root()

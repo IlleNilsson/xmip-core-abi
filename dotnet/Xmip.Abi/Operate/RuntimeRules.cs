@@ -21,7 +21,7 @@ namespace Xmip.Abi.Operate;
 /// (ADR-0052 and ADR-0027, amendments 2026-09-24). Section 8, a publication
 /// read by the runtime, is <see cref="Publications"/>; section 9, a
 /// program's audit record, is <see cref="Audit"/>; section 10, the
-/// cluster's <c>xmip.toml</c> read, edited and sliced, is
+/// cluster's <c>cluster.xmip</c> read, edited and sliced, is
 /// <see cref="Design"/>; section 11, Events
 /// subscribed, is <see cref="Events"/>; section 12, the technologies the
 /// runtime carries, is <see cref="Catalogue"/>; section 13, a System
@@ -174,7 +174,7 @@ public sealed unsafe partial class RuntimeRules
     /// capability (ADR-0062).</summary>
     public RuntimeAudit Audit { get; }
 
-    /// <summary>Section 10: the cluster's <c>xmip.toml</c> read, edited and
+    /// <summary>Section 10: the cluster's <c>cluster.xmip</c> read, edited and
     /// sliced (ADR-0064, amendment 2026-10-03; ADR-0031, amendment
     /// 2026-10-05).</summary>
     public RuntimeDesign Design =>

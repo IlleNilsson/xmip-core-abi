@@ -66,7 +66,7 @@ public sealed class DeadMessageSurfaceTest : IDisposable
         Assert.Equal(
             $"replay of Message m-2 left for {Receiver} to take",
             replayed.Result);
-        string order = Assert.Single(Directory.GetFiles(Path.Combine(Orders, Receiver), "*.toml"));
+        string order = Assert.Single(Directory.GetFiles(Path.Combine(Orders, Receiver), "*.xmip"));
         Assert.Contains(
             DeadMessageOperation.Noun, File.ReadAllText(order), StringComparison.Ordinal);
     }
@@ -151,7 +151,7 @@ public sealed class DeadMessageSurfaceTest : IDisposable
 
         Assert.True(taken.Applied, taken.Result);
         string order = File.ReadAllText(
-            Assert.Single(Directory.GetFiles(Orders, "*.toml", SearchOption.AllDirectories)));
+            Assert.Single(Directory.GetFiles(Orders, "*.xmip", SearchOption.AllDirectories)));
         Assert.Contains(Me, order, StringComparison.Ordinal);
         Assert.DoesNotContain(Claimed, order, StringComparison.Ordinal);
     }
@@ -177,7 +177,7 @@ public sealed class DeadMessageSurfaceTest : IDisposable
     // second declined twice, the first once, the third not asked.
     private SnapshotOperator Over(string orders)
     {
-        string file = Path.Combine(scratch, $"snapshot-{Guid.NewGuid():N}.toml");
+        string file = Path.Combine(scratch, $"snapshot-{Guid.NewGuid():N}.xmip");
         File.WriteAllText(
             file,
             $"node = \"{Cluster.Scope}\"\n"

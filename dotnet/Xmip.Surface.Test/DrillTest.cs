@@ -3,7 +3,7 @@ using Xmip.Abi.Operate;
 namespace Xmip.Surface.Test;
 
 /// <summary>
-/// The drill every surface walks, over a Playground cluster as a roll
+/// The drill every surface walks, over an Essentials cluster as a roll
 /// publishes one: it starts at the cluster and never above it, each stage has
 /// the figures taken on it and the Locations beneath it, and every row names
 /// the leaf that explains it, so the next step toward the cause is always on
@@ -15,7 +15,7 @@ namespace Xmip.Surface.Test;
 public sealed class DrillTest
 {
     private static readonly string Fixture =
-        Path.Combine(AppContext.BaseDirectory, "Fixture", "cluster.toml");
+        Path.Combine(AppContext.BaseDirectory, "Fixture", "cluster.xmip");
 
     private static readonly TestCluster Test = TestCluster.Read();
 
@@ -62,7 +62,7 @@ public sealed class DrillTest
         // 2026-09-26: a sending node's dns/regex Send Location was Done, its
         // identity step beneath it fine, and the drill's last step showed only
         // the fine step.
-        string path = Path.Combine(Path.GetTempPath(), $"xmip-drill-{Guid.NewGuid():N}.toml");
+        string path = Path.Combine(Path.GetTempPath(), $"xmip-drill-{Guid.NewGuid():N}.xmip");
         File.WriteAllText(path, $$"""
             node = "{{Cluster}}"
             [[records]]
@@ -89,7 +89,7 @@ public sealed class DrillTest
     {
         // 2026-09-26: the Receive card said 96,968 Streams, of which a few
         // thousand were received; the rest were the daily backlog's drain.
-        string path = Path.Combine(Path.GetTempPath(), $"xmip-drill-{Guid.NewGuid():N}.toml");
+        string path = Path.Combine(Path.GetTempPath(), $"xmip-drill-{Guid.NewGuid():N}.xmip");
         File.WriteAllText(path, $$"""
             node = "{{Cluster}}"
             [[records]]

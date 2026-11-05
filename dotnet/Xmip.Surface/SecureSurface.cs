@@ -22,7 +22,7 @@ namespace Xmip.Surface;
 /// takes them (ADR-0033, ADR-0034): a PEM chain and its PEM private key, and
 /// the anchors a peer's chain must reach, a PEM file of them — never the
 /// operating system's trust store (ADR-0063). Where the files came from —
-/// an internal CA, ACME, the Playground's roll authority — is provisioning's,
+/// an internal CA, ACME, the Essentials' roll authority — is provisioning's,
 /// not this. In the host's <c>[Xmip]</c> table: <c>Certificate</c>,
 /// <c>PrivateKey</c> and <c>TrustAnchor</c>, each else its environment
 /// variable. Revocation is not checked here yet: the estate's revocation is

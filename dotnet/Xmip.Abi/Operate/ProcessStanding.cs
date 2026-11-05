@@ -14,7 +14,7 @@ namespace Xmip.Abi.Operate;
 /// <param name="StartedUnix">When, in seconds since the Unix epoch; 0 where it
 /// did not say.</param>
 /// <param name="Path">Its executable on disk; empty where it did not say.</param>
-/// <param name="Said">What else it said of itself, key to text: a Playground
+/// <param name="Said">What else it said of itself, key to text: an Essentials
 /// node the flags it was started with.</param>
 public sealed record ProcessStanding(
     string File,

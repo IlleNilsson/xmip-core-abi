@@ -53,7 +53,7 @@ xmip.unsubscribe(subscription);
 
 ## Build and run
 
-With zig, the estate's C compiler (`prerequisite.toml`, `c`), from the
+With zig, the estate's C compiler (`prerequisite.xmip`, `c`), from the
 repository root:
 
 ```sh

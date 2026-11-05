@@ -89,28 +89,30 @@ public sealed class EnglishTest
     public void PlanningSaysWhatTheRuntimeAnsweredAndThatNothingRuns()
     {
         Assert.Equal(
-            "planned xmip.toml: validated and published, not running",
-            English.Planned("xmip.toml", XmipStatus.Ok));
+            "planned cluster.xmip: validated and published, not running",
+            English.Planned("cluster.xmip", XmipStatus.Ok));
         Assert.Contains(
             OperateAbi.StartEntrypoint,
-            English.Planned("xmip.toml", XmipStatus.Unsupported),
+            English.Planned("cluster.xmip", XmipStatus.Unsupported),
             StringComparison.Ordinal);
         Assert.StartsWith(
-            "xmip.toml refused: ",
-            English.Planned("xmip.toml", XmipStatus.Invalid),
+            "cluster.xmip refused: ",
+            English.Planned("cluster.xmip", XmipStatus.Invalid),
             StringComparison.Ordinal);
     }
 
     [Fact]
     public void ValidatingListsTheProblems()
     {
-        Assert.Equal("xmip.toml is valid", English.Validated("xmip.toml", new(XmipStatus.Ok, [])));
         Assert.Equal(
-            "xmip.toml is invalid: no name; no cluster",
-            English.Validated("xmip.toml", new(XmipStatus.Invalid, ["no name", "no cluster"])));
+            "cluster.xmip is valid",
+            English.Validated("cluster.xmip", new(XmipStatus.Ok, [])));
         Assert.Equal(
-            $"xmip.toml is invalid: {XmipStatus.Io.Explain()}",
-            English.Validated("xmip.toml", new(XmipStatus.Io, [])));
+            "cluster.xmip is invalid: no name; no cluster",
+            English.Validated("cluster.xmip", new(XmipStatus.Invalid, ["no name", "no cluster"])));
+        Assert.Equal(
+            $"cluster.xmip is invalid: {XmipStatus.Io.Explain()}",
+            English.Validated("cluster.xmip", new(XmipStatus.Io, [])));
     }
 
     [Fact]

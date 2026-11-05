@@ -3,7 +3,7 @@ using System.Text.Json;
 namespace Xmip.Surface;
 
 /// <summary>
-/// One act on a cluster's <c>xmip.toml</c>, as <c>xmip_cluster_edit_v1</c>
+/// One act on a cluster's <c>cluster.xmip</c>, as <c>xmip_cluster_edit_v1</c>
 /// takes it (<c>xmip_operate.h</c> section 10; <c>configure::view_edit</c>):
 /// the header's JSON, written once here for every .NET surface. Whether the
 /// edit is good, and the text it leaves, are the runtime's answer — a value

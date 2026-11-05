@@ -4,7 +4,7 @@ namespace Xmip.Surface;
 
 /// <summary>
 /// One node's configuration document, sliced from its cluster's
-/// <c>xmip.toml</c> by the one slicing (<c>xmip_cluster_slices_v1</c>,
+/// <c>cluster.xmip</c> by the one slicing (<c>xmip_cluster_slices_v1</c>,
 /// <c>configure::slice</c>; ADR-0031, amendments 2026-10-03 and
 /// 2026-10-05). Nothing here takes the file apart.
 /// </summary>

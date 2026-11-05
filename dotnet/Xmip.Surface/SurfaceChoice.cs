@@ -109,8 +109,8 @@ public static class SurfaceChoice
     /// <summary>
     /// Every snapshot path the document names, in the order it names them:
     /// one where <c>Snapshot</c> is a path, several where it is a list —
-    /// <c>Snapshot = ["…/&lt;cluster&gt;-snapshot.toml",
-    /// "…/&lt;other&gt;-snapshot.toml"]</c> in a
+    /// <c>Snapshot = ["…/&lt;cluster&gt;-snapshot.xmip",
+    /// "…/&lt;other&gt;-snapshot.xmip"]</c> in a
     /// document, <c>--Xmip:Snapshot:0=… --Xmip:Snapshot:1=…</c> on a line.
     /// Empty where it names none. A list wins over a path: the two sit at the
     /// same key from different sources, and a line naming two clusters must
