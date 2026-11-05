@@ -5,7 +5,7 @@ namespace Xmip.Surface;
 
 /// <summary>
 /// The commands the desktop can run that a browser cannot: validating the
-/// cluster's <c>xmip.toml</c>, saving it — which slices it for each node and
+/// cluster's <c>cluster.xmip</c>, saving it — which slices it for each node and
 /// ships each slice where it can go (ADR-0031, amendment 2026-10-05) — and
 /// planning this desktop's node from its slice through the native runtime:
 /// <c>xmip_start_v1</c> reads, validates and publishes the plan, and runs
@@ -117,7 +117,7 @@ public sealed class RuntimeCommands(
     /// planned by the native runtime, which publishes the plan for the board.
     /// Nothing runs: running a node is the program that links its
     /// technologies (ADR-0018, amendment 2026-09-26). Refused, in words, where
-    /// <c>xmip.gui.toml</c> names no node or the runtime will not slice it.
+    /// <c>gui.xmip</c> names no node or the runtime will not slice it.
     /// </summary>
     public ConfigurationVerdict PlanNode()
     {
@@ -125,7 +125,7 @@ public sealed class RuntimeCommands(
         {
             return Audited("plan node", new ConfigurationVerdict(
                 delivery.ClusterPath, XmipStatus.Invalid, [],
-                "no node is configured here: xmip.gui.toml names no Node"));
+                "no node is configured here: gui.xmip names no Node"));
         }
 
         if (!File.Exists(delivery.ClusterPath))

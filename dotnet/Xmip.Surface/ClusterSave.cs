@@ -1,7 +1,7 @@
 namespace Xmip.Surface;
 
 /// <summary>
-/// What came of saving the cluster's <c>xmip.toml</c>: whether it was
+/// What came of saving the cluster's <c>cluster.xmip</c>: whether it was
 /// written, whether the runtime found it good, the sentence, and how each
 /// node's slice stands — sliced and shipped, sliced and not shipped, or
 /// refused in the runtime's words (ADR-0031, amendment 2026-10-05).

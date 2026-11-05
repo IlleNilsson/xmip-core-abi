@@ -807,18 +807,18 @@ typedef XmipStatus (*XmipAuditReadFn)(XmipStr directory,
 #define XMIP_EVENT_SOURCE_UNREGISTERED "The Xmip event source is not registered and registering it needs elevation once (Install-XmipPrerequisite does it), so this is written under the .NET Runtime source."
 
 /* ===================================================================== */
-/* 10. The cluster's xmip.toml, read, edited and sliced                  */
+/* 10. cluster.xmip, read, edited and sliced                  */
 /* ===================================================================== */
 
 /*
- * A developer and an operator work on one xmip.toml per cluster, and the
+ * A developer and an operator work on one cluster.xmip per cluster, and the
  * VS Code designer is a view of its sections, artifact by artifact
  * (ADR-0064, amendment 2026-10-03). The designer holds no rule: its language
  * server asks here, and each export is a thin forwarder into
  * xmip-core-configure, where the file, its views, an Xmip Application's
  * routes, its filters, every edit and the one slicing are read. The
  * Operation Desktop's Configure page asks the same five (ADR-0031,
- * amendment 2026-10-05: only the cluster's xmip.toml is edited, and saving
+ * amendment 2026-10-05: only cluster.xmip is edited, and saving
  * it slices it for each node). Pure like section 7: no handle, any thread,
  * before any node. Validating the file is xmip_validate_v1's, node by node.
  *
@@ -831,7 +831,7 @@ typedef XmipStatus (*XmipAuditReadFn)(XmipStr directory,
  * XMIP_E_MALFORMED when input or argument is not UTF-8.
  *
  * What crosses is JSON, in memory only (ADR-0031 clause 2):
- *   xmip_cluster_views_v1     a cluster's xmip.toml in; one view per
+ *   xmip_cluster_views_v1     a cluster's cluster.xmip in; one view per
  *                             artifact kind out (kind, title, defined, note,
  *                             entries, places): each entry's section path,
  *                             name, scope and fields, and an Xmip
@@ -856,7 +856,7 @@ typedef XmipStatus (*XmipAuditReadFn)(XmipStr directory,
  *   xmip_filter_structure_v1  a filter's text in; its rows and groups out.
  *   xmip_filter_text_v1       rows and groups in; the filter's canonical
  *                             text out, which reads back byte for byte.
- *   xmip_cluster_edit_v1      a cluster's xmip.toml in, an edit as
+ *   xmip_cluster_edit_v1      a cluster's cluster.xmip in, an edit as
  *                             argument; the edited text out, everything the
  *                             edit does not touch as it was. The edits: set,
  *                             remove, add-entry, remove-entry (refused while
@@ -864,7 +864,7 @@ typedef XmipStatus (*XmipAuditReadFn)(XmipStr directory,
  *                             add-node, rename (with every name standing
  *                             for it), refer, rename-key, and an
  *                             Application's own.
- *   xmip_cluster_slices_v1    a cluster's xmip.toml in, a node's name or
+ *   xmip_cluster_slices_v1    a cluster's cluster.xmip in, a node's name or
  *                             empty as argument; out
  *                             {"slices":[{"node","text"}]}, each node's
  *                             configuration document as configure::slice

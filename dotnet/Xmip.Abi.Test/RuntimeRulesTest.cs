@@ -267,7 +267,7 @@ public sealed class RuntimeRulesTest
 
         Assert.Equal(AuditKept.Persisted, outcome.Kept);
         Assert.Equal(string.Empty, outcome.Said);
-        string text = File.ReadAllText(Path.Combine(directory, "audit.toml"));
+        string text = File.ReadAllText(Path.Combine(directory, "audit.xmip"));
         Assert.Contains("program = \"Xmip.Abi.Test\"", text, StringComparison.Ordinal);
         Assert.Contains("\"url\" = \"http://127.0.0.1:5087\"", text, StringComparison.Ordinal);
         Assert.Contains("\"ö\" = \"å\"", text, StringComparison.Ordinal);

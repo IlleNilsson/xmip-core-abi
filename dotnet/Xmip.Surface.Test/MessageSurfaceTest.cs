@@ -57,7 +57,7 @@ public sealed class MessageSurfaceTest : IDisposable
                 + $"{Sender} to take",
             done.Result);
         string order = File.ReadAllText(
-            Assert.Single(Directory.GetFiles(Path.Combine(Orders, Sender), "*.toml")));
+            Assert.Single(Directory.GetFiles(Path.Combine(Orders, Sender), "*.xmip")));
         Assert.Contains(MessageOperation.Noun, order, StringComparison.Ordinal);
         Assert.Contains(Journey, order, StringComparison.Ordinal);
     }
@@ -139,7 +139,7 @@ public sealed class MessageSurfaceTest : IDisposable
 
         Assert.True(taken.Applied, taken.Result);
         string order = File.ReadAllText(
-            Assert.Single(Directory.GetFiles(Orders, "*.toml", SearchOption.AllDirectories)));
+            Assert.Single(Directory.GetFiles(Orders, "*.xmip", SearchOption.AllDirectories)));
         Assert.Contains(Me, order, StringComparison.Ordinal);
         Assert.DoesNotContain(Claimed, order, StringComparison.Ordinal);
     }
@@ -159,7 +159,7 @@ public sealed class MessageSurfaceTest : IDisposable
     // A publication of the test cluster, its orders where given.
     private SnapshotOperator Over(string orders)
     {
-        string file = Path.Combine(scratch, $"snapshot-{Guid.NewGuid():N}.toml");
+        string file = Path.Combine(scratch, $"snapshot-{Guid.NewGuid():N}.xmip");
         File.WriteAllText(
             file,
             $"node = \"{Cluster.Scope}\"\n"

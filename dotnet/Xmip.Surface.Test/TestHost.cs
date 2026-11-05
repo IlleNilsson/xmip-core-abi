@@ -16,7 +16,7 @@ internal static class TestHost
     {
         ArgumentNullException.ThrowIfNull(cluster);
 
-        string snapshot = Path.Combine(directory, "snapshot.toml");
+        string snapshot = Path.Combine(directory, "snapshot.xmip");
         File.WriteAllText(
             snapshot,
             $"node = \"{cluster.Scope}\"\norders = '{orders}'\n"

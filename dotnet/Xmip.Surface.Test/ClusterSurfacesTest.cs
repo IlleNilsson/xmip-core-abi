@@ -18,7 +18,7 @@ public sealed class ClusterSurfacesTest
 
     /// <summary>The second fixture's cluster, read from what it publishes.</summary>
     private static readonly string Second =
-        new SnapshotOperator(Fixture("cluster-c2.toml")).Run().Cluster;
+        new SnapshotOperator(Fixture("cluster-c2.xmip")).Run().Cluster;
 
     private static string Fixture(string name)
     {
@@ -33,7 +33,7 @@ public sealed class ClusterSurfacesTest
     public void TheSecondFixtureIsTheSecondTestClustersOwn()
     {
         TestCluster other = TestCluster.ReadOther();
-        RunHeader run = new SnapshotOperator(Fixture("cluster-c2.toml")).Run();
+        RunHeader run = new SnapshotOperator(Fixture("cluster-c2.xmip")).Run();
 
         Assert.Equal(other.Name, run.Cluster);
         Assert.NotEmpty(run.Nodes);
@@ -44,8 +44,8 @@ public sealed class ClusterSurfacesTest
     public void TwoSnapshotsAreTwoClustersEachWithItsOwnTree()
     {
         using ClusterSurfaces held = ClusterSurfaces.Over(
-            [new SnapshotOperator(Fixture("cluster.toml")),
-             new SnapshotOperator(Fixture("cluster-c2.toml"))]);
+            [new SnapshotOperator(Fixture("cluster.xmip")),
+             new SnapshotOperator(Fixture("cluster-c2.xmip"))]);
 
         Assert.NotEqual(First, Second);
         Assert.Equal([First, Second], held.Clusters);
@@ -73,8 +73,8 @@ public sealed class ClusterSurfacesTest
         // that is in no tree (ADR-0052, amendment 2026-09-19). The set has no
         // such call; each cluster's figures are its own.
         using ClusterSurfaces held = ClusterSurfaces.Over(
-            [new SnapshotOperator(Fixture("cluster.toml")),
-             new SnapshotOperator(Fixture("cluster-c2.toml"))]);
+            [new SnapshotOperator(Fixture("cluster.xmip")),
+             new SnapshotOperator(Fixture("cluster-c2.xmip"))]);
 
         Assert.Equal(6UL, held.For(First, includingHidden: false).Figures(ScopeTree.Root).Streams);
         Assert.Equal(2UL, held.For(Second, includingHidden: false).Figures(ScopeTree.Root).Streams);
@@ -84,7 +84,7 @@ public sealed class ClusterSurfacesTest
     public void OneSnapshotIsASetOfOneAndShowsNoChooser()
     {
         using ClusterSurfaces held =
-            ClusterSurfaces.Over(new SnapshotOperator(Fixture("cluster.toml")));
+            ClusterSurfaces.Over(new SnapshotOperator(Fixture("cluster.xmip")));
 
         Assert.Equal([First], held.Clusters);
         Assert.False(held.Several(includingHidden: true));
@@ -103,13 +103,13 @@ public sealed class ClusterSurfacesTest
         // and the surface behind it answers nothing, said so.
         string area = Path.Combine(Path.GetTempPath(), $"xmip-clusters-{Guid.NewGuid():n}");
         Directory.CreateDirectory(area);
-        string ending = Path.Combine(area, $"{Second}-snapshot.toml");
-        File.Copy(Fixture("cluster-c2.toml"), ending);
+        string ending = Path.Combine(area, $"{Second}-snapshot.xmip");
+        File.Copy(Fixture("cluster-c2.xmip"), ending);
 
         try
         {
             using ClusterSurfaces held = ClusterSurfaces.Over(
-                [new SnapshotOperator(Fixture("cluster.toml")), new SnapshotOperator(ending)]);
+                [new SnapshotOperator(Fixture("cluster.xmip")), new SnapshotOperator(ending)]);
 
             Assert.Equal([First, Second], held.Clusters);
             Assert.True(held.Publishing(Second));
@@ -138,8 +138,8 @@ public sealed class ClusterSurfacesTest
         // say which it was showing, so it refuses for the same reason.
         InvalidOperationException refused = Assert.Throws<InvalidOperationException>(
             () => ClusterSurfaces.Over(
-                [new SnapshotOperator(Fixture("cluster.toml")),
-                 new SnapshotOperator(Fixture("cluster.toml"))]));
+                [new SnapshotOperator(Fixture("cluster.xmip")),
+                 new SnapshotOperator(Fixture("cluster.xmip"))]));
 
         Assert.StartsWith("REFUSED.", refused.Message, StringComparison.Ordinal);
         Assert.Contains($"cluster {First}", refused.Message, StringComparison.Ordinal);
@@ -151,8 +151,8 @@ public sealed class ClusterSurfacesTest
     {
         InvalidOperationException refused = Assert.Throws<InvalidOperationException>(
             () => ClusterSurfaces.Over(
-                [new SnapshotOperator(Fixture("snapshot.toml")),
-                 new SnapshotOperator(Fixture("snapshot.toml"))]));
+                [new SnapshotOperator(Fixture("snapshot.xmip")),
+                 new SnapshotOperator(Fixture("snapshot.xmip"))]));
 
         Assert.Contains("name no cluster", refused.Message, StringComparison.Ordinal);
     }
@@ -172,9 +172,9 @@ public sealed class ClusterSurfacesTest
         // [run].cluster where the publisher says one; else the one first
         // segment every published scope shares. The node fixture has two —
         // its receiving and its sending node — so it names no cluster at all.
-        Assert.Equal(First, ClusterSurfaces.NameOf(new SnapshotOperator(Fixture("cluster.toml"))));
+        Assert.Equal(First, ClusterSurfaces.NameOf(new SnapshotOperator(Fixture("cluster.xmip"))));
         Assert.Equal(
-            string.Empty, ClusterSurfaces.NameOf(new SnapshotOperator(Fixture("snapshot.toml"))));
+            string.Empty, ClusterSurfaces.NameOf(new SnapshotOperator(Fixture("snapshot.xmip"))));
 
         DateTimeOffset seen = DateTimeOffset.UtcNow;
         string receiving = $"{Cluster.Scope}/node/{Cluster.WithRole("receiving")}";
@@ -190,19 +190,19 @@ public sealed class ClusterSurfacesTest
         using Papers one = new("""
             [Xmip]
             Surface = "snapshot"
-            Snapshot = "Fixture/cluster.toml"
+            Snapshot = "Fixture/cluster.xmip"
             """);
 
-        Assert.Equal(["Fixture/cluster.toml"], SurfaceChoice.Snapshots(one.Configuration));
+        Assert.Equal(["Fixture/cluster.xmip"], SurfaceChoice.Snapshots(one.Configuration));
 
         using Papers two = new("""
             [Xmip]
             Surface = "snapshot"
-            Snapshot = ["Fixture/cluster.toml", "Fixture/cluster-c2.toml"]
+            Snapshot = ["Fixture/cluster.xmip", "Fixture/cluster-c2.xmip"]
             """);
 
         Assert.Equal(
-            ["Fixture/cluster.toml", "Fixture/cluster-c2.toml"],
+            ["Fixture/cluster.xmip", "Fixture/cluster-c2.xmip"],
             SurfaceChoice.Snapshots(two.Configuration));
 
         using ClusterSurfaces held =
@@ -235,7 +235,7 @@ public sealed class ClusterSurfacesTest
         // cluster's name (ADR-0028 and ADR-0052, amendments 2026-09-30).
         using Hidden test = new(hidden: true);
         using ClusterSurfaces held = ClusterSurfaces.Over(
-            [new SnapshotOperator(Fixture("cluster.toml")), new SnapshotOperator(test.Path)]);
+            [new SnapshotOperator(Fixture("cluster.xmip")), new SnapshotOperator(test.Path)]);
 
         Assert.Equal([First, Second], held.Clusters);
         Assert.Equal([First], held.Listed(includingHidden: false));
@@ -261,7 +261,7 @@ public sealed class ClusterSurfacesTest
     {
         using Hidden named = new(hidden: false);
         using ClusterSurfaces held = ClusterSurfaces.Over(
-            [new SnapshotOperator(Fixture("cluster.toml")), new SnapshotOperator(named.Path)]);
+            [new SnapshotOperator(Fixture("cluster.xmip")), new SnapshotOperator(named.Path)]);
 
         Assert.Equal([First, Second], held.Listed(includingHidden: false));
         Assert.False(held.AnyHidden);
@@ -289,8 +289,8 @@ public sealed class ClusterSurfacesTest
         public Hidden(bool hidden)
         {
             Path = System.IO.Path.Combine(
-                System.IO.Path.GetTempPath(), $"xmip-hidden-{Guid.NewGuid():n}.toml");
-            string text = File.ReadAllText(Fixture("cluster-c2.toml"));
+                System.IO.Path.GetTempPath(), $"xmip-hidden-{Guid.NewGuid():n}.xmip");
+            string text = File.ReadAllText(Fixture("cluster-c2.xmip"));
 
             if (hidden)
             {
@@ -342,7 +342,7 @@ public sealed class ClusterSurfacesTest
         {
             Directory = Path.Combine(Path.GetTempPath(), $"xmip-cluster-set-{Guid.NewGuid():n}");
             System.IO.Directory.CreateDirectory(Directory);
-            string file = Path.Combine(Directory, "xmip.gui.toml");
+            string file = Path.Combine(Directory, "gui.xmip");
             File.WriteAllText(file, toml);
             Configuration = TomlDocument.Read(file);
         }

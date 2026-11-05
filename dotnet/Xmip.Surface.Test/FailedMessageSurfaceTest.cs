@@ -73,7 +73,7 @@ public sealed class FailedMessageSurfaceTest : IDisposable
             sequence = 4
             reason = "audit: refused"
             """;
-        string path = Path.Combine(scratch, "snapshot.toml");
+        string path = Path.Combine(scratch, "snapshot.xmip");
         File.WriteAllText(path, text);
 
         return new SnapshotOperator(path);
@@ -122,7 +122,7 @@ public sealed class FailedMessageSurfaceTest : IDisposable
         Assert.Empty(none.Messages);
 
         FailedMessageList unread = new SnapshotOperator(
-            Path.Combine(scratch, "not-published-yet.toml")).FailedMessages(Cluster.Scope);
+            Path.Combine(scratch, "not-published-yet.xmip")).FailedMessages(Cluster.Scope);
         Assert.False(unread.Listed);
         Assert.False(FailedMessageList.Unlisted.Listed);
     }

@@ -38,7 +38,7 @@ public sealed class EventSubscriptionSurfaceTest
             + $"state = \"{state}\"\nqueued = {queued}\n";
     }
 
-    // Two declared with a name, as the Playground's are; the fourth with
+    // Two declared with a name, as the Essentials' are; the fourth with
     // none, as a program that subscribed by identifier alone is.
     private static string Named(int id)
     {
@@ -52,7 +52,7 @@ public sealed class EventSubscriptionSurfaceTest
 
     private static SnapshotOperator Over(string text, out string file)
     {
-        file = Path.Combine(Path.GetTempPath(), $"xmip-subscriptions-{Guid.NewGuid():N}.toml");
+        file = Path.Combine(Path.GetTempPath(), $"xmip-subscriptions-{Guid.NewGuid():N}.xmip");
         File.WriteAllText(file, text);
         return new SnapshotOperator(file);
     }
@@ -76,7 +76,7 @@ public sealed class EventSubscriptionSurfaceTest
 
             Assert.True(resumed.Applied, resumed.Result);
             Assert.Contains($"left for {Sender}", resumed.Result, StringComparison.Ordinal);
-            Assert.Single(Directory.GetFiles(Path.Combine(orders, Sender), "*.toml"));
+            Assert.Single(Directory.GetFiles(Path.Combine(orders, Sender), "*.xmip"));
         }
         finally
         {

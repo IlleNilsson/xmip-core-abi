@@ -1,8 +1,8 @@
-# A snapshot as a node publishes one: the shape the Playground writes after
+# A snapshot as a node publishes one: the shape the Essentials writes after
 # every tick and the snapshot surface reads. Two nodes; one Done, one
 # Stressed, one Paused, two Fine.
 #
-# The names are the test cluster's, test/xmip.toml's (ADR-0056, amendment
+# The names are the test cluster's, test/cluster.xmip's (ADR-0056, amendment
 # 2026-10-03), and a test reads them from there by what each node declares:
 # the publisher is the processing node, the receiving and the sending nodes
 # stand directly beneath the root.

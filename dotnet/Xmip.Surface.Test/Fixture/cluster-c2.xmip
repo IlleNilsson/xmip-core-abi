@@ -1,10 +1,10 @@
-# A second cluster rolling beside the one in cluster.toml. Two rolls are two
+# A second cluster rolling beside the one in cluster.xmip. Two rolls are two
 # clusters (ADR-0052, amendment 2026-09-14, ruling 1), each publishing its own
 # file, and a face holds both at once (amendment 2026-09-20). Small on purpose:
 # what it has to carry is its own [run].cluster, its own scope root and enough
 # topology for a view to draw something that is plainly not C1's.
 
-source = "playground — xmip:///C2"
+source = "essentials — xmip:///C2"
 node = "xmip:///C2"
 
 [[records]]
@@ -49,7 +49,7 @@ online = ["R1"]
 stress = "harsh"
 
 [topology]
-source = "playground — cluster C2"
+source = "essentials — cluster C2"
 observed_unix_nanos = 1789111688000000000
 
 [[topology.nodes]]

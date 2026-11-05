@@ -5,10 +5,10 @@ namespace Xmip.Surface;
 
 /// <summary>
 /// Where the desktop's cluster lives and where its nodes' slices go: the
-/// cluster's <c>xmip.toml</c>, the directory each node's slice is written
-/// to as <c>&lt;node&gt;/xmip-node.toml</c> — the name desired state writes
+/// cluster's <c>cluster.xmip</c>, the directory each node's slice is written
+/// to as <c>&lt;node&gt;/node.xmip</c> — the name desired state writes
 /// it by (<c>deployment-model.md</c> section 8) — and the node of it this
-/// desktop starts, as <c>xmip.gui.toml</c> declares them. Every slice is the
+/// desktop starts, as <c>gui.xmip</c> declares them. Every slice is the
 /// runtime's one slicing (<c>xmip_cluster_slices_v1</c>,
 /// <c>configure::slice</c>); nothing here takes the file apart.
 /// </summary>
@@ -22,16 +22,16 @@ namespace Xmip.Surface;
 /// is written here and said to be not shipped, never sent by a transport
 /// invented for it.
 /// </remarks>
-/// <param name="clusterPath">The cluster's <c>xmip.toml</c>.</param>
+/// <param name="clusterPath">The cluster's <c>cluster.xmip</c>.</param>
 /// <param name="directory">Where each node's slice is written.</param>
 /// <param name="node">The node this desktop starts; null where it starts
 /// none.</param>
 public sealed class SliceDelivery(string clusterPath, string directory, string? node)
 {
     /// <summary>The file name a node reads its slice from.</summary>
-    public const string FileName = "xmip-node.toml";
+    public const string FileName = "node.xmip";
 
-    /// <summary>The key naming the cluster's <c>xmip.toml</c>.</summary>
+    /// <summary>The key naming the cluster's <c>cluster.xmip</c>.</summary>
     public const string ClusterKey = "Xmip:ClusterConfiguration";
 
     /// <summary>The key naming where each node's slice is written.</summary>
@@ -43,9 +43,9 @@ public sealed class SliceDelivery(string clusterPath, string directory, string? 
     /// <summary>
     /// The place <paramref name="configuration"/> declares — the cluster's
     /// file, the slice directory and the node configured here, all three as
-    /// <c>xmip.gui.toml</c> names them and never read from a name. A path is
+    /// <c>gui.xmip</c> names them and never read from a name. A path is
     /// resolved against <paramref name="basePath"/> (<see cref="TomlDocument.Resolve"/>);
-    /// one unset is <c>xmip.toml</c> or <c>slices</c> under
+    /// one unset is <c>cluster.xmip</c> or <c>slices</c> under
     /// <paramref name="data"/>, the host's own data directory; no node set
     /// is none.
     /// </summary>
@@ -59,7 +59,7 @@ public sealed class SliceDelivery(string clusterPath, string directory, string? 
 
         return new SliceDelivery(
             string.IsNullOrWhiteSpace(cluster)
-                ? Path.Combine(data, "xmip.toml")
+                ? Path.Combine(data, "cluster.xmip")
                 : TomlDocument.Resolve(cluster, basePath),
             string.IsNullOrWhiteSpace(slices)
                 ? Path.Combine(data, "slices")
@@ -67,7 +67,7 @@ public sealed class SliceDelivery(string clusterPath, string directory, string? 
             string.IsNullOrWhiteSpace(node) ? null : node);
     }
 
-    /// <summary>The cluster's <c>xmip.toml</c>.</summary>
+    /// <summary>The cluster's <c>cluster.xmip</c>.</summary>
     public string ClusterPath => clusterPath;
 
     /// <summary>Where each node's slice is written.</summary>
@@ -137,7 +137,7 @@ public sealed class SliceDelivery(string clusterPath, string directory, string? 
             : new NodeDelivery(
                 name, NodeDelivery.Standing.NotShipped, path,
                 $"sliced to {path} and not shipped: Xmip has no path yet that puts a file on " +
-                "another node; desired state slices the cluster's xmip.toml on the node as it " +
+                "another node; desired state slices cluster.xmip on the node as it " +
                 "deploys it");
     }
 }

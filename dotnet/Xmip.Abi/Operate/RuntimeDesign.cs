@@ -6,7 +6,7 @@ namespace Xmip.Abi.Operate;
 
 /// <summary>
 /// Section 10 of <c>include/xmip_operate.h</c>, crossed by P/Invoke: the
-/// cluster's <c>xmip.toml</c> read, edited and sliced (ADR-0064, amendment
+/// cluster's <c>cluster.xmip</c> read, edited and sliced (ADR-0064, amendment
 /// 2026-10-03; ADR-0031, amendment 2026-10-05). The views, an Xmip
 /// Application's routes, a filter's text and structure, every edit and the
 /// slicing are <c>xmip-core-configure</c>'s, forwarded by the runtime's
@@ -132,7 +132,7 @@ public sealed unsafe class RuntimeDesign
             0 => true,
             (int)XmipStatus.Invalid => false,
             _ => throw new InvalidOperationException(
-                $"the runtime answered the cluster's xmip.toml with {(XmipStatus)status}"),
+                $"the runtime answered cluster.xmip with {(XmipStatus)status}"),
         };
     }
 

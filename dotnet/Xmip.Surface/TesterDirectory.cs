@@ -1,7 +1,7 @@
 namespace Xmip.Surface;
 
 /// <summary>
-/// The Playground's fake directory (ADR-0009, amendments 2026-09-14 and
+/// The Essentials' fake directory (ADR-0009, amendments 2026-09-14 and
 /// 2026-10-21): it allows the tester — the person who started the run —
 /// every role, and knows no one else. It knows the tester twice: as the
 /// operating system user a host runs as, the desktop's caller, and by the

@@ -19,7 +19,7 @@ namespace Xmip.Surface.Test;
 /// a handle; a circuit holds a handle of its own and the role the host's
 /// assignment grants it; and the act passes <see cref="GatedOperator"/> by
 /// that handle, never a name, and is audited as them. An unstated role
-/// grants nothing; the Playground's tester is allowed by the fake directory
+/// grants nothing; the Essentials' tester is allowed by the fake directory
 /// its configuration names, and by nothing else. A browser on this
 /// machine's loopback is proven by nothing but a certificate, as one from
 /// anywhere else (open problem 35).
@@ -170,7 +170,7 @@ public sealed class BrowserCallerTest : IDisposable
 
         Assert.True(done.Applied, done.Result);
         string order = File.ReadAllText(
-            Assert.Single(Directory.GetFiles(Orders, "*.toml", SearchOption.AllDirectories)));
+            Assert.Single(Directory.GetFiles(Orders, "*.xmip", SearchOption.AllDirectories)));
         string audited = Audited();
         Assert.All([order, audited], text =>
         {
@@ -364,7 +364,7 @@ public sealed class BrowserCallerTest : IDisposable
 
     private string Audited()
     {
-        return File.ReadAllText(Path.Combine(Audit, "audit.toml"));
+        return File.ReadAllText(Path.Combine(Audit, "audit.xmip"));
     }
 
     private static IConfiguration Configured(params (string Key, string Value)[] pairs)

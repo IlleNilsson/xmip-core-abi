@@ -1,7 +1,7 @@
 namespace Xmip.Surface.Test;
 
 /// <summary>
-/// The desktop edits the cluster's <c>xmip.toml</c> and nothing else
+/// The desktop edits the cluster's <c>cluster.xmip</c> and nothing else
 /// (ADR-0031, amendment 2026-10-05), and every view, edit and refusal is the
 /// runtime's (<c>xmip_operate.h</c> section 10): what is asserted here is
 /// what the runtime this estate built answers.
@@ -140,7 +140,7 @@ public sealed class ClusterConfigurationTest : IDisposable
             out string why),
             why);
 
-        string node = Path.Combine(_directory, "xmip-node.toml");
+        string node = Path.Combine(_directory, "node.xmip");
         File.WriteAllText(node, slices[0].Text);
         ClusterConfiguration opened = ClusterConfiguration.Open(node);
 
@@ -154,7 +154,7 @@ public sealed class ClusterConfigurationTest : IDisposable
     public void AClusterBegunHereIsEditableAndBecomesOneWhenItDeclaresANode()
     {
         ClusterConfiguration cluster =
-            ClusterConfiguration.Open(Path.Combine(_directory, "new.toml"));
+            ClusterConfiguration.Open(Path.Combine(_directory, "new.xmip"));
 
         Assert.False(cluster.Exists);
         Assert.True(cluster.Editable, cluster.Refusal);
@@ -201,7 +201,7 @@ public sealed class ClusterConfigurationTest : IDisposable
     public void AFileThatAppearedSinceAnEmptyOpenIsNotOverwritten()
     {
         ClusterConfiguration cluster =
-            ClusterConfiguration.Open(Path.Combine(_directory, "new.toml"));
+            ClusterConfiguration.Open(Path.Combine(_directory, "new.xmip"));
         Assert.True(cluster.TryEdit(
             new ClusterEdit.AddNode(Estate.Cluster.Nodes[0]), out string edit), edit);
         File.WriteAllText(cluster.Path, "# written elsewhere\n");
@@ -222,7 +222,7 @@ public sealed class ClusterConfigurationTest : IDisposable
             Assert.True(cluster.TryWrite(out string stale), stale);
         }
 
-        Assert.Equal(["xmip.toml"], Directory.GetFiles(_directory).Select(Path.GetFileName));
+        Assert.Equal(["cluster.xmip"], Directory.GetFiles(_directory).Select(Path.GetFileName));
         Assert.Contains("save-1", File.ReadAllText(cluster.Path), StringComparison.Ordinal);
     }
 
@@ -263,7 +263,7 @@ public sealed class ClusterConfigurationTest : IDisposable
             Assert.Equal(winner.Text, File.ReadAllText(path));
         }
 
-        Assert.Equal(["xmip.toml"], Directory.GetFiles(_directory).Select(Path.GetFileName));
+        Assert.Equal(["cluster.xmip"], Directory.GetFiles(_directory).Select(Path.GetFileName));
     }
 
     [Fact]
@@ -279,7 +279,7 @@ public sealed class ClusterConfigurationTest : IDisposable
             bufferSize: 1, FileOptions.DeleteOnClose))
         {
             Assert.False(cluster.TryWrite(out string refusal));
-            Assert.Contains("another save of xmip.toml is under way", refusal,
+            Assert.Contains("another save of cluster.xmip is under way", refusal,
                 StringComparison.Ordinal);
             Assert.Equal(before, File.ReadAllText(cluster.Path));
             Assert.True(cluster.Changed);

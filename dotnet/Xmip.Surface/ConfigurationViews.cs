@@ -4,7 +4,7 @@ using Xmip.Abi.Operate;
 namespace Xmip.Surface;
 
 /// <summary>
-/// A cluster's <c>xmip.toml</c> as the runtime views it, artifact kind by
+/// A cluster's <c>cluster.xmip</c> as the runtime views it, artifact kind by
 /// artifact kind (<c>xmip_operate.h</c> section 10,
 /// <c>xmip_cluster_views_v1</c>; ADR-0064, amendment 2026-10-03): what the
 /// VS Code designer draws and the Operation Desktop's Configure page draws.

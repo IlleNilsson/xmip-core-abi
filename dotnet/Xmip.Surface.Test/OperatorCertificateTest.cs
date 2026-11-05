@@ -39,7 +39,7 @@ public sealed class OperatorCertificateTest
 
         string node = $"{Cluster.Scope}/node/{Cluster.WithRole("sending")}";
         using ServedNode served = RemoteOperatorTest.Serve(
-            authority, RemoteOperatorTest.Fixture("snapshot.toml"));
+            authority, RemoteOperatorTest.Fixture("snapshot.xmip"));
         using RemoteOperator phone = new(
             served.Address, SecureSurface.Load(chain, requested.Key, authority.Anchor));
         MessageOperation refused = phone.Act(node, "j1", MessageAct.Retry, "a name", caller: null);

@@ -6,7 +6,7 @@ namespace Xmip.Surface.Test;
 /// built — found by the one rule
 /// (<see cref="RuntimeLibrary"/>), <c>XMIP_RUNTIME_LIBRARY</c> first, else the
 /// library the binding's project copies beside every test assembly — and a
-/// cluster's <c>xmip.toml</c> written from the test cluster's names.
+/// cluster's <c>cluster.xmip</c> written from the test cluster's names.
 /// </summary>
 internal static class Estate
 {
@@ -23,7 +23,7 @@ internal static class Estate
     /// nodes, written into <paramref name="directory"/> and opened.</summary>
     public static ClusterConfiguration Written(string directory)
     {
-        string path = Path.Combine(directory, "xmip.toml");
+        string path = Path.Combine(directory, "cluster.xmip");
         File.WriteAllText(path, $"""
             {Comment}
             [service]

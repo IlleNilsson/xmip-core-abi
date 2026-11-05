@@ -53,11 +53,11 @@ public sealed class LocalOperatorTest
     [Fact]
     public async Task AnswersWhatTheNodePublishesAndIsToldWithinAMillisecond()
     {
-        string published = Fixture("snapshot.toml");
+        string published = Fixture("snapshot.xmip");
         using ServedNode served = Serve(published);
         using LocalOperator localNode = new(served.Address);
         IOperatorSurface surface = localNode;
-        SnapshotOperator snapshot = new(FixturePath("snapshot.toml"));
+        SnapshotOperator snapshot = new(FixturePath("snapshot.xmip"));
 
         Assert.True(localNode.Connect(), localNode.Reason);
         Assert.Equal($"LOCAL — {served.Address}", surface.Source);
@@ -115,7 +115,7 @@ public sealed class LocalOperatorTest
     {
         string node = $"{Cluster.Scope}/node/{Cluster.WithRole("sending")}";
 
-        using (ServedNode observed = Serve(Fixture("snapshot.toml")))
+        using (ServedNode observed = Serve(Fixture("snapshot.xmip")))
         using (LocalOperator local = new(observed.Address))
         {
             MessageOperation refused =
@@ -127,7 +127,7 @@ public sealed class LocalOperatorTest
             Assert.DoesNotContain("a name", refused.Result, StringComparison.Ordinal);
         }
 
-        using ServedNode operated = Serve(Fixture("snapshot.toml"), "operator");
+        using ServedNode operated = Serve(Fixture("snapshot.xmip"), "operator");
         using LocalOperator acting = new(operated.Address);
         MessageOperation taken = acting.Act(node, "j1", MessageAct.Retry, "a name", caller: null);
         Assert.False(taken.Applied);
@@ -137,7 +137,7 @@ public sealed class LocalOperatorTest
     [Fact]
     public async Task ANodeLostIsToldAndItsLastPublicationIsNotAnsweredAsCurrent()
     {
-        ServedNode served = Serve(Fixture("snapshot.toml"));
+        ServedNode served = Serve(Fixture("snapshot.xmip"));
         using LocalOperator local = new(served.Address);
         IOperatorSurface surface = local;
         using CancellationTokenSource patience = new(TimeSpan.FromSeconds(30));

@@ -4,7 +4,7 @@ using System.Text;
 namespace Xmip.Surface;
 
 /// <summary>
-/// The cluster's <c>xmip.toml</c> the desktop edits — the one configuration
+/// The cluster's <c>cluster.xmip</c> the desktop edits — the one configuration
 /// anyone edits (ADR-0031, amendment 2026-10-05: <i>node TOML files shall
 /// not be edited, only cluster TOML files</i>). It holds the text and what
 /// the runtime answers of it; it holds no configuration rule. Its views are

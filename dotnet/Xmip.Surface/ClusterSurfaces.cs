@@ -245,7 +245,7 @@ public sealed class ClusterSurfaces : IDisposable
     /// every question a face asks of it — a view's, a chooser's naming every
     /// cluster on every render — is answered from what was already read
     /// (<see cref="SnapshotOperator"/>). Until 2026-10-03 a render after a
-    /// Playground tick read every changed cluster's 2 MB snapshot itself.
+    /// Essentials tick read every changed cluster's 2 MB snapshot itself.
     /// Returns this set.
     /// </summary>
     public ClusterSurfaces Follow()

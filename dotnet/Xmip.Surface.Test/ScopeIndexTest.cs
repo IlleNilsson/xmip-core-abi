@@ -6,7 +6,7 @@ namespace Xmip.Surface.Test;
 /// <summary>
 /// The publication as its tree, built once (ADR-0052, amendment 2026-09-15):
 /// what it answers is what the record-by-record helpers answer, and it
-/// answers a Playground's worth of leaves in the time one render can afford.
+/// answers an Essentials's worth of leaves in the time one render can afford.
 /// </summary>
 public sealed class ScopeIndexTest
 {
@@ -97,7 +97,7 @@ public sealed class ScopeIndexTest
     }
 
     [Fact]
-    public void APlaygroundOfLeavesIsIndexedWithinOneRender()
+    public void AEssentialsOfLeavesIsIndexedWithinOneRender()
     {
         // Eleven thousand leaves is what a roll publishes every second; the
         // board must read it in a fraction of that (2026-09-15).

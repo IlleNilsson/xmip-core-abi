@@ -51,7 +51,7 @@ capability decide, which on Windows is the Event Log.
 
 ## Build and run the test
 
-With zig (`prerequisite.toml`, `c`), from the repository root:
+With zig (`prerequisite.xmip`, `c`), from the repository root:
 
 ```sh
 zig c++ -std=c++17 -O2 -I include cpp/xmip_event_test.cpp -o build/cpp/xmip_event_test

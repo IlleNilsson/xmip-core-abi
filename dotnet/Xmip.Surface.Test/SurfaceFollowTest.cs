@@ -10,12 +10,12 @@ namespace Xmip.Surface.Test;
 public sealed class SurfaceFollowTest
 {
     private static readonly string Fixture =
-        Path.Combine(AppContext.BaseDirectory, "Fixture", "snapshot.toml");
+        Path.Combine(AppContext.BaseDirectory, "Fixture", "snapshot.xmip");
 
     [Fact]
     public async Task TheCurrentAnswerComesFirstAndAChangedOneFollows()
     {
-        string copy = Path.Combine(Path.GetTempPath(), $"xmip-follow-{Guid.NewGuid():N}.toml");
+        string copy = Path.Combine(Path.GetTempPath(), $"xmip-follow-{Guid.NewGuid():N}.xmip");
         File.Copy(Fixture, copy);
 
         try

@@ -440,7 +440,7 @@ is a convenience over this header and never normative is ADR-0012 clause 2.
 This specification does not restate a decision.
 
 The two earlier crates this binding replaced, `xmip-module-abi` and
-`xmip-module-api`, were removed on 2026-08-26; `doc/planning/allocation.toml`
+`xmip-module-api`, were removed on 2026-08-26; `doc/planning/allocation.xmip`
 in the estate records why.
 
 ---

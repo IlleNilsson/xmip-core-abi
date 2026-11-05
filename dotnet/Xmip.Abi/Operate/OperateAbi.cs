@@ -169,7 +169,7 @@ public static partial class OperateAbi
         "The Xmip event source is not registered and registering it needs elevation once " +
         "(Install-XmipPrerequisite does it), so this is written under the .NET Runtime source.";
 
-    /// <summary>A cluster's <c>xmip.toml</c>, one view per artifact kind:
+    /// <summary>A cluster's <c>cluster.xmip</c>, one view per artifact kind:
     /// section 10, forwarded to <c>configure::views::Views::of</c>.</summary>
     public const string ClusterViewsEntrypoint = "xmip_cluster_views_v1";
 
@@ -181,12 +181,12 @@ public static partial class OperateAbi
     /// <c>configure::filter::text</c>.</summary>
     public const string FilterTextEntrypoint = "xmip_filter_text_v1";
 
-    /// <summary>A cluster's <c>xmip.toml</c> with one edit made: section 10,
+    /// <summary>A cluster's <c>cluster.xmip</c> with one edit made: section 10,
     /// <c>configure::view_edit::apply</c>.</summary>
     public const string ClusterEditEntrypoint = "xmip_cluster_edit_v1";
 
     /// <summary>Each node's document, sliced from a cluster's
-    /// <c>xmip.toml</c> by the one slicing: section 10,
+    /// <c>cluster.xmip</c> by the one slicing: section 10,
     /// <c>configure::slices</c> (ADR-0031, amendment 2026-10-05).</summary>
     public const string ClusterSlicesEntrypoint = "xmip_cluster_slices_v1";
 

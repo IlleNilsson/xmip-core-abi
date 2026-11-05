@@ -23,9 +23,9 @@ public sealed class RemoteOperatorTest
     public void SaysWhatTheNodesRunWasStartedWith()
     {
         using TestAuthority authority = new("run");
-        using ServedNode served = Serve(authority, Fixture("cluster.toml"));
+        using ServedNode served = Serve(authority, Fixture("cluster.xmip"));
         using RemoteOperator remote = Remote(authority, served.Address);
-        IOperatorSurface local = new SnapshotOperator(FixturePath("cluster.toml"));
+        IOperatorSurface local = new SnapshotOperator(FixturePath("cluster.xmip"));
         string receiver = Cluster.WithRole("receiving");
         string processor = Cluster.WithRole("processing");
 
@@ -46,11 +46,11 @@ public sealed class RemoteOperatorTest
     public async Task AnswersWhatTheNodePublishesAndIsToldWhenItAdvances()
     {
         using TestAuthority authority = new("follow");
-        string published = Fixture("snapshot.toml");
+        string published = Fixture("snapshot.xmip");
         using ServedNode served = Serve(authority, published);
         using RemoteOperator remoteNode = Remote(authority, served.Address);
         IOperatorSurface remote = remoteNode;
-        IOperatorSurface local = new SnapshotOperator(FixturePath("snapshot.toml"));
+        IOperatorSurface local = new SnapshotOperator(FixturePath("snapshot.xmip"));
 
         Assert.True(remoteNode.Connect(), remoteNode.Reason);
         Assert.Equal($"REMOTE — {served.Address}", remote.Source);
@@ -105,7 +105,7 @@ public sealed class RemoteOperatorTest
     public async Task ANodeLostIsToldAndItsLastPublicationIsNotAnsweredAsCurrent()
     {
         using TestAuthority authority = new("lost");
-        ServedNode served = Serve(authority, Fixture("snapshot.toml"));
+        ServedNode served = Serve(authority, Fixture("snapshot.xmip"));
         using RemoteOperator remote = Remote(authority, served.Address);
         IOperatorSurface surface = remote;
         using CancellationTokenSource patience = new(TimeSpan.FromSeconds(30));
@@ -128,7 +128,7 @@ public sealed class RemoteOperatorTest
         using TestAuthority authority = new("act");
         string node = $"{Cluster.Scope}/node/{Cluster.WithRole("sending")}";
 
-        using (ServedNode observed = Serve(authority, Fixture("snapshot.toml")))
+        using (ServedNode observed = Serve(authority, Fixture("snapshot.xmip")))
         using (RemoteOperator remote = Remote(authority, observed.Address))
         {
             MessageOperation refused =
@@ -139,7 +139,7 @@ public sealed class RemoteOperatorTest
             Assert.DoesNotContain("a name", refused.Result, StringComparison.Ordinal);
         }
 
-        using ServedNode operated = Serve(authority, Fixture("snapshot.toml"), "operator");
+        using ServedNode operated = Serve(authority, Fixture("snapshot.xmip"), "operator");
         using RemoteOperator acting = Remote(authority, operated.Address);
         MessageOperation taken = acting.Act(node, "j1", MessageAct.Retry, "a name", caller: null);
         Assert.False(taken.Applied);
@@ -151,7 +151,7 @@ public sealed class RemoteOperatorTest
     {
         using TestAuthority authority = new("node");
         using TestAuthority stranger = new("stranger");
-        using ServedNode served = Serve(authority, Fixture("snapshot.toml"));
+        using ServedNode served = Serve(authority, Fixture("snapshot.xmip"));
 
         (string certificate, string key) = stranger.Client();
         using RemoteOperator untrusted = new(

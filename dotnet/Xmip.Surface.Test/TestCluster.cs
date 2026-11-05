@@ -18,12 +18,12 @@ internal sealed class TestCluster
 
     /// <summary>Where the estate keeps its test cluster's file, from the
     /// estate's root.</summary>
-    public const string EstateFile = "test/xmip.toml";
+    public const string EstateFile = "test/cluster.xmip";
 
     /// <summary>Where the estate keeps its second test cluster's file, the
     /// cluster a test of two takes beside the test cluster, as
     /// <c>configure::fixture::other_cluster</c> reads it.</summary>
-    public const string OtherFile = "test/other/xmip.toml";
+    public const string OtherFile = "test/other/cluster.xmip";
 
     private TestCluster(
         string path, string name, IReadOnlyList<string> nodes, IReadOnlyList<string> roles)

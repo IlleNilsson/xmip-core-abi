@@ -2,7 +2,7 @@
 namespace Xmip.Surface.Test;
 
 /// <summary>
-/// The desktop's acts on the cluster's <c>xmip.toml</c> are the operator's
+/// The desktop's acts on the cluster's <c>cluster.xmip</c> are the operator's
 /// and are audited (ADR-0062): a save, each node's slice and ship, a refused
 /// edit, a plan. Each is read back here from the audit directory the
 /// desktop was told, as the audit capability wrote it.
@@ -24,7 +24,7 @@ public sealed class RuntimeCommandsTest : IDisposable
 
     private string Audited()
     {
-        return File.ReadAllText(Path.Combine(AuditDirectory, "audit.toml"));
+        return File.ReadAllText(Path.Combine(AuditDirectory, "audit.xmip"));
     }
 
     [Fact]
@@ -55,7 +55,7 @@ public sealed class RuntimeCommandsTest : IDisposable
     public void ANodesOwnDocumentIsNotSavedAndTheRefusalIsAudited()
     {
         ClusterConfiguration cluster =
-            ClusterConfiguration.Open(Path.Combine(_directory, "new.toml"));
+            ClusterConfiguration.Open(Path.Combine(_directory, "new.xmip"));
         Assert.True(cluster.TryEdit(
             new ClusterEdit.Set(["service"], ["name"], "\"xmip\""), out string edit), edit);
 

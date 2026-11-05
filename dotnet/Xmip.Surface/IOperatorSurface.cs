@@ -47,7 +47,7 @@ public partial interface IOperatorSurface
 
     /// <summary>
     /// The scope the publisher publishes at, where every drill starts: a
-    /// Playground roll's cluster, <c>xmip:///&lt;cluster&gt;</c>, where the publication
+    /// Essentials roll's cluster, <c>xmip:///&lt;cluster&gt;</c>, where the publication
     /// says so; the root otherwise. Until 2026-09-26 every drill started at
     /// the root, above the cluster, so the first level of every surface was
     /// one row — the cluster — and <c>xmip list</c> with no scope listed
@@ -160,7 +160,7 @@ public partial interface IOperatorSurface
     /// kind), where a topology is published; with none to say, each scope
     /// directly beneath the root, which is where a node's own publication puts
     /// itself. Until 2026-09-25 the Monitor counted the scopes beneath the root
-    /// alone, and a Playground cluster — its nodes beneath
+    /// alone, and an Essentials cluster — its nodes beneath
     /// <c>xmip:///&lt;cluster&gt;/node</c> — came out as one node, the cluster
     /// (ADR-0052, amendment 2026-09-25).
     /// </summary>
@@ -184,7 +184,7 @@ public partial interface IOperatorSurface
     /// What the run behind this surface was started with — the tests, the
     /// nodes, which of them are online, how hard — when its publisher says;
     /// <see cref="RunHeader.None"/> when it does not, which every surface
-    /// but a Playground snapshot answers today.
+    /// but an Essentials snapshot answers today.
     /// </summary>
     public RunHeader Run()
     {

@@ -1,4 +1,4 @@
-//! Header section 10: the cluster's `xmip.toml` read and edited for the
+//! Header section 10: `cluster.xmip` read and edited for the
 //! designer (ADR-0064, amendment 2026-10-03).
 //!
 //! The designer in the VS Code extension holds no rule: its language server
@@ -13,7 +13,7 @@
 
 use crate::ffi::Str;
 
-/// `xmip_cluster_views_v1`: a cluster's `xmip.toml` in, one view per
+/// `xmip_cluster_views_v1`: a cluster's `cluster.xmip` in, one view per
 /// artifact kind out (JSON, in memory only — ADR-0031 clause 2), an Xmip
 /// Application's routes among them.
 pub const CLUSTER_VIEWS_ENTRYPOINT: &str = "xmip_cluster_views_v1";
@@ -24,11 +24,11 @@ pub const FILTER_STRUCTURE_ENTRYPOINT: &str = "xmip_filter_structure_v1";
 /// `xmip_filter_text_v1`: rows and groups in, the filter's canonical text out.
 pub const FILTER_TEXT_ENTRYPOINT: &str = "xmip_filter_text_v1";
 
-/// `xmip_cluster_edit_v1`: a cluster's `xmip.toml` and an edit in, the
+/// `xmip_cluster_edit_v1`: a cluster's `cluster.xmip` and an edit in, the
 /// edited text out.
 pub const CLUSTER_EDIT_ENTRYPOINT: &str = "xmip_cluster_edit_v1";
 
-/// `xmip_cluster_slices_v1`: a cluster's `xmip.toml` in, and a node's name
+/// `xmip_cluster_slices_v1`: a cluster's `cluster.xmip` in, and a node's name
 /// or empty; each node's configuration document, sliced by the one slicing,
 /// out.
 pub const CLUSTER_SLICES_ENTRYPOINT: &str = "xmip_cluster_slices_v1";

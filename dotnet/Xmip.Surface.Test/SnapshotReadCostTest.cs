@@ -6,14 +6,14 @@ using Xmip.Abi.Operate;
 namespace Xmip.Surface.Test;
 
 /// <summary>
-/// What reading a Playground cluster's snapshot costs a view, by the
+/// What reading an Essentials cluster's snapshot costs a view, by the
 /// millisecond rule (CONTRIBUTING: over a millisecond beyond load is a
-/// defect). A publication the size of a Playground cluster's on 2026-10-02 —
+/// defect). A publication the size of an Essentials cluster's on 2026-10-02 —
 /// 2 MB, 11,504 records, 176 topology nodes — is read once: its first read is the load,
 /// measured and reported; every view after it answers in well under a
 /// millisecond, from what was read when the snapshot is unchanged, and from
 /// what the follow read before it announced when it changed. On 2026-10-02 a
-/// view read it again on every Playground tick, 867 ms a cluster.
+/// view read it again on every Essentials tick, 867 ms a cluster.
 /// </summary>
 public sealed class SnapshotReadCostTest(ITestOutputHelper output) : IDisposable
 {
@@ -37,7 +37,7 @@ public sealed class SnapshotReadCostTest(ITestOutputHelper output) : IDisposable
     private const double Followed = 0.1;
 
     private readonly string path = Path.Combine(
-        Path.GetTempPath(), $"xmip-snapshot-cost-{Guid.NewGuid():N}.toml");
+        Path.GetTempPath(), $"xmip-snapshot-cost-{Guid.NewGuid():N}.xmip");
 
     [Fact]
     public void AViewReadsAClusterSizedSnapshotInWellUnderAMillisecondAfterTheFirstRead()
@@ -135,7 +135,7 @@ public sealed class SnapshotReadCostTest(ITestOutputHelper output) : IDisposable
         return taken[taken.Length / 2];
     }
 
-    // A publication of a Playground cluster's size and shape, over the test
+    // A publication of an Essentials cluster's size and shape, over the test
     // cluster's names: its records, counts, run and topology, the round said
     // in the run's stress so a reader can tell which it read.
     private static string Publication(int round)
@@ -150,7 +150,7 @@ public sealed class SnapshotReadCostTest(ITestOutputHelper output) : IDisposable
         StringBuilder text = new();
         text.Append(
             CultureInfo.InvariantCulture,
-            $"source = \"playground — {cluster.Scope}\"\nnode = \"{cluster.Scope}\"\n");
+            $"source = \"essentials — {cluster.Scope}\"\nnode = \"{cluster.Scope}\"\n");
 
         for (int at = 0; at < Records; at++)
         {
