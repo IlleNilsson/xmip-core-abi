@@ -41,22 +41,23 @@ public sealed class ClusterConfigurationTest : IDisposable
         Assert.Contains(location.Offered, offered => offered.Key == "prepare");
         Assert.True(
             cluster.TryEdit(
-                new ClusterEdit.AddEntry(["parties"], "partner", [new(["identities"], "[]", "")]),
+                new ClusterEdit.AddEntry(["parties"], "party-x", [new(["identities"], "[]", "")]),
                 out string refusal),
             refusal);
         ArtifactEntry party = cluster.Views.Of("party")!.Entries[0];
         OfferedKey identities = party.Offered.Single(offered => offered.Key == "identities");
         Assert.Contains(identities.Elements, inner => inner.Key == "purpose"
             && inner.Choices.Contains("receive"));
+        Assert.Contains(identities.Elements, inner => inner.Key == "secret");
         Assert.True(
             cluster.TryEdit(
                 new ClusterEdit.AddElement(
                     party.Section, ["identities"],
                     [new(["mechanism"], "\"mutual-tls\"", ""), new(["purpose"], "\"receive\"", ""),
-                     new(["value"], "\"CN=partner\"", "")]),
+                     new(["value"], "\"CN=party-x\"", "")]),
                 out refusal),
             refusal);
-        Assert.Contains("CN=partner", cluster.Text, StringComparison.Ordinal);
+        Assert.Contains("CN=party-x", cluster.Text, StringComparison.Ordinal);
     }
 
     [Fact]
