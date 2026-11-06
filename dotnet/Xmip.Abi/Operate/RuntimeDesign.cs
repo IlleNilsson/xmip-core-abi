@@ -10,7 +10,7 @@ namespace Xmip.Abi.Operate;
 /// 2026-10-03; ADR-0031, amendment 2026-10-05). The views, an Xmip
 /// Application's routes, a filter's text and structure, every edit and the
 /// slicing are <c>xmip-core-configure</c>'s, forwarded by the runtime's
-/// library; this binds each of the five once for every .NET surface, and the
+/// library; this binds each of the six once for every .NET surface, and the
 /// Operation Desktop's Configure page draws what they answer.
 /// </summary>
 /// <remarks>Pure in the header's sense: one instance serves a whole process
@@ -32,6 +32,8 @@ public sealed unsafe class RuntimeDesign
         XmipStr, XmipStr, byte*, nuint, nuint*, int> _edit;
     private readonly delegate* unmanaged[Cdecl]<
         XmipStr, XmipStr, byte*, nuint, nuint*, int> _slices;
+    private readonly delegate* unmanaged[Cdecl]<
+        XmipStr, XmipStr, byte*, nuint, nuint*, int> _signed;
 
     internal RuntimeDesign(nint library)
     {
@@ -40,6 +42,7 @@ public sealed unsafe class RuntimeDesign
         _text = Export(library, OperateAbi.FilterTextEntrypoint);
         _edit = Export(library, OperateAbi.ClusterEditEntrypoint);
         _slices = Export(library, OperateAbi.ClusterSlicesEntrypoint);
+        _signed = Export(library, OperateAbi.ClusterSignedSliceEntrypoint);
     }
 
     /// <summary>The symbols this binds, each of which a runtime must
@@ -51,6 +54,7 @@ public sealed unsafe class RuntimeDesign
         OperateAbi.FilterTextEntrypoint,
         OperateAbi.ClusterEditEntrypoint,
         OperateAbi.ClusterSlicesEntrypoint,
+        OperateAbi.ClusterSignedSliceEntrypoint,
     ];
 
     /// <summary>The cluster's file <paramref name="cluster"/> as one view per
@@ -95,6 +99,25 @@ public sealed unsafe class RuntimeDesign
     public bool TrySlices(string cluster, string? node, out string answer)
     {
         return Call(_slices, cluster, node ?? string.Empty, out answer);
+    }
+
+    /// <summary><paramref name="node"/>'s document sliced from the cluster's
+    /// file <paramref name="cluster"/>, kept at <paramref name="clusterPath"/>,
+    /// and signed by the cluster's authority beside that file — made there
+    /// where none is kept — as <c>{"text","authority"}</c>: the file the node
+    /// is given and the certificate it checks it by. False, with the refusal,
+    /// as <see cref="TrySlices"/>, or where the authority cannot be kept.</summary>
+    public bool TrySignedSlice(string cluster, string clusterPath, string node, out string answer)
+    {
+        ArgumentNullException.ThrowIfNull(clusterPath);
+        ArgumentNullException.ThrowIfNull(node);
+
+        string argument = new System.Text.Json.Nodes.JsonObject
+        {
+            ["cluster"] = clusterPath,
+            ["node"] = node,
+        }.ToJsonString();
+        return Call(_signed, cluster, argument, out answer);
     }
 
     private static delegate* unmanaged[Cdecl]<

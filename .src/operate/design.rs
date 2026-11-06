@@ -5,7 +5,7 @@
 //! asks the runtime's library, which forwards each call to
 //! `xmip-core-configure`, where the cluster's file, its views, an Xmip
 //! Application's routes, its filters, every edit and the one slicing are
-//! read, and a Work Process design is drawn, edited and compiled. Eight
+//! read, and a Work Process design is drawn, edited and compiled. Nine
 //! exports, one shape: text in, the answer written into the
 //! caller's buffer as UTF-8 and its true length in `out_len`, the way
 //! `xmip_validate_v1` writes its report. Declarations only; the runtime's
@@ -33,7 +33,13 @@ pub const CLUSTER_EDIT_ENTRYPOINT: &str = "xmip_cluster_edit_v1";
 /// out.
 pub const CLUSTER_SLICES_ENTRYPOINT: &str = "xmip_cluster_slices_v1";
 
-/// The one shape of the five. `input` is the text the export reads,
+/// `xmip_cluster_signed_slice_v1`: a cluster's `cluster.xmip` in, and
+/// `{"cluster","node"}`, the file's path and a node; that node's document,
+/// signed by the cluster's authority beside the file, and the authority's
+/// certificate out (ADR-0031, amendment 2026-11-06).
+pub const CLUSTER_SIGNED_SLICE_ENTRYPOINT: &str = "xmip_cluster_signed_slice_v1";
+
+/// The one shape of them all. `input` is the text the export reads,
 /// `argument` the edit or the node where one is taken and empty otherwise.
 /// `XMIP_OK` with the answer in `out`; `XMIP_E_INVALID` with the refusal, one
 /// sentence, in `out`; `XMIP_E_MALFORMED` when either is not UTF-8.
