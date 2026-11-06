@@ -68,6 +68,7 @@ public sealed class OperateAbiTest
     [InlineData("XMIP_FILTER_TEXT_ENTRYPOINT", OperateAbi.FilterTextEntrypoint)]
     [InlineData("XMIP_CLUSTER_EDIT_ENTRYPOINT", OperateAbi.ClusterEditEntrypoint)]
     [InlineData("XMIP_CLUSTER_SLICES_ENTRYPOINT", OperateAbi.ClusterSlicesEntrypoint)]
+    [InlineData("XMIP_CLUSTER_SIGNED_SLICE_ENTRYPOINT", OperateAbi.ClusterSignedSliceEntrypoint)]
     [InlineData("XMIP_EVENT_SUBSCRIBE_ENTRYPOINT", OperateAbi.EventSubscribeEntrypoint)]
     [InlineData("XMIP_EVENT_NEXT_ENTRYPOINT", OperateAbi.EventNextEntrypoint)]
     [InlineData("XMIP_EVENT_BATCH_FREE_ENTRYPOINT", OperateAbi.EventBatchFreeEntrypoint)]

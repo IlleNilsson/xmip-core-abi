@@ -14,6 +14,15 @@ public sealed class SliceDeliveryTest : IDisposable
     private readonly string _directory =
         Directory.CreateTempSubdirectory("xmip-slice-delivery-").FullName;
 
+    /// <summary>A delivered file's text above its signature: the slice the
+    /// cluster's authority signed (ADR-0031, amendment 2026-11-06).</summary>
+    private static string Unsigned(string file)
+    {
+        int signature = file.IndexOf("\n[signature]\n", StringComparison.Ordinal);
+        Assert.True(signature >= 0, "the file is signed");
+        return file[..(signature + 1)];
+    }
+
     [Fact]
     public void EachNodeIsSlicedTheNodeStartedHereShippedAndAnotherNot()
     {
@@ -31,7 +40,11 @@ public sealed class SliceDeliveryTest : IDisposable
         Assert.Equal(delivery.PathOf(here), shipped.Path);
         Assert.True(NodeSlice.TrySlice(
             cluster.Text, here, out IReadOnlyList<NodeSlice> slice, out string why), why);
-        Assert.Equal(slice[0].Text, File.ReadAllText(shipped.Path));
+        Assert.Equal(slice[0].Text, Unsigned(File.ReadAllText(shipped.Path)));
+        Assert.True(File.Exists(Path.Combine(
+            Path.GetDirectoryName(shipped.Path)!,
+            SliceDelivery.AuthorityFolder,
+            SliceDelivery.AuthorityCertificate)));
 
         NodeDelivery written = delivered[1];
         Assert.Equal(NodeDelivery.Standing.NotShipped, written.Outcome);
@@ -110,7 +123,7 @@ public sealed class SliceDeliveryTest : IDisposable
                 node.Outcome == NodeDelivery.Standing.Shipped
                     || node.Said.StartsWith(NotWritten, StringComparison.Ordinal),
                 node.Said));
-            Assert.Contains(File.ReadAllText(delivery.PathOf(here)), slices);
+            Assert.Contains(Unsigned(File.ReadAllText(delivery.PathOf(here))), slices);
             Assert.Equal(
                 [SliceDelivery.FileName],
                 Directory.GetFiles(Path.GetDirectoryName(delivery.PathOf(here))!)

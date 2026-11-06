@@ -817,14 +817,16 @@ typedef XmipStatus (*XmipAuditReadFn)(XmipStr directory,
  * server asks here, and each export is a thin forwarder into
  * xmip-core-configure, where the file, its views, an Xmip Application's
  * routes, its filters, every edit and the one slicing are read. The
- * Operation Desktop's Configure page asks the same five (ADR-0031,
+ * Operation Desktop's Configure page asks the same (ADR-0031,
  * amendment 2026-10-05: only cluster.xmip is edited, and saving
- * it slices it for each node). Pure like section 7: no handle, any thread,
+ * it slices it for each node, signed, amendment 2026-11-06). Pure like
+ * section 7, but xmip_cluster_signed_slice_v1: no handle, any thread,
  * before any node. Validating the file is xmip_validate_v1's, node by node.
  *
- * One shape for the five. input is the text the export reads; argument is
+ * One shape for them all. input is the text the export reads; argument is
  * the edit xmip_cluster_edit_v1 makes, the node xmip_cluster_slices_v1
- * slices for (empty: every node), and empty for the others. The answer
+ * slices for (empty: every node), the file and node
+ * xmip_cluster_signed_slice_v1 signs for, and empty for the others. The answer
  * is written into out as UTF-8, its true byte length in out_len whether or
  * not it fit, as xmip_validate_v1 writes its report. XMIP_OK with the
  * answer; XMIP_E_INVALID with the refusal, one sentence, in out;
@@ -869,6 +871,16 @@ typedef XmipStatus (*XmipAuditReadFn)(XmipStr directory,
  *                             {"slices":[{"node","text"}]}, each node's
  *                             configuration document as configure::slice
  *                             writes it, in the order of the node names.
+ *   xmip_cluster_signed_slice_v1  a cluster's cluster.xmip in, {"cluster",
+ *                             "node"} as argument: the file's path and a
+ *                             node; out {"text","authority"}, that node's
+ *                             document signed by the cluster's authority
+ *                             beside the file (made there where none is
+ *                             kept) and the authority's certificate, PEM,
+ *                             which a surface writes beside the slice as
+ *                             authority/authority.pem (ADR-0031, amendment
+ *                             2026-11-06). Not pure: it reads and may make
+ *                             the authority.
  */
 typedef XmipStatus (*XmipDesignFn)(XmipStr input, XmipStr argument,
                                    uint8_t *out, size_t cap, size_t *out_len);
@@ -878,6 +890,7 @@ typedef XmipStatus (*XmipDesignFn)(XmipStr input, XmipStr argument,
 #define XMIP_FILTER_TEXT_ENTRYPOINT      "xmip_filter_text_v1"
 #define XMIP_CLUSTER_EDIT_ENTRYPOINT     "xmip_cluster_edit_v1"
 #define XMIP_CLUSTER_SLICES_ENTRYPOINT   "xmip_cluster_slices_v1"
+#define XMIP_CLUSTER_SIGNED_SLICE_ENTRYPOINT "xmip_cluster_signed_slice_v1"
 
 /* ===================================================================== */
 /* 11. Events, subscribed                                                */

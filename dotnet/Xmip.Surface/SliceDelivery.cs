@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Json;
 using Microsoft.Extensions.Configuration;
 
 namespace Xmip.Surface;
@@ -9,8 +10,10 @@ namespace Xmip.Surface;
 /// to as <c>&lt;node&gt;/node.xmip</c> — the name desired state writes
 /// it by (<c>deployment-model.md</c> section 8) — and the node of it this
 /// desktop starts, as <c>gui.xmip</c> declares them. Every slice is the
-/// runtime's one slicing (<c>xmip_cluster_slices_v1</c>,
-/// <c>configure::slice</c>); nothing here takes the file apart.
+/// runtime's one slicing, signed by the cluster's authority beside the
+/// cluster's file (<c>xmip_cluster_signed_slice_v1</c>; ADR-0031, amendment
+/// 2026-11-06), and written with that authority's certificate beside it;
+/// nothing here takes the file apart or signs it.
 /// </summary>
 /// <remarks>
 /// Shipping puts a slice where its node reads it. The node this desktop
@@ -30,6 +33,14 @@ public sealed class SliceDelivery(string clusterPath, string directory, string? 
 {
     /// <summary>The file name a node reads its slice from.</summary>
     public const string FileName = "node.xmip";
+
+    /// <summary>The folder beside a slice holding the certificate of the
+    /// cluster's authority that signed it, which the node checks it by
+    /// (<c>signed::AUTHORITY</c>).</summary>
+    public const string AuthorityFolder = "authority";
+
+    /// <summary>That certificate's file (<c>provision::issuer::CERTIFICATE</c>).</summary>
+    public const string AuthorityCertificate = "authority.pem";
 
     /// <summary>The key naming the cluster's <c>cluster.xmip</c>.</summary>
     public const string ClusterKey = "Xmip:ClusterConfiguration";
@@ -109,18 +120,23 @@ public sealed class SliceDelivery(string clusterPath, string directory, string? 
     /// <paramref name="name"/> and put the slice where it can go.</summary>
     public NodeDelivery Deliver(string text, string name)
     {
-        if (!NodeSlice.TrySlice(
-            text, name, out IReadOnlyList<NodeSlice> slices, out string refusal))
+        if (!RuntimeLibrary.Rules.Design.TrySignedSlice(text, clusterPath, name, out string answer))
         {
-            return new NodeDelivery(name, NodeDelivery.Standing.Refused, string.Empty, refusal);
+            return new NodeDelivery(name, NodeDelivery.Standing.Refused, string.Empty, answer);
         }
 
+        using JsonDocument signed = JsonDocument.Parse(answer);
+        string slice = signed.RootElement.GetProperty("text").GetString() ?? string.Empty;
+        string anchor = signed.RootElement.GetProperty("authority").GetString() ?? string.Empty;
         string path = PathOf(name);
+        string folder = Path.Combine(Path.GetDirectoryName(path)!, AuthorityFolder);
+        UTF8Encoding utf8 = new(false);
 
         try
         {
-            System.IO.Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-            WholeFile.Replace(path, new UTF8Encoding(false).GetBytes(slices[0].Text));
+            System.IO.Directory.CreateDirectory(folder);
+            WholeFile.Replace(Path.Combine(folder, AuthorityCertificate), utf8.GetBytes(anchor));
+            WholeFile.Replace(path, utf8.GetBytes(slice));
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
