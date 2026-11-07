@@ -30,7 +30,7 @@ public sealed class ScopeFilter
     {
         Pattern = pattern;
         Published = published;
-        this.matched = new HashSet<string>(matched, StringComparer.Ordinal);
+        this.matched = [with(StringComparer.Ordinal), .. matched];
         onTheWay = [with(StringComparer.Ordinal)];
 
         foreach (string scope in matched)
@@ -150,7 +150,7 @@ public sealed class ScopeFilter
         }
 
         IReadOnlyList<TopologyNode> nodes = [.. snapshot.Nodes.Where(node => Shows(node.Scope))];
-        HashSet<string> drawn = new(nodes.Select(node => node.Id), StringComparer.Ordinal);
+        HashSet<string> drawn = [with(StringComparer.Ordinal), .. nodes.Select(node => node.Id)];
 
         return snapshot with
         {

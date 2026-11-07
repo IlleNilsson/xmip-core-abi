@@ -31,7 +31,12 @@ public abstract record ClusterEdit
         /// <inheritdoc />
         public override string ToJson()
         {
-            return Json("set", new { section = Section, key = Key, value = Value });
+            return Json("set", writer =>
+            {
+                Strings(writer, "section", Section);
+                Strings(writer, "key", Key);
+                writer.WriteString("value", Value);
+            });
         }
     }
 
@@ -43,7 +48,11 @@ public abstract record ClusterEdit
         /// <inheritdoc />
         public override string ToJson()
         {
-            return Json("remove", new { section = Section, key = Key });
+            return Json("remove", writer =>
+            {
+                Strings(writer, "section", Section);
+                Strings(writer, "key", Key);
+            });
         }
     }
 
@@ -58,12 +67,11 @@ public abstract record ClusterEdit
         /// <inheritdoc />
         public override string ToJson()
         {
-            return Json("add-entry", new
+            return Json("add-entry", writer =>
             {
-                section = Section,
-                name = Name,
-                values = (Values ?? []).Select(given =>
-                    new { key = given.Key, value = given.Value }),
+                Strings(writer, "section", Section);
+                writer.WriteString("name", Name);
+                Fields(writer, Values ?? []);
             });
         }
     }
@@ -79,11 +87,11 @@ public abstract record ClusterEdit
         /// <inheritdoc />
         public override string ToJson()
         {
-            return Json("add-element", new
+            return Json("add-element", writer =>
             {
-                section = Section,
-                key = Key,
-                values = Values.Select(given => new { key = given.Key, value = given.Value }),
+                Strings(writer, "section", Section);
+                Strings(writer, "key", Key);
+                Fields(writer, Values);
             });
         }
     }
@@ -98,7 +106,11 @@ public abstract record ClusterEdit
         /// <inheritdoc />
         public override string ToJson()
         {
-            return Json("remove-entry", new { section = Section, references = References });
+            return Json("remove-entry", writer =>
+            {
+                Strings(writer, "section", Section);
+                writer.WriteBoolean("references", References);
+            });
         }
     }
 
@@ -110,7 +122,11 @@ public abstract record ClusterEdit
         /// <inheritdoc />
         public override string ToJson()
         {
-            return Json("rename", new { section = Section, name = Name });
+            return Json("rename", writer =>
+            {
+                Strings(writer, "section", Section);
+                writer.WriteString("name", Name);
+            });
         }
     }
 
@@ -120,12 +136,48 @@ public abstract record ClusterEdit
         /// <inheritdoc />
         public override string ToJson()
         {
-            return Json("add-node", new { name = Name });
+            return Json("add-node", writer => writer.WriteString("name", Name));
         }
     }
 
-    private static string Json(string act, object body)
+    // {"<act>":{...}}, through the one writer (JsonText). Its default encoder
+    // is the one the reflection serializer used, so the bytes are the same.
+    private static string Json(string act, Action<Utf8JsonWriter> body)
     {
-        return JsonSerializer.Serialize(new Dictionary<string, object> { [act] = body });
+        return JsonText.Document(writer =>
+        {
+            writer.WriteStartObject(act);
+            body(writer);
+            writer.WriteEndObject();
+        });
+    }
+
+    private static void Strings(Utf8JsonWriter writer, string name, IReadOnlyList<string> words)
+    {
+        writer.WriteStartArray(name);
+
+        foreach (string word in words)
+        {
+            writer.WriteStringValue(word);
+        }
+
+        writer.WriteEndArray();
+    }
+
+    // "values": [{"key": [...], "value": "..."}], what an entry or an element
+    // holds.
+    private static void Fields(Utf8JsonWriter writer, IReadOnlyList<ArtifactField> values)
+    {
+        writer.WriteStartArray("values");
+
+        foreach (ArtifactField given in values)
+        {
+            writer.WriteStartObject();
+            Strings(writer, "key", given.Key);
+            writer.WriteString("value", given.Value);
+            writer.WriteEndObject();
+        }
+
+        writer.WriteEndArray();
     }
 }
