@@ -41,8 +41,8 @@ public sealed class RuntimeCommandsTest : IDisposable
         Assert.False(cluster.Changed);
         Assert.Contains("xmip-saved", File.ReadAllText(cluster.Path), StringComparison.Ordinal);
         Assert.Equal(cluster.Nodes, saved.Nodes.Select(node => node.Node));
-        Assert.Equal(NodeDelivery.Standing.Shipped, saved.Nodes[0].Outcome);
-        Assert.Equal(NodeDelivery.Standing.NotShipped, saved.Nodes[1].Outcome);
+        Assert.IsType<NodeDelivery.Standing.Shipped>(saved.Nodes[0].Outcome.Value);
+        Assert.IsType<NodeDelivery.Standing.NotShipped>(saved.Nodes[1].Outcome.Value);
 
         string audit = Audited();
         Assert.Contains("save cluster configuration", audit, StringComparison.Ordinal);

@@ -22,20 +22,17 @@ public sealed record SecretRecord(string Name, string Kind, DateTimeOffset Set, 
 
         using JsonDocument document = JsonDocument.Parse(json);
 
-        if (!document.RootElement.TryGetProperty("secrets", out JsonElement secrets))
-        {
-            return [];
-        }
-
-        return
-        [
-            .. secrets.EnumerateArray().Select(secret => new SecretRecord(
-                secret.GetProperty("name").GetString() ?? string.Empty,
-                secret.GetProperty("kind").GetString() ?? string.Empty,
-                DateTimeOffset.UnixEpoch.AddTicks(
-                    (long)(secret.GetProperty("set_unix_nanos").GetUInt64() / 100)),
-                secret.GetProperty("set_by").GetString() ?? string.Empty)),
-        ];
+        return document.RootElement.TryGetProperty("secrets", out JsonElement secrets)
+            ?
+            [
+                .. secrets.EnumerateArray().Select(secret => new SecretRecord(
+                    secret.GetProperty("name").GetString() ?? string.Empty,
+                    secret.GetProperty("kind").GetString() ?? string.Empty,
+                    DateTimeOffset.UnixEpoch.AddTicks(
+                        (long)(secret.GetProperty("set_unix_nanos").GetUInt64() / 100)),
+                    secret.GetProperty("set_by").GetString() ?? string.Empty)),
+            ]
+            : [];
     }
 }
 

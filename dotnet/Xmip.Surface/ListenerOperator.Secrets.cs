@@ -19,12 +19,9 @@ public abstract partial class ListenerOperator
 
         XmipStatus status = this.node.Secrets(caller, node, out string text);
 
-        if (status != XmipStatus.Ok)
-        {
-            throw new InvalidOperationException(text);
-        }
-
-        return SecretRecord.Listed(text);
+        return status == XmipStatus.Ok
+            ? SecretRecord.Listed(text)
+            : throw new InvalidOperationException(text);
     }
 
     /// <inheritdoc />

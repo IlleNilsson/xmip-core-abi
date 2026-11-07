@@ -19,7 +19,7 @@ namespace Xmip.Abi.Operate;
 /// Every method answers in the header's terms — a status, a record — and
 /// renders nothing. Words for an operator are the surface's business.
 /// </remarks>
-public sealed unsafe class Operator : IDisposable
+public sealed class Operator : IDisposable
 {
     private readonly nint _library;
     private readonly XmipOperate _table;
@@ -57,7 +57,13 @@ public sealed unsafe class Operator : IDisposable
         delegate* unmanaged[Cdecl]<uint, XmipOperate*, int> entry =
             (delegate* unmanaged[Cdecl]<uint, XmipOperate*, int>)symbol;
         XmipOperate table;
-        int status = entry(OperateAbi.Version, &table);
+        int status;
+
+        // The library's own entry point, given the one table this frame holds.
+        unsafe
+        {
+            status = entry(OperateAbi.Version, &table);
+        }
 
         if (status != 0)
         {
@@ -90,7 +96,11 @@ public sealed unsafe class Operator : IDisposable
 
         using PinnedStr path = XmipStr.Pin(configurationPath);
 
-        return (XmipStatus)start(path.Value);
+        // The path is pinned until the call returns.
+        unsafe
+        {
+            return (XmipStatus)start(path.Value);
+        }
     }
 
     /// <summary>
@@ -114,7 +124,13 @@ public sealed unsafe class Operator : IDisposable
         using PinnedStr text = XmipStr.Pin(configuration);
 
         nuint needed = 0;
-        int status = validate(text.Value, null, 0, &needed);
+        int status;
+
+        // The text is pinned until the second call returns.
+        unsafe
+        {
+            status = validate(text.Value, null, 0, &needed);
+        }
 
         if (needed == 0)
         {
@@ -125,7 +141,10 @@ public sealed unsafe class Operator : IDisposable
 
         fixed (byte* buffer = report)
         {
-            status = validate(text.Value, buffer, needed, &needed);
+            unsafe
+            {
+                status = validate(text.Value, buffer, needed, &needed);
+            }
         }
 
         int length = checked((int)Math.Min(needed, (nuint)report.Length));
@@ -153,9 +172,13 @@ public sealed unsafe class Operator : IDisposable
 
         _disposed = true;
 
-        if (_table.Destroy is not null)
+        // The table's own destructor, once, while the library is loaded.
+        unsafe
         {
-            _table.Destroy(_table.Ctx);
+            if (_table.Destroy is not null)
+            {
+                _table.Destroy(_table.Ctx);
+            }
         }
 
         NativeRuntime.Free(_library);

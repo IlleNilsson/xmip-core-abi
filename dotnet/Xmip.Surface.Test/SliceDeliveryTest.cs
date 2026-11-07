@@ -36,19 +36,19 @@ public sealed class SliceDeliveryTest : IDisposable
         Assert.Equal([here, there], delivered.Select(node => node.Node));
 
         NodeDelivery shipped = delivered[0];
-        Assert.Equal(NodeDelivery.Standing.Shipped, shipped.Outcome);
-        Assert.Equal(delivery.PathOf(here), shipped.Path);
+        string placed = Assert.IsType<NodeDelivery.Standing.Shipped>(shipped.Outcome.Value).Path;
+        Assert.Equal(delivery.PathOf(here), placed);
         Assert.True(NodeSlice.TrySlice(
             cluster.Text, here, out IReadOnlyList<NodeSlice> slice, out string why), why);
-        Assert.Equal(slice[0].Text, Unsigned(File.ReadAllText(shipped.Path)));
+        Assert.Equal(slice[0].Text, Unsigned(File.ReadAllText(placed)));
         Assert.True(File.Exists(Path.Combine(
-            Path.GetDirectoryName(shipped.Path)!,
+            Path.GetDirectoryName(placed)!,
             SliceDelivery.AuthorityFolder,
             SliceDelivery.AuthorityCertificate)));
 
         NodeDelivery written = delivered[1];
-        Assert.Equal(NodeDelivery.Standing.NotShipped, written.Outcome);
-        Assert.True(File.Exists(written.Path));
+        Assert.True(File.Exists(Assert.IsType<NodeDelivery.Standing.NotShipped>(
+            written.Outcome.Value).Path));
         Assert.Contains("not shipped", written.Said, StringComparison.Ordinal);
     }
 
@@ -68,10 +68,10 @@ public sealed class SliceDeliveryTest : IDisposable
         IReadOnlyList<NodeDelivery> delivered = delivery.Deliver(cluster);
 
         NodeDelivery bad = Assert.Single(delivered, node => node.Node == refused);
-        Assert.Equal(NodeDelivery.Standing.Refused, bad.Outcome);
+        Assert.IsType<NodeDelivery.Standing.Refused>(bad.Outcome.Value);
         Assert.False(File.Exists(delivery.PathOf(refused)));
         Assert.NotEmpty(bad.Said);
-        Assert.Contains(delivered, node => node.Outcome == NodeDelivery.Standing.NotShipped);
+        Assert.Contains(delivered, node => node.Outcome is NodeDelivery.Standing.NotShipped);
     }
 
     [Fact]
@@ -118,9 +118,9 @@ public sealed class SliceDeliveryTest : IDisposable
             // (Windows), the one refused says so in words, and the slice on
             // disk is still one writer's, whole.
             NodeDelivery[] delivered = await Task.WhenAll(deliveries);
-            Assert.Contains(delivered, node => node.Outcome == NodeDelivery.Standing.Shipped);
+            Assert.Contains(delivered, node => node.Outcome is NodeDelivery.Standing.Shipped);
             Assert.All(delivered, node => Assert.True(
-                node.Outcome == NodeDelivery.Standing.Shipped
+                node.Outcome is NodeDelivery.Standing.Shipped
                     || node.Said.StartsWith(NotWritten, StringComparison.Ordinal),
                 node.Said));
             Assert.Contains(Unsigned(File.ReadAllText(delivery.PathOf(here))), slices);
@@ -147,7 +147,7 @@ public sealed class SliceDeliveryTest : IDisposable
         {
             NodeDelivery delivered = delivery.Deliver(cluster.Text, here);
 
-            Assert.True(delivered.Outcome == NodeDelivery.Standing.Shipped, delivered.Said);
+            Assert.True(delivered.Outcome is NodeDelivery.Standing.Shipped, delivered.Said);
         }
     }
 
@@ -166,7 +166,7 @@ public sealed class SliceDeliveryTest : IDisposable
         Assert.Equal(cluster.Nodes, delivered.Select(node => node.Node));
         Assert.All(delivered, node =>
         {
-            Assert.Equal(NodeDelivery.Standing.Refused, node.Outcome);
+            Assert.IsType<NodeDelivery.Standing.Refused>(node.Outcome.Value);
             Assert.StartsWith("REFUSED:", node.Said, StringComparison.Ordinal);
             Assert.Contains("a newer save replaced it", node.Said, StringComparison.Ordinal);
             Assert.False(File.Exists(delivery.PathOf(node.Node)));

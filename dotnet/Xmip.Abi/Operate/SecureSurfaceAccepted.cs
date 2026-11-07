@@ -1,16 +1,32 @@
 namespace Xmip.Abi.Operate;
 
 /// <summary>
-/// What an <see cref="SecureSurfaceListener.Accept"/> handed over (section 21): a
-/// session whose handshake finished, or why one did not, or that the
-/// listener was stopped.
+/// What an <see cref="SecureSurfaceListener.Accept"/> handed over (section 21),
+/// one of four and never two: a session whose handshake finished, a browser
+/// whose certificate the anchors refused, a listener that was stopped, or a
+/// handshake that did not finish for any other reason. Xmip's own fixed
+/// answer, so a union: a switch over it names every case.
 /// </summary>
-/// <param name="Session">The session; null where none was handed over.</param>
-/// <param name="Refused">Whether a browser's certificate was refused by the
-/// anchors — what a host tells its audit.</param>
-/// <param name="Stopped">Whether the listener was stopped, and accepts no
-/// more.</param>
-/// <param name="Said">Why a handshake did not finish, in the runtime's
-/// words; empty otherwise.</param>
-public sealed record SecureSurfaceAccepted(
-    SecureSurfaceSession? Session, bool Refused, bool Stopped, string Said);
+public readonly union SecureSurfaceAccepted(
+    SecureSurfaceAccepted.Accepted,
+    SecureSurfaceAccepted.Refused,
+    SecureSurfaceAccepted.Stopped,
+    SecureSurfaceAccepted.Failed)
+{
+    /// <summary>A session whose handshake finished, now its holder's.</summary>
+    /// <param name="Session">The session.</param>
+    public sealed record Accepted(SecureSurfaceSession Session);
+
+    /// <summary>A browser's certificate the anchors refused — what a host tells
+    /// its audit.</summary>
+    /// <param name="Said">Why, in the runtime's words.</param>
+    public sealed record Refused(string Said);
+
+    /// <summary>The listener was stopped, and accepts no more.</summary>
+    public sealed record Stopped;
+
+    /// <summary>A handshake that did not finish for any other reason: a probe
+    /// that connects and hangs up, say. It never ends the listener.</summary>
+    /// <param name="Said">Why, in the runtime's words.</param>
+    public sealed record Failed(string Said);
+}

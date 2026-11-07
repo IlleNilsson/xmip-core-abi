@@ -39,14 +39,11 @@ internal static class ProcessorTime
     /// unit; only a difference of two is meaningful.</summary>
     public static long Thread()
     {
-        if (OperatingSystem.IsWindows())
-        {
-            return QueryThreadCycleTime(CurrentThread, out ulong cycles)
+        return !OperatingSystem.IsWindows()
+            ? Clock(OperatingSystem.IsMacOS() ? MacThreadClock : LinuxThreadClock)
+            : QueryThreadCycleTime(CurrentThread, out ulong cycles)
                 ? (long)cycles
                 : throw new InvalidOperationException("QueryThreadCycleTime failed.");
-        }
-
-        return Clock(OperatingSystem.IsMacOS() ? MacThreadClock : LinuxThreadClock);
     }
 
     /// <summary>This process's processor time now, every thread of it
@@ -54,14 +51,11 @@ internal static class ProcessorTime
     /// two is meaningful.</summary>
     public static long Process()
     {
-        if (OperatingSystem.IsWindows())
-        {
-            return QueryProcessCycleTime(CurrentProcess, out ulong cycles)
+        return !OperatingSystem.IsWindows()
+            ? Clock(OperatingSystem.IsMacOS() ? MacProcessClock : LinuxProcessClock)
+            : QueryProcessCycleTime(CurrentProcess, out ulong cycles)
                 ? (long)cycles
                 : throw new InvalidOperationException("QueryProcessCycleTime failed.");
-        }
-
-        return Clock(OperatingSystem.IsMacOS() ? MacProcessClock : LinuxProcessClock);
     }
 
     /// <summary>A difference of two <see cref="Thread"/>s or of two

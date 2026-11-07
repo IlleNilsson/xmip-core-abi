@@ -92,7 +92,7 @@ public sealed class FailedMessageSurfaceTest : IDisposable
 
         FailedMessagePort port = Assert.Single(
             surface.FailedMessages($"{Sending}/send/invoices").Ports);
-        Assert.Equal((3ul, (ulong?)null), (port.Count, port.Next));
+        Assert.Equal((3ul, null), (port.Count, port.Next));
         Assert.Equal(["j-1", "j-2"], port.Messages.Select(journey => journey.Journey));
         FailedMessageRecord first = port.Messages[0];
         Assert.Equal(

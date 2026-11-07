@@ -64,6 +64,7 @@ public sealed record FigureFlow(
             Counted.Messages => Messages,
             Counted.Retrying => Retrying,
             Counted.Failed => Failed,
+            Counted.Bytes => null,
             _ => null,
         };
     }

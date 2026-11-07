@@ -9,7 +9,7 @@ namespace Xmip.Abi.Operate;
 /// any thread wakes a read waiting; <see cref="Dispose"/> closes it, lets
 /// every call in flight return and frees it.
 /// </summary>
-public sealed unsafe class SecureSurfaceSession : IDisposable
+public sealed class SecureSurfaceSession : IDisposable
 {
     private readonly RuntimeSecureSurface calls;
 
@@ -27,7 +27,10 @@ public sealed unsafe class SecureSurfaceSession : IDisposable
 
         fixed (byte* written = room)
         {
-            _ = calls.Peer(handle, written, (nuint)room.Length, &length);
+            unsafe
+            {
+                _ = calls.Peer(handle, written, (nuint)room.Length, &length);
+            }
         }
 
         Presented = room[..(int)Math.Min(length, (nuint)room.Length)];
@@ -37,7 +40,10 @@ public sealed unsafe class SecureSurfaceSession : IDisposable
 
         fixed (byte* written = room)
         {
-            _ = calls.Caller(handle, &held, written, (nuint)room.Length, &length);
+            unsafe
+            {
+                _ = calls.Caller(handle, &held, written, (nuint)room.Length, &length);
+            }
         }
 
         Caller = calls.Callers.Held(held, RuntimeRemotes.Said(room, length));
@@ -45,7 +51,10 @@ public sealed unsafe class SecureSurfaceSession : IDisposable
 
         fixed (byte* written = room)
         {
-            _ = calls.Ends(handle, written, (nuint)room.Length, &length);
+            unsafe
+            {
+                _ = calls.Ends(handle, written, (nuint)room.Length, &length);
+            }
         }
 
         string[] ends = RuntimeRemotes.Said(room, length).Split(' ');
@@ -94,7 +103,10 @@ public sealed unsafe class SecureSurfaceSession : IDisposable
 
             fixed (byte* into = buffer)
             {
-                status = calls.Read(held, into, (nuint)buffer.Length, &length);
+                unsafe
+                {
+                    status = calls.Read(held, into, (nuint)buffer.Length, &length);
+                }
             }
 
             return status == 0 ? (int)length : -1;
@@ -120,7 +132,10 @@ public sealed unsafe class SecureSurfaceSession : IDisposable
 
             fixed (byte* from = bytes)
             {
-                return calls.Write(held, new XmipStr(from, (nuint)bytes.Length)) == 0;
+                unsafe
+                {
+                    return calls.Write(held, new XmipStr(from, (nuint)bytes.Length)) == 0;
+                }
             }
         }
         finally
@@ -140,7 +155,10 @@ public sealed unsafe class SecureSurfaceSession : IDisposable
         {
             if (held != 0)
             {
-                calls.Close(held);
+                unsafe
+                {
+                    calls.Close(held);
+                }
             }
         }
         finally
@@ -162,7 +180,11 @@ public sealed unsafe class SecureSurfaceSession : IDisposable
             return;
         }
 
-        calls.Close(held);
+        unsafe
+        {
+            calls.Close(held);
+        }
+
         SpinWait waiting = default;
 
         while (Volatile.Read(ref inFlight) > 0)
@@ -170,7 +192,11 @@ public sealed unsafe class SecureSurfaceSession : IDisposable
             waiting.SpinOnce();
         }
 
-        calls.SessionFree(held);
+        unsafe
+        {
+            calls.SessionFree(held);
+        }
+
         Caller?.Dispose();
     }
 

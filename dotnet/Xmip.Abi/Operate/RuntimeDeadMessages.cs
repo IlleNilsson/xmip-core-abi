@@ -15,7 +15,7 @@ namespace Xmip.Abi.Operate;
 /// </summary>
 /// <remarks>Pure in the header's sense: one instance serves a whole process
 /// from any thread.</remarks>
-public sealed unsafe class RuntimeDeadMessages
+public sealed class RuntimeDeadMessages
 {
     // A sentence fits in this; a list is asked for again at its true length.
     private const int Room = 16 * 1024;
@@ -90,9 +90,12 @@ public sealed unsafe class RuntimeDeadMessages
         fixed (byte* data = pack.Bytes)
         fixed (byte* written = text)
         {
-            status = _replay(
-                pack.Borrow(data, 0), pack.Borrow(data, 1), pack.Borrow(data, 2), written,
-                (nuint)text.Length, &length);
+            unsafe
+            {
+                status = _replay(
+                    pack.Borrow(data, 0), pack.Borrow(data, 1), pack.Borrow(data, 2), written,
+                    (nuint)text.Length, &length);
+            }
         }
 
         said = Encoding.UTF8.GetString(text, 0, (int)Math.Min(length, (nuint)text.Length));
@@ -106,7 +109,10 @@ public sealed unsafe class RuntimeDeadMessages
         fixed (byte* written = text)
         fixed (nuint* length = &needed)
         {
-            return _standing(pack.Borrow(data, 0), written, (nuint)text.Length, length);
+            unsafe
+            {
+                return _standing(pack.Borrow(data, 0), written, (nuint)text.Length, length);
+            }
         }
     }
 }

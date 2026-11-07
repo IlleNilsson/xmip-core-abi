@@ -1,5 +1,4 @@
 using System.Runtime.InteropServices;
-using System.Text;
 using System.Text.Json;
 using Xmip.Abi.Module;
 
@@ -21,7 +20,7 @@ namespace Xmip.Abi.Operate;
 /// node or this program hands the hub (<see cref="AuthorizeBy"/>). Every
 /// call may be made from any thread.
 /// </remarks>
-public sealed unsafe class RuntimeEvents
+public sealed partial class RuntimeEvents
 {
     // The gate's sentence fits in this; a longer one is cut, as a refusal
     // is one sentence.
@@ -103,15 +102,23 @@ public sealed unsafe class RuntimeEvents
     public void AuthorizeBy(Func<EventAuthorization, bool?>? decide)
     {
         GCHandle kept = decide is null ? default : GCHandle.Alloc(decide);
-        int status = decide is null
-            ? _authorize(null, null)
-            : _authorize(&EventCallbacks.Decide, (void*)GCHandle.ToIntPtr(kept));
+        int status;
+
+        unsafe
+        {
+            status = decide is null
+                ? _authorize(null, null)
+                : _authorize(&EventCallbacks.Decide, (void*)GCHandle.ToIntPtr(kept));
+        }
 
         lock (Policy)
         {
             if (Policy[0].IsAllocated)
             {
-                Policy[0].Free();
+                unsafe
+                {
+                    Policy[0].Free();
+                }
             }
 
             Policy[0] = kept;
@@ -126,7 +133,13 @@ public sealed unsafe class RuntimeEvents
     /// </summary>
     public IReadOnlyList<UnheardRecord> Unheard()
     {
-        byte[] json = EventAnswer.Written((into, cap, len) => _unheard(into, cap, len));
+        byte[] json;
+
+        unsafe
+        {
+            json = EventAnswer.Written((into, cap, len) => _unheard(into, cap, len));
+        }
+
         using JsonDocument read = JsonDocument.Parse(json);
         return UnheardRecord.Read(read.RootElement.GetProperty("unheard"));
     }
@@ -210,184 +223,38 @@ public sealed unsafe class RuntimeEvents
         fixed (byte* data = pack.Bytes)
         fixed (XmipStr* each = strings)
         {
-            for (int i = 0; i < strings.Length; i++)
+            // Every string is pack's, pinned until the publish returns.
+            unsafe
             {
-                each[i] = pack.Borrow(data, i);
+                for (int i = 0; i < strings.Length; i++)
+                {
+                    each[i] = pack.Borrow(data, i);
+                }
+
+                XmipEvent raised = new()
+                {
+                    Id = each[0],
+                    Type = each[1],
+                    TimeUnixNanos = record.TimeUnixNanos,
+                    Action = (int)record.Action,
+                    Outcome = (int)record.Outcome,
+                    Scope = each[2],
+                    Journey = each[3],
+                    Message = each[4],
+                    Stream = each[5],
+                    Endpoint = each[6],
+                    Module = each[7],
+                    Artifact = each[8],
+                    Party = each[9],
+                    Diagnostics = each + 10,
+                    DiagnosticsLen = (nuint)(strings.Length - 10),
+                };
+
+                status = _publish(&raised, &delivered);
             }
-
-            XmipEvent raised = new()
-            {
-                Id = each[0],
-                Type = each[1],
-                TimeUnixNanos = record.TimeUnixNanos,
-                Action = (int)record.Action,
-                Outcome = (int)record.Outcome,
-                Scope = each[2],
-                Journey = each[3],
-                Message = each[4],
-                Stream = each[5],
-                Endpoint = each[6],
-                Module = each[7],
-                Artifact = each[8],
-                Party = each[9],
-                Diagnostics = each + 10,
-                DiagnosticsLen = (nuint)(strings.Length - 10),
-            };
-
-            status = _publish(&raised, &delivered);
         }
 
         EventAnswer.Refused(status, "an Event");
         return checked((int)delivered);
-    }
-
-    internal EventDelivery Next(EventSubscription subscription, TimeSpan timeout, int max)
-    {
-        ArgumentOutOfRangeException.ThrowIfLessThan(timeout, TimeSpan.Zero);
-        ArgumentOutOfRangeException.ThrowIfLessThan(max, 1);
-
-        uint milliseconds = (uint)Math.Min(Math.Ceiling(timeout.TotalMilliseconds), uint.MaxValue);
-        bool held = false;
-        nint batch = 0;
-        XmipEvent* events = null;
-        nuint count = 0;
-        ulong refused = 0;
-        int status;
-
-        subscription.DangerousAddRef(ref held);
-
-        try
-        {
-            status = _next(subscription.DangerousGetHandle(), milliseconds, (nuint)max, &batch,
-                &events, &count, &refused);
-        }
-        finally
-        {
-            if (held)
-            {
-                subscription.DangerousRelease();
-            }
-        }
-
-        if (status == (int)XmipStatus.Timeout)
-        {
-            return EventDelivery.Nothing;
-        }
-
-        if (status == (int)XmipStatus.State)
-        {
-            throw new InvalidOperationException("A listening subscription is never drained.");
-        }
-
-        try
-        {
-            EventAnswer.Refused(status, "a drain");
-
-            EventRecord[] copied = new EventRecord[checked((int)count)];
-
-            for (int at = 0; at < copied.Length; at++)
-            {
-                copied[at] = EventCallbacks.Copy(events + at);
-            }
-
-            nint drained = batch;
-            byte[] json = EventAnswer.Written(
-                (into, cap, len) => _batchUnheard(drained, into, cap, len));
-            using JsonDocument read = JsonDocument.Parse(json);
-            JsonElement root = read.RootElement;
-
-            return new EventDelivery(
-                copied,
-                refused,
-                UnheardRecord.Read(root.GetProperty("unheard")),
-                root.GetProperty("changed").GetBoolean());
-        }
-        finally
-        {
-            _batchFree(batch);
-        }
-    }
-
-    internal void Unsubscribe(nint subscription)
-    {
-        _unsubscribe(subscription);
-    }
-
-    private EventSubscription Open(
-        string program,
-        string? directory,
-        string subscriber,
-        EventFilter? filter,
-        int capacity,
-        EventListening? listening)
-    {
-        ArgumentNullException.ThrowIfNull(program);
-        ArgumentNullException.ThrowIfNull(subscriber);
-        ArgumentOutOfRangeException.ThrowIfNegative(capacity);
-
-        filter ??= EventFilter.Everything;
-
-        // program, directory, subscriber, scope, party, then the types.
-        List<string> texts =
-            [program, directory ?? string.Empty, subscriber, filter.Scope, filter.Party];
-        texts.AddRange(filter.Types);
-
-        Utf8Pack pack = new(texts);
-        XmipStr[] strings = new XmipStr[texts.Count];
-        int[] outcomes = [.. filter.Outcomes.Select(outcome => (int)outcome)];
-        byte[] said = new byte[Said];
-        nuint saidLength = 0;
-        nint handle = 0;
-        GCHandle context = listening is null ? default : GCHandle.Alloc(listening);
-        int status;
-
-        fixed (byte* data = pack.Bytes)
-        fixed (XmipStr* each = strings)
-        fixed (int* wanted = outcomes)
-        fixed (byte* sentence = said)
-        {
-            for (int i = 0; i < strings.Length; i++)
-            {
-                each[i] = pack.Borrow(data, i);
-            }
-
-            XmipEventFilter asked = new()
-            {
-                Types = each + 5,
-                TypesLen = (nuint)(strings.Length - 5),
-                Outcomes = wanted,
-                OutcomesLen = (nuint)outcomes.Length,
-                Scope = each[3],
-                Party = each[4],
-            };
-
-            status = listening is null
-                ? _subscribe(each[0], each[1], each[2], &asked, (nuint)capacity, &handle,
-                    sentence, (nuint)said.Length, &saidLength)
-                : _listen(each[0], each[1], each[2], &asked, (nuint)capacity,
-                    &EventCallbacks.Heard, (void*)GCHandle.ToIntPtr(context), &handle,
-                    sentence, (nuint)said.Length, &saidLength);
-        }
-
-        if (status != 0)
-        {
-            if (context.IsAllocated)
-            {
-                context.Free();
-            }
-
-            if (status == (int)XmipStatus.Auth)
-            {
-                throw new UnauthorizedAccessException(Encoding.UTF8.GetString(
-                    said, 0, (int)Math.Min(saidLength, (nuint)said.Length)));
-            }
-
-            EventAnswer.Refused(status, "the subscription");
-        }
-
-        EventSubscription subscription = new(this, listening);
-
-        subscription.Adopt(handle, context);
-        return subscription;
     }
 }

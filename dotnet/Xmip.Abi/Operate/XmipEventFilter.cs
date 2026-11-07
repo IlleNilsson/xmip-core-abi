@@ -7,16 +7,16 @@ namespace Xmip.Abi.Operate;
 /// Events a subscription asks for, each list and string empty for
 /// any.</summary>
 [StructLayout(LayoutKind.Sequential)]
-public unsafe struct XmipEventFilter
+public struct XmipEventFilter
 {
     /// <summary><c>types</c>.</summary>
-    public XmipStr* Types;
+    public unsafe XmipStr* Types;
 
     /// <summary><c>types_len</c>.</summary>
     public nuint TypesLen;
 
     /// <summary><c>outcomes</c>, each an <c>XmipOutcome</c>.</summary>
-    public int* Outcomes;
+    public unsafe int* Outcomes;
 
     /// <summary><c>outcomes_len</c>.</summary>
     public nuint OutcomesLen;

@@ -21,7 +21,7 @@ namespace Xmip.Abi.Module;
 /// the cli writes them to stderr as they arrive, a cmdlet has a verbose stream
 /// — so the caller passes a sink and the probe judges nothing about it.
 /// </remarks>
-public static unsafe class ModuleProbe
+public static class ModuleProbe
 {
     /// <summary>
     /// What a module said when asked, or why it could not be asked: the one
@@ -138,17 +138,24 @@ public static unsafe class ModuleProbe
             delegate* unmanaged[Cdecl]<XmipHost*, XmipModule*, XmipStatus> create =
                 (delegate* unmanaged[Cdecl]<XmipHost*, XmipModule*, XmipStatus>)symbol;
 
-            XmipHost host = new()
-            {
-                AbiVersion = ModuleAbi.AbiVersion,
-                Ctx = null,
-                Log = &OnLog,
-                Cancelled = &OnCancelled,
-                JourneyId = &OnJourneyId,
-            };
-
             XmipModule module = default;
-            XmipStatus status = create(&host, &module);
+            XmipStatus status;
+
+            // The callbacks are this class's own, and the module's create is
+            // called once with the two structs this frame holds.
+            unsafe
+            {
+                XmipHost host = new()
+                {
+                    AbiVersion = ModuleAbi.AbiVersion,
+                    Ctx = null,
+                    Log = &OnLog,
+                    Cancelled = &OnCancelled,
+                    JourneyId = &OnJourneyId,
+                };
+
+                status = create(&host, &module);
+            }
 
             if (status != XmipStatus.Ok)
             {
@@ -165,9 +172,12 @@ public static unsafe class ModuleProbe
             {
                 // Section 7. The module frees its own state; the host never
                 // does, because no allocator is shared across this boundary.
-                if (module.Destroy is not null)
+                unsafe
                 {
-                    module.Destroy(module.State);
+                    if (module.Destroy is not null)
+                    {
+                        module.Destroy(module.State);
+                    }
                 }
             }
         }
@@ -182,20 +192,25 @@ public static unsafe class ModuleProbe
     {
         XmipModuleDescriptor descriptor = module.Descriptor;
 
-        string lastError = module.LastError is null
-            ? string.Empty
-            : module.LastError(module.State).Read();
+        // The module is alive until Loaded destroys it, after this returns,
+        // and its strings are its own until then.
+        unsafe
+        {
+            string lastError = module.LastError is null
+                ? string.Empty
+                : module.LastError(module.State).Read();
 
-        return new Result(
-            libraryPath,
-            XmipStatus.Ok,
-            descriptor.Provider.Read(),
-            descriptor.Module.Read(),
-            descriptor.Standard.Read(),
-            descriptor.AbiVersion,
-            $"{descriptor.TraitMajor}.{descriptor.TraitMinor}",
-            $"{descriptor.ModuleMajor}.{descriptor.ModuleMinor}.{descriptor.ModulePatch}",
-            lastError);
+            return new Result(
+                libraryPath,
+                XmipStatus.Ok,
+                descriptor.Provider.Read(),
+                descriptor.Module.Read(),
+                descriptor.Standard.Read(),
+                descriptor.AbiVersion,
+                $"{descriptor.TraitMajor}.{descriptor.TraitMinor}",
+                $"{descriptor.ModuleMajor}.{descriptor.ModuleMinor}.{descriptor.ModulePatch}",
+                lastError);
+        }
     }
 
     private static Result Failed(string libraryPath, XmipStatus status)
@@ -224,7 +239,12 @@ public static unsafe class ModuleProbe
         try
         {
             XmipLogLevel name = (XmipLogLevel)level;
-            _log?.Invoke($"[{name}] {target.Read()}: {message.Read()}");
+
+            // Both borrowed for this call, which has not returned.
+            unsafe
+            {
+                _log?.Invoke($"[{name}] {target.Read()}: {message.Read()}");
+            }
         }
         catch
         {

@@ -22,6 +22,21 @@
     <!-- The whole point of this assembly is to cross a C ABI. -->
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 
+    <!-- C# 15's updated memory safety rules, a preview (adopted until the
+         first Linear release): a pointer type is safe to name and pass; only
+         a dereference and a call through a function pointer need an unsafe
+         block, and a member whose safety rests on its caller is marked
+         unsafe, so its caller needs one too. -->
+    <LangVersion>preview</LangVersion>
+    <Features>$(Features);updated-memory-safety-rules</Features>
+    <!-- IDE0380 ("'unsafe' modifier is unnecessary") flags a member whose
+         body is all in unsafe blocks, where the modifier now says its caller
+         needs one; removing it drops that promise silently. Fixed in Roslyn
+         (dotnet/roslyn#85732, a1bbcb8: a <safety> element keeps the modifier),
+         not yet in SDK 11.0.100-rc.3. Once an SDK carries it, XmipStr.Read's
+         caller promise moves into <safety> and this line goes. -->
+    <NoWarn>$(NoWarn);IDE0380</NoWarn>
+
     <!-- The cli publishes ahead-of-time. A binding it carries must not need
          anything the trimmer removes, and this asks the analyzers to say so. -->
     <IsAotCompatible>true</IsAotCompatible>

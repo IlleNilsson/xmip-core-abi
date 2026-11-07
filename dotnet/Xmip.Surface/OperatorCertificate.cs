@@ -56,31 +56,18 @@ public static class OperatorCertificate
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(configuration);
 
-        if (!File.Exists(request))
-        {
-            return new OperatorSigned(request, chain, string.Empty, $"No file at {request}.");
-        }
-
-        if (chain is not null && File.Exists(chain))
-        {
-            return new OperatorSigned(
+        return !File.Exists(request)
+            ? new OperatorSigned(request, chain, string.Empty, $"No file at {request}.")
+            : chain is not null && File.Exists(chain)
+            ? new OperatorSigned(
                 request, chain, string.Empty,
-                $"REFUSED: {chain} is there already; nothing is overwritten.");
-        }
-
-        if (!certificates.Sign(
-                configuration, File.ReadAllText(request), out string signed, out string no))
-        {
-            return new OperatorSigned(request, chain, string.Empty, $"REFUSED: {no}");
-        }
-
-        if (chain is not null
-            && !certificates.Keep(Path.GetFullPath(chain), signed, false, out no))
-        {
-            return new OperatorSigned(request, chain, string.Empty, $"REFUSED: {no}");
-        }
-
-        return new OperatorSigned(request, chain, signed, string.Empty);
+                $"REFUSED: {chain} is there already; nothing is overwritten.")
+            : !certificates.Sign(
+                configuration, File.ReadAllText(request), out string signed, out string no)
+            || (chain is not null
+                && !certificates.Keep(Path.GetFullPath(chain), signed, false, out no))
+            ? new OperatorSigned(request, chain, string.Empty, $"REFUSED: {no}")
+            : new OperatorSigned(request, chain, signed, string.Empty);
     }
 
     /// <summary>
@@ -105,14 +92,12 @@ public static class OperatorCertificate
             bool made = !keeper.Holds(KeptAlias);
             byte[] publicKey = made ? keeper.Make(KeptAlias) : keeper.PublicKey(KeptAlias);
 
-            if (!certificates.Information(person, publicKey, out byte[] information, out string no)
+            return !certificates.Information(
+                    person, publicKey, out byte[] information, out string no)
                 || !certificates.Assemble(
-                    information, keeper.Sign(KeptAlias, information), out string request, out no))
-            {
-                return new OperatorKept(person, keeper.Name, string.Empty, made, $"REFUSED: {no}");
-            }
-
-            return new OperatorKept(person, keeper.Name, request, made, string.Empty);
+                    information, keeper.Sign(KeptAlias, information), out string request, out no)
+                ? new OperatorKept(person, keeper.Name, string.Empty, made, $"REFUSED: {no}")
+                : new OperatorKept(person, keeper.Name, request, made, string.Empty);
         }
         catch (InvalidOperationException failed)
         {
@@ -143,15 +128,12 @@ public static class OperatorCertificate
             using ECDsa? key = leaf.GetECDsaPublicKey();
             byte[] probe = RandomNumberGenerator.GetBytes(32);
 
-            if (key is null
+            return key is null
                 || !key.VerifyData(
                     probe, keeper.Sign(KeptAlias, probe), HashAlgorithmName.SHA256,
-                    DSASignatureFormat.Rfc3279DerSequence))
-            {
-                return $"REFUSED: {leaf.Subject} is not for the key {keeper.Name} holds.";
-            }
-
-            return Kept(certificates, path, chain);
+                    DSASignatureFormat.Rfc3279DerSequence)
+                ? $"REFUSED: {leaf.Subject} is not for the key {keeper.Name} holds."
+                : Kept(certificates, path, chain);
         }
         catch (Exception failed) when (failed is CryptographicException or IOException
             or InvalidOperationException or UnauthorizedAccessException)
@@ -179,12 +161,9 @@ public static class OperatorCertificate
             X509Certificate2Collection read = [];
             read.ImportFromPem(anchors);
 
-            if (read.Count == 0)
-            {
-                return "REFUSED: the text holds no CERTIFICATE.";
-            }
-
-            return Kept(certificates, path, anchors);
+            return read.Count == 0
+                ? "REFUSED: the text holds no CERTIFICATE."
+                : Kept(certificates, path, anchors);
         }
         catch (Exception failed) when (failed is CryptographicException or IOException
             or UnauthorizedAccessException)

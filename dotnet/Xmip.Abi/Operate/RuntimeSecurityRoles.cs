@@ -15,7 +15,7 @@ namespace Xmip.Abi.Operate;
 /// </summary>
 /// <remarks>Pure in the header's sense: one instance serves a whole process
 /// from any thread.</remarks>
-public sealed unsafe class RuntimeSecurityRoles
+public sealed class RuntimeSecurityRoles
 {
     private readonly delegate* unmanaged[Cdecl]<XmipStr, int*, int> _named;
     private readonly delegate* unmanaged[Cdecl]<int, XmipStr*, XmipStr*, int> _words;
@@ -73,7 +73,10 @@ public sealed unsafe class RuntimeSecurityRoles
 
         fixed (byte* data = pack.Bytes)
         {
-            _ = _named(pack.Borrow(data, 0), &role);
+            unsafe
+            {
+                _ = _named(pack.Borrow(data, 0), &role);
+            }
         }
 
         return role;
@@ -86,9 +89,12 @@ public sealed unsafe class RuntimeSecurityRoles
         XmipStr word = default;
         XmipStr description = default;
 
-        return _words(role, &word, &description) == 0
-            ? (word.Read(), description.Read())
-            : (string.Empty, string.Empty);
+        unsafe
+        {
+            return _words(role, &word, &description) == 0
+                ? (word.Read(), description.Read())
+                : (string.Empty, string.Empty);
+        }
     }
 
     /// <summary>
@@ -114,7 +120,10 @@ public sealed unsafe class RuntimeSecurityRoles
 
         fixed (byte* written = text)
         {
-            status = _process(&caller, written, (nuint)text.Length, &length);
+            unsafe
+            {
+                status = _process(&caller, written, (nuint)text.Length, &length);
+            }
         }
 
         string said = RuntimeRemotes.Said(text, length);
@@ -131,7 +140,10 @@ public sealed unsafe class RuntimeSecurityRoles
 
         fixed (byte* written = text)
         {
-            _ = _callerNamed(caller, written, (nuint)text.Length, &length);
+            unsafe
+            {
+                _ = _callerNamed(caller, written, (nuint)text.Length, &length);
+            }
         }
 
         return RuntimeRemotes.Said(text, length);
@@ -158,9 +170,12 @@ public sealed unsafe class RuntimeSecurityRoles
         fixed (byte* data = pack.Bytes)
         fixed (byte* written = text)
         {
-            status = _admitted(
-                caller?.Handle ?? 0, role, pack.Borrow(data, 0),
-                pack.Borrow(data, 1), written, (nuint)text.Length, &length);
+            unsafe
+            {
+                status = _admitted(
+                    caller?.Handle ?? 0, role, pack.Borrow(data, 0),
+                    pack.Borrow(data, 1), written, (nuint)text.Length, &length);
+            }
         }
 
         refused = RuntimeRemotes.Said(text, length);
@@ -187,13 +202,19 @@ public sealed unsafe class RuntimeSecurityRoles
     {
         ulong again = 0;
 
-        return _hold(caller, &again) == 0 && again != 0
-            ? new HeldCaller(this, again, CallerName(again))
-            : null;
+        unsafe
+        {
+            return _hold(caller, &again) == 0 && again != 0
+                ? new HeldCaller(this, again, CallerName(again))
+                : null;
+        }
     }
 
     internal void Release(ulong caller)
     {
-        _release(caller);
+        unsafe
+        {
+            _release(caller);
+        }
     }
 }

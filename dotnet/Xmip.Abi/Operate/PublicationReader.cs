@@ -19,7 +19,7 @@ namespace Xmip.Abi.Operate;
 /// read out, then frees it; nothing borrowed outlives the call. One instance
 /// serves a whole process from any thread.
 /// </remarks>
-public sealed unsafe class PublicationReader
+public sealed partial class PublicationReader
 {
     // A reader's report, a parser's sentence; a longer one is asked again.
     private const int Report = 1024;
@@ -128,7 +128,10 @@ public sealed unsafe class PublicationReader
         }
         finally
         {
-            _free(handle);
+            unsafe
+            {
+                _free(handle);
+            }
         }
     }
 
@@ -148,13 +151,17 @@ public sealed unsafe class PublicationReader
             return null;
         }
 
-        try
+        // The points are the handle's until it is freed, after the copy.
+        unsafe
         {
-            return [.. Fill(_points, handle).Select(PublicationEntries.Count)];
-        }
-        finally
-        {
-            _curveFree(handle);
+            try
+            {
+                return [.. Fill(_points, handle).Select(PublicationEntries.Count)];
+            }
+            finally
+            {
+                _curveFree(handle);
+            }
         }
     }
 
@@ -186,9 +193,13 @@ public sealed unsafe class PublicationReader
         XmipStr word;
         XmipStr name;
 
-        return words(value, &word, &name) == 0
-            ? new TopologyWord(word.Read(), name.Read())
-            : null;
+        // Static words: they outlive the call.
+        unsafe
+        {
+            return words(value, &word, &name) == 0
+                ? new TopologyWord(word.Read(), name.Read())
+                : null;
+        }
     }
 
     // A handle from one of section 8's readers, or 0 with the refusal.
@@ -207,11 +218,19 @@ public sealed unsafe class PublicationReader
 
         fixed (byte* data = bytes)
         {
-            XmipStr source = new(data, (nuint)bytes.Length);
+            XmipStr source;
+
+            unsafe
+            {
+                source = new(data, (nuint)bytes.Length);
+            }
 
             fixed (byte* said = report)
             {
-                status = open(source, &handle, said, (nuint)report.Length, &length);
+                unsafe
+                {
+                    status = open(source, &handle, said, (nuint)report.Length, &length);
+                }
             }
 
             if (status == (int)XmipStatus.Invalid && length > (nuint)report.Length)
@@ -220,7 +239,10 @@ public sealed unsafe class PublicationReader
 
                 fixed (byte* said = report)
                 {
-                    status = open(source, &handle, said, (nuint)report.Length, &length);
+                    unsafe
+                    {
+                        status = open(source, &handle, said, (nuint)report.Length, &length);
+                    }
                 }
             }
         }
@@ -235,119 +257,5 @@ public sealed unsafe class PublicationReader
         Check(status);
         refusal = string.Empty;
         return handle;
-    }
-
-    private Publication Copied(nint handle)
-    {
-        XmipPublicationHead head;
-
-        Check(_head(handle, &head));
-
-        string source = head.Source.Read();
-
-        return new Publication(
-            source,
-            head.Node.Read(),
-            [.. Fill(_records, handle).Select(PublicationEntries.Record)],
-            [.. Fill(_counts, handle).Select(PublicationEntries.Count)],
-            head.HasTopology == 0 ? null : Topology(handle, head, source),
-            head.HasRun == 0 ? null : Run(handle, head),
-            SubscriptionList.Parse(Listed(_subscriptions, handle)),
-            EventSubscriptionList.Parse(Listed(_eventSubscriptions, handle)),
-            DeadMessageList.Parse(Listed(_deadMessages, handle)),
-            FailedMessageList.Parse(Listed(_failedMessages, handle)));
-    }
-
-    // Section 11's, 14's, 15's or 16's list over this handle: JSON, asked again at its length.
-    private static ReadOnlyMemory<byte> Listed(
-        delegate* unmanaged[Cdecl]<nint, byte*, nuint, nuint*, int> list, nint handle)
-    {
-        byte[] text = new byte[4096];
-        nuint needed = 0;
-
-        fixed (byte* into = text)
-        {
-            Check(list(handle, into, (nuint)text.Length, &needed));
-        }
-
-        if (needed > (nuint)text.Length)
-        {
-            text = new byte[checked((int)needed)];
-
-            fixed (byte* into = text)
-            {
-                Check(list(handle, into, (nuint)text.Length, &needed));
-            }
-        }
-
-        return text.AsMemory(0, (int)needed);
-    }
-
-    private TopologySnapshot Topology(nint handle, XmipPublicationHead head, string source)
-    {
-        string drawnBy = head.TopologySource.Read();
-
-        return new TopologySnapshot(
-            [.. Fill(_nodes, handle).Select(PublicationEntries.Node)],
-            [.. Fill(_links, handle).Select(PublicationEntries.Link)],
-            Operator.FromNanos(head.TopologyObservedUnixNanos),
-            drawnBy.Length > 0 ? drawnBy : source);
-    }
-
-    private PublishedRun Run(nint handle, XmipPublicationHead head)
-    {
-        return new PublishedRun(
-            head.Cluster.Read(),
-            Listed(handle, RunList.Tests),
-            Listed(handle, RunList.Nodes),
-            Listed(handle, RunList.Roles),
-            Listed(handle, RunList.Online),
-            head.Stress.Read(),
-            head.Hidden != 0,
-            Listed(handle, RunList.Real));
-    }
-
-    private string[] Listed(nint handle, RunList list)
-    {
-        nuint count = 0;
-
-        Check(_run(handle, (uint)list, null, 0, &count));
-
-        XmipStr[] words = new XmipStr[count];
-
-        fixed (XmipStr* into = words)
-        {
-            Check(_run(handle, (uint)list, into, count, &count));
-        }
-
-        return [.. words.Select(word => word.Read())];
-    }
-
-    private static T[] Fill<T>(
-        delegate* unmanaged[Cdecl]<nint, T*, nuint, nuint*, int> fill, nint handle)
-        where T : unmanaged
-    {
-        nuint count = 0;
-
-        Check(fill(handle, null, 0, &count));
-
-        T[] found = new T[count];
-
-        fixed (T* into = found)
-        {
-            Check(fill(handle, into, count, &count));
-        }
-
-        return found;
-    }
-
-    // Any other status is a runtime breaking section 8's promise, not an answer.
-    private static void Check(int status)
-    {
-        if (status != 0)
-        {
-            throw new InvalidOperationException(
-                $"the runtime answered a section 8 read with {(XmipStatus)status}");
-        }
     }
 }

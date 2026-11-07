@@ -217,8 +217,7 @@ public static class AuthorityCertificate
         }
 
         JsonElement list = it.GetProperty("list");
-        AuthorityRecord[] issued = it.GetProperty("issued").EnumerateArray()
-            .Select(Record).ToArray();
+        AuthorityRecord[] issued = [.. it.GetProperty("issued").EnumerateArray().Select(Record)];
 
         return new AuthorityState(
             Text(it, "authority"), Text(it, "subject"), Moment(it, "notBefore"),
@@ -255,7 +254,7 @@ public static class AuthorityCertificate
 
     private static string[] Strings(JsonElement it, string name) =>
         it.TryGetProperty(name, out JsonElement list) && list.ValueKind == JsonValueKind.Array
-            ? list.EnumerateArray().Select(one => one.GetString() ?? string.Empty).ToArray()
+            ? [.. list.EnumerateArray().Select(one => one.GetString() ?? string.Empty)]
             : [];
 
     private static JsonArray Array(IReadOnlyList<string> names)
@@ -265,7 +264,10 @@ public static class AuthorityCertificate
 
         foreach (string name in names)
         {
-            array.Add(JsonValue.Create(name));
+            // The non-generic Add: Add<T> serializes by reflection, which the
+            // CLI's ahead-of-time publish cannot keep.
+            JsonNode? value = JsonValue.Create(name);
+            array.Add(value);
         }
 
         return array;

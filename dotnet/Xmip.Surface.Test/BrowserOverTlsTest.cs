@@ -1,5 +1,8 @@
 using System.Security.Cryptography.X509Certificates;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
+using Microsoft.AspNetCore.Components.Web.HtmlRendering;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
@@ -65,9 +68,74 @@ public sealed class BrowserOverTlsTest
         Assert.Contains("handshake", Assert.Single(refused), StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task EveryPageOverXmipsOwnTlsCarriesTheContentSecurityPolicyAndItsNonce()
+    {
+        using TestAuthority authority = new("browser");
+        await using WebApplication secured = await Serve(
+            TestHost.Tls(authority, authority.Server())).ConfigureAwait(true);
+        Uri page = new(
+            new Uri(secured.Services.GetRequiredService<SecureTransport>().Bound[0].Url),
+            "page");
+        using HttpClient watching = Browser(authority, null);
+        CancellationToken cancelled = TestContext.Current.CancellationToken;
+
+        using HttpResponseMessage first =
+            await watching.GetAsync(page, cancelled).ConfigureAwait(true);
+        using HttpResponseMessage second =
+            await watching.GetAsync(page, cancelled).ConfigureAwait(true);
+
+        // The import map, rendered by ASP.NET Core's own ImportMap as App.razor
+        // renders it, carries the nonce its response's policy names, and no
+        // two responses share one.
+        string nonce = Nonce(first);
+        Assert.Equal(ContentSecurity.Policy(nonce), Policy(first));
+        string html = await first.Content.ReadAsStringAsync(cancelled).ConfigureAwait(true);
+        Assert.Contains(
+            $"<script type=\"importmap\" nonce=\"{nonce}\">", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("style=", html, StringComparison.Ordinal);
+        Assert.NotEqual(nonce, Nonce(second));
+    }
+
     private static Uri Who(WebApplication host)
     {
         return new Uri(new Uri(host.Urls.First()), "who");
+    }
+
+    private static string Policy(HttpResponseMessage response)
+    {
+        Assert.True(response.IsSuccessStatusCode, $"{response.StatusCode}");
+        return Assert.Single(response.Headers.GetValues(ContentSecurity.Header));
+    }
+
+    private static string Nonce(HttpResponseMessage response)
+    {
+        string policy = Policy(response);
+        int start = policy.IndexOf("'nonce-", StringComparison.Ordinal) + "'nonce-".Length;
+        return policy[start..policy.IndexOf('\'', start)];
+    }
+
+    // A page as App.razor writes its head: the framework's ImportMap given
+    // the response's nonce, rendered by the framework's own renderer.
+    private static async Task Page(HttpContext context)
+    {
+        ILoggerFactory logs = context.RequestServices.GetRequiredService<ILoggerFactory>();
+        await using HtmlRenderer renderer = new(context.RequestServices, logs);
+        ImportMapDefinition imports = new(
+            new Dictionary<string, string> { ["xmip"] = "./xmip.js" }, null, null);
+        string html = await renderer.Dispatcher.InvokeAsync(async () =>
+        {
+            HtmlRootComponent rendered = await renderer.RenderComponentAsync<ImportMap>(
+                ParameterView.FromDictionary(new Dictionary<string, object?>
+                {
+                    [nameof(ImportMap.ImportMapDefinition)] = imports,
+                    ["nonce"] = ContentSecurity.Nonce(context),
+                })).ConfigureAwait(false);
+            return rendered.ToHtmlString();
+        }).ConfigureAwait(false);
+
+        context.Response.ContentType = "text/html";
+        await context.Response.WriteAsync(html, context.RequestAborted).ConfigureAwait(false);
     }
 
     // A host that answers who each request proved, by the web host's own
@@ -82,9 +150,11 @@ public sealed class BrowserOverTlsTest
         builder.Logging.ClearProviders();
 
         WebApplication host = builder.Build();
+        host.UseXmipContentSecurity();
         host.UseXmipProvenCaller();
         host.MapGet("/who", (HttpContext context) =>
             $"{ProvenCaller.Who(context.User) ?? "nobody"} {context.Request.Scheme}");
+        host.MapGet("/page", Page);
         await host.StartAsync().ConfigureAwait(false);
 
         return host;

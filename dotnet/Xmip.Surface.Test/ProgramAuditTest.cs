@@ -47,7 +47,7 @@ public sealed class ProgramAuditTest
             "start", AuditPhase.Begin, AuditSeverity.Information, "started",
             new Dictionary<string, string> { ["url"] = "http://127.0.0.1:5087" });
 
-        Assert.Equal(AuditKept.Persisted, outcome.Kept);
+        Assert.Equal(new AuditOutcome.Kept(AuditKept.Persisted, string.Empty), outcome.Value);
         string text = File.ReadAllText(Path.Combine(directory, "audit.xmip"));
         Assert.Contains("program = \"Xmip.Surface.Test\"", text, StringComparison.Ordinal);
         Assert.Contains("action = \"start\"", text, StringComparison.Ordinal);
@@ -63,7 +63,7 @@ public sealed class ProgramAuditTest
         InvalidOperationException boom = new("boom");
         AuditOutcome? outcome = audit.Failed("unhandled", boom);
 
-        Assert.Equal(AuditKept.Persisted, outcome?.Kept);
+        Assert.Equal(new AuditOutcome.Kept(AuditKept.Persisted, string.Empty), outcome?.Value);
         Assert.Null(audit.Failed("host", boom));
         string text = File.ReadAllText(Path.Combine(directory, "audit.xmip"));
         Assert.Contains("phase = \"Failure\"", text, StringComparison.Ordinal);

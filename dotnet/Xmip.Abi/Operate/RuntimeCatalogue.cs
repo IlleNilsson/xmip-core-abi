@@ -17,7 +17,7 @@ namespace Xmip.Abi.Operate;
 /// instance serves a whole process from any thread. The answer is the
 /// header's JSON, in memory only (ADR-0031 clause 2).
 /// </remarks>
-public sealed unsafe class RuntimeCatalogue
+public sealed class RuntimeCatalogue
 {
     // What a catalogue is in practice, so one call answers; a longer one is
     // asked for again at its true length.
@@ -71,8 +71,12 @@ public sealed unsafe class RuntimeCatalogue
         fixed (byte* textData = text)
         fixed (nuint* length = &needed)
         {
-            return _catalogue(
-                new XmipStr(nameData, (nuint)name.Length), textData, (nuint)text.Length, length);
+            unsafe
+            {
+                return _catalogue(
+                    new XmipStr(nameData, (nuint)name.Length), textData, (nuint)text.Length,
+                    length);
+            }
         }
     }
 }

@@ -40,7 +40,7 @@ public sealed class RuntimeSecureSurfaceTest
             Assert.NotNull(listener);
             Assert.StartsWith("127.0.0.1:", listener.Address, StringComparison.Ordinal);
             listener.Stop();
-            Assert.True(listener.Accept().Stopped, reason);
+            Assert.True(listener.Accept() is SecureSurfaceAccepted.Stopped, reason);
 
             Assert.False(Hosting.Issue(authority, "test", " ", place, out _, out refused));
             Assert.Contains("host", refused, StringComparison.Ordinal);

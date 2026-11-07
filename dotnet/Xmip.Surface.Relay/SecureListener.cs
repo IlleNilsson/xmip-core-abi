@@ -84,26 +84,11 @@ internal sealed class SecureListener : IConnectionListener
     {
         try
         {
-            while (true)
+            bool open = true;
+
+            while (open)
             {
-                SecureSurfaceAccepted accepted = listener.Accept();
-
-                if (accepted.Stopped)
-                {
-                    return;
-                }
-
-                if (accepted.Session is { } session)
-                {
-                    if (!finished.Writer.TryWrite(session))
-                    {
-                        session.Dispose();
-                    }
-                }
-                else if (accepted.Refused)
-                {
-                    refused?.Invoke(accepted.Said);
-                }
+                open = Took(listener.Accept());
             }
         }
         finally
@@ -111,5 +96,35 @@ internal sealed class SecureListener : IConnectionListener
             finished.Writer.TryComplete();
             accepting.TrySetResult();
         }
+    }
+
+    // One accept's answer, every case named: false once the listener is
+    // stopped, and the loop ends.
+    private bool Took(SecureSurfaceAccepted accepted)
+    {
+        return accepted switch
+        {
+            SecureSurfaceAccepted.Accepted taken => Hand(taken.Session),
+            SecureSurfaceAccepted.Refused no => Tell(no.Said),
+            SecureSurfaceAccepted.Failed => true,
+            SecureSurfaceAccepted.Stopped => false,
+            null => throw UnionDefault.Of<SecureSurfaceAccepted>(),
+        };
+    }
+
+    private bool Hand(SecureSurfaceSession session)
+    {
+        if (!finished.Writer.TryWrite(session))
+        {
+            session.Dispose();
+        }
+
+        return true;
+    }
+
+    private bool Tell(string said)
+    {
+        refused?.Invoke(said);
+        return true;
     }
 }

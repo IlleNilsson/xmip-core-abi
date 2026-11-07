@@ -15,31 +15,31 @@ namespace Xmip.Abi.Operate;
 /// publisher. ADR-0027 clause 6.
 /// </remarks>
 [StructLayout(LayoutKind.Sequential)]
-public unsafe struct XmipOperate
+public struct XmipOperate
 {
     /// <summary>The operator boundary version the runtime filled this for.</summary>
     public uint AbiVersion;
 
     /// <summary>Runtime-private, passed back to every function.</summary>
-    public void* Ctx;
+    public unsafe void* Ctx;
 
     /// <summary>Health for the scope and everything beneath it, worst first.</summary>
-    public delegate* unmanaged[Cdecl]<
+    public unsafe delegate* unmanaged[Cdecl]<
         void*, XmipStr, XmipHealthEntry*, nuint, nuint*, int> Health;
 
     /// <summary>Measurements for the scope, one per counted kind that has a
     /// value.</summary>
-    public delegate* unmanaged[Cdecl]<
+    public unsafe delegate* unmanaged[Cdecl]<
         void*, XmipStr, int, XmipMeasurement*, nuint, nuint*, int> Measure;
 
     /// <summary>Pause everything at and beneath a scope, by <c>who</c>. The
     /// first operation on this boundary that acts rather than reads.</summary>
-    public delegate* unmanaged[Cdecl]<void*, XmipStr, XmipStr, int> Pause;
+    public unsafe delegate* unmanaged[Cdecl]<void*, XmipStr, XmipStr, int> Pause;
 
     /// <summary>Resume everything at and beneath a scope.</summary>
-    public delegate* unmanaged[Cdecl]<void*, XmipStr, int> Resume;
+    public unsafe delegate* unmanaged[Cdecl]<void*, XmipStr, int> Resume;
 
     /// <summary>Release the table. After this, nothing borrowed from it is
     /// valid.</summary>
-    public delegate* unmanaged[Cdecl]<void*, void> Destroy;
+    public unsafe delegate* unmanaged[Cdecl]<void*, void> Destroy;
 }

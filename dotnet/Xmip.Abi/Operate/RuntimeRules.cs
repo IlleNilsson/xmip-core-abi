@@ -40,7 +40,7 @@ namespace Xmip.Abi.Operate;
 // Every call encodes its strings into stack buffers the encoder then fills;
 // zeroing them first is wasted on a path a board takes thousands of times.
 [SkipLocalsInit]
-public sealed unsafe partial class RuntimeRules
+public sealed partial class RuntimeRules
 {
     // A scope or a word is short. Up to this many bytes it is encoded on the
     // stack, because a board compares thousands of records at a time.
@@ -71,16 +71,6 @@ public sealed unsafe partial class RuntimeRules
 
     // Sections 10 to 16: a node's, null in a remote build (RemoteBuild).
     private readonly nint _library;
-    private readonly RuntimeDesign? _design;
-    private readonly RuntimeEvents? _events;
-    private readonly RuntimeCatalogue? _catalogue;
-    private readonly RuntimeProcesses? _processes;
-    private readonly RuntimeEventSubscriptions? _eventSubscriptions;
-    private readonly RuntimeSubscriptions? _subscriptions;
-    private readonly RuntimeDeadMessages? _deadMessages;
-    private readonly RuntimeMessages? _journeys;
-    private readonly RuntimeDatabases? _databases;
-    private readonly RuntimeSecureSurface? _hosting;
 
     private RuntimeRules(nint library, string path)
     {
@@ -127,27 +117,27 @@ public sealed unsafe partial class RuntimeRules
         Publications = new PublicationReader(library);
         _library = library;
         Audit = new RuntimeAudit(library);
-        _design = Node(library, RuntimeDesign.Entrypoints, () => new RuntimeDesign(library));
-        _events = Node(library, RuntimeEvents.Entrypoints, () => new RuntimeEvents(library));
-        _catalogue = Node(
+        Design = Node(library, RuntimeDesign.Entrypoints, () => new RuntimeDesign(library));
+        Events = Node(library, RuntimeEvents.Entrypoints, () => new RuntimeEvents(library));
+        Catalogue = Node(
             library, RuntimeCatalogue.Entrypoints, () => new RuntimeCatalogue(library));
-        _processes = Node(
+        Processes = Node(
             library, RuntimeProcesses.Entrypoints, () => new RuntimeProcesses(library));
-        _eventSubscriptions = Node(
+        EventSubscriptions = Node(
             library,
             RuntimeEventSubscriptions.Entrypoints,
             () => new RuntimeEventSubscriptions(library));
-        _subscriptions = Node(
+        Subscriptions = Node(
             library, RuntimeSubscriptions.Entrypoints, () => new RuntimeSubscriptions(library));
-        _deadMessages = Node(
+        DeadMessages = Node(
             library, RuntimeDeadMessages.Entrypoints, () => new RuntimeDeadMessages(library));
-        _journeys = Node(
+        Messages = Node(
             library, RuntimeMessages.Entrypoints, () => new RuntimeMessages(library));
-        _databases = Node(
+        Databases = Node(
             library, RuntimeDatabases.Entrypoints, () => new RuntimeDatabases(library));
         SecurityRoles = new RuntimeSecurityRoles(library);
         RuntimeSecurityRoles callers = SecurityRoles;
-        _hosting = Node(
+        Hosting = Node(
             library,
             RuntimeSecureSurface.Entrypoints,
             () => new RuntimeSecureSurface(library, callers));
@@ -178,47 +168,46 @@ public sealed unsafe partial class RuntimeRules
     /// sliced (ADR-0064, amendment 2026-10-03; ADR-0031, amendment
     /// 2026-10-05).</summary>
     public RuntimeDesign Design =>
-        _design ?? throw RemoteBuild.Refused(_library, RuntimeDesign.Entrypoints);
+        field ?? throw RemoteBuild.Refused(_library, RuntimeDesign.Entrypoints);
 
     /// <summary>Section 11: Events, subscribed from .NET and published into
     /// this process (ADR-0065).</summary>
     public RuntimeEvents Events =>
-        _events ?? throw RemoteBuild.Refused(_library, RuntimeEvents.Entrypoints);
+        field ?? throw RemoteBuild.Refused(_library, RuntimeEvents.Entrypoints);
 
     /// <summary>Section 12: the technologies the runtime carries and the
     /// settings each declares (ADR-0064, amendment 2026-09-26).</summary>
     public RuntimeCatalogue Catalogue =>
-        _catalogue ?? throw RemoteBuild.Refused(_library, RuntimeCatalogue.Entrypoints);
+        field ?? throw RemoteBuild.Refused(_library, RuntimeCatalogue.Entrypoints);
 
     /// <summary>Section 13: a System Process declared, and the declarations
     /// that stand (ADR-0053 clause 3).</summary>
     public RuntimeProcesses Processes =>
-        _processes ?? throw RemoteBuild.Refused(_library, RuntimeProcesses.Entrypoints);
+        field ?? throw RemoteBuild.Refused(_library, RuntimeProcesses.Entrypoints);
 
     /// <summary>Section 11, what an operator lists and does: the Event
     /// subscriptions a hub holds, and pause, resume and remove on one
     /// (ADR-0065, amendment 2026-09-29).</summary>
     public RuntimeEventSubscriptions EventSubscriptions =>
-        _eventSubscriptions
-            ?? throw RemoteBuild.Refused(_library, RuntimeEventSubscriptions.Entrypoints);
+        field ?? throw RemoteBuild.Refused(_library, RuntimeEventSubscriptions.Entrypoints);
 
     /// <summary>Section 14: the Subscriptions of the nodes running in this
     /// process, pause and resume on one, and an operator's order on any
     /// noun (ADR-0013, amendment 2026-09-30).</summary>
     public RuntimeSubscriptions Subscriptions =>
-        _subscriptions ?? throw RemoteBuild.Refused(_library, RuntimeSubscriptions.Entrypoints);
+        field ?? throw RemoteBuild.Refused(_library, RuntimeSubscriptions.Entrypoints);
 
     /// <summary>Section 15: the Dead Message Queues of the nodes running in
     /// this process, and Replay on one of their Messages (ADR-0052,
     /// amendment 2026-10-01).</summary>
     public RuntimeDeadMessages DeadMessages =>
-        _deadMessages ?? throw RemoteBuild.Refused(_library, RuntimeDeadMessages.Entrypoints);
+        field ?? throw RemoteBuild.Refused(_library, RuntimeDeadMessages.Entrypoints);
 
     /// <summary>Section 16: Retry and Dismiss on a Message that failed, sent
     /// by a node running in this process (runtime-model.md section 13;
     /// ADR-0013).</summary>
     public RuntimeMessages Messages =>
-        _journeys ?? throw RemoteBuild.Refused(_library, RuntimeMessages.Entrypoints);
+        field ?? throw RemoteBuild.Refused(_library, RuntimeMessages.Entrypoints);
 
     /// <summary>Section 17: a node reached at its operate address over gRPC
     /// inside Xmip's mutual TLS, and this process's node served on an operate
@@ -237,13 +226,13 @@ public sealed unsafe partial class RuntimeRules
     /// from one schema version to a later one (ADR-0015, amendment
     /// 2026-10-20). A node's build only.</summary>
     public RuntimeDatabases Databases =>
-        _databases ?? throw RemoteBuild.Refused(_library, RuntimeDatabases.Entrypoints);
+        field ?? throw RemoteBuild.Refused(_library, RuntimeDatabases.Entrypoints);
 
     /// <summary>Section 21: a web host's HTTPS in Xmip's own TLS, and its
     /// certificate under an authority kept in a folder (ADR-0009, amendment
     /// 2026-10-21). A node's build only.</summary>
     public RuntimeSecureSurface Hosting =>
-        _hosting ?? throw RemoteBuild.Refused(_library, RuntimeSecureSurface.Entrypoints);
+        field ?? throw RemoteBuild.Refused(_library, RuntimeSecureSurface.Entrypoints);
 
     /// <summary>The stage words, in message-path order — the segments a
     /// scope names a stage by: <c>node::Stage::WORDS</c>, read once when the
@@ -318,7 +307,10 @@ public sealed unsafe partial class RuntimeRules
 
         for (int at = 0; at < read.Length; at++)
         {
-            read[at] = words[at].Read();
+            unsafe
+            {
+                read[at] = words[at].Read();
+            }
         }
 
         return read;
@@ -328,7 +320,10 @@ public sealed unsafe partial class RuntimeRules
     // words and the stage words, far short of it.
     private static string Sentence(byte* said, nuint length)
     {
-        return Encoding.UTF8.GetString(said, (int)Math.Min(length, (nuint)Small));
+        unsafe
+        {
+            return Encoding.UTF8.GetString(said, (int)Math.Min(length, Small));
+        }
     }
 
     private static nint Export(nint library, string entrypoint)
@@ -348,16 +343,25 @@ public sealed unsafe partial class RuntimeRules
     {
         nuint count = 0;
 
-        Check(words(null, 0, &count));
+        unsafe
+        {
+            Check(words(null, 0, &count));
+        }
 
         XmipStr[] found = new XmipStr[count];
 
         fixed (XmipStr* into = found)
         {
-            Check(words(into, count, &count));
+            unsafe
+            {
+                Check(words(into, count, &count));
+            }
         }
 
-        return [.. found.Select(word => word.Read())];
+        unsafe
+        {
+            return [.. found.Select(word => word.Read())];
+        }
     }
 
     // Any other status is a runtime breaking section 7's promise, not an answer.

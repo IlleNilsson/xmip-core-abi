@@ -151,10 +151,14 @@ public sealed class RuntimeCommands(
 
         Delivered(delivery.ClusterPath, sliced);
 
-        return sliced.Outcome == NodeDelivery.Standing.Refused
-            ? Audited("plan node", new ConfigurationVerdict(
-                delivery.ClusterPath, XmipStatus.Invalid, [], sliced.Said))
-            : Audited("plan node", Runtime().Plan(sliced.Path));
+        return Audited("plan node", sliced.Outcome switch
+        {
+            NodeDelivery.Standing.Shipped placed => Runtime().Plan(placed.Path),
+            NodeDelivery.Standing.NotShipped written => Runtime().Plan(written.Path),
+            NodeDelivery.Standing.Refused => new ConfigurationVerdict(
+                delivery.ClusterPath, XmipStatus.Invalid, [], sliced.Said),
+            null => throw UnionDefault.Of<NodeDelivery.Standing>(),
+        });
     }
 
     // A save that wrote nothing, audited with why.
@@ -173,24 +177,29 @@ public sealed class RuntimeCommands(
     // One node's slice, then its ship: each a record of its own.
     private void Delivered(string path, NodeDelivery node)
     {
-        bool sliced = node.Outcome != NodeDelivery.Standing.Refused;
+        (string? slice, bool shipped) = node.Outcome switch
+        {
+            NodeDelivery.Standing.Shipped placed => (placed.Path, true),
+            NodeDelivery.Standing.NotShipped written => (written.Path, false),
+            NodeDelivery.Standing.Refused => (null, false),
+            null => throw UnionDefault.Of<NodeDelivery.Standing>(),
+        };
         Dictionary<string, string> properties = new()
         {
             ["configuration"] = path,
             ["node"] = node.Node,
-            ["slice"] = node.Path,
+            ["slice"] = slice ?? string.Empty,
         };
 
         audit.Record(
             "slice",
-            sliced ? AuditPhase.Finished : AuditPhase.Failure,
-            sliced ? AuditSeverity.Information : AuditSeverity.Error,
-            sliced ? $"{node.Node} sliced to {node.Path}" : node.Said,
+            slice is null ? AuditPhase.Failure : AuditPhase.Finished,
+            slice is null ? AuditSeverity.Error : AuditSeverity.Information,
+            slice is null ? node.Said : $"{node.Node} sliced to {slice}",
             properties);
 
-        if (sliced)
+        if (slice is not null)
         {
-            bool shipped = node.Outcome == NodeDelivery.Standing.Shipped;
             audit.Record(
                 "ship",
                 shipped ? AuditPhase.Finished : AuditPhase.Failure,

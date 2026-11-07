@@ -8,7 +8,7 @@ namespace Xmip.Abi.Operate;
 /// nodes of this process, until disposed — every connection shut, every
 /// wait woken.
 /// </summary>
-public sealed unsafe class ServedNode : IDisposable
+public sealed class ServedNode : IDisposable
 {
     private readonly RuntimeRemotes calls;
 
@@ -24,7 +24,10 @@ public sealed unsafe class ServedNode : IDisposable
 
         fixed (byte* written = text)
         {
-            _ = calls.ServedAddress(handle, written, (nuint)text.Length, &length);
+            unsafe
+            {
+                _ = calls.ServedAddress(handle, written, (nuint)text.Length, &length);
+            }
         }
 
         Address = RuntimeRemotes.Said(text, length);
@@ -46,7 +49,10 @@ public sealed unsafe class ServedNode : IDisposable
 
         fixed (byte* data = pack.Bytes)
         {
-            status = calls.Post(Volatile.Read(ref handle), pack.Borrow(data, 0));
+            unsafe
+            {
+                status = calls.Post(Volatile.Read(ref handle), pack.Borrow(data, 0));
+            }
         }
 
         if (status != 0)
@@ -63,7 +69,10 @@ public sealed unsafe class ServedNode : IDisposable
 
         if (held != 0)
         {
-            calls.ServeStop(held);
+            unsafe
+            {
+                calls.ServeStop(held);
+            }
         }
     }
 }

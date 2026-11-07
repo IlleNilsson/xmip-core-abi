@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.Configuration;
 using Xmip.Abi.Operate;
 
@@ -38,10 +39,22 @@ public static class RuntimeLibrary
     /// command line and the GUI hosts, beside the module for PowerShell, whose
     /// executable is pwsh — and so where the runtime library lies by default.
     /// </summary>
-    public static string Beside =>
-        Path.GetDirectoryName(typeof(RuntimeLibrary).Assembly.Location) is { Length: > 0 } here
-            ? here
-            : AppContext.BaseDirectory;
+    public static string Beside => AssemblyDirectory() ?? AppContext.BaseDirectory;
+
+    // Xmip.Surface's own file, where it has one. An ahead-of-time or
+    // single-file build has none — its Location is empty, which is what the
+    // analyzers warn of — and there the executable's directory is where it
+    // lies, which is the answer.
+    [UnconditionalSuppressMessage(
+        "SingleFile",
+        "IL3000:Avoid accessing Assembly file path when publishing as a single file",
+        Justification = "An empty Location is answered by AppContext.BaseDirectory.")]
+    private static string? AssemblyDirectory()
+    {
+        string? here = Path.GetDirectoryName(typeof(RuntimeLibrary).Assembly.Location);
+
+        return string.IsNullOrEmpty(here) ? null : here;
+    }
 
     /// <summary>
     /// The runtime's rules — scope containment, the stage words and their

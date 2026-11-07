@@ -67,7 +67,10 @@ public sealed class EventSubscription : SafeHandle
         // callback in progress already holds what the context named.
         if (_context.IsAllocated)
         {
-            _context.Free();
+            unsafe
+            {
+                _context.Free();
+            }
         }
 
         return true;

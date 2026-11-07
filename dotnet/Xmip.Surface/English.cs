@@ -338,7 +338,9 @@ public static class English
     /// (<c>xmip_start_v1</c>), which the sentence says.</summary>
     public static string Planned(string configurationPath, XmipStatus status)
     {
+#pragma warning disable IDE0072 // extensible: a module may add values
         return status switch
+#pragma warning restore IDE0072
         {
             XmipStatus.Ok => $"planned {configurationPath}: validated and published, not running",
             XmipStatus.Unsupported =>

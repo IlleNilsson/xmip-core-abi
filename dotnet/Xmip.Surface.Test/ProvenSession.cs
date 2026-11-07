@@ -55,7 +55,14 @@ internal sealed class ProvenSession : IDisposable
 
         SecureSurfaceAccepted accepted = listener.Accept();
         handshake.GetAwaiter().GetResult();
-        Session = accepted.Session ?? throw new InvalidOperationException(accepted.Said);
+        Session = accepted switch
+        {
+            SecureSurfaceAccepted.Accepted taken => taken.Session,
+            SecureSurfaceAccepted.Refused no => throw new InvalidOperationException(no.Said),
+            SecureSurfaceAccepted.Failed no => throw new InvalidOperationException(no.Said),
+            SecureSurfaceAccepted.Stopped => throw new InvalidOperationException("stopped"),
+            null => throw UnionDefault.Of<SecureSurfaceAccepted>(),
+        };
     }
 
     /// <summary>The session the runtime accepted.</summary>

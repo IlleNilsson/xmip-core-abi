@@ -8,9 +8,11 @@ namespace Xmip.Surface;
 /// the header's JSON, written once here for every .NET surface. Whether the
 /// edit is good, and the text it leaves, are the runtime's answer — a value
 /// is TOML as the file writes it, and an edit that would leave a node unable
-/// to read its slice is refused in the runtime's words.
+/// to read its slice is refused in the runtime's words. The header's acts
+/// are Xmip's own and fixed, so the hierarchy is closed: no assembly adds
+/// one, and a switch over it names every act.
 /// </summary>
-public abstract record ClusterEdit
+public closed record ClusterEdit
 {
     /// <summary>The edit as the header's JSON.</summary>
     public abstract string ToJson();

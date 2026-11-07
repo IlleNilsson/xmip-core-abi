@@ -52,7 +52,18 @@ C++, Java and Python tests with zig, the JDK and Python, into the git-ignored
 The .NET binding is here too: `dotnet/Xmip.Abi`, one class library declaring
 both headers for every operator surface — the cli, the PowerShell module and
 the GUI reference it as a project and bind nothing themselves (ADR-0014,
-amendment of 2026-08-26). `Module/` carries the module boundary, its probe
+amendment of 2026-08-26). It compiles under C# 15's updated memory safety
+rules, a preview: no type is `unsafe`; an `unsafe` block stands only around a
+dereference, a call through a function pointer or a framework call the runtime
+marks unsafe (`GCHandle.Free`, an uninitialized `stackalloc`); and a member
+whose safety rests on its caller is marked `unsafe` itself — `XmipStr`'s
+pointer, constructor and `Read`, `PinnedStr.Value`, `Utf8Pack.Borrow`, and
+every raw pointer a header struct exposes. Xmip's own fixed answers are
+unions, so a switch over one names every case: `SecureSurfaceAccepted`
+(`Accepted`, `Refused`, `Stopped`, `Failed`) and `AuditOutcome` (`Kept`,
+`Refused`) here, `NodeDelivery.Standing` (`Shipped`, `NotShipped`, `Refused`)
+in `Xmip.Surface`, whose `ClusterEdit` is a `closed` hierarchy. `Xmip.Surface`
+and `Xmip.Surface.Relay` build with runtime async on Windows. `Module/` carries the module boundary, its probe
 and the probe's judgment of whether a library loaded at all
 (`ModuleProbe.Result.Unloadable`) and whether a module conforms, and `StatusMeaning`,
 what a status code means; `Operate/` the operator boundary and its records,
@@ -408,6 +419,12 @@ authentication gate answered the browser is (`xmip_caller_proven_v1`,
 `SecureSurfaceSession.Caller`) as a `ProvenConnection`; and `ProvenCaller`,
 who each request proved, read from that feature alone, so a certificate's
 subject the host reads proves nothing (ADR-0009, amendment 2026-11-01).
+`UseXmipContentSecurity` sets the Operation Web's content security policy
+once, on every response (`ContentSecurity`): `default-src 'self'`, scripts
+from the host and the one inline element carrying the response's nonce
+(`ContentSecurity.Nonce`, which a page's `<ImportMap nonce=…>` carries),
+`style-src 'self'`, `frame-ancestors 'none'`, `base-uri` and `form-action`
+the host's own.
 A caller crosses as an opaque handle the runtime handed out, never a name
 (`HeldCaller`, section 18): the session holds the one it proved, a circuit
 takes its own (`HeldCaller.Hold`, `xmip_caller_hold_v1`) and releases it

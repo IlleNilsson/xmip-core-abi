@@ -9,7 +9,7 @@ namespace Xmip.Abi.Operate;
 /// strings at once — an audit record, a subscription's filter, an Event to
 /// publish — lays them out, written once.
 /// </summary>
-internal sealed unsafe class Utf8Pack
+internal sealed class Utf8Pack
 {
     private readonly int[] _starts;
 
@@ -33,9 +33,13 @@ internal sealed unsafe class Utf8Pack
     public byte[] Bytes { get; }
 
     /// <summary>The <paramref name="at"/>th string as a borrow of
-    /// <paramref name="data"/>, which is <see cref="Bytes"/> pinned.</summary>
-    public XmipStr Borrow(byte* data, int at)
+    /// <paramref name="data"/>, which is <see cref="Bytes"/> pinned. Unsafe:
+    /// the caller promises it is.</summary>
+    public unsafe XmipStr Borrow(byte* data, int at)
     {
-        return new XmipStr(data + _starts[at], (nuint)(_starts[at + 1] - _starts[at]));
+        unsafe
+        {
+            return new XmipStr(data + _starts[at], (nuint)(_starts[at + 1] - _starts[at]));
+        }
     }
 }

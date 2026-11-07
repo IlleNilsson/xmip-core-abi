@@ -13,27 +13,45 @@ namespace Xmip.Abi.Module;
 /// to a module author and to an operator surface, or it means nothing to
 /// either. To hand a .NET string across a call, see <see cref="Pin"/>.
 /// </remarks>
-/// <param name="data">The first byte; <c>ptr</c> in the header.</param>
-/// <param name="len">The length in bytes.</param>
 [StructLayout(LayoutKind.Sequential)]
-public readonly unsafe struct XmipStr(byte* data, nuint len)
+public readonly struct XmipStr
 {
     /// <summary>The first byte; <c>ptr</c> in the header. Null only when
-    /// <see cref="Len"/> is 0.</summary>
-    public readonly byte* Data = data;
+    /// <see cref="Len"/> is 0. Unsafe: nothing says the bytes are still
+    /// there.</summary>
+    public readonly unsafe byte* Data;
 
     /// <summary>The length in bytes.</summary>
-    public readonly nuint Len = len;
+    public readonly nuint Len;
+
+    /// <summary>A borrow of <paramref name="len"/> bytes at
+    /// <paramref name="data"/>. Unsafe: the caller promises they are there
+    /// for as long as the borrow is read.</summary>
+    /// <param name="data">The first byte; <c>ptr</c> in the header.</param>
+    /// <param name="len">The length in bytes.</param>
+    public unsafe XmipStr(byte* data, nuint len)
+    {
+        unsafe
+        {
+            Data = data;
+        }
+
+        Len = len;
+    }
 
     /// <summary>
     /// Copies out of the borrow. The pointer stops being valid when the call
-    /// that produced it returns, so nothing may hold onto it.
+    /// that produced it returns, so nothing may hold onto it. Unsafe: the
+    /// caller promises the call has not returned.
     /// </summary>
-    public string Read()
+    public unsafe string Read()
     {
-        return Data is null || Len == 0
-            ? string.Empty
-            : Encoding.UTF8.GetString(Data, checked((int)Len));
+        unsafe
+        {
+            return Data is null || Len == 0
+                ? string.Empty
+                : Encoding.UTF8.GetString(Data, checked((int)Len));
+        }
     }
 
     /// <summary>

@@ -7,7 +7,7 @@ namespace Xmip.Abi.Operate;
 /// references and never a payload. Identifiers are UUIDs in 8-4-4-4-12 form,
 /// and every optional string is empty where there is none.</summary>
 [StructLayout(LayoutKind.Sequential)]
-public unsafe struct XmipEvent
+public struct XmipEvent
 {
     /// <summary><c>id</c>.</summary>
     public XmipStr Id;
@@ -49,7 +49,7 @@ public unsafe struct XmipEvent
     public XmipStr Party;
 
     /// <summary><c>diagnostics</c>: name then value.</summary>
-    public XmipStr* Diagnostics;
+    public unsafe XmipStr* Diagnostics;
 
     /// <summary><c>diagnostics_len</c>, even.</summary>
     public nuint DiagnosticsLen;
