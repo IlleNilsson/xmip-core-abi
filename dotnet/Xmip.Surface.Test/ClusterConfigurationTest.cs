@@ -199,6 +199,15 @@ public sealed class ClusterConfigurationTest : IDisposable
     }
 
     [Fact]
+    public void AByteOrderMarkAnEditorLeftIsNotPartOfTheText()
+    {
+        string path = Path.Combine(_directory, "marked.xmip");
+        File.WriteAllText(path, "# café\n", new System.Text.UTF8Encoding(true));
+
+        Assert.Equal("# café\n", ClusterConfiguration.Open(path).Text);
+    }
+
+    [Fact]
     public void AFileThatAppearedSinceAnEmptyOpenIsNotOverwritten()
     {
         ClusterConfiguration cluster =

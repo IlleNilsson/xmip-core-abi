@@ -76,10 +76,15 @@ public sealed class ClusterConfiguration
             return new ClusterConfiguration(path, string.Empty, false, string.Empty);
         }
 
-        // Read once: the text and its fingerprint are of the same bytes.
+        // Read once: the text and its fingerprint are of the same bytes. The
+        // file is UTF-8 (ADR-0038), decoded where it lies, a byte order mark
+        // an editor left skipped; it is written back without one.
         byte[] bytes = File.ReadAllBytes(path);
-        using StreamReader reader = new(new MemoryStream(bytes), Encoding.UTF8, true);
-        return new ClusterConfiguration(path, reader.ReadToEnd(), true, Fingerprint(bytes));
+        ReadOnlySpan<byte> mark = Encoding.UTF8.Preamble;
+        ReadOnlySpan<byte> text = bytes;
+        text = text.StartsWith(mark) ? text[mark.Length..] : text;
+        return new ClusterConfiguration(
+            path, Encoding.UTF8.GetString(text), true, Fingerprint(bytes));
     }
 
     /// <summary>Make <paramref name="edit"/> through the runtime. False, with
@@ -187,10 +192,21 @@ public sealed class ClusterConfiguration
                 bufferSize: 1,
                 FileOptions.DeleteOnClose);
         }
-        catch (IOException) when (File.Exists($"{path}.lock"))
+        catch (IOException failed) when (Held(failed, path))
         {
             return null;
         }
+    }
+
+    // Another save holds the lock: the system says so, a sharing or lock
+    // violation (32, 33), or the file is still there. Its existence alone is
+    // not enough: the other save deletes it as it closes, which can fall
+    // between this open failing and this check, and the save was then
+    // thrown rather than refused.
+    private static bool Held(IOException failed, string path)
+    {
+        int code = failed.HResult & 0xFFFF;
+        return code is 32 or 33 || File.Exists($"{path}.lock");
     }
 
     // Whether the disk holds the bytes this editor last read or wrote.
