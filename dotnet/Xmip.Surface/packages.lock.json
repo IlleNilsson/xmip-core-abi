@@ -4,13 +4,13 @@
     "net11.0": {
       "Microsoft.Extensions.Configuration": {
         "type": "Direct",
-        "requested": "[11.0.0-rc.3.*, )",
+        "requested": "[11.0.0-rc.3.26522.148, )",
         "resolved": "11.0.0-rc.3.26522.148",
         "contentHash": "eKYZzPkX3fQy+NBmU6Jn6i4K43cF7VR0EvEbe2xd+92LSjuW9KeLOG4IK8c1z6eZ0QhAp7t1m94EYrbFtCn6pQ=="
       },
       "System.Diagnostics.EventLog": {
         "type": "Direct",
-        "requested": "[11.0.0-rc.3.*, )",
+        "requested": "[11.0.0-rc.3.26522.148, )",
         "resolved": "11.0.0-rc.3.26522.148",
         "contentHash": "JpbybhfTUy17djMYG1YWBLyQI0Sbl6Ob5mMF9tVXcJGqhZ9aSm6ZvLdbRR3ziiktgiUUTuJbATx6bWGqS9Plew=="
       },
