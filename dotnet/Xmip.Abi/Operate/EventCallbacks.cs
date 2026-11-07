@@ -10,7 +10,7 @@ namespace Xmip.Abi.Operate;
 /// an Event copied out of the runtime's borrow, whole. Nothing may cross back
 /// into Rust from either callback.
 /// </summary>
-internal static unsafe class EventCallbacks
+internal static class EventCallbacks
 {
     // The runtime asks this on the subscribing thread. Nothing may cross back
     // into it: an exception is no opinion.
@@ -19,16 +19,26 @@ internal static unsafe class EventCallbacks
         void* context, XmipStr party, XmipStr mechanism, XmipStr value, XmipStr scope,
         XmipStr type)
     {
-        if (GCHandle.FromIntPtr((nint)context).Target
-            is not Func<EventAuthorization, bool?> decide)
-        {
-            return 0;
-        }
-
         try
         {
-            bool? said = decide(new EventAuthorization(
-                party.Read(), mechanism.Read(), value.Read(), scope.Read(), type.Read()));
+            // The context is the handle RuntimeEvents.AuthorizeBy allocated
+            // and keeps, and the five strings are borrowed for this call.
+            EventAuthorization asked;
+            object? held;
+
+            unsafe
+            {
+                held = GCHandle.FromIntPtr((nint)context).Target;
+                asked = new EventAuthorization(
+                    party.Read(), mechanism.Read(), value.Read(), scope.Read(), type.Read());
+            }
+
+            if (held is not Func<EventAuthorization, bool?> decide)
+            {
+                return 0;
+            }
+
+            bool? said = decide(asked);
             return said switch
             {
                 true => 1,
@@ -49,14 +59,26 @@ internal static unsafe class EventCallbacks
     [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
     internal static void Heard(void* context, XmipEvent* raised)
     {
-        if (GCHandle.FromIntPtr((nint)context).Target is not EventListening listening)
+        // The context is the handle the subscription keeps, and the Event is
+        // borrowed for this call.
+        object? held;
+
+        unsafe
+        {
+            held = GCHandle.FromIntPtr((nint)context).Target;
+        }
+
+        if (held is not EventListening listening)
         {
             return;
         }
 
         try
         {
-            listening.Heard(Copy(raised));
+            unsafe
+            {
+                listening.Heard(Copy(raised));
+            }
         }
 #pragma warning disable CA1031 // Whatever it is, it must not unwind into Rust.
         catch (Exception thrown)
@@ -66,32 +88,37 @@ internal static unsafe class EventCallbacks
         }
     }
 
-    // One Event out of the runtime's borrow, whole.
-    internal static EventRecord Copy(XmipEvent* raised)
+    // One Event out of the runtime's borrow, whole. Unsafe: the caller
+    // promises the borrow is live.
+    internal static unsafe EventRecord Copy(XmipEvent* raised)
     {
         Dictionary<string, string> diagnostics = [with(StringComparer.Ordinal)];
 
-        for (nuint at = 0; at + 1 < raised->DiagnosticsLen; at += 2)
+        unsafe
         {
-            diagnostics[raised->Diagnostics[at].Read()] = raised->Diagnostics[at + 1].Read();
-        }
+            for (nuint at = 0; at + 1 < raised->DiagnosticsLen; at += 2)
+            {
+                diagnostics[raised->Diagnostics[at].Read()] =
+                    raised->Diagnostics[at + 1].Read();
+            }
 
-        return new EventRecord
-        {
-            Id = raised->Id.Read(),
-            Type = raised->Type.Read(),
-            TimeUnixNanos = raised->TimeUnixNanos,
-            Action = (EventAction)raised->Action,
-            Outcome = (EventOutcome)raised->Outcome,
-            Scope = raised->Scope.Read(),
-            Journey = raised->Journey.Read(),
-            Message = raised->Message.Read(),
-            Stream = raised->Stream.Read(),
-            Endpoint = raised->Endpoint.Read(),
-            Module = raised->Module.Read(),
-            Artifact = raised->Artifact.Read(),
-            Party = raised->Party.Read(),
-            Diagnostics = diagnostics,
-        };
+            return new EventRecord
+            {
+                Id = raised->Id.Read(),
+                Type = raised->Type.Read(),
+                TimeUnixNanos = raised->TimeUnixNanos,
+                Action = (EventAction)raised->Action,
+                Outcome = (EventOutcome)raised->Outcome,
+                Scope = raised->Scope.Read(),
+                Journey = raised->Journey.Read(),
+                Message = raised->Message.Read(),
+                Stream = raised->Stream.Read(),
+                Endpoint = raised->Endpoint.Read(),
+                Module = raised->Module.Read(),
+                Artifact = raised->Artifact.Read(),
+                Party = raised->Party.Read(),
+                Diagnostics = diagnostics,
+            };
+        }
     }
 }

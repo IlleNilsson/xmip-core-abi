@@ -13,7 +13,7 @@ namespace Xmip.Abi.Module;
 /// lifetime rule the header states, enforced by the compiler rather than by
 /// a comment. Use it with <c>using</c>.
 /// </remarks>
-public unsafe ref struct PinnedStr
+public ref struct PinnedStr
 {
     private GCHandle _handle;
     private readonly nuint _len;
@@ -28,17 +28,31 @@ public unsafe ref struct PinnedStr
     }
 
     /// <summary>The borrow to pass. Empty text is an empty borrow, null pointer
-    /// and zero length, which is what section 2 permits.</summary>
-    public readonly XmipStr Value => _len == 0
-        ? default
-        : new XmipStr((byte*)_handle.AddrOfPinnedObject(), _len);
+    /// and zero length, which is what section 2 permits. Unsafe: the caller
+    /// promises not to read it once this is disposed.</summary>
+    public readonly unsafe XmipStr Value
+    {
+        get
+        {
+            unsafe
+            {
+                return _len == 0
+                    ? default
+                    : new XmipStr((byte*)_handle.AddrOfPinnedObject(), _len);
+            }
+        }
+    }
 
     /// <summary>Releases the pin. Idempotent.</summary>
     public void Dispose()
     {
+        // Freed once: IsAllocated is false after, so a second Dispose is none.
         if (_handle.IsAllocated)
         {
-            _handle.Free();
+            unsafe
+            {
+                _handle.Free();
+            }
         }
     }
 }

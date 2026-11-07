@@ -16,7 +16,7 @@ namespace Xmip.Abi.Operate;
 /// </summary>
 /// <remarks>Pure in the header's sense: one instance serves a whole process
 /// from any thread. A node's build only, as sections 10 to 16.</remarks>
-public sealed unsafe class RuntimeDatabases
+public sealed class RuntimeDatabases
 {
     private readonly delegate* unmanaged[Cdecl]<XmipStr, uint, uint, byte*, nuint, nuint*, int>
         _upgrade;
@@ -52,9 +52,12 @@ public sealed unsafe class RuntimeDatabases
             fixed (byte* named = word)
             fixed (byte* written = room)
             {
-                status = _upgrade(
-                    new XmipStr(named, (nuint)word.Length), from, to, written,
-                    (nuint)room.Length, &length);
+                unsafe
+                {
+                    status = _upgrade(
+                        new XmipStr(named, (nuint)word.Length), from, to, written,
+                        (nuint)room.Length, &length);
+                }
             }
 
             if (length > (nuint)room.Length)

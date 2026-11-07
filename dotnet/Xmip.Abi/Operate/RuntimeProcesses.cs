@@ -18,7 +18,7 @@ namespace Xmip.Abi.Operate;
 /// JSON, in memory only (ADR-0031 clause 2), read here into
 /// <see cref="ProcessStanding"/>.
 /// </remarks>
-public sealed unsafe class RuntimeProcesses
+public sealed class RuntimeProcesses
 {
     // A file's path, or a refusal, fits in this; the list is asked for again
     // at its true length.
@@ -83,11 +83,17 @@ public sealed unsafe class RuntimeProcesses
         {
             for (int i = 0; i < texts.Count; i++)
             {
-                each[i] = pack.Borrow(data, i);
+                unsafe
+                {
+                    each[i] = pack.Borrow(data, i);
+                }
             }
 
-            status = _declare(each[0], each[1], each[2], each + 3, (nuint)(texts.Count - 3),
-                written, (nuint)text.Length, &length);
+            unsafe
+            {
+                status = _declare(each[0], each[1], each[2], each + 3, (nuint)(texts.Count - 3),
+                    written, (nuint)text.Length, &length);
+            }
         }
 
         answer = Encoding.UTF8.GetString(text, 0, (int)Math.Min(length, (nuint)text.Length));
@@ -154,8 +160,12 @@ public sealed unsafe class RuntimeProcesses
         fixed (byte* textData = text)
         fixed (nuint* length = &needed)
         {
-            return _list(
-                new XmipStr(placeData, (nuint)place.Length), textData, (nuint)text.Length, length);
+            unsafe
+            {
+                return _list(
+                    new XmipStr(placeData, (nuint)place.Length), textData, (nuint)text.Length,
+                    length);
+            }
         }
     }
 }

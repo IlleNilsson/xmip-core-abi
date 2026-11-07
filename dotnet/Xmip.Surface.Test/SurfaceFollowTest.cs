@@ -28,8 +28,7 @@ public sealed class SurfaceFollowTest
                 .Changes(
                     surface,
                     chosen,
-                    (read, now) => (IReadOnlyList<HealthRecord>)
-                        [.. now.Scopes.SelectMany(read.Health)],
+                    (read, now) => [.. now.Scopes.SelectMany(read.Health)],
                     SurfaceFollow.Rows<HealthRecord>(),
                     patience.Token)
                 .GetAsyncEnumerator(patience.Token);

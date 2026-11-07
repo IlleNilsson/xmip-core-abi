@@ -5,7 +5,7 @@ namespace Xmip.Abi.Operate;
 
 // Section 7's mood and counted rules: a mood's word and color, its parse, the
 // worst-first order, the rollup, and a counted kind's word.
-public sealed unsafe partial class RuntimeRules
+public sealed partial class RuntimeRules
 {
     /// <summary>The mood as the word the estate uses, lower case —
     /// <c>observe::Health::word</c>. Null for a value the runtime does not
@@ -14,7 +14,10 @@ public sealed unsafe partial class RuntimeRules
     {
         XmipStr text;
 
-        return _word((int)state, &text) == 0 ? text.Read() : null;
+        unsafe
+        {
+            return _word((int)state, &text) == 0 ? text.Read() : null;
+        }
     }
 
     /// <summary>The name of the color a surface paints a mood in (ADR-0041) —
@@ -24,7 +27,10 @@ public sealed unsafe partial class RuntimeRules
     {
         XmipStr text;
 
-        return _color((int)state, &text) == 0 ? text.Read() : null;
+        unsafe
+        {
+            return _color((int)state, &text) == 0 ? text.Read() : null;
+        }
     }
 
     /// <summary>The mood a word names, exactly — <c>observe::Health::named</c>.
@@ -34,14 +40,25 @@ public sealed unsafe partial class RuntimeRules
         ArgumentNullException.ThrowIfNull(word);
 
         int max = Encoding.UTF8.GetMaxByteCount(word.Length);
-        Span<byte> bytes = max <= Small ? stackalloc byte[Small] : new byte[max];
+        scoped Span<byte> bytes;
+
+        // Left as the stack had it (SkipLocalsInit): only the bytes the encoder
+        // writes cross.
+        unsafe
+        {
+            bytes = max <= Small ? stackalloc byte[Small] : new byte[max];
+        }
+
         int length = Encoding.UTF8.GetBytes(word, bytes);
         int state = 0;
         int status;
 
         fixed (byte* data = bytes)
         {
-            status = _named(new XmipStr(data, (nuint)length), &state);
+            unsafe
+            {
+                status = _named(new XmipStr(data, (nuint)length), &state);
+            }
         }
 
         return status == 0 ? (HealthState)state : null;
@@ -85,12 +102,18 @@ public sealed unsafe partial class RuntimeRules
             {
                 int length = starts[at + 1] - starts[at];
 
-                into[at].Scope = new XmipStr(scopes + starts[at], (nuint)length);
-                into[at].Health = (int)records[at].State;
-                into[at].Severity = records[at].Severity;
+                unsafe
+                {
+                    into[at].Scope = new XmipStr(scopes + starts[at], (nuint)length);
+                    into[at].Health = (int)records[at].State;
+                    into[at].Severity = records[at].Severity;
+                }
             }
 
-            Check(_order(into, (nuint)entries.Length, positions));
+            unsafe
+            {
+                Check(_order(into, (nuint)entries.Length, positions));
+            }
         }
 
         return [.. order.Select(position => checked((int)position))];
@@ -103,7 +126,11 @@ public sealed unsafe partial class RuntimeRules
     {
         int rolled = 0;
 
-        Check(_rolled((int)worst, &rolled));
+        unsafe
+        {
+            Check(_rolled((int)worst, &rolled));
+        }
+
         return (HealthState)rolled;
     }
 
@@ -114,6 +141,9 @@ public sealed unsafe partial class RuntimeRules
     {
         XmipStr text;
 
-        return _countedWord((int)counted, &text) == 0 ? text.Read() : null;
+        unsafe
+        {
+            return _countedWord((int)counted, &text) == 0 ? text.Read() : null;
+        }
     }
 }

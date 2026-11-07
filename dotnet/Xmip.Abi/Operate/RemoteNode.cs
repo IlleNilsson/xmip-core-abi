@@ -15,7 +15,7 @@ public sealed record RemoteFollow(ulong Told, ulong Revision, bool Reachable, st
 /// lets every call in flight return and then frees the handle, so nothing
 /// crosses after it is freed.
 /// </summary>
-public sealed unsafe class RemoteNode : IDisposable
+public sealed class RemoteNode : IDisposable
 {
     private readonly RuntimeRemotes calls;
 
@@ -97,9 +97,12 @@ public sealed unsafe class RemoteNode : IDisposable
 
             fixed (byte* written = reason)
             {
-                _ = calls.Wait(
-                    handle, seen, waited, &told, &revision, &reachable, written,
-                    (nuint)reason.Length, &length);
+                unsafe
+                {
+                    _ = calls.Wait(
+                        handle, seen, waited, &told, &revision, &reachable, written,
+                        (nuint)reason.Length, &length);
+                }
             }
 
             return new RemoteFollow(
@@ -145,10 +148,13 @@ public sealed unsafe class RemoteNode : IDisposable
             fixed (byte* data = pack.Bytes)
             fixed (byte* written = text)
             {
-                status = calls.Act(
-                    handle, caller?.Handle ?? 0, pack.Borrow(data, 0), pack.Borrow(data, 1),
-                    pack.Borrow(data, 2), pack.Borrow(data, 3), written, (nuint)text.Length,
-                    &length);
+                unsafe
+                {
+                    status = calls.Act(
+                        handle, caller?.Handle ?? 0, pack.Borrow(data, 0), pack.Borrow(data, 1),
+                        pack.Borrow(data, 2), pack.Borrow(data, 3), written, (nuint)text.Length,
+                        &length);
+                }
             }
 
             said = RuntimeRemotes.Said(text, length);
@@ -188,10 +194,13 @@ public sealed unsafe class RemoteNode : IDisposable
             fixed (byte* data = pack.Bytes)
             fixed (byte* written = text)
             {
-                status = calls.SetSecret(
-                    handle, caller?.Handle ?? 0, pack.Borrow(data, 0), pack.Borrow(data, 1),
-                    pack.Borrow(data, 2), pack.Borrow(data, 3), written, (nuint)text.Length,
-                    &length);
+                unsafe
+                {
+                    status = calls.SetSecret(
+                        handle, caller?.Handle ?? 0, pack.Borrow(data, 0), pack.Borrow(data, 1),
+                        pack.Borrow(data, 2), pack.Borrow(data, 3), written, (nuint)text.Length,
+                        &length);
+                }
             }
 
             // The value was packed beside the rest: overwritten once crossed.
@@ -232,9 +241,12 @@ public sealed unsafe class RemoteNode : IDisposable
                 fixed (byte* data = pack.Bytes)
                 fixed (byte* written = read)
                 {
-                    status = calls.Secrets(
-                        handle, caller?.Handle ?? 0, pack.Borrow(data, 0), written,
-                        (nuint)read.Length, &length);
+                    unsafe
+                    {
+                        status = calls.Secrets(
+                            handle, caller?.Handle ?? 0, pack.Borrow(data, 0), written,
+                            (nuint)read.Length, &length);
+                    }
                 }
 
                 if (status == (int)XmipStatus.Truncated && length > (nuint)read.Length)
@@ -261,7 +273,10 @@ public sealed unsafe class RemoteNode : IDisposable
             return;
         }
 
-        calls.End(handle);
+        unsafe
+        {
+            calls.End(handle);
+        }
 
         SpinWait spin = default;
 
@@ -270,11 +285,17 @@ public sealed unsafe class RemoteNode : IDisposable
             spin.SpinOnce();
         }
 
-        calls.Free(handle);
+        unsafe
+        {
+            calls.Free(handle);
+        }
 
         if (kept.IsAllocated)
         {
-            kept.Free();
+            unsafe
+            {
+                kept.Free();
+            }
         }
     }
 
@@ -286,7 +307,10 @@ public sealed unsafe class RemoteNode : IDisposable
 
         fixed (byte* text = read)
         {
-            status = calls.Publication(handle, text, (nuint)read.Length, &written, &at);
+            unsafe
+            {
+                status = calls.Publication(handle, text, (nuint)read.Length, &written, &at);
+            }
         }
 
         length = written;

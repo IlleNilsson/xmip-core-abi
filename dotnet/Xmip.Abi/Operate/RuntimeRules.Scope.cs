@@ -5,7 +5,7 @@ namespace Xmip.Abi.Operate;
 
 // Section 7's scope rules: containment, the one wildcard, whether a run is
 // shown, a scope's parts and the node and stage it is on.
-public sealed unsafe partial class RuntimeRules
+public sealed partial class RuntimeRules
 {
     /// <summary>Whether <paramref name="candidate"/> is <paramref name="scope"/>
     /// or sits beneath it — <c>observe::Scope::contains</c>.</summary>
@@ -37,7 +37,10 @@ public sealed unsafe partial class RuntimeRules
     {
         byte shown = 0;
 
-        Check(_shown((byte)(hidden ? 1 : 0), (byte)(includingHidden ? 1 : 0), &shown));
+        unsafe
+        {
+            Check(_shown((byte)(hidden ? 1 : 0), (byte)(includingHidden ? 1 : 0), &shown));
+        }
 
         return shown != 0;
     }
@@ -49,13 +52,21 @@ public sealed unsafe partial class RuntimeRules
         string scope,
         string candidate)
     {
-
         int scopeMax = Encoding.UTF8.GetMaxByteCount(scope.Length);
         int candidateMax = Encoding.UTF8.GetMaxByteCount(candidate.Length);
-        Span<byte> scopeBytes = scopeMax <= Small ? stackalloc byte[Small] : new byte[scopeMax];
-        Span<byte> candidateBytes = candidateMax <= Small
-            ? stackalloc byte[Small]
-            : new byte[candidateMax];
+        scoped Span<byte> scopeBytes;
+        scoped Span<byte> candidateBytes;
+
+        // Left as the stack had it (SkipLocalsInit): only the bytes the
+        // encoder writes cross.
+        unsafe
+        {
+            scopeBytes = scopeMax <= Small ? stackalloc byte[Small] : new byte[scopeMax];
+            candidateBytes = candidateMax <= Small
+                ? stackalloc byte[Small]
+                : new byte[candidateMax];
+        }
+
         int scopeLength = Encoding.UTF8.GetBytes(scope, scopeBytes);
         int candidateLength = Encoding.UTF8.GetBytes(candidate, candidateBytes);
         byte contains = 0;
@@ -63,10 +74,13 @@ public sealed unsafe partial class RuntimeRules
         fixed (byte* scopeData = scopeBytes)
         fixed (byte* candidateData = candidateBytes)
         {
-            Check(call(
-                new XmipStr(scopeData, (nuint)scopeLength),
-                new XmipStr(candidateData, (nuint)candidateLength),
-                &contains));
+            unsafe
+            {
+                Check(call(
+                    new XmipStr(scopeData, (nuint)scopeLength),
+                    new XmipStr(candidateData, (nuint)candidateLength),
+                    &contains));
+            }
         }
 
         return contains != 0;
@@ -79,17 +93,34 @@ public sealed unsafe partial class RuntimeRules
         ArgumentNullException.ThrowIfNull(scope);
 
         int max = Encoding.UTF8.GetMaxByteCount(scope.Length);
-        Span<byte> bytes = max <= Small ? stackalloc byte[Small] : new byte[max];
+        scoped Span<byte> bytes;
+
+        // Left as the stack had it (SkipLocalsInit): only the bytes the encoder
+        // writes cross.
+        unsafe
+        {
+            bytes = max <= Small ? stackalloc byte[Small] : new byte[max];
+        }
+
         int length = Encoding.UTF8.GetBytes(scope, bytes);
 
         fixed (byte* data = bytes)
         {
-            XmipStr text = new(data, (nuint)length);
+            XmipStr text;
+
+            unsafe
+            {
+                text = new(data, (nuint)length);
+            }
+
             const int Deep = 16;
             XmipStr* first = stackalloc XmipStr[Deep];
             nuint count = 0;
 
-            Check(_parts(text, first, Deep, &count));
+            unsafe
+            {
+                Check(_parts(text, first, Deep, &count));
+            }
 
             // Each part borrows from `bytes`, still pinned here.
             if (count <= Deep)
@@ -98,7 +129,10 @@ public sealed unsafe partial class RuntimeRules
 
                 for (int i = 0; i < parts.Length; i++)
                 {
-                    parts[i] = first[i].Read();
+                    unsafe
+                    {
+                        parts[i] = first[i].Read();
+                    }
                 }
 
                 return parts;
@@ -108,10 +142,16 @@ public sealed unsafe partial class RuntimeRules
 
             fixed (XmipStr* into = found)
             {
-                Check(_parts(text, into, count, &count));
+                unsafe
+                {
+                    Check(_parts(text, into, count, &count));
+                }
             }
 
-            return [.. found.Select(part => part.Read())];
+            unsafe
+            {
+                return [.. found.Select(part => part.Read())];
+            }
         }
     }
 
@@ -129,7 +169,10 @@ public sealed unsafe partial class RuntimeRules
         XmipStr stage;
 
         // The node borrows from `text`, still pinned here; the stage is static.
-        Check(_node(text.Value, &node, &stage));
-        return (node.Read(), stage.Read());
+        unsafe
+        {
+            Check(_node(text.Value, &node, &stage));
+            return (node.Read(), stage.Read());
+        }
     }
 }

@@ -24,7 +24,7 @@ namespace Xmip.Abi.Operate;
 /// </summary>
 /// <remarks>Pure in the header's sense: one instance serves a whole process
 /// from any thread.</remarks>
-public sealed unsafe class RuntimeCertificates
+public sealed partial class RuntimeCertificates
 {
     private readonly nint _library;
     private readonly delegate* unmanaged[Cdecl]<XmipStr, XmipStr, byte*, nuint, nuint*, int>
@@ -105,9 +105,17 @@ public sealed unsafe class RuntimeCertificates
         ArgumentNullException.ThrowIfNull(person);
         ArgumentNullException.ThrowIfNull(folder);
 
-        (int status, string text) = Answer(
-            [person, folder], (pack, data, written, cap, length) =>
-                _request(pack.Borrow(data, 0), pack.Borrow(data, 1), written, cap, length));
+        int status;
+        string text;
+
+        // Bound once at load; the strings are the pack's, pinned for the call.
+        unsafe
+        {
+            (status, text) = Answer(
+                [person, folder], (pack, data, written, cap, length) =>
+                    _request(pack.Borrow(data, 0), pack.Borrow(data, 1), written, cap, length));
+        }
+
         key = string.Empty;
         request = string.Empty;
         refused = string.Empty;
@@ -144,7 +152,10 @@ public sealed unsafe class RuntimeCertificates
             {
                 fixed (byte* data = pack.Bytes)
                 {
-                    return _information(pack.Borrow(data, 0), key, written, cap, length);
+                    unsafe
+                    {
+                        return _information(pack.Borrow(data, 0), key, written, cap, length);
+                    }
                 }
             });
         information = status == 0 ? bytes : [];
@@ -164,9 +175,17 @@ public sealed unsafe class RuntimeCertificates
         ArgumentNullException.ThrowIfNull(information);
         ArgumentNullException.ThrowIfNull(signature);
 
-        (int status, byte[] bytes) = Bytes(
-            information, signature, (first, second, written, cap, length) =>
-                _assemble(first, second, written, cap, length));
+        int status;
+        byte[] bytes;
+
+        // Bound once at load; the strings are the pack's, pinned for the call.
+        unsafe
+        {
+            (status, bytes) = Bytes(
+                information, signature, (first, second, written, cap, length) =>
+                    _assemble(first, second, written, cap, length));
+        }
+
         string text = Encoding.UTF8.GetString(bytes);
         request = status == 0 ? text : string.Empty;
         refused = status == 0 ? string.Empty : Refusal(status, text);
@@ -187,9 +206,17 @@ public sealed unsafe class RuntimeCertificates
         ArgumentNullException.ThrowIfNull(text);
 
         byte over = replace ? (byte)1 : (byte)0;
-        (int status, string said) = Answer(
-            [path, text], (pack, data, written, cap, length) =>
-                _keep(pack.Borrow(data, 0), pack.Borrow(data, 1), over, written, cap, length));
+        int status;
+        string said;
+
+        // Bound once at load; the strings are the pack's, pinned for the call.
+        unsafe
+        {
+            (status, said) = Answer(
+                [path, text], (pack, data, written, cap, length) =>
+                    _keep(pack.Borrow(data, 0), pack.Borrow(data, 1), over, written, cap, length));
+        }
+
         refused = status == 0 ? string.Empty : Refusal(status, said);
         return status == 0;
     }
@@ -212,9 +239,17 @@ public sealed unsafe class RuntimeCertificates
             throw RemoteBuild.Refused(_library, NodeEntrypoints);
         }
 
-        (int status, string text) = Answer(
-            [configuration, request], (pack, data, written, cap, length) =>
-                _sign(pack.Borrow(data, 0), pack.Borrow(data, 1), written, cap, length));
+        int status;
+        string text;
+
+        // Bound once at load; the strings are the pack's, pinned for the call.
+        unsafe
+        {
+            (status, text) = Answer(
+                [configuration, request], (pack, data, written, cap, length) =>
+                    _sign(pack.Borrow(data, 0), pack.Borrow(data, 1), written, cap, length));
+        }
+
         chain = status == 0 ? text : string.Empty;
         refused = status == 0 ? string.Empty : Refusal(status, text);
         return status == 0;
@@ -247,11 +282,19 @@ public sealed unsafe class RuntimeCertificates
             throw RemoteBuild.Refused(_library, NodeEntrypoints);
         }
 
-        (int status, string text) = Answer(
-            [authority, name, node, string.Join(',', names), folder],
-            (pack, data, written, cap, length) => _issue(
-                pack.Borrow(data, 0), pack.Borrow(data, 1), pack.Borrow(data, 2),
-                pack.Borrow(data, 3), pack.Borrow(data, 4), written, cap, length));
+        int status;
+        string text;
+
+        // Bound once at load; the strings are the pack's, pinned for the call.
+        unsafe
+        {
+            (status, text) = Answer(
+                [authority, name, node, string.Join(',', names), folder],
+                (pack, data, written, cap, length) => _issue(
+                    pack.Borrow(data, 0), pack.Borrow(data, 1), pack.Borrow(data, 2),
+                    pack.Borrow(data, 3), pack.Borrow(data, 4), written, cap, length));
+        }
+
         issued = new NodeIssued(string.Empty, string.Empty, string.Empty);
         refused = string.Empty;
 
@@ -288,82 +331,19 @@ public sealed unsafe class RuntimeCertificates
             throw RemoteBuild.Refused(_library, NodeEntrypoints);
         }
 
-        (int status, string text) = Answer(
-            [act, arguments], (pack, data, written, cap, length) =>
-                _authority(pack.Borrow(data, 0), pack.Borrow(data, 1), written, cap, length));
+        int status;
+        string text;
+
+        // Bound once at load; the strings are the pack's, pinned for the call.
+        unsafe
+        {
+            (status, text) = Answer(
+                [act, arguments], (pack, data, written, cap, length) =>
+                    _authority(pack.Borrow(data, 0), pack.Borrow(data, 1), written, cap, length));
+        }
+
         answer = status == 0 ? text : string.Empty;
         refused = status == 0 ? string.Empty : Refusal(status, text);
         return status == 0;
-    }
-
-    private delegate int Call(Utf8Pack pack, byte* data, byte* written, nuint cap, nuint* length);
-
-    // Asks once with room for any answer this section gives, and again with
-    // the true length where it did not fit.
-    private static (int Status, string Text) Answer(string[] texts, Call call)
-    {
-        Utf8Pack pack = new(texts);
-        byte[] room = new byte[RuntimeRemotes.Room];
-
-        while (true)
-        {
-            nuint length = 0;
-            int status;
-
-            fixed (byte* data = pack.Bytes)
-            fixed (byte* written = room)
-            {
-                status = call(pack, data, written, (nuint)room.Length, &length);
-            }
-
-            if (length <= (nuint)room.Length)
-            {
-                string text = Encoding.UTF8.GetString(room, 0, (int)length);
-                Array.Clear(room);
-                return (status, text);
-            }
-
-            Array.Clear(room);
-            room = new byte[(int)length];
-        }
-    }
-
-    private delegate int Lent(
-        XmipStr first, XmipStr second, byte* written, nuint cap, nuint* length);
-
-    // Two byte ranges lent for one call, asked again with the true length
-    // where the answer did not fit; the answer as the runtime wrote it.
-    private static (int Status, byte[] Bytes) Bytes(byte[] first, byte[] second, Lent call)
-    {
-        byte[] room = new byte[RuntimeRemotes.Room];
-
-        while (true)
-        {
-            nuint length = 0;
-            int status;
-
-            fixed (byte* one = first)
-            fixed (byte* two = second)
-            fixed (byte* written = room)
-            {
-                status = call(
-                    new XmipStr(one, (nuint)first.Length), new XmipStr(two, (nuint)second.Length),
-                    written, (nuint)room.Length, &length);
-            }
-
-            if (length <= (nuint)room.Length)
-            {
-                return (status, room[..(int)length]);
-            }
-
-            room = new byte[(int)length];
-        }
-    }
-
-    private static string Refusal(int status, string text)
-    {
-        return status == (int)XmipStatus.Invalid
-            ? text
-            : $"the runtime answered with {(XmipStatus)status}";
     }
 }

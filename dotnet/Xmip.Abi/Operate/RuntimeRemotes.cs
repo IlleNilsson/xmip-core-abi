@@ -14,7 +14,7 @@ namespace Xmip.Abi.Operate;
 /// recovery loop, the gate and every word are the runtime's; this binds
 /// each call once and decides none of it.
 /// </summary>
-public sealed unsafe class RuntimeRemotes
+public sealed class RuntimeRemotes
 {
     // A sentence fits in this; a publication is asked for again whole.
     internal const int Room = 16 * 1024;
@@ -168,9 +168,12 @@ public sealed unsafe class RuntimeRemotes
         fixed (byte* data = pack.Bytes)
         fixed (byte* written = report)
         {
-            status = _open(
-                pack.Borrow(data, 0), pack.Borrow(data, 1), pack.Borrow(data, 2),
-                pack.Borrow(data, 3), &handle, written, (nuint)report.Length, &length);
+            unsafe
+            {
+                status = _open(
+                    pack.Borrow(data, 0), pack.Borrow(data, 1), pack.Borrow(data, 2),
+                    pack.Borrow(data, 3), &handle, written, (nuint)report.Length, &length);
+            }
         }
 
         reason = status == 0 ? string.Empty : Said(report, length);
@@ -207,10 +210,13 @@ public sealed unsafe class RuntimeRemotes
         fixed (byte* data = pack.Bytes)
         fixed (byte* written = report)
         {
-            status = _openKept(
-                pack.Borrow(data, 0), pack.Borrow(data, 1), pack.Borrow(data, 2),
-                &KeeperSigning.Sign, (void*)GCHandle.ToIntPtr(kept), &handle, written,
-                (nuint)report.Length, &length);
+            unsafe
+            {
+                status = _openKept(
+                    pack.Borrow(data, 0), pack.Borrow(data, 1), pack.Borrow(data, 2),
+                    &KeeperSigning.Sign, (void*)GCHandle.ToIntPtr(kept), &handle, written,
+                    (nuint)report.Length, &length);
+            }
         }
 
         reason = status == 0 ? string.Empty : Said(report, length);
@@ -220,7 +226,11 @@ public sealed unsafe class RuntimeRemotes
             return new RemoteNode(this, handle, kept);
         }
 
-        kept.Free();
+        unsafe
+        {
+            kept.Free();
+        }
+
         return null;
     }
 
@@ -249,10 +259,13 @@ public sealed unsafe class RuntimeRemotes
         fixed (byte* data = pack.Bytes)
         fixed (byte* written = report)
         {
-            status = _serve(
-                pack.Borrow(data, 0), pack.Borrow(data, 1), pack.Borrow(data, 2),
-                pack.Borrow(data, 3), pack.Borrow(data, 4), pack.Borrow(data, 5), &handle,
-                written, (nuint)report.Length, &length);
+            unsafe
+            {
+                status = _serve(
+                    pack.Borrow(data, 0), pack.Borrow(data, 1), pack.Borrow(data, 2),
+                    pack.Borrow(data, 3), pack.Borrow(data, 4), pack.Borrow(data, 5), &handle,
+                    written, (nuint)report.Length, &length);
+            }
         }
 
         reason = status == 0 ? string.Empty : Said(report, length);
@@ -284,8 +297,12 @@ public sealed unsafe class RuntimeRemotes
         fixed (byte* data = pack.Bytes)
         fixed (byte* written = report)
         {
-            status = _openLocal(
-                pack.Borrow(data, 0), withinMs, &handle, written, (nuint)report.Length, &length);
+            unsafe
+            {
+                status = _openLocal(
+                    pack.Borrow(data, 0), withinMs, &handle, written, (nuint)report.Length,
+                    &length);
+            }
         }
 
         reason = status == 0 ? string.Empty : Said(report, length);
@@ -312,9 +329,12 @@ public sealed unsafe class RuntimeRemotes
         fixed (byte* data = pack.Bytes)
         fixed (byte* written = report)
         {
-            status = _serveLocal(
-                pack.Borrow(data, 0), pack.Borrow(data, 1), pack.Borrow(data, 2), &handle,
-                written, (nuint)report.Length, &length);
+            unsafe
+            {
+                status = _serveLocal(
+                    pack.Borrow(data, 0), pack.Borrow(data, 1), pack.Borrow(data, 2), &handle,
+                    written, (nuint)report.Length, &length);
+            }
         }
 
         reason = status == 0 ? string.Empty : Said(report, length);

@@ -211,7 +211,7 @@ public sealed class BrowserCallerTest : IDisposable
             Configured((RoleAssignment.ConfigurationKey, "operator")), request);
 
         Assert.Null(ProvenCaller.Who(request.User));
-        Assert.Equal(((string?)null, Role.Observer), (caller.Who, caller.Role));
+        Assert.Equal((null, Role.Observer), (caller.Who, caller.Role));
         Assert.False(Pause(caller).Applied);
     }
 
@@ -222,20 +222,22 @@ public sealed class BrowserCallerTest : IDisposable
         // name the runtime never answered was believed. A forged handle,
         // with any name beside it, is no one.
         HeldCaller real = Held("operator");
-        DefaultHttpContext forged = new();
-        forged.User = new ClaimsPrincipal(new ClaimsIdentity(
-            [
-                new Claim(ClaimTypes.Name, real.Name),
-                new Claim(
-                    ProvenCaller.HandleClaim,
-                    (real.Handle ^ 1).ToString(CultureInfo.InvariantCulture)),
-            ],
-            ProvenCaller.AuthenticationType));
+        DefaultHttpContext forged = new()
+        {
+            User = new ClaimsPrincipal(new ClaimsIdentity(
+                [
+                    new Claim(ClaimTypes.Name, real.Name),
+                    new Claim(
+                        ProvenCaller.HandleClaim,
+                        (real.Handle ^ 1).ToString(CultureInfo.InvariantCulture)),
+                ],
+                ProvenCaller.AuthenticationType)),
+        };
 
         RoleContext caller = Circuit(
             Configured((RoleAssignment.ConfigurationKey, "operator")), forged);
 
-        Assert.Equal(((string?)null, Role.Observer), (caller.Who, caller.Role));
+        Assert.Equal((null, Role.Observer), (caller.Who, caller.Role));
         Assert.False(Pause(caller).Applied);
         Assert.False(RuntimeLibrary.Rules.SecurityRoles.Admitted(
             null, (int)Role.Developer, "pause", "x", out string refused));
@@ -292,7 +294,7 @@ public sealed class BrowserCallerTest : IDisposable
         RoleContext stranger = Circuit(over, Request(IPAddress.Loopback, another));
         Assert.Equal((another.Subject, Role.Observer), (stranger.Who, stranger.Role));
         RoleContext nobody = Circuit(over, Request(IPAddress.Loopback, certificate: null));
-        Assert.Equal(((string?)null, Role.Observer), (nobody.Who, nobody.Role));
+        Assert.Equal((null, Role.Observer), (nobody.Who, nobody.Role));
         Assert.All([stranger, nobody], caller => Assert.False(Pause(caller).Applied));
     }
 

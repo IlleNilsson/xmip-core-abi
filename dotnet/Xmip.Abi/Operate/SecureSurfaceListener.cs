@@ -11,7 +11,7 @@ namespace Xmip.Abi.Operate;
 /// in flight return and frees it. A session it handed over stays its
 /// holder's.
 /// </summary>
-public sealed unsafe class SecureSurfaceListener : IDisposable
+public sealed class SecureSurfaceListener : IDisposable
 {
     private readonly RuntimeSecureSurface calls;
 
@@ -29,7 +29,10 @@ public sealed unsafe class SecureSurfaceListener : IDisposable
 
         fixed (byte* written = text)
         {
-            _ = calls.Address(handle, written, (nuint)text.Length, &length);
+            unsafe
+            {
+                _ = calls.Address(handle, written, (nuint)text.Length, &length);
+            }
         }
 
         Address = RuntimeRemotes.Said(text, length);
@@ -55,7 +58,7 @@ public sealed unsafe class SecureSurfaceListener : IDisposable
 
             if (held == 0)
             {
-                return new SecureSurfaceAccepted(null, false, true, string.Empty);
+                return new SecureSurfaceAccepted.Stopped();
             }
 
             byte[] report = new byte[RuntimeRemotes.Room];
@@ -65,18 +68,21 @@ public sealed unsafe class SecureSurfaceListener : IDisposable
 
             fixed (byte* written = report)
             {
-                status = calls.Accept(held, &session, written, (nuint)report.Length, &length);
+                unsafe
+                {
+                    status = calls.Accept(held, &session, written, (nuint)report.Length, &length);
+                }
             }
 
             string said = RuntimeRemotes.Said(report, length);
 
             return status switch
             {
-                0 when session != 0 => new SecureSurfaceAccepted(
-                    new SecureSurfaceSession(calls, session), false, false, string.Empty),
-                (int)XmipStatus.Cancelled => new SecureSurfaceAccepted(null, false, true, said),
-                (int)XmipStatus.Auth => new SecureSurfaceAccepted(null, true, false, said),
-                _ => new SecureSurfaceAccepted(null, false, false, said),
+                0 when session != 0 => new SecureSurfaceAccepted.Accepted(
+                    new SecureSurfaceSession(calls, session)),
+                (int)XmipStatus.Cancelled => new SecureSurfaceAccepted.Stopped(),
+                (int)XmipStatus.Auth => new SecureSurfaceAccepted.Refused(said),
+                _ => new SecureSurfaceAccepted.Failed(said),
             };
         }
         finally
@@ -97,7 +103,10 @@ public sealed unsafe class SecureSurfaceListener : IDisposable
 
             if (held != 0)
             {
-                calls.Stop(held);
+                unsafe
+                {
+                    calls.Stop(held);
+                }
             }
         }
         finally
@@ -119,7 +128,11 @@ public sealed unsafe class SecureSurfaceListener : IDisposable
             return;
         }
 
-        calls.Stop(held);
+        unsafe
+        {
+            calls.Stop(held);
+        }
+
         SpinWait waiting = default;
 
         while (Volatile.Read(ref inFlight) > 0)
@@ -127,6 +140,9 @@ public sealed unsafe class SecureSurfaceListener : IDisposable
             waiting.SpinOnce();
         }
 
-        calls.Free(held);
+        unsafe
+        {
+            calls.Free(held);
+        }
     }
 }

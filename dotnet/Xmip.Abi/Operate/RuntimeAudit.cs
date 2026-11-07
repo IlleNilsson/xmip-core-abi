@@ -19,7 +19,7 @@ namespace Xmip.Abi.Operate;
 /// Pure in the header's sense: it reads no snapshot and holds nothing, so one
 /// instance serves a whole process from any thread.
 /// </remarks>
-public sealed unsafe class RuntimeAudit
+public sealed class RuntimeAudit
 {
     // Where a record went and why fits in this. A longer sentence is cut
     // here rather than asked for again, because asking again would record
@@ -94,12 +94,18 @@ public sealed unsafe class RuntimeAudit
         {
             for (int i = 0; i < texts.Count; i++)
             {
-                each[i] = pack.Borrow(data, i);
+                unsafe
+                {
+                    each[i] = pack.Borrow(data, i);
+                }
             }
 
-            status = _audit(each[0], each[1], each[2], (int)phase, (int)severity, each[3],
-                each + 4, (nuint)(texts.Count - 4), &kept, sentence, (nuint)said.Length,
-                &saidLength);
+            unsafe
+            {
+                status = _audit(each[0], each[1], each[2], (int)phase, (int)severity, each[3],
+                    each + 4, (nuint)(texts.Count - 4), &kept, sentence, (nuint)said.Length,
+                    &saidLength);
+            }
         }
 
         if (status == (int)XmipStatus.Invalid)
@@ -112,8 +118,8 @@ public sealed unsafe class RuntimeAudit
             said, 0, (int)Math.Min(saidLength, (nuint)said.Length));
 
         return status == 0
-            ? new AuditOutcome((AuditKept)kept, words)
-            : new AuditOutcome(null, words);
+            ? new AuditOutcome.Kept((AuditKept)kept, words)
+            : new AuditOutcome.Refused(words);
     }
 
     /// <summary>
@@ -175,11 +181,17 @@ public sealed unsafe class RuntimeAudit
         {
             for (int i = 0; i < count; i++)
             {
-                each[i] = pack.Borrow(data, i);
+                unsafe
+                {
+                    each[i] = pack.Borrow(data, i);
+                }
             }
 
-            return _read(
-                each[0], each + 1, (nuint)(count - 1), written, (nuint)text.Length, length);
+            unsafe
+            {
+                return _read(
+                    each[0], each + 1, (nuint)(count - 1), written, (nuint)text.Length, length);
+            }
         }
     }
 

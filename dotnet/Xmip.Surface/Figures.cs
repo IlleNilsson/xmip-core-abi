@@ -36,10 +36,7 @@ public sealed record Figures(
         MeasurementRecord? failed = surface.Measure(scope, Counted.Failed);
 
         MeasurementRecord?[] all = [streams, messages, journeys, bytes, retrying, failed];
-        DateTimeOffset? observed = all
-            .Where(record => record is not null)
-            .Select(record => (DateTimeOffset?)record!.Observed)
-            .Max();
+        DateTimeOffset? observed = all.Max(record => record?.Observed);
 
         return new Figures(
             scope,
@@ -81,7 +78,7 @@ public sealed record Figures(
             Total(part => part.Bytes),
             Total(part => part.Retrying),
             Total(part => part.Failed),
-            all.Select(part => part.Observed).Max());
+            all.Max(part => part.Observed));
     }
 
     /// <summary>The figure of one counted kind — what a stage counts is

@@ -12,7 +12,7 @@ namespace Xmip.Abi.Operate;
 /// the runtime's room. A keeper that throws refuses the handshake with its
 /// message. Nothing may unwind into Rust.
 /// </summary>
-internal static unsafe class KeeperSigning
+internal static class KeeperSigning
 {
     // The runtime calls this from any thread while the handle lives; the
     // context is a GCHandle the RemoteNode frees after the handle.
@@ -25,16 +25,24 @@ internal static unsafe class KeeperSigning
 
         try
         {
-            if (GCHandle.FromIntPtr((nint)context).Target is not Func<byte[], byte[]> sign)
-            {
-                throw new InvalidOperationException("no keeper is held for this handle");
-            }
-
+            // The context is the handle the RemoteNode keeps, and the message
+            // is borrowed for this call.
+            object? held;
             byte[] signed = new byte[(int)message.Len];
 
-            if (message.Len > 0)
+            unsafe
             {
-                new ReadOnlySpan<byte>(message.Data, (int)message.Len).CopyTo(signed);
+                held = GCHandle.FromIntPtr((nint)context).Target;
+
+                if (message.Len > 0)
+                {
+                    new ReadOnlySpan<byte>(message.Data, (int)message.Len).CopyTo(signed);
+                }
+            }
+
+            if (held is not Func<byte[], byte[]> sign)
+            {
+                throw new InvalidOperationException("no keeper is held for this handle");
             }
 
             answer = sign(signed);
@@ -48,9 +56,14 @@ internal static unsafe class KeeperSigning
             status = (int)XmipStatus.Auth;
         }
 
-        *length = (nuint)answer.Length;
-        answer.AsSpan(0, (int)Math.Min((nuint)answer.Length, cap)).CopyTo(
-            new Span<byte>(written, (int)cap));
+        // The runtime hands room for cap bytes at written, and length.
+        unsafe
+        {
+            *length = (nuint)answer.Length;
+            answer.AsSpan(0, (int)Math.Min((nuint)answer.Length, cap)).CopyTo(
+                new Span<byte>(written, (int)cap));
+        }
+
         return status;
     }
 }

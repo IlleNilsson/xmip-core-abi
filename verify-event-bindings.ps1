@@ -71,19 +71,16 @@ function Find-XmipRuntimeLibrary {
 }
 
 function New-XmipAuditDirectory {
-    [CmdletBinding(SupportsShouldProcess)]
+    <#
+        .SYNOPSIS
+        A fresh, empty folder for one binding's audit records, made by
+        PowerShell's New-TemporaryDirectory; the caller removes it.
+    #>
+    [CmdletBinding()]
     [OutputType([string])]
-    param(
-        [Parameter(Mandatory)]
-        [string] $Name
-    )
+    param()
 
-    [string] $folder = "xmip-event-$Name-$PID-$([guid]::NewGuid().ToString('N').Substring(0, 8))"
-    [string] $path = Join-Path ([System.IO.Path]::GetTempPath()) $folder
-    if ($PSCmdlet.ShouldProcess($path, 'Create audit directory')) {
-        New-Item -ItemType Directory -Force -Path $path | Out-Null
-    }
-    return $path
+    return (New-TemporaryDirectory).FullName
 }
 
 function Get-XmipBindingAbsence {
@@ -151,7 +148,7 @@ function Invoke-XmipBindingTest {
         Write-Host "FAILED. $Name did not build."
         return $false
     }
-    [string] $audit = New-XmipAuditDirectory -Name $Name.ToLowerInvariant()
+    [string] $audit = New-XmipAuditDirectory
     try {
         [System.Diagnostics.Stopwatch] $clock = [System.Diagnostics.Stopwatch]::StartNew()
         & $Run $audit | ForEach-Object { Write-Host $_ }

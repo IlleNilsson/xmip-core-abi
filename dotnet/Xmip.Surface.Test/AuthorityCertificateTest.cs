@@ -48,7 +48,7 @@ public sealed class AuthorityCertificateTest
         Assert.True(imported.Ok, imported.Refused);
         Assert.True(imported.AnchorTaken);
         Assert.Equal(set.Fingerprint, imported.AnchorFingerprint);
-        Assert.Equal(TimeSpan.FromDays(60), imported.RenewAt - (imported.NotAfter.AddDays(-90)));
+        Assert.Equal(TimeSpan.FromDays(60), imported.RenewAt - imported.NotAfter.AddDays(-90));
 
         string anchor = Path.Combine(place.Directory, "authority.cer");
         Assert.True(AuthorityCertificate.Export(Certificates, authority, anchor, "der").Ok);

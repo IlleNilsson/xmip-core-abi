@@ -57,7 +57,7 @@ public sealed class ScopeItemTest
     [Fact]
     public void ARowWithNoHealthSaysSoInWords()
     {
-        Assert.Equal("nothing recorded", English.Mood((HealthState?)null));
+        Assert.Equal("nothing recorded", English.Mood(null));
         Assert.Equal(English.Mood(HealthState.Fine), English.Mood((HealthState?)HealthState.Fine));
     }
 

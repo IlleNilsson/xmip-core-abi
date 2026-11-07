@@ -45,4 +45,22 @@ public static class SurfaceRelayExtensions
 
         return app;
     }
+
+    /// <summary>
+    /// Every response carries the Operation Web's content security policy,
+    /// with a nonce of its own (<see cref="ContentSecurity"/>): set once,
+    /// here, before anything is written.
+    /// </summary>
+    public static WebApplication UseXmipContentSecurity(this WebApplication app)
+    {
+        ArgumentNullException.ThrowIfNull(app);
+
+        app.Use((context, next) =>
+        {
+            ContentSecurity.Set(context);
+            return next(context);
+        });
+
+        return app;
+    }
 }

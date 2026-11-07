@@ -24,4 +24,11 @@
     <ProjectReference Include="..\Xmip.Surface\Xmip.Surface.csproj" />
   </ItemGroup>
 
+  <!-- Runtime async (.NET 11): an async method is the runtime's own, not a
+       compiler-written state machine. On Windows, the one build target for now;
+       the cli's ahead-of-time build compiles it too. -->
+  <PropertyGroup Condition="'$(OS)' == 'Windows_NT'">
+    <Features>$(Features);runtime-async=on</Features>
+  </PropertyGroup>
+
 </Project>

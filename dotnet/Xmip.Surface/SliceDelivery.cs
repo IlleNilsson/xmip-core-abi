@@ -108,7 +108,7 @@ public sealed class SliceDelivery(string clusterPath, string directory, string? 
         {
             string file = Path.GetFileName(cluster.Path);
             return (NodeDelivery[])[.. cluster.Nodes.Select(name => new NodeDelivery(
-                name, NodeDelivery.Standing.Refused, string.Empty,
+                name, new NodeDelivery.Standing.Refused(),
                 $"REFUSED: {file} on disk is no longer the text this save wrote; a newer save "
                 + "replaced it, and its slice stands. Nothing was delivered."))];
         }
@@ -122,7 +122,7 @@ public sealed class SliceDelivery(string clusterPath, string directory, string? 
     {
         if (!RuntimeLibrary.Rules.Design.TrySignedSlice(text, clusterPath, name, out string answer))
         {
-            return new NodeDelivery(name, NodeDelivery.Standing.Refused, string.Empty, answer);
+            return new NodeDelivery(name, new NodeDelivery.Standing.Refused(), answer);
         }
 
         using JsonDocument signed = JsonDocument.Parse(answer);
@@ -141,17 +141,17 @@ public sealed class SliceDelivery(string clusterPath, string directory, string? 
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
             return new NodeDelivery(
-                name, NodeDelivery.Standing.Refused, string.Empty,
+                name, new NodeDelivery.Standing.Refused(),
                 $"REFUSED: sliced, and not written to {path}: {exception.Message}");
         }
 
         return name == node
             ? new NodeDelivery(
-                name, NodeDelivery.Standing.Shipped, path,
+                name, new NodeDelivery.Standing.Shipped(path),
                 $"shipped to {path}, where this desktop starts it; it takes effect when the " +
                 "node starts again")
             : new NodeDelivery(
-                name, NodeDelivery.Standing.NotShipped, path,
+                name, new NodeDelivery.Standing.NotShipped(path),
                 $"sliced to {path} and not shipped: Xmip has no path yet that puts a file on " +
                 "another node; desired state slices cluster.xmip on the node as it " +
                 "deploys it");

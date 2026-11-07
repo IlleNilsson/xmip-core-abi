@@ -92,7 +92,7 @@ public sealed class RuntimePublicationsTest
         Assert.NotNull(read.Topology);
         TopologyNode cluster = Assert.Single(read.Topology.Nodes);
         Assert.Equal(TopologyNodeKind.VirtualMachine, cluster.Kind);
-        Assert.Equal(("cluster", (string?)null), (cluster.Label, cluster.ParentId));
+        Assert.Equal(("cluster", null), (cluster.Label, cluster.ParentId));
         Assert.Equal("a publisher", read.Topology.Source);
         CommunicationLink link = Assert.Single(read.Topology.Links);
         Assert.Equal(

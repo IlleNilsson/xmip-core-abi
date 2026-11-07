@@ -16,7 +16,7 @@ namespace Xmip.Abi.Operate;
 /// <c>xmip-core-provision</c>'s; this binds each call once.
 /// </summary>
 /// <remarks>A node's build only, as sections 10 to 16.</remarks>
-public sealed unsafe class RuntimeSecureSurface
+public sealed class RuntimeSecureSurface
 {
     private readonly delegate* unmanaged[Cdecl]<
         XmipStr, XmipStr, XmipStr, XmipStr, byte*, nuint, nuint*, int> _issue;
@@ -127,9 +127,12 @@ public sealed unsafe class RuntimeSecureSurface
         fixed (byte* data = pack.Bytes)
         fixed (byte* written = room)
         {
-            status = _issue(
-                pack.Borrow(data, 0), pack.Borrow(data, 1), pack.Borrow(data, 2),
-                pack.Borrow(data, 3), written, (nuint)room.Length, &length);
+            unsafe
+            {
+                status = _issue(
+                    pack.Borrow(data, 0), pack.Borrow(data, 1), pack.Borrow(data, 2),
+                    pack.Borrow(data, 3), written, (nuint)room.Length, &length);
+            }
         }
 
         string text = RuntimeRemotes.Said(room, length);
@@ -180,10 +183,13 @@ public sealed unsafe class RuntimeSecureSurface
         fixed (byte* data = pack.Bytes)
         fixed (byte* written = report)
         {
-            status = _open(
-                (int)protection,
-                pack.Borrow(data, 0), pack.Borrow(data, 1), pack.Borrow(data, 2),
-                pack.Borrow(data, 3), &handle, written, (nuint)report.Length, &length);
+            unsafe
+            {
+                status = _open(
+                    (int)protection,
+                    pack.Borrow(data, 0), pack.Borrow(data, 1), pack.Borrow(data, 2),
+                    pack.Borrow(data, 3), &handle, written, (nuint)report.Length, &length);
+            }
         }
 
         Array.Clear(pack.Bytes);

@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 
 namespace Xmip.Abi.Operate;
@@ -65,7 +66,8 @@ public static class NativeRuntime
         {
             NativeLoading.MainProgram => TryMainProgram(out library, out reason),
             NativeLoading.ByName => TryByName(out library, out reason),
-            _ => TryCopy(path, out library, out reason),
+            NativeLoading.Copy => TryCopy(path, out library, out reason),
+            _ => throw new UnreachableException($"No way to load the runtime: {Loading}."),
         };
     }
 
@@ -120,6 +122,11 @@ public static class NativeRuntime
 
         string copy = Path.Combine(Copies, $"{Guid.NewGuid():n}-{Path.GetFileName(path)}");
 
+        // Held, without delete sharing, from its first byte until the load
+        // has mapped it: a sweep, in this process or another, deletes every
+        // copy nobody holds, and a copy written and not yet loaded was one.
+        FileStream? guard = null;
+
         try
         {
             using FileStream source = new(
@@ -127,7 +134,9 @@ public static class NativeRuntime
                 FileMode.Open,
                 FileAccess.Read,
                 FileShare.ReadWrite | FileShare.Delete);
-            using FileStream target = new(copy, FileMode.CreateNew, FileAccess.Write);
+            using FileStream target = new(
+                copy, FileMode.CreateNew, FileAccess.Write, FileShare.ReadWrite);
+            guard = new FileStream(copy, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
             source.CopyTo(target);
         }
         catch (Exception missing)
@@ -138,11 +147,17 @@ public static class NativeRuntime
         }
         catch (IOException unread)
         {
+            guard?.Dispose();
             reason = $"{path} could not be read: {unread.Message}";
             return false;
         }
 
-        bool loaded = NativeLibrary.TryLoad(copy, out library);
+        bool loaded;
+
+        using (guard)
+        {
+            loaded = NativeLibrary.TryLoad(copy, out library);
+        }
 
         if (!loaded || !OperatingSystem.IsWindows())
         {

@@ -16,7 +16,7 @@ namespace Xmip.Abi.Operate;
 /// <remarks>Pure in the header's sense: one instance serves a whole process
 /// from any thread. Every answer is the header's JSON or text, in memory
 /// only (ADR-0031 clause 2).</remarks>
-public sealed unsafe class RuntimeDesign
+public sealed class RuntimeDesign
 {
     // What a cluster's file is in practice, so one call answers; a longer
     // answer is asked for again at its true length.
@@ -169,8 +169,12 @@ public sealed unsafe class RuntimeDesign
         fixed (byte* written = text)
         fixed (nuint* length = &needed)
         {
-            return export(
-                pack.Borrow(data, 0), pack.Borrow(data, 1), written, (nuint)text.Length, length);
+            unsafe
+            {
+                return export(
+                    pack.Borrow(data, 0), pack.Borrow(data, 1), written, (nuint)text.Length,
+                    length);
+            }
         }
     }
 }

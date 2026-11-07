@@ -49,11 +49,11 @@ internal static class OperatingSystemLog
                 ? EventLogEntry(text, severity)
                 : Syslog(text, severity);
 
-            return new AuditOutcome(AuditKept.OperatingSystem, $"{where}: {reason}");
+            return new AuditOutcome.Kept(AuditKept.OperatingSystem, $"{where}: {reason}");
         }
         catch (Exception refused) when (refused is not OutOfMemoryException)
         {
-            return new AuditOutcome(null,
+            return new AuditOutcome.Refused(
                 $"{reason}, and the operating system's log refused it too: {refused.Message}");
         }
     }
@@ -91,6 +91,7 @@ internal static class OperatingSystemLog
         {
             AuditSeverity.Error => EventLogEntryType.Error,
             AuditSeverity.Warning => EventLogEntryType.Warning,
+            AuditSeverity.Information => EventLogEntryType.Information,
             _ => EventLogEntryType.Information,
         };
 
@@ -118,6 +119,7 @@ internal static class OperatingSystemLog
         {
             AuditSeverity.Error => 3,
             AuditSeverity.Warning => 4,
+            AuditSeverity.Information => 6,
             _ => 6,
         };
         byte[] datagram = Encoding.UTF8.GetBytes(

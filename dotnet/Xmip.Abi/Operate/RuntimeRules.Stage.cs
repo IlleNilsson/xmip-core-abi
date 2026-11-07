@@ -6,7 +6,7 @@ namespace Xmip.Abi.Operate;
 // Section 7's stage, role and capability rules: what a stage counts, whether
 // it pauses, what a thing at it is called, the roles a declaration names and
 // the stages each serves, and a node's declared capability.
-public sealed unsafe partial class RuntimeRules
+public sealed partial class RuntimeRules
 {
     /// <summary>What a stage counts — <c>observe::Counted::at</c>: Streams at
     /// receive, Journeys in process, Messages at send. Null for a word that is
@@ -16,7 +16,10 @@ public sealed unsafe partial class RuntimeRules
         using PinnedStr word = XmipStr.Pin(stage);
         int counted = 0;
 
-        return _stageCounted(word.Value, &counted) == 0 ? (Counted)counted : null;
+        unsafe
+        {
+            return _stageCounted(word.Value, &counted) == 0 ? (Counted)counted : null;
+        }
     }
 
     /// <summary>Whether an operator may pause a stage —
@@ -26,7 +29,10 @@ public sealed unsafe partial class RuntimeRules
         using PinnedStr word = XmipStr.Pin(stage);
         byte pausable = 0;
 
-        return _stagePausable(word.Value, &pausable) == 0 ? pausable != 0 : null;
+        unsafe
+        {
+            return _stagePausable(word.Value, &pausable) == 0 ? pausable != 0 : null;
+        }
     }
 
     /// <summary>What a thing configured at a stage is called —
@@ -36,7 +42,10 @@ public sealed unsafe partial class RuntimeRules
         using PinnedStr word = XmipStr.Pin(stage);
         XmipStr text;
 
-        return _stageLocation(word.Value, &text) == 0 ? text.Read() : null;
+        unsafe
+        {
+            return _stageLocation(word.Value, &text) == 0 ? text.Read() : null;
+        }
     }
 
     /// <summary>
@@ -66,9 +75,12 @@ public sealed unsafe partial class RuntimeRules
             fixed (XmipStr* into = roles)
             fixed (byte* sentence = said)
             {
-                status = _declared(
-                    new XmipStr(data, (nuint)bytes.Length), into, (nuint)roles.Length, &count,
-                    sentence, (nuint)said.Length, &saidLength);
+                unsafe
+                {
+                    status = _declared(
+                        new XmipStr(data, (nuint)bytes.Length), into, (nuint)roles.Length, &count,
+                        sentence, (nuint)said.Length, &saidLength);
+                }
             }
         }
         while (saidLength > (nuint)said.Length);
@@ -83,7 +95,10 @@ public sealed unsafe partial class RuntimeRules
         refusal = string.Empty;
 
         // Static words: they outlive the call.
-        return [.. roles.Take(checked((int)count)).Select(role => role.Read())];
+        unsafe
+        {
+            return [.. roles.Take(checked((int)count)).Select(role => role.Read())];
+        }
     }
 
     /// <summary>
@@ -99,7 +114,12 @@ public sealed unsafe partial class RuntimeRules
         using PinnedStr text = XmipStr.Pin(role);
         XmipStr* stages = stackalloc XmipStr[StageWords.Count];
         nuint count = 0;
-        int status = _roleStages(text.Value, stages, (nuint)StageWords.Count, &count);
+        int status;
+
+        unsafe
+        {
+            status = _roleStages(text.Value, stages, (nuint)StageWords.Count, &count);
+        }
 
         if (status == (int)XmipStatus.NotFound)
         {
@@ -129,9 +149,14 @@ public sealed unsafe partial class RuntimeRules
         nuint count = 0;
         nuint saidLength = 0;
         byte online = 0;
-        int status = _published(
-            scopeText.Value, evidenceText.Value, &node, roles, (nuint)RoleWords.Count, &count,
-            &online, said, Small, &saidLength);
+        int status;
+
+        unsafe
+        {
+            status = _published(
+                scopeText.Value, evidenceText.Value, &node, roles, (nuint)RoleWords.Count, &count,
+                &online, said, Small, &saidLength);
+        }
 
         if (status == (int)XmipStatus.NotFound)
         {
@@ -140,12 +165,18 @@ public sealed unsafe partial class RuntimeRules
 
         if (status == (int)XmipStatus.Invalid)
         {
-            return new DeclaredCapability(node.Read(), [], false, Sentence(said, saidLength));
+            unsafe
+            {
+                return new DeclaredCapability(node.Read(), [], false, Sentence(said, saidLength));
+            }
         }
 
         Check(status);
-        return new DeclaredCapability(
-            node.Read(), Read(roles, count), online != 0, string.Empty);
+        unsafe
+        {
+            return new DeclaredCapability(
+                node.Read(), Read(roles, count), online != 0, string.Empty);
+        }
     }
 
     /// <summary>
@@ -163,15 +194,26 @@ public sealed unsafe partial class RuntimeRules
         XmipStr node;
         nuint count = 0;
         nuint saidLength = 0;
-        int status = _entry(
-            text.Value, &node, roles, (nuint)RoleWords.Count, &count, said, Small, &saidLength);
+        int status;
+
+        unsafe
+        {
+            status = _entry(
+                text.Value, &node, roles, (nuint)RoleWords.Count, &count, said, Small, &saidLength);
+        }
 
         if (status == (int)XmipStatus.Invalid)
         {
-            return new DeclaredCapability(node.Read(), [], false, Sentence(said, saidLength));
+            unsafe
+            {
+                return new DeclaredCapability(node.Read(), [], false, Sentence(said, saidLength));
+            }
         }
 
         Check(status);
-        return new DeclaredCapability(node.Read(), Read(roles, count), false, string.Empty);
+        unsafe
+        {
+            return new DeclaredCapability(node.Read(), Read(roles, count), false, string.Empty);
+        }
     }
 }

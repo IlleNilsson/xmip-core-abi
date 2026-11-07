@@ -6,7 +6,7 @@ namespace Xmip.Abi.Operate;
 /// What a section 11 call answered: a status the runtime refused with, in its
 /// words, and the JSON a listing call wrote into a buffer.
 /// </summary>
-internal static unsafe class EventAnswer
+internal static class EventAnswer
 {
     internal delegate int Writer(byte* into, nuint cap, nuint* length);
 

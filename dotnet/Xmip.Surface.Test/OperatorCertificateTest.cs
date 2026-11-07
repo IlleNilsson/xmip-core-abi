@@ -89,15 +89,16 @@ public sealed class OperatorCertificateTest
     private static bool OwnerOnlyOnWindows(string path)
     {
         System.Security.AccessControl.FileSecurity access = new FileInfo(path).GetAccessControl();
-        string[] granted = access
-            .GetAccessRules(true, true, typeof(System.Security.Principal.SecurityIdentifier))
-            .Cast<System.Security.AccessControl.FileSystemAccessRule>()
-            .Select(rule => rule.IdentityReference.Value)
-            .Order(StringComparer.Ordinal)
-            .ToArray();
+        string[] granted =
+        [
+            .. access
+                .GetAccessRules(true, true, typeof(System.Security.Principal.SecurityIdentifier))
+                .Cast<System.Security.AccessControl.FileSystemAccessRule>()
+                .Select(rule => rule.IdentityReference.Value)
+                .Order(StringComparer.Ordinal),
+        ];
         string user = System.Security.Principal.WindowsIdentity.GetCurrent().User!.Value;
-        string[] owner =
-            new[] { user, "S-1-5-18" }.Distinct().Order(StringComparer.Ordinal).ToArray();
+        string[] owner = [.. new[] { user, "S-1-5-18" }.Distinct().Order(StringComparer.Ordinal)];
         return access.AreAccessRulesProtected && granted.SequenceEqual(owner);
     }
 }
