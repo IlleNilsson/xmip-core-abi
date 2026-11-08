@@ -1573,17 +1573,21 @@ typedef XmipStatus (*XmipPublicationFailedMessagesFn)(const XmipPublication *pub
  * it, lets every call in flight return, and then calls xmip_remote_free_v1,
  * which closes every connection and frees the handle.
  *
- * xmip_operate_serve_v1 serves, for a program hosting a node through this
+ * xmip_operate_serve_v2 serves, for a program hosting a node through this
  * boundary, what it posts and the acts on the nodes this process runs, on
  * an operate listener bound at listen, host:port, presenting certificate
  * with key and taking a surface only where its certificate reaches
- * anchors; every proven caller holds the role role names (section 18;
- * empty: Observer), and every act is audited as program. XMIP_OK; XMIP_E_IO
- * with why in report. xmip_operate_serve_local_v1 serves the same on this
- * machine's local endpoint called local, every caller the user its process
- * runs as; the plain text inside the machine is audited where it is made
- * (ADR-0063 clause 1). A node that xmip-service runs serves from its
- * configuration's [operate] instead.
+ * anchors; each proven caller holds the role of the list naming it -
+ * observers, operators, developers, one name a line, as a node's [operate]
+ * lists them (ADR-0009, amendment 2026-11-07) - and a caller no list names
+ * holds none (section 18). A name two lists name is refused. Every act is
+ * audited as program. XMIP_OK; XMIP_E_IO with why in report.
+ * xmip_operate_serve_local_v2 serves the same on this machine's local
+ * endpoint called local, each caller the account its process runs as,
+ * named by the lists as the operating system names it; the plain text
+ * inside the machine is audited where it is made (ADR-0063 clause 1). A
+ * node that xmip-service runs serves from its configuration's [operate]
+ * instead.
  * xmip_operate_post_v1 posts publication - the text a publication file
  * holds (section 8) - as what the listener answers: a new revision where it
  * differs from the last, every surface following told at once. Until a
@@ -1623,12 +1627,14 @@ typedef XmipStatus (*XmipRemoteActFn)(const XmipRemote *remote, uint64_t caller,
 typedef void (*XmipRemoteEndFn)(const XmipRemote *remote);
 typedef void (*XmipRemoteFreeFn)(XmipRemote *remote);
 typedef XmipStatus (*XmipOperateServeFn)(XmipStr listen, XmipStr certificate, XmipStr key,
-                                         XmipStr anchors, XmipStr role, XmipStr program,
+                                         XmipStr anchors, XmipStr observers, XmipStr operators,
+                                         XmipStr developers, XmipStr program,
                                          XmipServed **out, uint8_t *report, size_t cap,
                                          size_t *out_len);
-typedef XmipStatus (*XmipOperateServeLocalFn)(XmipStr local, XmipStr role, XmipStr program,
-                                              XmipServed **out, uint8_t *report, size_t cap,
-                                              size_t *out_len);
+typedef XmipStatus (*XmipOperateServeLocalFn)(XmipStr local, XmipStr observers,
+                                              XmipStr operators, XmipStr developers,
+                                              XmipStr program, XmipServed **out,
+                                              uint8_t *report, size_t cap, size_t *out_len);
 typedef XmipStatus (*XmipOperateServedAddressFn)(const XmipServed *served, uint8_t *out,
                                                  size_t cap, size_t *out_len);
 typedef XmipStatus (*XmipOperatePostFn)(const XmipServed *served, XmipStr publication);
@@ -1642,8 +1648,8 @@ typedef void (*XmipOperateServeStopFn)(XmipServed *served);
 #define XMIP_REMOTE_ACT_ENTRYPOINT             "xmip_remote_act_v1"
 #define XMIP_REMOTE_END_ENTRYPOINT             "xmip_remote_end_v1"
 #define XMIP_REMOTE_FREE_ENTRYPOINT            "xmip_remote_free_v1"
-#define XMIP_OPERATE_SERVE_ENTRYPOINT          "xmip_operate_serve_v1"
-#define XMIP_OPERATE_SERVE_LOCAL_ENTRYPOINT    "xmip_operate_serve_local_v1"
+#define XMIP_OPERATE_SERVE_ENTRYPOINT          "xmip_operate_serve_v2"
+#define XMIP_OPERATE_SERVE_LOCAL_ENTRYPOINT    "xmip_operate_serve_local_v2"
 #define XMIP_OPERATE_SERVED_ADDRESS_ENTRYPOINT "xmip_operate_served_address_v1"
 #define XMIP_OPERATE_POST_ENTRYPOINT           "xmip_operate_post_v1"
 #define XMIP_OPERATE_SERVE_STOP_ENTRYPOINT     "xmip_operate_serve_stop_v1"

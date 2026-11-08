@@ -151,7 +151,9 @@ its `Publication`, `Wait` and `Act` read the node's publication, wait on the
 runtime's follow and ask an act as the identity the connection proved, and
 its `Dispose` ends the follow, lets every call in flight return and frees the
 handle; `Serve` and `ServeLocal` give a `ServedNode`, an operate listener
-this process serves for what it `Post`s. Every .NET surface operates a node
+this process serves for what it `Post`s, each caller holding the role of
+the list naming it — observers, operators, developers — and none where no
+list does. Every .NET surface operates a node
 through these, on its machine and elsewhere alike; the C ABI is crossed
 directly only for what has no node behind it — validating, editing and
 slicing configuration, the language server's design exports, module

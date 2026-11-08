@@ -334,11 +334,11 @@ public static partial class OperateAbi
     public const string RemoteFreeEntrypoint = "xmip_remote_free_v1";
 
     /// <summary>An operate listener this process serves: section 17.</summary>
-    public const string OperateServeEntrypoint = "xmip_operate_serve_v1";
+    public const string OperateServeEntrypoint = "xmip_operate_serve_v2";
 
     /// <summary>An operate listener this process serves on this machine's
     /// local endpoint: section 17.</summary>
-    public const string OperateServeLocalEntrypoint = "xmip_operate_serve_local_v1";
+    public const string OperateServeLocalEntrypoint = "xmip_operate_serve_local_v2";
 
     /// <summary>Where a served listener listens: section 17.</summary>
     public const string OperateServedAddressEntrypoint = "xmip_operate_served_address_v1";

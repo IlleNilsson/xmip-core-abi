@@ -230,6 +230,10 @@ Every function a module exports catches everything at its own edge and returns
 `XMIP_E_PANIC`. In Rust that means `catch_unwind` at the outermost frame of
 every entry; in C++ a `catch (...)`. The same applies in reverse: the host
 catches at the edge of every function it puts in `XmipHost` and `XmipWriter`.
+Xmip's own Rust does it once: `guarded` in the Rust binding (`xmip-core-abi`,
+`unwind`) is that frame, and every export and callback Xmip's Rust hands
+across the boundary, a module's and the runtime's library's alike, runs its
+body through it.
 
 `XMIP_E_PANIC` is terminal. The instance that produced it is unusable — its
 invariants are unknown by definition. The host destroys it, records the event

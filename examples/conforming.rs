@@ -5,7 +5,8 @@
 //! of the seven conformance rules in section 11 of the header against exactly
 //! this artifact — the module exports the entrypoint, refuses a foreign
 //! `abi_version` with `XMIP_E_UNSUPPORTED`, fills the descriptor, and
-//! destroys cleanly.
+//! destroys cleanly. Every function it exports or hands the host runs
+//! within `guarded`, so no panic unwinds into the host (section 6).
 //!
 //! It lives in the repository that owns the boundary because it is executable
 //! proof of the header, not a product: a fixture that drifted from the
@@ -24,8 +25,8 @@
               own comment says the vtable eventually will"
 )]
 
-use xmip_core_abi::XMIP_ABI_VERSION;
 use xmip_core_abi::ffi::{Host, Module, Str, WireDescriptor, status};
+use xmip_core_abi::{XMIP_ABI_VERSION, guarded};
 
 /// The one exported symbol, named by `XMIP_ENTRYPOINT`.
 ///
@@ -37,6 +38,17 @@ use xmip_core_abi::ffi::{Host, Module, Str, WireDescriptor, status};
 /// dereferenced into.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn xmip_create_module_v1(host: *const Host, out: *mut Module) -> i32 {
+    // Section 6: nothing unwinds into the host; a panic answers PANIC.
+    // SAFETY: the caller's contract is this export's, passed on whole.
+    guarded(status::PANIC, || unsafe { create(host, out) })
+}
+
+/// [`xmip_create_module_v1`] within its guard.
+///
+/// # Safety
+///
+/// As [`xmip_create_module_v1`].
+unsafe fn create(host: *const Host, out: *mut Module) -> i32 {
     if host.is_null() || out.is_null() {
         return status::INVALID;
     }
@@ -87,11 +99,15 @@ pub unsafe extern "C" fn xmip_create_module_v1(host: *const Host, out: *mut Modu
 
 /// Section 7: detail for the most recent failing call. Nothing here can fail,
 /// so the answer is the empty string, which the header makes legal.
+/// Guarded as every function a module hands the host is (section 6).
 unsafe extern "C" fn last_error(_state: *mut core::ffi::c_void) -> Str {
-    Str::empty()
+    guarded(Str::empty(), Str::empty)
 }
 
 /// Section 7: the module frees its own state. This one has none, and a no-op
 /// destroy is still a destroy — the host must be able to call it exactly once
-/// without consequence.
-unsafe extern "C" fn destroy(_state: *mut core::ffi::c_void) {}
+/// without consequence. Guarded as every function a module hands the host is
+/// (section 6).
+unsafe extern "C" fn destroy(_state: *mut core::ffi::c_void) {
+    guarded((), || {});
+}

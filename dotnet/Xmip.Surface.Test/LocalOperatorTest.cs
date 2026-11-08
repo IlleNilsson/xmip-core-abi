@@ -127,7 +127,7 @@ public sealed class LocalOperatorTest
             Assert.DoesNotContain("a name", refused.Result, StringComparison.Ordinal);
         }
 
-        using ServedNode operated = Serve(Fixture("snapshot.xmip"), "operator");
+        using ServedNode operated = Serve(Fixture("snapshot.xmip"), operating: true);
         using LocalOperator acting = new(operated.Address);
         MessageOperation taken = acting.Act(node, "j1", MessageAct.Retry, "a name", caller: null);
         Assert.False(taken.Applied);
@@ -224,13 +224,17 @@ public sealed class LocalOperatorTest
     }
 
     /// <summary>A local endpoint no other test uses, served by the runtime
-    /// this estate built, answering <paramref name="publication"/>, every
-    /// caller holding <paramref name="role"/>.</summary>
-    private static ServedNode Serve(string publication, string role = "")
+    /// this estate built, answering <paramref name="publication"/>, the
+    /// account this test runs as listed an Observer, or an Operator where
+    /// <paramref name="operating"/>, as the runtime's gate names it.</summary>
+    private static ServedNode Serve(string publication, bool operating = false)
     {
+        using HeldCaller me = RuntimeLibrary.Rules.SecurityRoles.Process(out string refused)
+            ?? throw new InvalidOperationException(refused);
+        string[] account = [me.Name];
         ServedNode served = RuntimeLibrary.Rules.Remotes.ServeLocal(
-            $"xmip-local-operator-test-{Guid.NewGuid():n}", role, "local-operator-test",
-            out string reason)
+            $"xmip-local-operator-test-{Guid.NewGuid():n}", operating ? [] : account,
+            operating ? account : [], [], "local-operator-test", out string reason)
             ?? throw new InvalidOperationException(reason);
         served.Post(publication);
         return served;

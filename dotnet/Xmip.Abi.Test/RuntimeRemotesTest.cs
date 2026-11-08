@@ -33,7 +33,7 @@ public sealed class RuntimeRemotesTest
         using Issuer issuer = new();
         (string certificate, string key) = issuer.Issue("node", "1.3.6.1.5.5.7.3.1");
         using ServedNode served = Rules.Remotes.Serve(
-            "127.0.0.1:0", certificate, key, issuer.Anchor, string.Empty, "abi-test",
+            "127.0.0.1:0", certificate, key, issuer.Anchor, ["CN=surface"], [], [], "abi-test",
             out string why) ?? throw new InvalidOperationException(why);
         served.Post("source = \"one\"\n");
 
