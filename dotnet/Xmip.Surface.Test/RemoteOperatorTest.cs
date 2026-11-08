@@ -139,7 +139,7 @@ public sealed class RemoteOperatorTest
             Assert.DoesNotContain("a name", refused.Result, StringComparison.Ordinal);
         }
 
-        using ServedNode operated = Serve(authority, Fixture("snapshot.xmip"), "operator");
+        using ServedNode operated = Serve(authority, Fixture("snapshot.xmip"), operating: true);
         using RemoteOperator acting = Remote(authority, operated.Address);
         MessageOperation taken = acting.Act(node, "j1", MessageAct.Retry, "a name", caller: null);
         Assert.False(taken.Applied);
@@ -194,15 +194,18 @@ public sealed class RemoteOperatorTest
 
     /// <summary>An operate listener on a loopback port, served by the runtime
     /// with the authority's server certificate, answering
-    /// <paramref name="publication"/>, every proven caller holding
-    /// <paramref name="role"/>.</summary>
-    internal static ServedNode Serve(TestAuthority authority, string publication, string role = "")
+    /// <paramref name="publication"/>, the authority's client,
+    /// <c>CN=xmip-client</c>, listed an Observer, or an Operator where
+    /// <paramref name="operating"/>; any other caller holds no role.</summary>
+    internal static ServedNode Serve(
+        TestAuthority authority, string publication, bool operating = false)
     {
         (string certificate, string key) = authority.Server();
+        string[] client = ["CN=xmip-client"];
         ServedNode served = RuntimeLibrary.Rules.Remotes.Serve(
             "127.0.0.1:0", File.ReadAllText(certificate), File.ReadAllText(key),
-            File.ReadAllText(authority.Anchor), role, "remote-operator-test",
-            out string reason)
+            File.ReadAllText(authority.Anchor), operating ? [] : client, operating ? client : [],
+            [], "remote-operator-test", out string reason)
             ?? throw new InvalidOperationException(reason);
         served.Post(publication);
         return served;

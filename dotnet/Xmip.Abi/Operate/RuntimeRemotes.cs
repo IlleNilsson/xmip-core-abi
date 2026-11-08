@@ -22,8 +22,8 @@ public sealed class RuntimeRemotes
     private readonly delegate* unmanaged[Cdecl]<
         XmipStr, XmipStr, XmipStr, XmipStr, nint*, byte*, nuint, nuint*, int> _open;
     private readonly delegate* unmanaged[Cdecl]<
-        XmipStr, XmipStr, XmipStr, XmipStr, XmipStr, XmipStr, nint*, byte*, nuint, nuint*, int>
-        _serve;
+        XmipStr, XmipStr, XmipStr, XmipStr, XmipStr, XmipStr, XmipStr, XmipStr, nint*, byte*,
+        nuint, nuint*, int> _serve;
     private readonly delegate* unmanaged[Cdecl]<XmipStr, uint, nint*, byte*, nuint, nuint*, int>
         _openLocal;
     private readonly delegate* unmanaged[Cdecl]<
@@ -31,7 +31,8 @@ public sealed class RuntimeRemotes
         delegate* unmanaged[Cdecl]<void*, XmipStr, byte*, nuint, nuint*, int>, void*, nint*,
         byte*, nuint, nuint*, int> _openKept;
     private readonly delegate* unmanaged[Cdecl]<
-        XmipStr, XmipStr, XmipStr, nint*, byte*, nuint, nuint*, int> _serveLocal;
+        XmipStr, XmipStr, XmipStr, XmipStr, XmipStr, nint*, byte*, nuint, nuint*, int>
+        _serveLocal;
 
     private readonly nint _library;
 
@@ -78,11 +79,11 @@ public sealed class RuntimeRemotes
         }
 
         _serveLocal = (delegate* unmanaged[Cdecl]<
-            XmipStr, XmipStr, XmipStr, nint*, byte*, nuint, nuint*, int>)
+            XmipStr, XmipStr, XmipStr, XmipStr, XmipStr, nint*, byte*, nuint, nuint*, int>)
             NativeLibrary.GetExport(library, OperateAbi.OperateServeLocalEntrypoint);
         _serve = (delegate* unmanaged[Cdecl]<
-            XmipStr, XmipStr, XmipStr, XmipStr, XmipStr, XmipStr, nint*, byte*, nuint, nuint*,
-            int>)
+            XmipStr, XmipStr, XmipStr, XmipStr, XmipStr, XmipStr, XmipStr, XmipStr, nint*, byte*,
+            nuint, nuint*, int>)
             NativeLibrary.GetExport(library, OperateAbi.OperateServeEntrypoint);
         ServedAddress = (delegate* unmanaged[Cdecl]<nint, byte*, nuint, nuint*, int>)
             NativeLibrary.GetExport(library, OperateAbi.OperateServedAddressEntrypoint);
@@ -239,18 +240,24 @@ public sealed class RuntimeRemotes
     /// on the nodes of this process on an operate listener at
     /// <paramref name="listen"/>, presenting
     /// <paramref name="certificate"/> with <paramref name="key"/>, taking a
-    /// surface whose certificate reaches <paramref name="anchors"/>, every
-    /// proven caller holding the role <paramref name="role"/> names, audited
-    /// as <paramref name="program"/>; null with why in
-    /// <paramref name="reason"/>.
+    /// surface whose certificate reaches <paramref name="anchors"/>, each
+    /// proven caller holding the role of the list naming it —
+    /// <paramref name="observers"/>, <paramref name="operators"/>,
+    /// <paramref name="developers"/>, as a node's <c>[operate]</c> lists
+    /// them — and a caller no list names none, audited as
+    /// <paramref name="program"/>; null with why in
+    /// <paramref name="reason"/>, a name two lists name included.
     /// </summary>
     public ServedNode? Serve(
-        string listen, string certificate, string key, string anchors, string role,
-        string program, out string reason)
+        string listen, string certificate, string key, string anchors,
+        IReadOnlyList<string> observers, IReadOnlyList<string> operators,
+        IReadOnlyList<string> developers, string program, out string reason)
     {
         Serving();
 
-        Utf8Pack pack = new([listen, certificate, key, anchors, role, program]);
+        Utf8Pack pack = new([
+            listen, certificate, key, anchors, Lines(observers), Lines(operators),
+            Lines(developers), program]);
         byte[] report = new byte[Room];
         nuint length = 0;
         nint handle = 0;
@@ -263,8 +270,9 @@ public sealed class RuntimeRemotes
             {
                 status = _serve(
                     pack.Borrow(data, 0), pack.Borrow(data, 1), pack.Borrow(data, 2),
-                    pack.Borrow(data, 3), pack.Borrow(data, 4), pack.Borrow(data, 5), &handle,
-                    written, (nuint)report.Length, &length);
+                    pack.Borrow(data, 3), pack.Borrow(data, 4), pack.Borrow(data, 5),
+                    pack.Borrow(data, 6), pack.Borrow(data, 7), &handle, written,
+                    (nuint)report.Length, &length);
             }
         }
 
@@ -311,16 +319,21 @@ public sealed class RuntimeRemotes
 
     /// <summary>
     /// Serve what is posted to it and the acts on the nodes of this process
-    /// on this machine's local endpoint called <paramref name="local"/>, every
-    /// caller the user its process runs as, holding the role
-    /// <paramref name="role"/> names, audited as <paramref name="program"/>;
-    /// null with why in <paramref name="reason"/>.
+    /// on this machine's local endpoint called <paramref name="local"/>, each
+    /// caller the account its process runs as, holding the role of the list
+    /// naming that account — <paramref name="observers"/>,
+    /// <paramref name="operators"/>, <paramref name="developers"/> — and none
+    /// where no list names it, audited as <paramref name="program"/>; null
+    /// with why in <paramref name="reason"/>.
     /// </summary>
-    public ServedNode? ServeLocal(string local, string role, string program, out string reason)
+    public ServedNode? ServeLocal(
+        string local, IReadOnlyList<string> observers, IReadOnlyList<string> operators,
+        IReadOnlyList<string> developers, string program, out string reason)
     {
         Serving();
 
-        Utf8Pack pack = new([local, role, program]);
+        Utf8Pack pack = new([
+            local, Lines(observers), Lines(operators), Lines(developers), program]);
         byte[] report = new byte[Room];
         nuint length = 0;
         nint handle = 0;
@@ -332,13 +345,21 @@ public sealed class RuntimeRemotes
             unsafe
             {
                 status = _serveLocal(
-                    pack.Borrow(data, 0), pack.Borrow(data, 1), pack.Borrow(data, 2), &handle,
-                    written, (nuint)report.Length, &length);
+                    pack.Borrow(data, 0), pack.Borrow(data, 1), pack.Borrow(data, 2),
+                    pack.Borrow(data, 3), pack.Borrow(data, 4), &handle, written,
+                    (nuint)report.Length, &length);
             }
         }
 
         reason = status == 0 ? string.Empty : Said(report, length);
         return status == 0 && handle != 0 ? new ServedNode(this, handle) : null;
+    }
+
+    // A role's list as the boundary takes it: one name a line.
+    private static string Lines(IReadOnlyList<string> names)
+    {
+        ArgumentNullException.ThrowIfNull(names);
+        return string.Join('\n', names);
     }
 
     // A remote build serves nothing; asked to, it says so.

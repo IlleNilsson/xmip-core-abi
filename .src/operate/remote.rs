@@ -24,10 +24,10 @@ pub const ACT_ENTRYPOINT: &str = "xmip_remote_act_v1";
 pub const END_ENTRYPOINT: &str = "xmip_remote_end_v1";
 /// `xmip_remote_free_v1`.
 pub const FREE_ENTRYPOINT: &str = "xmip_remote_free_v1";
-/// `xmip_operate_serve_v1`.
-pub const SERVE_ENTRYPOINT: &str = "xmip_operate_serve_v1";
-/// `xmip_operate_serve_local_v1`.
-pub const SERVE_LOCAL_ENTRYPOINT: &str = "xmip_operate_serve_local_v1";
+/// `xmip_operate_serve_v2`.
+pub const SERVE_ENTRYPOINT: &str = "xmip_operate_serve_v2";
+/// `xmip_operate_serve_local_v2`.
+pub const SERVE_LOCAL_ENTRYPOINT: &str = "xmip_operate_serve_local_v2";
 /// `xmip_operate_served_address_v1`.
 pub const SERVED_ADDRESS_ENTRYPOINT: &str = "xmip_operate_served_address_v1";
 /// `xmip_operate_post_v1`.
@@ -155,13 +155,16 @@ pub type EndFn = unsafe extern "C" fn(remote: *const Remote);
 /// `xmip_remote_free_v1`.
 pub type FreeFn = unsafe extern "C" fn(remote: *mut Remote);
 
-/// `xmip_operate_serve_v1`: this process's node served at `listen`.
+/// `xmip_operate_serve_v2`: this process's node served at `listen`, each
+/// caller holding the role of the list naming it, one name a line.
 pub type ServeFn = unsafe extern "C" fn(
     listen: Str,
     certificate: Str,
     key: Str,
     anchors: Str,
-    role: Str,
+    observers: Str,
+    operators: Str,
+    developers: Str,
     program: Str,
     out: *mut *mut Served,
     report: *mut u8,
@@ -169,11 +172,14 @@ pub type ServeFn = unsafe extern "C" fn(
     out_len: *mut usize,
 ) -> i32;
 
-/// `xmip_operate_serve_local_v1`: this process's node served on this
-/// machine's local endpoint called `local`.
+/// `xmip_operate_serve_local_v2`: this process's node served on this
+/// machine's local endpoint called `local`, each account holding the role
+/// of the list naming it.
 pub type ServeLocalFn = unsafe extern "C" fn(
     local: Str,
-    role: Str,
+    observers: Str,
+    operators: Str,
+    developers: Str,
     program: Str,
     out: *mut *mut Served,
     report: *mut u8,

@@ -99,7 +99,7 @@ public sealed class RemoteBuildTest
     public void ARemoteBuildServesNothingAndSaysSo()
     {
         InvalidOperationException refused = Assert.Throws<InvalidOperationException>(
-            () => Rules.Remotes.ServeLocal("xmip-test", "operator", "Xmip.Abi.Test", out _));
+            () => Rules.Remotes.ServeLocal("xmip-test", [], [], [], "Xmip.Abi.Test", out _));
 
         Assert.StartsWith(RemoteBuild.Sentence, refused.Message, StringComparison.Ordinal);
     }

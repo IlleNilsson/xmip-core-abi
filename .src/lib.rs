@@ -14,6 +14,7 @@ pub mod ffi;
 pub mod manifest;
 pub mod operate;
 pub mod unit;
+pub mod unwind;
 
 pub use descriptor::{
     Expectation, ModuleDescriptor, XMIP_ABI_VERSION, XMIP_ENTRYPOINT, accepts, validate_module_abi,
@@ -27,3 +28,4 @@ pub use operate::{
     XMIP_OPERATE_VERSION,
 };
 pub use unit::{ModuleUnit, UnitCapability, UnitDefault, UnitSetting};
+pub use unwind::guarded;
