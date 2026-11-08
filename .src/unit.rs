@@ -113,8 +113,8 @@ impl UnitCapability {
 #[serde(deny_unknown_fields)]
 pub struct UnitSetting {
     pub name: String,
-    /// `text`, `integer`, `boolean`, `duration`, `address`, `secret` or
-    /// `choice`.
+    /// `text`, `integer`, `boolean`, `duration`, `address`, `secret`,
+    /// `choice` or `table`.
     pub kind: String,
     /// An integer's least and most.
     #[serde(default, skip_serializing_if = "Option::is_none")]

@@ -1181,7 +1181,8 @@ typedef XmipStatus (*XmipPublicationEventSubscriptionsFn)(const XmipPublication 
  *
  * kind is text, integer (minimum, maximum), boolean, duration (a whole
  * number and ms, s, m or h), address, secret (the name of a secret, never
- * the secret) or choice (choices); presence is required, optional or
+ * the secret), choice (choices) or table (text by its key, as a path's
+ * namespaces bind each prefix to its URI); presence is required, optional or
  * default (default); applies is receive, send or both. XMIP_OK with the
  * answer; XMIP_E_INVALID with the refusal, one sentence, when the runtime
  * carries no technology of that name; XMIP_E_MALFORMED when it is not UTF-8.
