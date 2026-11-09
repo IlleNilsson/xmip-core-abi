@@ -46,8 +46,9 @@ by callback, and holds publish to receive to a millisecond beside a plain
 thread wake; the Java and Python tests also hold their copies of the header's
 numbers and entrypoint names to the header.
 `./verify-event-bindings.ps1 -Library <runtime library>` builds and runs the C,
-C++, Java and Python tests with zig, the JDK and Python, into the git-ignored
-`build/`.
+C++, Java and Python tests, into the git-ignored `build/`: C and C++ with the
+compiler Rust's toolchain already requires (the MSVC build tools' `cl.exe` on
+Windows, `cc` and `c++` elsewhere), Java with the JDK, Python with Python.
 
 The .NET binding is here too: `dotnet/Xmip.Abi`, one class library declaring
 both headers for every operator surface — the cli, the PowerShell module and

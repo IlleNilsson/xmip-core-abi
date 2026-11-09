@@ -8,11 +8,13 @@
     subscribes, publishes through xmip_event_publish_v1, receives the Event
     by next and by callback, and holds publish to receive to a millisecond
     beside a plain thread wake measured under the same load. C and C++ build
-    with zig (prerequisite.xmip, c), Java with the JDK's javac (--release
-    27, where FFM is final), Python 3.15 with python. Build output goes to
-    build/, which git ignores; each test audits into a fresh folder under
-    the system's temporary directory, removed afterwards, never the
-    operating system's log. Exit 0 when every test that ran passed.
+    with the compiler Rust's toolchain already requires (prerequisite.xmip,
+    linker): the MSVC build tools' cl.exe on Windows, cc and c++ elsewhere.
+    Java builds with the JDK's javac (--release 27, where FFM is final),
+    Python 3.15 runs with python. Build output goes to build/, which git
+    ignores; each test audits into a fresh folder under the system's
+    temporary directory, removed afterwards, never the operating system's
+    log. Exit 0 when every test that ran passed.
 
     Every language but Rust is optional for Xmip itself (the owner,
     2026-10-20: *every language except Rust is optional*), so each tool is
@@ -44,6 +46,8 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+
+$script:XmipCompilerEnvironment = $null
 
 function Find-XmipRuntimeLibrary {
     [CmdletBinding()]
@@ -83,6 +87,105 @@ function New-XmipAuditDirectory {
     return (New-TemporaryDirectory).FullName
 }
 
+function Get-XmipCompilerEnvironment {
+    <#
+        .SYNOPSIS
+        The environment cl.exe compiles in, read once from the MSVC build
+        tools Rust's msvc target links with; empty when they are absent.
+
+        .DESCRIPTION
+        vswhere.exe, at the path the Visual Studio Installer documents, names
+        the newest installation with the C and C++ tools for this machine;
+        its VsDevCmd.bat sets PATH, INCLUDE and LIB for its tools and Windows
+        SDK, without which cl.exe finds no header. VsDevCmd calls vswhere by
+        name, so its folder goes on the path VsDevCmd runs with.
+    #>
+    [CmdletBinding()]
+    [OutputType([hashtable])]
+    param()
+
+    if ($null -ne $script:XmipCompilerEnvironment) {
+        return $script:XmipCompilerEnvironment
+    }
+    $script:XmipCompilerEnvironment = @{}
+    [string] $installer = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio' 'Installer'
+    [bool] $arm = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture -eq 'Arm64'
+    [string] $arch = if ($arm) { 'arm64' } else { 'amd64' }
+    [string[]] $find = @('-latest', '-products', '*', '-property', 'installationPath', '-requires',
+        "Microsoft.VisualStudio.Component.VC.Tools.$(if ($arm) { 'ARM64' } else { 'x86.x64' })")
+    [string] $install = ''
+    if (Test-Path -LiteralPath (Join-Path $installer 'vswhere.exe')) {
+        $install = & (Join-Path $installer 'vswhere.exe') @find
+    }
+    if ($install) {
+        [string] $devcmd = "`"$(Join-Path $install 'Common7' 'Tools' 'VsDevCmd.bat')`" -no_logo"
+        [string] $setup = "$devcmd -arch=$arch -host_arch=$arch >nul && set"
+        foreach ($line in (& cmd.exe /d /c "set `"PATH=$installer;%PATH%`" && $setup")) {
+            if ($LASTEXITCODE -eq 0 -and $line -match '^([^=]+)=(.*)$') {
+                $script:XmipCompilerEnvironment[$Matches[1]] = $Matches[2]
+            }
+        }
+    }
+    return $script:XmipCompilerEnvironment
+}
+
+function Invoke-XmipCompiler {
+    <#
+        .SYNOPSIS
+        Compiles one C or C++ source into a program with the compiler Rust
+        requires, cl.exe on Windows, cc and c++ elsewhere: the binding's
+        standard, optimized, every warning in its own code an error.
+
+        .DESCRIPTION
+        /W4 is cl's -Wall -Wextra, /external:W0 leaves the system headers'
+        warnings out as cc does; C11's <stdatomic.h> still needs
+        /experimental:c11atomics, C++ /EHsc, and _CRT_SECURE_NO_WARNINGS
+        keeps the standard getenv from being an error.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [ValidateSet('C', 'Cpp')]
+        [string] $Name,
+
+        [Parameter(Mandatory)]
+        [string] $Source,
+
+        [Parameter(Mandatory)]
+        [string] $Directory,
+
+        [Parameter()]
+        [string[]] $Include = @()
+    )
+
+    [bool] $c = $Name -eq 'C'
+    [string] $output = Join-Path $Directory ([System.IO.Path]::GetFileNameWithoutExtension($Source))
+    [string] $option = if ($IsWindows) { '/I' } else { '-I' }
+    [string[]] $paths = @('include') + $Include | ForEach-Object { $option, $_ }
+    if (-not $IsWindows) {
+        [string[]] $flags = @('-O2', '-Wall', '-Wextra', '-Werror', '-pthread')
+        [string] $standard = if ($c) { '-std=c11' } else { '-std=c++17' }
+        [string] $compiler = if ($c) { 'cc' } else { 'c++' }
+        & $compiler $standard @flags @paths $Source '-o' $output
+        return
+    }
+    [string[]] $flags = @('/nologo', '/O2', '/W4', '/WX', '/external:anglebrackets',
+        '/external:W0', '/D_CRT_SECURE_NO_WARNINGS')
+    $flags += if ($c) { '/std:c11', '/experimental:c11atomics' } else { '/std:c++17', '/EHsc' }
+    [hashtable] $environment = Get-XmipCompilerEnvironment
+    [hashtable] $saved = @{}
+    foreach ($key in $environment.Keys) {
+        $saved[$key] = [Environment]::GetEnvironmentVariable($key)
+        [Environment]::SetEnvironmentVariable($key, $environment[$key])
+    }
+    try {
+        & cl.exe @flags @paths $Source "/Fo$output.obj" "/Fe$output.exe"
+    }
+    finally {
+        foreach ($key in $saved.Keys) { [Environment]::SetEnvironmentVariable($key, $saved[$key]) }
+    }
+}
+
 function Get-XmipBindingAbsence {
     <#
         .SYNOPSIS
@@ -102,8 +205,12 @@ function Get-XmipBindingAbsence {
 
     switch ($Name) {
         { $_ -in 'C', 'Cpp' } {
-            if (-not (Get-Command -Name 'zig' -ErrorAction SilentlyContinue)) {
-                return 'zig not installed'
+            [string] $compiler = if ($Name -eq 'C') { 'cc' } else { 'c++' }
+            if ($IsWindows -and (Get-XmipCompilerEnvironment).Count -eq 0) {
+                return 'the MSVC build tools not installed (prerequisite.xmip, linker)'
+            }
+            if (-not ($IsWindows -or (Get-Command -Name $compiler -ErrorAction Ignore))) {
+                return "$compiler not installed"
             }
         }
         'Java' {
@@ -183,7 +290,6 @@ Set-Location -LiteralPath $PSScriptRoot
 if ($IsWindows) {
     $exe = '.exe'
 }
-[string[]] $warnings = @('-Wall', '-Wextra', '-Werror')
 [string[]] $failed = @()
 
 [string] $bin = ''
@@ -210,10 +316,11 @@ if ($present -contains 'C') {
     [string] $out = Join-Path $build 'c'
     [bool] $ok = Invoke-XmipBindingTest -Name 'C' -Build {
         New-Item -ItemType Directory -Force -Path $out | Out-Null
-        [string[]] $c = @('cc', '-std=c11', '-O2') + $warnings + @('-I', $include, '-I', 'c')
-        & zig @c 'c/xmip_event_test.c' '-o' (Join-Path $out "xmip_event_test$exe")
-        if ($LASTEXITCODE -eq 0) {
-            & zig @c 'c/xmip_event_example.c' '-o' (Join-Path $out "xmip_event_example$exe")
+        foreach ($program in 'xmip_event_test', 'xmip_event_example') {
+            Invoke-XmipCompiler -Name C -Source "c/$program.c" -Directory $out -Include 'c'
+            if ($LASTEXITCODE -ne 0) {
+                break
+            }
         }
     } -Run {
         param($audit)
@@ -231,8 +338,7 @@ if ($present -contains 'Cpp') {
     [string] $out = Join-Path $build 'cpp'
     [bool] $ok = Invoke-XmipBindingTest -Name 'Cpp' -Build {
         New-Item -ItemType Directory -Force -Path $out | Out-Null
-        [string[]] $cpp = @('c++', '-std=c++17', '-O2') + $warnings + @('-I', $include)
-        & zig @cpp 'cpp/xmip_event_test.cpp' '-o' (Join-Path $out "xmip_event_test$exe")
+        Invoke-XmipCompiler -Name Cpp -Source 'cpp/xmip_event_test.cpp' -Directory $out
     } -Run {
         param($audit)
         & (Join-Path $out "xmip_event_test$exe") $Library $audit

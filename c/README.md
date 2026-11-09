@@ -53,11 +53,19 @@ xmip.unsubscribe(subscription);
 
 ## Build and run
 
-With zig, the estate's C compiler (`prerequisite.xmip`, `c`), from the
-repository root:
+With the C compiler Rust's toolchain already requires (`prerequisite.xmip`,
+`linker`), from the repository root. On Windows, the MSVC build tools' `cl.exe`
+in a Developer PowerShell for Visual Studio:
+
+```powershell
+cl /nologo /std:c11 /O2 /I include /I c c/xmip_event_example.c /Fobuild/c/ /Febuild/c/xmip_event_example.exe
+build/c/xmip_event_example.exe <runtime library> <audit directory>
+```
+
+On Linux and macOS:
 
 ```sh
-zig cc -std=c11 -O2 -I include -I c c/xmip_event_example.c -o build/c/xmip_event_example
+cc -std=c11 -O2 -pthread -I include -I c c/xmip_event_example.c -o build/c/xmip_event_example
 build/c/xmip_event_example <runtime library> <audit directory>
 ```
 

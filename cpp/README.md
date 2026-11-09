@@ -51,10 +51,19 @@ capability decide, which on Windows is the Event Log.
 
 ## Build and run the test
 
-With zig (`prerequisite.xmip`, `c`), from the repository root:
+With the C++ compiler Rust's toolchain already requires (`prerequisite.xmip`,
+`linker`), from the repository root. On Windows, the MSVC build tools' `cl.exe`
+in a Developer PowerShell for Visual Studio:
+
+```powershell
+cl /nologo /std:c++17 /EHsc /O2 /I include cpp/xmip_event_test.cpp /Fobuild/cpp/ /Febuild/cpp/xmip_event_test.exe
+build/cpp/xmip_event_test.exe <runtime library> <audit directory>
+```
+
+On Linux and macOS:
 
 ```sh
-zig c++ -std=c++17 -O2 -I include cpp/xmip_event_test.cpp -o build/cpp/xmip_event_test
+c++ -std=c++17 -O2 -pthread -I include cpp/xmip_event_test.cpp -o build/cpp/xmip_event_test
 build/cpp/xmip_event_test <runtime library> <audit directory>
 ```
 
