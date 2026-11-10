@@ -61,7 +61,7 @@ public sealed class EventFeedTest
         }
 
         // Unsubscribing waits until every record is kept.
-        string text = File.ReadAllText(Path.Combine(directory, "audit.xmip"));
+        string text = File.ReadAllText(Path.Combine(directory, "audit.toml"));
         Assert.Contains("program = \"Xmip.Surface.Test\"", text, StringComparison.Ordinal);
         Assert.Contains("action = \"event.subscribe\"", text, StringComparison.Ordinal);
         Directory.Delete(directory, recursive: true);

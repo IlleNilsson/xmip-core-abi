@@ -342,7 +342,7 @@ public sealed class ClusterSurfacesTest
         {
             Directory = Path.Combine(Path.GetTempPath(), $"xmip-cluster-set-{Guid.NewGuid():n}");
             System.IO.Directory.CreateDirectory(Directory);
-            string file = Path.Combine(Directory, "gui.xmip");
+            string file = Path.Combine(Directory, "gui.toml");
             File.WriteAllText(file, toml);
             Configuration = TomlDocument.Read(file);
         }

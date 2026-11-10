@@ -48,7 +48,7 @@ public sealed class ProgramAuditTest
             new Dictionary<string, string> { ["url"] = "http://127.0.0.1:5087" });
 
         Assert.Equal(new AuditOutcome.Kept(AuditKept.Persisted, string.Empty), outcome.Value);
-        string text = File.ReadAllText(Path.Combine(directory, "audit.xmip"));
+        string text = File.ReadAllText(Path.Combine(directory, "audit.toml"));
         Assert.Contains("program = \"Xmip.Surface.Test\"", text, StringComparison.Ordinal);
         Assert.Contains("action = \"start\"", text, StringComparison.Ordinal);
         Directory.Delete(directory, recursive: true);
@@ -65,7 +65,7 @@ public sealed class ProgramAuditTest
 
         Assert.Equal(new AuditOutcome.Kept(AuditKept.Persisted, string.Empty), outcome?.Value);
         Assert.Null(audit.Failed("host", boom));
-        string text = File.ReadAllText(Path.Combine(directory, "audit.xmip"));
+        string text = File.ReadAllText(Path.Combine(directory, "audit.toml"));
         Assert.Contains("phase = \"Failure\"", text, StringComparison.Ordinal);
         Assert.Contains("severity = \"Error\"", text, StringComparison.Ordinal);
         Assert.Contains("message = \"boom\"", text, StringComparison.Ordinal);
@@ -93,7 +93,7 @@ public sealed class ProgramAuditTest
         Assert.Equal(2, read.Read);
         Assert.Equal("stopped", Assert.Single(read.Records).Summary);
         Assert.Equal(["stop"], read.Actions);
-        Assert.EndsWith("audit.xmip", read.File, StringComparison.Ordinal);
+        Assert.EndsWith("audit.toml", read.File, StringComparison.Ordinal);
         Assert.False(Assert.Single(read.Records).Hidden);
         Assert.Contains(
             new KeyValuePair<string, string>("hidden", "include"),

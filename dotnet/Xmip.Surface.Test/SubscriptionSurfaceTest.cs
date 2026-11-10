@@ -65,7 +65,7 @@ public sealed class SubscriptionSurfaceTest
 
             Assert.True(resumed.Applied, resumed.Result);
             Assert.Contains($"left for {Processor}", resumed.Result, StringComparison.Ordinal);
-            Assert.Single(Directory.GetFiles(Path.Combine(orders, Processor), "*.xmip"));
+            Assert.Single(Directory.GetFiles(Path.Combine(orders, Processor), "*.toml"));
         }
         finally
         {
