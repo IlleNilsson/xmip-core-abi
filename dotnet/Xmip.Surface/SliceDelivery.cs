@@ -9,7 +9,7 @@ namespace Xmip.Surface;
 /// cluster's <c>cluster.xmip</c>, the directory each node's slice is written
 /// to as <c>&lt;node&gt;/node.xmip</c> — the name desired state writes
 /// it by (<c>deployment-model.md</c> section 8) — and the node of it this
-/// desktop starts, as <c>gui.xmip</c> declares them. Every slice is the
+/// desktop starts, as <c>gui.toml</c> declares them. Every slice is the
 /// runtime's one slicing, signed by the cluster's authority beside the
 /// cluster's file (<c>xmip_cluster_signed_slice_v1</c>; ADR-0031, amendment
 /// 2026-11-06), and written with that authority's certificate beside it;
@@ -54,7 +54,7 @@ public sealed class SliceDelivery(string clusterPath, string directory, string? 
     /// <summary>
     /// The place <paramref name="configuration"/> declares — the cluster's
     /// file, the slice directory and the node configured here, all three as
-    /// <c>gui.xmip</c> names them and never read from a name. A path is
+    /// <c>gui.toml</c> names them and never read from a name. A path is
     /// resolved against <paramref name="basePath"/> (<see cref="TomlDocument.Resolve"/>);
     /// one unset is <c>cluster.xmip</c> or <c>slices</c> under
     /// <paramref name="data"/>, the host's own data directory; no node set

@@ -53,7 +53,7 @@ xmip.unsubscribe(subscription);
 
 ## Build and run
 
-With the C compiler Rust's toolchain already requires (`prerequisite.xmip`,
+With the C compiler Rust's toolchain already requires (`prerequisite.toml`,
 `linker`), from the repository root. On Windows, the MSVC build tools' `cl.exe`
 in a Developer PowerShell for Visual Studio:
 

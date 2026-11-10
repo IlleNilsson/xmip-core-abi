@@ -8,7 +8,7 @@
     subscribes, publishes through xmip_event_publish_v1, receives the Event
     by next and by callback, and holds publish to receive to a millisecond
     beside a plain thread wake measured under the same load. C and C++ build
-    with the compiler Rust's toolchain already requires (prerequisite.xmip,
+    with the compiler Rust's toolchain already requires (prerequisite.toml,
     linker): the MSVC build tools' cl.exe on Windows, cc and c++ elsewhere.
     Java builds with the JDK's javac (--release 27, where FFM is final),
     Python 3.15 runs with python. Build output goes to build/, which git
@@ -18,7 +18,7 @@
 
     Every language but Rust is optional for Xmip itself (the owner,
     2026-10-20: *every language except Rust is optional*), so each tool is
-    an optional prerequisite (prerequisite.xmip): a binding whose tool is
+    an optional prerequisite (prerequisite.toml): a binding whose tool is
     absent here, or older than its floor, is SKIPPED and said so in words —
     "SKIPPED: Java not installed; the Java Event binding is not verified" —
     and fails nothing.
@@ -207,7 +207,7 @@ function Get-XmipBindingAbsence {
         { $_ -in 'C', 'Cpp' } {
             [string] $compiler = if ($Name -eq 'C') { 'cc' } else { 'c++' }
             if ($IsWindows -and (Get-XmipCompilerEnvironment).Count -eq 0) {
-                return 'the MSVC build tools not installed (prerequisite.xmip, linker)'
+                return 'the MSVC build tools not installed (prerequisite.toml, linker)'
             }
             if (-not ($IsWindows -or (Get-Command -Name $compiler -ErrorAction Ignore))) {
                 return "$compiler not installed"

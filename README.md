@@ -472,4 +472,4 @@ the runtime's export returns, and those rules are tested once, where they are
 written. `dotnet test dotnet/Xmip.Surface.Test` runs them, after `cargo build`
 in xmip-core-runtime has left the library the test assemblies load.
 
-`architecture.xmip` carries the maturity; this file does not repeat it.
+`architecture.toml` carries the maturity; this file does not repeat it.

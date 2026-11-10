@@ -266,7 +266,7 @@ public sealed class RuntimeRulesTest
             new Dictionary<string, string> { ["url"] = "http://127.0.0.1:5087", ["ö"] = "å" });
 
         Assert.Equal(new AuditOutcome.Kept(AuditKept.Persisted, string.Empty), outcome.Value);
-        string text = File.ReadAllText(Path.Combine(directory, "audit.xmip"));
+        string text = File.ReadAllText(Path.Combine(directory, "audit.toml"));
         Assert.Contains("program = \"Xmip.Abi.Test\"", text, StringComparison.Ordinal);
         Assert.Contains("\"url\" = \"http://127.0.0.1:5087\"", text, StringComparison.Ordinal);
         Assert.Contains("\"ö\" = \"å\"", text, StringComparison.Ordinal);

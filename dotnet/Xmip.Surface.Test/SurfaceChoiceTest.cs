@@ -278,7 +278,7 @@ public sealed class SurfaceChoiceTest
             Surface = "snapshot"
             Snapshot = "no-such-snapshot.xmip"
             """);
-        string file = Path.Combine(document.Directory, "gui.xmip");
+        string file = Path.Combine(document.Directory, "gui.toml");
 
         Assert.Null(SurfaceChoice.Answering(SurfaceLine.None, file, Beside, out string reason));
         Assert.Contains("no-such-snapshot.xmip", reason, StringComparison.Ordinal);
@@ -298,10 +298,10 @@ public sealed class SurfaceChoiceTest
             [Xmip]
             Surface = "sample"
             """);
-        string file = Path.Combine(document.Directory, "gui.xmip");
+        string file = Path.Combine(document.Directory, "gui.toml");
 
         Assert.Null(SurfaceChoice.Answering(SurfaceLine.None, file, Beside, out string reason));
-        Assert.StartsWith("gui.xmip: ", reason, StringComparison.Ordinal);
+        Assert.StartsWith("gui.toml: ", reason, StringComparison.Ordinal);
     }
 
     private static IConfiguration Pairs(params (string Key, string Value)[] pairs)
@@ -320,7 +320,7 @@ public sealed class SurfaceChoiceTest
         {
             Directory = Path.Combine(Path.GetTempPath(), $"xmip-surface-choice-{Guid.NewGuid():n}");
             System.IO.Directory.CreateDirectory(Directory);
-            string file = Path.Combine(Directory, "gui.xmip");
+            string file = Path.Combine(Directory, "gui.toml");
             File.WriteAllText(file, toml);
             Configuration = TomlDocument.Read(file);
         }

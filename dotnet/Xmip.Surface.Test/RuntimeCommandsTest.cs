@@ -24,7 +24,7 @@ public sealed class RuntimeCommandsTest : IDisposable
 
     private string Audited()
     {
-        return File.ReadAllText(Path.Combine(AuditDirectory, "audit.xmip"));
+        return File.ReadAllText(Path.Combine(AuditDirectory, "audit.toml"));
     }
 
     [Fact]

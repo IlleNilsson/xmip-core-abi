@@ -7,7 +7,7 @@ namespace Xmip.Surface;
 
 /// <summary>
 /// The one way a .NET surface reads a TOML document (ADR-0052 clause 1). On
-/// disk the estate is TOML — a host's <c>gui.xmip</c>, a node
+/// disk the estate is TOML — a host's <c>gui.toml</c>, a node
 /// configuration, a published snapshot — and JSON is reserved for memory and
 /// the wire; so there is one reader, and no host adds a JSON source.
 /// </summary>
@@ -53,7 +53,7 @@ public static class TomlDocument
 
     /// <summary>
     /// The directory a GUI host's document writes its paths from: the estate
-    /// root, the directory holding <c>architecture.xmip</c>, when the host
+    /// root, the directory holding <c>architecture.toml</c>, when the host
     /// runs from inside the estate, else <paramref name="here"/>, the host's
     /// own directory once published. One rule for the desktop and the web:
     /// until 2026-09-28 the web resolved against its content root, which is
@@ -66,7 +66,7 @@ public static class TomlDocument
             directory is not null;
             directory = directory.Parent)
         {
-            if (File.Exists(Path.Combine(directory.FullName, "architecture.xmip")))
+            if (File.Exists(Path.Combine(directory.FullName, "architecture.toml")))
             {
                 return directory.FullName;
             }
@@ -81,7 +81,7 @@ public static class TomlDocument
     /// says where.</exception>
     public static DocumentSyntax Parse(string text)
     {
-        DocumentSyntax document = SyntaxParser.Parse(text, "document.xmip", validate: true);
+        DocumentSyntax document = SyntaxParser.Parse(text, "document.toml", validate: true);
 
         return document.HasErrors
             ? throw new FormatException(string.Join("; ", document.Diagnostics))

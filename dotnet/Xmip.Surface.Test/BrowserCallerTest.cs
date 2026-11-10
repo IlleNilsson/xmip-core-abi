@@ -170,7 +170,7 @@ public sealed class BrowserCallerTest : IDisposable
 
         Assert.True(done.Applied, done.Result);
         string order = File.ReadAllText(
-            Assert.Single(Directory.GetFiles(Orders, "*.xmip", SearchOption.AllDirectories)));
+            Assert.Single(Directory.GetFiles(Orders, "*.toml", SearchOption.AllDirectories)));
         string audited = Audited();
         Assert.All([order, audited], text =>
         {
@@ -366,7 +366,7 @@ public sealed class BrowserCallerTest : IDisposable
 
     private string Audited()
     {
-        return File.ReadAllText(Path.Combine(Audit, "audit.xmip"));
+        return File.ReadAllText(Path.Combine(Audit, "audit.toml"));
     }
 
     private static IConfiguration Configured(params (string Key, string Value)[] pairs)

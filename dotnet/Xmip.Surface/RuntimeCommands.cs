@@ -117,7 +117,7 @@ public sealed class RuntimeCommands(
     /// planned by the native runtime, which publishes the plan for the board.
     /// Nothing runs: running a node is the program that links its
     /// technologies (ADR-0018, amendment 2026-09-26). Refused, in words, where
-    /// <c>gui.xmip</c> names no node or the runtime will not slice it.
+    /// <c>gui.toml</c> names no node or the runtime will not slice it.
     /// </summary>
     public ConfigurationVerdict PlanNode()
     {
@@ -125,7 +125,7 @@ public sealed class RuntimeCommands(
         {
             return Audited("plan node", new ConfigurationVerdict(
                 delivery.ClusterPath, XmipStatus.Invalid, [],
-                "no node is configured here: gui.xmip names no Node"));
+                "no node is configured here: gui.toml names no Node"));
         }
 
         if (!File.Exists(delivery.ClusterPath))
