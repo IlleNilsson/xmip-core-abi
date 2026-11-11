@@ -482,7 +482,10 @@ was taken. Scope is an Xmip URI over the execution tree. The Rust mirror is
 Section 11 is Events, subscribed from any language (ADR-0065): a program
 subscribes with a filter and holds a handle, drains it — a batch whose Events
 borrow from it until it is freed — or is called back on a thread the runtime
-starts, and unsubscribes; it may publish an Event of its own. The matching,
+starts, and unsubscribes; it may publish an Event of its own. No argument
+names the subscriber: it is the account the process runs as, resolved
+through the Parties of the node serving in that process, and refused where
+none holds it (ADR-0019, amendment 2026-11-11). The matching,
 the authorization of the subscriber and the audit are `xmip-core-event`'s,
 forwarded by the runtime's library. Its bindings beside this one — C and C++
 over the header, .NET in `dotnet/Xmip.Abi`, Java and Python — decide nothing.

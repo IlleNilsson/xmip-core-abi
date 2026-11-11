@@ -5,26 +5,24 @@ namespace Xmip.Abi.Test;
 
 /// <summary>
 /// <see cref="RuntimeEvents"/> crosses section 11 of <c>xmip_operate.h</c> to
-/// the runtime this estate built and back: an Event published into this
-/// process reaches a subscriber whole, drained or called back. Which Events
-/// match and who may see them is <c>xmip-core-event</c>'s and tested there;
-/// these prove the crossing. Every subscription audits into a temporary
-/// directory of the test's own, never the operating system's log.
+/// the runtime this estate built and back. A program subscribing names no
+/// Party of its own: it is the account this process runs as, resolved
+/// through the Parties of the node serving in the process (ADR-0019,
+/// amendment 2026-11-11). No node serves in a test's process, so these prove
+/// a subscription refused with the sentence, whatever the policy allows,
+/// and an Event published, the policy and who is unheard crossing whole.
+/// Draining and being called back are proven where a node serves, in the
+/// runtime's own tests. Every refusal audits into a temporary directory of
+/// the test's own, never the operating system's log.
 /// </summary>
 public sealed class RuntimeEventsTest
 {
-    /// <summary>A Party's UUID, as a subscriber in this process is.</summary>
-    internal const string Party = "0198a3c4-0000-7000-8000-000000000042";
+    /// <summary>What the sentence says of an account no Party holds.</summary>
+    internal const string NoParty = "is no Party of a node serving in this process";
 
-    /// <summary>The Party the Event feed's tests subscribe as.</summary>
-    internal const string FeedParty = "0198a3c4-0000-7000-8000-000000000043";
-
-    /// <summary>The policy the tests hand the hub: their Parties, and no
-    /// opinion on anyone else.</summary>
-    internal static bool? Allowed(EventAuthorization asked)
-    {
-        return asked.Party is Party or FeedParty ? true : null;
-    }
+    /// <summary>The policy the tests hand the hub: every Party. A subscriber
+    /// still has to prove to be one.</summary>
+    internal static Func<EventAuthorization, bool?> Allowed { get; } = _ => true;
 
     private static RuntimeEvents Events => RuntimeRulesTest.Rules.Events;
 
@@ -39,34 +37,30 @@ public sealed class RuntimeEventsTest
     }
 
     [Fact]
-    public void APartyThePolicyDoesNotAllowIsRefusedAndNobodyUnheardIsSaidSo()
+    public void AProgramSubscribingNamesNoPartyOfItsOwn()
     {
         using Audited audited = new();
+        EventFilter here = new() { Scope = audited.Scope };
 
-        // A Party the policy has no opinion on, in this very process.
         UnauthorizedAccessException refused = Assert.Throws<UnauthorizedAccessException>(
-            () => Events.Subscribe(
-                "Xmip.Abi.Test", audited.Directory, "0198a3c4-0000-7000-8000-0000000000ff"));
-        Assert.Contains("no policy had an opinion", refused.Message, StringComparison.Ordinal);
+            () => Events.Subscribe("Xmip.Abi.Test", audited.Directory, here));
+        Assert.Contains(NoParty, refused.Message, StringComparison.Ordinal);
+        Assert.StartsWith("REFUSED: ", refused.Message, StringComparison.Ordinal);
 
-        using EventSubscription subscription = Events.Subscribe(
-            "Xmip.Abi.Test", audited.Directory, Party, new EventFilter { Scope = audited.Scope });
-        Assert.Equal(1, Events.Publish(audited.Raised(EventOutcome.Failure)));
+        refused = Assert.Throws<UnauthorizedAccessException>(
+            () => Events.Listen("Xmip.Abi.Test", audited.Directory, _ => { }, here));
+        Assert.Contains(NoParty, refused.Message, StringComparison.Ordinal);
 
-        EventDelivery delivery = subscription.Next(TimeSpan.FromSeconds(5), 8);
-        Assert.Single(delivery.Events);
-        Assert.Empty(delivery.Unheard);
-        Assert.False(delivery.UnheardChanged);
-        Assert.Empty(Events.Unheard());
+        // The refusal is in the program's audit, as every refusal is.
+        string audit = File.ReadAllText(Path.Combine(audited.Directory, "audit.toml"));
+        Assert.Contains("action = \"event.subscribe\"", audit, StringComparison.Ordinal);
+        Assert.Contains(NoParty, audit, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void APublishedEventIsDrainedWholeAndTheBatchIsFreed()
+    public void AnEventPublishedHereCrossesWholeAndNobodyUnheardIsSaidSo()
     {
         using Audited audited = new();
-        using EventSubscription subscription = Events.Subscribe(
-            "Xmip.Abi.Test", audited.Directory, Party,
-            new EventFilter { Scope = audited.Scope, Outcomes = [EventOutcome.Failure] });
 
         int delivered = Events.Publish(new EventRecord
         {
@@ -80,86 +74,8 @@ public sealed class RuntimeEventsTest
             Diagnostics = new Dictionary<string, string> { ["status"] = "refused", ["ö"] = "å" },
         });
 
-        Assert.Equal(1, delivered);
-
-        EventDelivery delivery = subscription.Next(TimeSpan.FromSeconds(2), 16);
-        EventRecord heard = Assert.Single(delivery.Events);
-
-        Assert.Equal(0ul, delivery.Refused);
-        Assert.Equal(36, heard.Id.Length);
-        Assert.Equal("se.xmip.receive.failure", heard.Type);
-        Assert.Equal(EventAction.Receive, heard.Action);
-        Assert.Equal(EventOutcome.Failure, heard.Outcome);
-        Assert.Equal(audited.Node + "/receive/orders", heard.Scope);
-        Assert.Equal("0198a3c4-0000-7000-8000-000000000001", heard.Journey);
-        Assert.Equal("orders", heard.Artifact);
-        Assert.Equal(string.Empty, heard.Message);
-        Assert.Equal("refused", heard.Diagnostics["status"]);
-        Assert.Equal("å", heard.Diagnostics["ö"]);
-        Assert.InRange(heard.Time, DateTimeOffset.UtcNow.AddMinutes(-1), DateTimeOffset.UtcNow);
-
-        Assert.Empty(subscription.Next(TimeSpan.FromMilliseconds(1), 16).Events);
-    }
-
-    [Fact]
-    public void AnEventTheFilterDoesNotAskForIsNotDelivered()
-    {
-        using Audited audited = new();
-        using EventSubscription subscription = Events.Subscribe(
-            "Xmip.Abi.Test", audited.Directory, Party,
-            new EventFilter { Scope = audited.Scope, Outcomes = [EventOutcome.Failure] });
-
-        Assert.Equal(0, Events.Publish(audited.Raised(EventOutcome.Success)));
-        Assert.Empty(subscription.Next(TimeSpan.Zero, 16).Events);
-    }
-
-    [Fact]
-    public async Task AListenerIsCalledBackWithEachEvent()
-    {
-        using Audited audited = new();
-        TaskCompletionSource<EventRecord> heard =
-            new(TaskCreationOptions.RunContinuationsAsynchronously);
-        using EventSubscription subscription = Events.Listen(
-            "Xmip.Abi.Test", audited.Directory, Party, raised => heard.TrySetResult(raised),
-            new EventFilter { Scope = audited.Scope });
-
-        Assert.True(subscription.IsListening);
-        Assert.Equal(1, Events.Publish(audited.Raised(EventOutcome.Timeout)));
-
-        EventRecord raised = await heard.Task.WaitAsync(
-            TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
-
-        Assert.Equal(EventOutcome.Timeout, raised.Outcome);
-        Assert.Null(subscription.Fault);
-        Assert.Throws<InvalidOperationException>(
-            () => subscription.Next(TimeSpan.Zero, 1));
-    }
-
-    [Fact]
-    public async Task WhatAListenerThrowsStaysOnThisSideAndIsKept()
-    {
-        using Audited audited = new();
-        TaskCompletionSource called = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        using EventSubscription subscription = Events.Listen(
-            "Xmip.Abi.Test", audited.Directory, Party,
-            _ =>
-            {
-                called.TrySetResult();
-                throw new InvalidOperationException("thrown by the test's listener");
-            },
-            new EventFilter { Scope = audited.Scope });
-
-        CancellationToken cancelled = TestContext.Current.CancellationToken;
-        Events.Publish(audited.Raised(EventOutcome.Failure));
-        await called.Task.WaitAsync(TimeSpan.FromSeconds(2), cancelled);
-
-        // The fault is kept after the call returns; give it that moment.
-        for (int i = 0; i < 200 && subscription.Fault is null; i++)
-        {
-            await Task.Delay(1, cancelled);
-        }
-
-        Assert.IsType<InvalidOperationException>(subscription.Fault);
+        Assert.Equal(0, delivered);
+        Assert.Empty(Events.Unheard());
     }
 
     [Fact]
@@ -167,29 +83,14 @@ public sealed class RuntimeEventsTest
     {
         using Audited audited = new();
 
-        Assert.Throws<ArgumentException>(
-            () => Events.Subscribe("Xmip.Abi.Test", audited.Directory, string.Empty));
-        Assert.Throws<ArgumentException>(
-            () => Events.Subscribe("Xmip.Abi.Test", audited.Directory, "not a uuid"));
+        Assert.Throws<ArgumentException>(() => Events.Subscribe(
+            "Xmip.Abi.Test", audited.Directory, new EventFilter { Party = "not a uuid" }));
         Assert.Throws<ArgumentException>(
             () => Events.Publish(new EventRecord { Type = "t", Scope = string.Empty }));
         Assert.Throws<ArgumentException>(() => Events.Publish(
             audited.Raised(EventOutcome.Failure) with { Journey = "not a uuid" }));
         Assert.Throws<ArgumentException>(() => Events.Publish(
             audited.Raised(EventOutcome.Failure) with { Outcome = (EventOutcome)8 }));
-    }
-
-    [Fact]
-    public void ADisposedSubscriptionIsNotDrained()
-    {
-        using Audited audited = new();
-        EventSubscription subscription = Events.Subscribe(
-            "Xmip.Abi.Test", audited.Directory, Party, new EventFilter { Scope = audited.Scope });
-
-        subscription.Dispose();
-
-        Assert.Equal(0, Events.Publish(audited.Raised(EventOutcome.Success)));
-        Assert.Throws<ObjectDisposedException>(() => subscription.Next(TimeSpan.Zero, 1));
     }
 }
 
@@ -209,29 +110,21 @@ internal sealed class Audited : IDisposable
 
     /// <summary>An Event at this test's scope, ending in
     /// <paramref name="outcome"/>.</summary>
-    public EventRecord Raised(EventOutcome outcome, string? sent = null)
+    public EventRecord Raised(EventOutcome outcome)
     {
-        Dictionary<string, string> diagnostics = [];
-
-        if (sent is not null)
-        {
-            diagnostics["sent"] = sent;
-        }
-
         return new EventRecord
         {
             Type = "se.xmip.process.test",
             Action = EventAction.Process,
             Outcome = outcome,
             Scope = Node,
-            Diagnostics = diagnostics,
         };
     }
 
     public void Dispose()
     {
-        // The audit is written off the subscriber's path and may still be
-        // closing the file; what it leaves is the temporary directory's.
+        // The audit may still be closing the file; what it leaves is the
+        // temporary directory's.
         try
         {
             System.IO.Directory.Delete(Directory, recursive: true);

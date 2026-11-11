@@ -21,7 +21,14 @@ subscriber may see them, the queue and the audit are the runtime's.
 - `publish(event)` returns how many subscriptions took it. An empty `id` is
   minted and a `time_unix_nanos` of 0 is now.
 - Any status other than `XMIP_OK` raises `EventError`, carrying the status
-  and, for a refused subscription, the authorization gate's sentence.
+  and, for a refused subscription, the sentence that refused it.
+- No argument names the subscriber: it is the account this process runs
+  as, resolved through the Parties of the node serving in the process
+  (ADR-0019, amendment 2026-11-11). Where no node serves, or no Party holds
+  the account, `subscribe` and `listen` raise `EventError` with
+  `XMIP_E_AUTH`. Only code in a node's own process can subscribe, and no
+  export lets a node serve in a Python program's process yet, so the
+  snippet below is refused there today (open problem 66).
 
 ## Use
 
@@ -30,8 +37,7 @@ from xmip_event import Filter, Library, Outcome
 
 xmip = Library("xmip_core_runtime.dll")
 failures = Filter(outcomes=(Outcome.FAILURE,), scope="xmip:///C1")
-with xmip.subscribe("my-program", "/var/log/my-program",
-                    "0198a3c4-0000-7000-8000-000000000042", failures) as subscription:
+with xmip.subscribe("my-program", "/var/log/my-program", failures) as subscription:
     delivery = subscription.next(timeout_ms=1000)
     for event in delivery.events if delivery else []:
         print(event.type, event.scope)
@@ -43,7 +49,11 @@ capability decide, which on Windows is the Event Log.
 ## Test
 
 `test_xmip_event.py` holds the binding's numbers and entrypoint names to the
-header, and runs through the runtime's library when both variables are set.
+header, and runs through the runtime's library when both variables are set:
+in its process no node serves, so it proves subscribe and listen are refused
+there with the sentence, and that publish, the policy and who is unheard
+cross. Untested until a node serves in its process (open problem 66):
+draining, `_copied`, the `_CALLBACK` call back and their latency.
 From this folder, in PowerShell:
 
 ```powershell

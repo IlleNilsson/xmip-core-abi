@@ -2,35 +2,30 @@
 // Copyright the Xmip authors.
 
 // xmip_event_test.cpp - include/xmip_event.hpp through the runtime's real
-// library: an EventSubscription drains what it matches and frees its Batch, a
-// listener is called back through a std::function, and an Event reaches
-// its subscriber within a millisecond of its publish.
+// library: a program subscribing names no Party of its own. It is the
+// account the operating system says it runs as, resolved through the
+// Parties of the node serving in its process (ADR-0019, amendment
+// 2026-11-11); this test's process serves no node, so subscribe and listen
+// throw XMIP_E_AUTH with the sentence, and publish, the policy and who is
+// unheard still cross.
 //
 //     xmip_event_test <runtime library> <audit directory>
 //
 // Both default to XMIP_RUNTIME_LIBRARY and XMIP_EVENT_AUDIT_DIRECTORY; the
 // audit directory is never empty here. Exit 0 when every check is OK.
 
-#include <algorithm>
-#include <atomic>
-#include <chrono>
-#include <condition_variable>
 #include <cstdio>
 #include <cstdlib>
-#include <mutex>
-#include <thread>
+#include <string>
 
 #include "xmip_event.hpp"
 
 namespace {
 
 using namespace xmip::event;
-using Clock = std::chrono::steady_clock;
 
-constexpr std::string_view subscriber = "0198a3c4-0000-7000-8000-000000000042";
 constexpr std::string_view program = "xmip-core-abi cpp test";
-constexpr std::size_t warmup = 50;
-constexpr std::size_t measured = 500;
+constexpr std::string_view no_party = "is no Party of a node serving in this process";
 
 int failures = 0;
 
@@ -39,193 +34,56 @@ void check(bool ok, const std::string &what) {
     failures += ok ? 0 : 1;
 }
 
-Draft raised(std::string_view scope, XmipOutcome outcome) {
+Draft raised(std::string_view scope) {
     Draft draft;
     draft.type = "se.xmip.receive.failure";
     draft.action = XMIP_ACTION_RECEIVE;
-    draft.outcome = outcome;
+    draft.outcome = XMIP_OUTCOME_FAILURE;
     draft.scope = scope;
     draft.artifact = "orders";
+    draft.diagnostics = {{"status", "refused"}};
     return draft;
 }
 
-// Arrivals: when each one was seen, and how many have been.
-struct Timing {
-    std::atomic<std::size_t> received{0};
-    Clock::time_point at[warmup + measured];
-
-    void arrived(Clock::time_point when) {
-        std::size_t slot = received.load();
-        if (slot < warmup + measured) {
-            at[slot] = when;
-        }
-        received.fetch_add(1);
-    }
-
-    bool awaited(std::size_t i, Clock::time_point since) const {
-        while (received.load() <= i) {
-            if (Clock::now() - since > std::chrono::seconds(2)) {
-                return false;
-            }
-            std::this_thread::yield();
-        }
-        return true;
-    }
-};
-
-// Median, p99 and worst in microseconds, printed; the first two returned.
-std::pair<double, double> spread(const std::string &what, const Clock::time_point *from,
-                                 const Clock::time_point *to) {
-    std::vector<double> micros;
-    for (std::size_t i = warmup; i < warmup + measured; i++) {
-        micros.push_back(std::chrono::duration<double, std::micro>(to[i] - from[i]).count());
-    }
-    std::sort(micros.begin(), micros.end());
-    double median = micros[measured / 2];
-    double p99 = micros[measured * 99 / 100];
-    std::printf("        %-26s median %8.1f us, p99 %8.1f us, worst %8.1f us over %zu\n",
-                what.c_str(), median, p99, micros.back(), measured);
-    return {median, p99};
-}
-
-// Publish one Event and wait for it, then wake a plain thread on a plain
-// condition variable and wait for that, round after round. The rule is a
-// millisecond apart from load, so each bound is 1 ms plus the plain wake's.
-void measure(const Library &xmip, Timing &timing, std::string_view scope, const char *path) {
-    static Clock::time_point sent[warmup + measured];
-    static Clock::time_point woken[warmup + measured];
-    Timing plain;
-    std::mutex lock;
-    std::condition_variable ready;
-    std::size_t posted = 0;
-    std::thread waiter([&] {
-        for (std::size_t seen = 0; seen < warmup + measured; seen++) {
-            std::unique_lock<std::mutex> held(lock);
-            ready.wait(held, [&] { return posted > seen; });
-            held.unlock();
-            plain.arrived(Clock::now());
-        }
-    });
-    auto post = [&] {
-        {
-            std::lock_guard<std::mutex> held(lock);
-            posted++;
-        }
-        ready.notify_one();
-    };
-    Draft draft = raised(scope, XMIP_OUTCOME_FAILURE);
-    bool ok = true;
-    for (std::size_t i = 0; ok && i < warmup + measured; i++) {
-        sent[i] = Clock::now();
-        ok = xmip.publish(draft) == 1 && timing.awaited(i, sent[i]);
-        woken[i] = Clock::now();
-        post();
-        ok = ok && plain.awaited(i, woken[i]);
-    }
-    while (plain.received.load() < warmup + measured) {
-        post();
-    }
-    waiter.join();
-    if (!ok) {
-        check(false, std::string(path) + ": every Event of the latency run arrived");
-        return;
-    }
-    auto [median, p99] = spread(std::string("publish to ") + path, sent, timing.at);
-    auto [usual, tail] = spread("a plain wake beside it", woken, plain.at);
-    check(median < 1000.0 + usual, std::string(path) + ": median under 1 ms plus the plain's");
-    check(p99 < 1000.0 + tail, std::string(path) + ": p99 under 1 ms plus the plain's");
-}
-
-void a_subscriber_is_a_party(const Library &xmip, const std::string &directory) {
-    try {
-        xmip.subscribe(program, directory, "", Filter{});
-        check(false, "no subscriber is refused");
-    } catch (const Error &error) {
-        check(error.status() == XMIP_E_INVALID, "no subscriber is XMIP_E_INVALID");
-    }
-}
-
-void a_subscription_drains_what_it_matches(const Library &xmip, const std::string &directory) {
+void a_program_subscribing_names_no_party_of_its_own(Library &xmip,
+                                                     const std::string &directory) {
+    // Whatever the policy allows, a subscriber must prove to be a Party.
+    xmip.authorize_by([](auto &&...) { return XMIP_EVENT_ALLOW; });
     Filter filter;
-    filter.outcomes = {XMIP_OUTCOME_FAILURE};
-    filter.scope = "xmip:///cpp-drain";
-    EventSubscription subscription = xmip.subscribe(program, directory, subscriber, filter);
-
-    Draft draft = raised("xmip:///cpp-drain/node/n1/receive/orders", XMIP_OUTCOME_FAILURE);
-    draft.diagnostics = {{"status", "refused"}};
-    check(xmip.publish(draft) == 1, "a matching Event is delivered to one subscription");
-    check(xmip.publish(raised("xmip:///cpp-drain/node/n1", XMIP_OUTCOME_SUCCESS)) == 0,
-          "an Event of another outcome is delivered to none");
-
-    std::optional<Batch> batch = subscription.next(1000);
-    check(batch && batch->size() == 1 && batch->refused() == 0, "next hands over one Event");
-    if (batch && batch->size() == 1) {
-        EventView event = (*batch)[0];
-        check(event.type() == "se.xmip.receive.failure", "its type");
-        check(event.scope() == "xmip:///cpp-drain/node/n1/receive/orders", "its scope");
-        check(event.artifact() == "orders", "its artifact");
-        check(event.id().size() == 36, "its id was minted as a UUID");
-        check(event.outcome() == XMIP_OUTCOME_FAILURE, "its outcome");
-        check(event.diagnostics() == 1 && event.diagnostic(0).second == "refused",
-              "its diagnostics");
-    }
-    batch.reset();
-    check(!subscription.next(1), "an empty queue times out");
-}
-
-void a_drained_event_arrives_within_a_millisecond(const Library &xmip,
-                                                  const std::string &directory) {
-    Filter filter;
-    filter.scope = "xmip:///cpp-drain-latency";
-    EventSubscription subscription = xmip.subscribe(program, directory, subscriber, filter);
-    static Timing timing;
-    std::atomic<bool> stop{false};
-    std::thread receiver([&] {
-        while (!stop.load()) {
-            if (std::optional<Batch> batch = subscription.next(100, 16)) {
-                Clock::time_point when = Clock::now();
-                for (std::size_t i = 0; i < batch->size(); i++) {
-                    timing.arrived(when);
-                }
-            }
-        }
-    });
-    measure(xmip, timing, "xmip:///cpp-drain-latency/node/n1", "next");
-    stop.store(true);
-    receiver.join();
-}
-
-void a_listener_is_called_back_within_a_millisecond(const Library &xmip,
-                                                    const std::string &directory) {
-    Filter filter;
-    filter.scope = "xmip:///cpp-listen";
-    static Timing timing;
-    EventSubscription listening =
-        xmip.listen(program, directory, subscriber, filter, [](const EventView &event) {
-            if (event.type() == "se.xmip.receive.failure") {
-                timing.arrived(Clock::now());
-            }
-        });
+    filter.scope = "xmip:///cpp-proven";
     try {
-        (void)listening.next(1);
-        check(false, "a listening subscription is refused a drain");
-    } catch (const Error &error) {
-        check(error.status() == XMIP_E_STATE, "a listening subscription is never drained");
-    }
-    measure(xmip, timing, "xmip:///cpp-listen/node/n1", "callback");
-}
-
-} // namespace
-
-void a_party_no_policy_allows_is_refused(const Library &xmip, const char *directory) {
-    try {
-        xmip.subscribe(program, directory, subscriber, Filter{});
-        check(false, "a Party no policy allows is refused");
+        xmip.subscribe(program, directory, filter);
+        check(false, "subscribe where no node serves is refused");
     } catch (const Error &refused) {
-        check(refused.status() == XMIP_E_AUTH, "a Party no policy allows is XMIP_E_AUTH");
+        check(refused.status() == XMIP_E_AUTH, "subscribe where no node serves is XMIP_E_AUTH");
+        check(std::string(refused.what()).find(no_party) != std::string::npos,
+              "the sentence says no Party holds the account");
+        std::printf("        said: %s\n", refused.what());
+    }
+    try {
+        xmip.listen(program, directory, filter, [](const EventView &) {});
+        check(false, "listen where no node serves is refused");
+    } catch (const Error &refused) {
+        check(refused.status() == XMIP_E_AUTH, "listen is refused alike");
+    }
+}
+
+void an_event_published_here_crosses_whole(const Library &xmip) {
+    check(xmip.publish(raised("xmip:///cpp-proven/node/n1/receive/orders")) == 0,
+          "an Event is published, and no subscription here takes it");
+    Draft malformed = raised("xmip:///cpp-proven/node/n1");
+    malformed.journey = "not a uuid";
+    try {
+        xmip.publish(malformed);
+        check(false, "an identifier that is not a UUID is refused");
+    } catch (const Error &refused) {
+        check(refused.status() == XMIP_E_MALFORMED,
+              "an identifier that is not a UUID is XMIP_E_MALFORMED");
     }
     check(xmip.unheard() == "{\"unheard\":[]}", "nobody unheard is said so");
 }
+
+} // namespace
 
 int main(int argc, char **argv) {
     const char *path = argc > 1 ? argv[1] : std::getenv("XMIP_RUNTIME_LIBRARY");
@@ -236,16 +94,8 @@ int main(int argc, char **argv) {
     }
     try {
         Library xmip(path);
-        a_party_no_policy_allows_is_refused(xmip, directory);
-        // Being in this process admits nobody: the test hands the hub a
-        // policy allowing its Party.
-        xmip.authorize_by([](std::string_view party, auto &&...) {
-            return party == subscriber ? XMIP_EVENT_ALLOW : XMIP_EVENT_NO_OPINION;
-        });
-        a_subscriber_is_a_party(xmip, directory);
-        a_subscription_drains_what_it_matches(xmip, directory);
-        a_drained_event_arrives_within_a_millisecond(xmip, directory);
-        a_listener_is_called_back_within_a_millisecond(xmip, directory);
+        a_program_subscribing_names_no_party_of_its_own(xmip, directory);
+        an_event_published_here_crosses_whole(xmip);
     } catch (const Error &error) {
         check(false, std::string("unexpected status: ") + error.what());
     }

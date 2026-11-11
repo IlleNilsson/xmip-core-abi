@@ -11,7 +11,7 @@ them, the queue and the audit are the runtime's.
 | `EventSubscription` | `next(timeout, max)` drains; `close()` unsubscribes. |
 | `Event`, `Filter`, `Delivery` | The header's `XmipEvent`, `XmipEventFilter` and one drain, copied into Java; a `Delivery` carries who was not heard when it was drained, as the header's JSON (amendment 2026-10-02). |
 | `Action`, `Outcome` | `XmipAction` and `XmipOutcome` with the header's numbers. |
-| `EventException` | Any status other than `XMIP_OK`, with the gate's sentence when a subscription is refused. |
+| `EventException` | Any status other than `XMIP_OK`, with the sentence that refused it when a subscription is refused. |
 
 ## Java 27
 
@@ -30,18 +30,24 @@ and `set` with a `ValueLayout`, `MemorySegment.copy` with byte arrays, and
 ```java
 try (Library xmip = Library.load(Path.of("xmip_core_runtime.dll"));
      EventSubscription subscription = xmip.subscribe("my-program", "/var/log/my-program",
-             "0198a3c4-0000-7000-8000-000000000042",
              new Filter(List.of(), List.of(Outcome.FAILURE), "xmip:///C1", ""), 0)) {
     subscription.next(Duration.ofSeconds(1), 64)
             .ifPresent(delivery -> delivery.events().forEach(System.out::println));
 }
 ```
 
-`listen` takes a `Consumer<Event>` instead, called through an upcall on a
-thread the runtime starts, one call at a time. `next` blocks until an Event
-arrives or the timeout passes; close a subscription only after its draining
-thread has returned. The directory is where the subscription is audited; an
-empty one lets the capability decide, which on Windows is the Event Log.
+No argument names the subscriber: it is the account this process runs as,
+through the Parties of the node serving in the process (ADR-0019,
+amendment 2026-11-11); where no node serves, or no Party holds the account,
+`subscribe` and `listen` throw `EventException` with `XMIP_E_AUTH` and the
+sentence. Only code in a node's own process can subscribe, and no export
+lets a node serve in a Java program's process yet, so the snippet above is
+refused there today (open problem 66). `listen` takes a `Consumer<Event>`
+instead, called through an upcall on a thread the runtime starts, one call
+at a time. `next` blocks until an Event arrives or the timeout passes;
+close a subscription only after its draining thread has returned. The
+directory is where the subscription is audited; an empty one lets the
+capability decide, which on Windows is the Event Log.
 
 ## Build and run the test
 
@@ -54,8 +60,12 @@ java --enable-native-access=ALL-UNNAMED -cp build/java \
     se.xmip.event.EventBindingTest <runtime library> <audit directory> include
 ```
 
-The test also holds `Action`, `Outcome` and the entrypoint names to the
-header. Or with the other bindings:
+The test runs where no node serves: it proves subscribe and listen are
+refused there with the sentence, and that publish, the policy and who is
+unheard cross; it also holds `Action`, `Outcome` and the entrypoint names to
+the header. Untested until a node serves in the test's process (open
+problem 66): draining, the upcall `Library.called` and its latency. Or with
+the other bindings:
 
 ```powershell
 ./verify-event-bindings.ps1 -Language Java -Library <runtime library>

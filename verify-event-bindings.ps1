@@ -5,9 +5,13 @@
 
     .DESCRIPTION
     Each binding of xmip_operate.h section 11 (ADR-0065) has one test that
-    subscribes, publishes through xmip_event_publish_v1, receives the Event
-    by next and by callback, and holds publish to receive to a millisecond
-    beside a plain thread wake measured under the same load. C and C++ build
+    proves a program subscribing names no Party of its own: the subscriber
+    is the account the process runs as, resolved through the Parties of the
+    node serving in it (ADR-0019, amendment 2026-11-11), and no node serves
+    in a test's process, so subscribe and listen are refused XMIP_E_AUTH
+    with the sentence; publish through xmip_event_publish_v1, the policy and
+    who is unheard cross. C's example runs too, and says the refusal where
+    no node serves. C and C++ build
     with the compiler Rust's toolchain already requires (prerequisite.toml,
     linker): the MSVC build tools' cl.exe on Windows, cc and c++ elsewhere.
     Java builds with the JDK's javac (--release 27, where FFM is final),

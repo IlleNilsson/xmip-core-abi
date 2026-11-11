@@ -15,10 +15,15 @@ namespace Xmip.Abi.Operate;
 /// The hub is the process's: a subscription here hears what is published in
 /// the process that loaded the library — a node started in it, or a
 /// <see cref="Publish"/> — and, where that node is in a cluster, what every
-/// other node raises (ADR-0065, amendment 2026-10-02). Being in this process
-/// admits a subscriber to nothing: its Party is authorized by the policy the
-/// node or this program hands the hub (<see cref="AuthorizeBy"/>). Every
-/// call may be made from any thread.
+/// other node raises (ADR-0065, amendment 2026-10-02). No argument names the
+/// subscriber: it is the account this process runs as, resolved through the
+/// Parties of the node serving in the process (ADR-0019, amendment
+/// 2026-11-11), so where no node serves — and no export lets one serve in
+/// this program's process yet — a subscription is refused, and draining and
+/// call back are untested (open problem 66). Its Party is then authorized by
+/// the policy this program hands the hub (<see cref="AuthorizeBy"/>); no node
+/// hands its own yet (open problem 67). Every call may be made from any
+/// thread.
 /// </remarks>
 public sealed partial class RuntimeEvents
 {
@@ -27,13 +32,12 @@ public sealed partial class RuntimeEvents
     private const int Said = 1024;
 
     private readonly delegate* unmanaged[Cdecl]<
-        XmipStr, XmipStr, XmipStr, XmipEventFilter*, nuint, nint*, byte*, nuint, nuint*, int>
-        _subscribe;
+        XmipStr, XmipStr, XmipEventFilter*, nuint, nint*, byte*, nuint, nuint*, int> _subscribe;
     private readonly delegate* unmanaged[Cdecl]<
         nint, uint, nuint, nint*, XmipEvent**, nuint*, ulong*, int> _next;
     private readonly delegate* unmanaged[Cdecl]<nint, void> _batchFree;
     private readonly delegate* unmanaged[Cdecl]<
-        XmipStr, XmipStr, XmipStr, XmipEventFilter*, nuint,
+        XmipStr, XmipStr, XmipEventFilter*, nuint,
         delegate* unmanaged[Cdecl]<void*, XmipEvent*, void>, void*, nint*, byte*, nuint, nuint*,
         int> _listen;
     private readonly delegate* unmanaged[Cdecl]<nint, void> _unsubscribe;
@@ -50,7 +54,7 @@ public sealed partial class RuntimeEvents
     internal RuntimeEvents(nint library)
     {
         _subscribe = (delegate* unmanaged[Cdecl]<
-            XmipStr, XmipStr, XmipStr, XmipEventFilter*, nuint, nint*, byte*, nuint, nuint*, int>)
+            XmipStr, XmipStr, XmipEventFilter*, nuint, nint*, byte*, nuint, nuint*, int>)
             NativeLibrary.GetExport(library, OperateAbi.EventSubscribeEntrypoint);
         _next = (delegate* unmanaged[Cdecl]<
             nint, uint, nuint, nint*, XmipEvent**, nuint*, ulong*, int>)
@@ -58,7 +62,7 @@ public sealed partial class RuntimeEvents
         _batchFree = (delegate* unmanaged[Cdecl]<nint, void>)
             NativeLibrary.GetExport(library, OperateAbi.EventBatchFreeEntrypoint);
         _listen = (delegate* unmanaged[Cdecl]<
-            XmipStr, XmipStr, XmipStr, XmipEventFilter*, nuint,
+            XmipStr, XmipStr, XmipEventFilter*, nuint,
             delegate* unmanaged[Cdecl]<void*, XmipEvent*, void>, void*, nint*, byte*, nuint,
             nuint*, int>)
             NativeLibrary.GetExport(library, OperateAbi.EventListenEntrypoint);
@@ -91,8 +95,9 @@ public sealed partial class RuntimeEvents
     ];
 
     /// <summary>
-    /// Hand this process's hub <paramref name="decide"/> as its policy, as a
-    /// node hands its own as it starts: asked of each attempt to subscribe,
+    /// Hand this process's hub <paramref name="decide"/> as its policy, the
+    /// only one it has while no node hands its own (open problem 67): asked of
+    /// each attempt to subscribe,
     /// it answers allow (<see langword="true"/>), deny
     /// (<see langword="false"/>) or no opinion (<see langword="null"/>), and
     /// nothing having an opinion is a refusal. It replaces the policy handed
@@ -145,27 +150,27 @@ public sealed partial class RuntimeEvents
     }
 
     /// <summary>
-    /// Subscribe <paramref name="subscriber"/>, a Party's UUID, to what
-    /// <paramref name="filter"/> asks for, through a queue of
+    /// Subscribe this process, as the Party the account it runs as proves to
+    /// be, to what <paramref name="filter"/> asks for, through a queue of
     /// <paramref name="capacity"/> Events (0: the runtime's default), drained
     /// with <see cref="EventSubscription.Next"/>. <paramref name="program"/>
     /// and <paramref name="directory"/> say where the subscription, its
     /// deliveries and its refusals are audited, as <see cref="RuntimeAudit"/>'s
     /// do; null or empty lets the capability decide.
     /// </summary>
-    /// <exception cref="UnauthorizedAccessException">The authorization gate
-    /// refused it; the message is the gate's sentence.</exception>
+    /// <exception cref="UnauthorizedAccessException">No node serving in this
+    /// process holds its account as a Party, or the authorization gate refused
+    /// the Party; the message is the sentence that refused it.</exception>
     /// <exception cref="ArgumentException">The runtime refused what was asked:
-    /// no subscriber, one that is not a UUID, or an outcome it does not
+    /// a filter Party that is not a UUID, or an outcome it does not
     /// define.</exception>
     public EventSubscription Subscribe(
         string program,
         string? directory,
-        string subscriber,
         EventFilter? filter = null,
         int capacity = 0)
     {
-        return Open(program, directory, subscriber, filter, capacity, null);
+        return Open(program, directory, filter, capacity, null);
     }
 
     /// <summary>
@@ -181,14 +186,13 @@ public sealed partial class RuntimeEvents
     public EventSubscription Listen(
         string program,
         string? directory,
-        string subscriber,
         Action<EventRecord> heard,
         EventFilter? filter = null,
         int capacity = 0)
     {
         ArgumentNullException.ThrowIfNull(heard);
 
-        return Open(program, directory, subscriber, filter, capacity, new EventListening(heard));
+        return Open(program, directory, filter, capacity, new EventListening(heard));
     }
 
     /// <summary>

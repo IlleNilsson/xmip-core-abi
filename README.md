@@ -45,11 +45,22 @@ package over the foreign function and memory API (Java 27, where it is
 final); `python/xmip_event` binds it over ctypes (Python 3.15); and .NET's is
 `Xmip.Abi`'s `RuntimeEvents`, below. Each binding only crosses the boundary —
 the matching, the authorization, the queue and the audit are
-`xmip-core-event`'s, forwarded by the runtime's library. Each has a test that
-publishes an Event through `xmip_event_publish_v1`, receives it by `next` and
-by callback, and holds publish to receive to a millisecond beside a plain
-thread wake; the Java and Python tests also hold their copies of the header's
-numbers and entrypoint names to the header.
+`xmip-core-event`'s, forwarded by the runtime's library. No argument names
+the subscriber: it is the account the process runs as, resolved through the
+Parties of the node serving in that process (ADR-0019, amendment
+2026-11-11), and a process where no node serves subscribes as nobody. Only
+code in a node's own process — a module the node loaded — can subscribe,
+and no export lets a node serve in a standalone program's process yet
+(`xmip_start_v1` validates and plans and runs nothing), so a C, C++, .NET,
+Java or Python program is refused today. Each binding's test, run where no
+node serves, proves subscribe and listen refused `XMIP_E_AUTH` with the
+sentence, and that an Event published through `xmip_event_publish_v1`, the
+policy and who is unheard cross; the Java and Python tests also hold their
+copies of the header's numbers and entrypoint names to the header.
+Untested until a node serves in a binding's process (open problem 66):
+each binding's drain, listen and call back marshalling, and the latency
+through it. The runtime's own tests (`ffi::event`) reach the C exports,
+never a binding's marshalling.
 `./verify-event-bindings.ps1 -Library <runtime library>` builds and runs the C,
 C++, Java and Python tests, into the git-ignored `build/`: C and C++ with the
 compiler Rust's toolchain already requires (the MSVC build tools' `cl.exe` on
@@ -397,13 +408,16 @@ answer even when it lists none; *Unlisted* is a source that cannot list;
   binding alike: HTTPS always, plain HTTP to this machine only.
   `RemoteOperator` presents and checks through it, and says a refused
   certificate in its reason.
-- **Events.** `EventFeed`, what a .NET face subscribes through: it finds the
-  runtime by `RuntimeLibrary`'s one rule, subscribes as a Party's UUID,
-  audits where the program's `ProgramAudit` records go, and `Follow` yields
-  each Event as it arrives until cancelled. The hub is the process's own, so
-  a face hears Events published in the process that loaded the runtime (a
-  node it started, or its own `Publish`); a node elsewhere sends its Events
-  over the wire (`xmip-core-event`'s `wire`).
+- **Events.** `EventFeed`, a .NET program's subscription to the process's
+  hub: it finds the runtime by `RuntimeLibrary`'s one rule, subscribes as
+  the Party the account it runs as proves to be among the Parties of the
+  node serving in its process — it names none — audits where the program's
+  `ProgramAudit` records go, and `Follow` yields each Event as it arrives
+  until cancelled. Only code in a node's own process can subscribe, and no
+  export lets a node serve in a face's process (`xmip_start_v1` runs
+  nothing, open problem 20), so in a face it is refused today; no face
+  calls it (open problem 66). A node elsewhere sends its Events over the
+  wire (`xmip-core-event`'s `wire`).
 - **Audit.** `ProgramAudit`, how every .NET program audits (ADR-0062): its
   name, the directory its configuration names (`Xmip:AuditDirectory`), the
   runtime library the program was told to load (`Library`, so `--runtime`

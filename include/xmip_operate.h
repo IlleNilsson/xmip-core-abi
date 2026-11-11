@@ -911,17 +911,23 @@ typedef XmipStatus (*XmipDesignFn)(XmipStr input, XmipStr argument,
  * see them, the queue and the audit are written there once, and no binding
  * decides any of it again.
  *
- * A subscriber is a Party: subscriber is the Party's UUID, and the program
- * that loaded this library is its identity - the operating system vouches
- * for a caller in this process, and the authorization gate decides what it
- * may see: being in this process admits it to nothing
- * (xmip_event_authorize_v1 below). program and directory say where its subscription, its deliveries
- * and its refusals are audited, as section 9's do (empty directory: the
- * capability decides). A refused subscription is XMIP_E_AUTH, *out NULL,
- * with the gate's sentence in said as xmip_validate_v1 writes its report;
- * an empty subscriber or an outcome not defined here is XMIP_E_INVALID, a
- * subscriber or filter Party that is not a UUID, or text that is not UTF-8,
- * XMIP_E_MALFORMED.
+ * A subscriber is a Party, and no argument names it: it is the caller the
+ * gate proved (ADR-0019, amendment 2026-11-11) - the account the operating
+ * system says this process runs as, as peer-credentials, resolved through
+ * the Parties of the node serving in this process to the Party whose
+ * identity names that account. A caller no Party holds, one more than one
+ * Party holds, or a process where no node serves, subscribes as nobody and
+ * is refused. So only code in a node's own process can subscribe, and no
+ * export lets a node serve in a program's own process yet (xmip_start_v1
+ * runs nothing). The authorization gate then decides what the Party may
+ * see: being in this process admits it to nothing (xmip_event_authorize_v1
+ * below). program and directory say
+ * where its subscription, its deliveries and its refusals are audited, as
+ * section 9's do (empty directory: the capability decides). A refused
+ * subscription is XMIP_E_AUTH, *out NULL, with the sentence that refused it
+ * in said as xmip_validate_v1 writes its report; an outcome not defined
+ * here is XMIP_E_INVALID, a filter Party that is not a UUID, or text that
+ * is not UTF-8, XMIP_E_MALFORMED.
  *
  * A filter's lists and strings, each empty for any: the Event types, the
  * outcomes, the scope the Event must have happened at or beneath (an Xmip
@@ -963,7 +969,8 @@ typedef XmipStatus (*XmipDesignFn)(XmipStr input, XmipStr argument,
  * a UUID, or text that is not UTF-8, is XMIP_E_MALFORMED.
  *
  * Every call may be made from any thread, before, during and without a
- * node; it touches no snapshot (ADR-0027 clause 6). Separate optional
+ * node, though a subscribe where no node serves is refused, as above; it
+ * touches no snapshot (ADR-0027 clause 6). Separate optional
  * symbols, as section 7's are; XMIP_OPERATE_VERSION is unchanged.
  */
 typedef enum {
@@ -1020,19 +1027,19 @@ typedef struct XmipEventBatch XmipEventBatch;
 typedef void (*XmipEventCallback)(void *context, const XmipEvent *event);
 
 typedef XmipStatus (*XmipEventSubscribeFn)(XmipStr program, XmipStr directory,
-                                           XmipStr subscriber, const XmipEventFilter *filter,
-                                           size_t capacity, XmipEventSubscription **out,
-                                           uint8_t *said, size_t said_cap, size_t *said_len);
+                                           const XmipEventFilter *filter, size_t capacity,
+                                           XmipEventSubscription **out, uint8_t *said,
+                                           size_t said_cap, size_t *said_len);
 typedef XmipStatus (*XmipEventNextFn)(XmipEventSubscription *subscription, uint32_t timeout_ms,
                                       size_t max, XmipEventBatch **out_batch,
                                       const XmipEvent **out_events, size_t *out_len,
                                       uint64_t *out_refused);
 typedef void (*XmipEventBatchFreeFn)(XmipEventBatch *batch);
 typedef XmipStatus (*XmipEventListenFn)(XmipStr program, XmipStr directory,
-                                        XmipStr subscriber, const XmipEventFilter *filter,
-                                        size_t capacity, XmipEventCallback callback,
-                                        void *context, XmipEventSubscription **out,
-                                        uint8_t *said, size_t said_cap, size_t *said_len);
+                                        const XmipEventFilter *filter, size_t capacity,
+                                        XmipEventCallback callback, void *context,
+                                        XmipEventSubscription **out, uint8_t *said,
+                                        size_t said_cap, size_t *said_len);
 typedef void (*XmipEventUnsubscribeFn)(XmipEventSubscription *subscription);
 typedef XmipStatus (*XmipEventPublishFn)(const XmipEvent *event, size_t *out_delivered);
 

@@ -8,7 +8,9 @@ the names the header gives them. Thin (ADR-0065): which Events a filter
 matches, whether a subscriber may see them, the queue and the audit are the
 runtime's. Events are copied out of the batch or callback they arrived in.
 
-Being in the process admits a subscriber to nothing: the program hands the
+A subscriber is the account this process runs as, resolved through the
+Parties of the node serving in the process, and no argument names it.
+Being in the process admits it to nothing: the program hands the
 hub its policy of who may subscribe (Library.authorize_by). Every drain says which members of the
 cluster are not heard now (Delivery.unheard), so nothing missing is silent.
 """
@@ -164,13 +166,13 @@ _P = ctypes.c_void_p
 _SIZE = ctypes.c_size_t
 _SIZE_P = ctypes.POINTER(ctypes.c_size_t)
 _SHAPES = {
-    "SUBSCRIBE": (ctypes.c_int32, [_Str, _Str, _Str, ctypes.POINTER(_Filter), _SIZE,
+    "SUBSCRIBE": (ctypes.c_int32, [_Str, _Str, ctypes.POINTER(_Filter), _SIZE,
                                    ctypes.POINTER(_P), _P, _SIZE, _SIZE_P]),
     "NEXT": (ctypes.c_int32, [_P, ctypes.c_uint32, _SIZE, ctypes.POINTER(_P),
                               ctypes.POINTER(ctypes.POINTER(_Event)), _SIZE_P,
                               ctypes.POINTER(ctypes.c_uint64)]),
     "BATCH_FREE": (None, [_P]),
-    "LISTEN": (ctypes.c_int32, [_Str, _Str, _Str, ctypes.POINTER(_Filter), _SIZE, _CALLBACK,
+    "LISTEN": (ctypes.c_int32, [_Str, _Str, ctypes.POINTER(_Filter), _SIZE, _CALLBACK,
                                 _P, ctypes.POINTER(_P), _P, _SIZE, _SIZE_P]),
     "UNSUBSCRIBE": (None, [_P]),
     "PUBLISH": (ctypes.c_int32, [ctypes.POINTER(_Event), _SIZE_P]),
@@ -282,21 +284,24 @@ class Library:
             function.restype, function.argtypes = result, arguments
             self._fn[name] = function
 
-    def subscribe(self, program: str, directory: str, subscriber: str,
-                  filter: Filter = Filter(), capacity: int = 0) -> Subscription:
+    def subscribe(self, program: str, directory: str, filter: Filter = Filter(),
+                  capacity: int = 0) -> Subscription:
         """Subscribe to drain. program and directory say where it is audited
-        (an empty directory: the capability decides); subscriber is the
-        Party's UUID. Raises EventError with the gate's sentence when refused."""
-        return self._open(program, directory, subscriber, filter, capacity, None)
+        (an empty directory: the capability decides). No argument names the
+        subscriber: it is the account this process runs as, resolved through
+        the Parties of the node serving in the process (ADR-0019, amendment
+        2026-11-11). Raises EventError with the sentence that refused it where
+        no node serves or no Party holds the account, or the gate refuses."""
+        return self._open(program, directory, filter, capacity, None)
 
-    def listen(self, program: str, directory: str, subscriber: str, filter: Filter,
-               callback, capacity: int = 0) -> Subscription:
+    def listen(self, program: str, directory: str, filter: Filter, callback,
+               capacity: int = 0) -> Subscription:
         """Subscribe to have callback(event) called on a thread the runtime
         starts, one call at a time. An exception it raises is printed by
         ctypes and goes no further."""
         def called(_context, event):
             callback(_copied(event.contents))
-        return self._open(program, directory, subscriber, filter, capacity, _CALLBACK(called))
+        return self._open(program, directory, filter, capacity, _CALLBACK(called))
 
     def authorize_by(self, decide) -> None:
         """Hand this process's hub decide as its policy of who may subscribe:
@@ -346,7 +351,7 @@ class Library:
             raise EventError(status)
         return delivered.value
 
-    def _open(self, program, directory, subscriber, filter, capacity, callback):
+    def _open(self, program, directory, filter, capacity, callback):
         keep = _Keep()
         types = [keep.str(text) for text in filter.types]
         outcomes = [int(outcome) for outcome in filter.outcomes]
@@ -359,7 +364,7 @@ class Library:
         handle = ctypes.c_void_p()
         said = ctypes.create_string_buffer(512)
         said_len = ctypes.c_size_t()
-        who = (keep.str(program), keep.str(directory), keep.str(subscriber))
+        who = (keep.str(program), keep.str(directory))
         if callback is None:
             status = self._fn["SUBSCRIBE"](*who, ctypes.byref(wire), capacity,
                                            ctypes.byref(handle), said, len(said),
