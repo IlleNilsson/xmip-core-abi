@@ -583,6 +583,24 @@ with this build's version beside them. An upgrade that is none, or a server
 Xmip Storage keeps no database on, is refused in words. The schema and its
 versions are `xmip-core-persist`'s; .NET binds it as `RuntimeDatabases`.
 
+Section 25 is every Report in one list (ADR-0072, amendment 2026-11-10). A
+Report presents existing data; a Quest probes for data to present in a
+Report. `xmip_report_v1` takes an act and its arguments as JSON and answers
+JSON in memory: `list`, every Report, or the one named, with its
+`XmipReportKind` — `XMIP_REPORT_EXISTING_DATA`, quick, named by the
+entrypoint of the reader that presents it, or `XMIP_REPORT_QUEST`, it takes
+longer — the words each kind is shown by, what a Quest takes and what to
+expect of it, its last probe read back from the audit, and every Report
+listed all the same where the audit cannot be read; and `open`, a Report's
+Quest probing a node's configuration given by path, a node's own or a
+cluster's `cluster.xmip` sliced for one node, the probe audited as
+`quest.probe` by the call that receives the answer and not by one asking
+its length. An entry not built yet is listed and refused when opened, as a
+quick one is, its reader presenting it, before the configuration is read.
+Not pure: `open` reads the configuration and writes one audit record. The list and every answer are `xmip-core-report`'s, the
+composing and the audit the runtime's; a node's build only. The Rust mirror
+is `.src/operate/report.rs`.
+
 Section 9 is a program's audit record (ADR-0062): `xmip_audit_v1` hands one
 to `xmip-core-audit`, and since 2026-09-29 `xmip_audit_read_v1` answers, as
 JSON in memory, the records an audit query asks for — who (a location and

@@ -10,7 +10,8 @@ namespace Xmip.Abi.Operate;
 /// start and acts — section 17's client, section 18's security roles and
 /// section 19's request are always there; what only a node does — serving,
 /// the design, the Event hub, the catalogue, process declarations, the acts
-/// on this process's nodes and signing a person's request — is bound where
+/// on this process's nodes, signing a person's request and the Reports — is
+/// bound where
 /// the library exports it, and a
 /// call into it where it does not is refused in words, never a crash.
 /// </summary>

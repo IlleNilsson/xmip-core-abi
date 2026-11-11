@@ -33,7 +33,8 @@ public struct XmipTopologyNode
     /// <summary><c>load</c>, zero to one.</summary>
     public double Load;
 
-    /// <summary><c>activity</c>, zero to one.</summary>
+    /// <summary><c>activity</c>: what moved through it per second over its
+    /// publisher's window, zero where nothing moved.</summary>
     public double Activity;
 
     /// <summary><c>evidence</c>.</summary>

@@ -129,7 +129,10 @@ pub struct TopologyNode {
     pub scope: Scope,
     pub health: i32,
     pub origin: i32,
+    /// From zero to one.
     pub load: f64,
+    /// What moved through it per second over its publisher's window
+    /// (`observe::topology::window`), zero where nothing moved.
     pub activity: f64,
     pub evidence: Str,
 }

@@ -391,4 +391,8 @@ public static partial class OperateAbi
     /// schema version to a later one: section 20 (ADR-0015, amendment
     /// 2026-10-20).</summary>
     public const string DatabaseUpgradeEntrypoint = "xmip_database_upgrade_v1";
+
+    /// <summary>Every Report listed, and one opened: section 25 (ADR-0072,
+    /// amendment 2026-11-10).</summary>
+    public const string ReportEntrypoint = "xmip_report_v1";
 }

@@ -564,7 +564,11 @@ typedef struct {
     int64_t   topology_observed_unix_nanos;
 } XmipPublicationHead;
 
-/* One thing that communicates. parent is empty at the top. */
+/*
+ * One thing that communicates. parent is empty at the top. load runs from
+ * zero to one; activity is what moved through it per second over its
+ * publisher's window (observe::topology::window), zero where nothing moved.
+ */
 typedef struct {
     XmipStr     id;
     XmipStr     parent;
@@ -574,11 +578,14 @@ typedef struct {
     XmipHealth  health;
     int32_t     origin;     /* XmipTopologyOrigin */
     double      load;
-    double      activity;
+    double      activity;   /* per second, over the publisher's window */
     XmipStr     evidence;
 } XmipTopologyNode;
 
-/* One communication relationship, from one node id to another. */
+/*
+ * One communication relationship, from one node id to another. rate is the
+ * rise in its volume per second over its publisher's window.
+ */
 typedef struct {
     XmipStr     id;
     XmipStr     from;
@@ -2088,6 +2095,111 @@ typedef XmipStatus (*XmipSecretsFn)(const XmipRemote *remote, uint64_t caller, X
 
 #define XMIP_SECRET_ENTRYPOINT  "xmip_secret_v1"
 #define XMIP_SECRETS_ENTRYPOINT "xmip_secrets_v1"
+
+/* ===================================================================== */
+/* 25. Every Report, listed; one opened                                  */
+/* ===================================================================== */
+
+/*
+ * A Report presents existing data; a Quest probes for data to present in a
+ * Report (doc/terminology.md, Report and Quest). Every Report is in one
+ * list, xmip-core-report's, and each says what it presents: its kind is
+ * XMIP_REPORT_EXISTING_DATA - quick - where the data already exists, and
+ * XMIP_REPORT_QUEST - it takes longer - where a Quest probes for it first
+ * (ADR-0072, amendment 2026-11-10). The kind follows from what an entry
+ * holds; nothing declares it and nothing reads it from a name. A module adds
+ * a Report or a Quest to the list.
+ *
+ * xmip_report_v1 does the act act on arguments, a JSON object, and answers
+ * JSON in out as UTF-8, its true byte length in out_len whether or not it
+ * fit; a surface that passed too small a buffer asks again (section 5). The
+ * acts, and the members each reads:
+ *   list  report (optional): the one Report to list, by its name, every one
+ *         where none is named; directory: where each Quest's last probe is
+ *         read back, by section 9's rule (empty: XMIP_AUDIT_DIRECTORY).
+ *         Answered:
+ *
+ *   {"kinds":[{"kind","word","name","meaning"}],
+ *    "reports":[{"name","covers","kind","available","expect"?,"read_by"?,
+ *                "parameter"?:{"name","choices":[...]},"row"?,"levels"?,
+ *                "took_ms"?,"probed_at"?}],
+ *    "unread"?}
+ *
+ *         kinds is both kinds, each with the words a surface shows it by.
+ *         reports is every Report, or the one report names; a name that is
+ *         none is refused, naming those there are, in the sentence open
+ *         refuses it in. unread, opening FAILED, says why the last probes
+ *         could not be read where they could not: every Report is listed
+ *         all the same, and each Quest's expect says so.
+ *         An entry not yet available is listed, available false, and has
+ *         nothing to open. read_by is the entrypoint of this header whose
+ *         reader presents a quick entry - xmip_audit_read_v1,
+ *         xmip_dead_messages_v1, xmip_subscriptions_v1 or
+ *         xmip_publication_read_v1 - and a surface opens the entry at its
+ *         own command for that reader. A Quest's entry names its parameter
+ *         and its choices, what a row of its second level is called, and
+ *         its levels; took_ms and probed_at (RFC 3339) are its last probe's,
+ *         read from the record open writes. expect is what to expect, in
+ *         words: "last probe took 4 ms", "not probed yet", "last probe could
+ *         not be read" or "not yet available"; absent for a quick entry
+ *         available.
+ *   open  report, parameter and row (each optional), configuration (a
+ *         path: a node's configuration, or a cluster's cluster.xmip, told
+ *         apart by what it holds), node (the node a cluster.xmip is sliced
+ *         for), program, directory: the Report's Quest probes that
+ *         configuration and changes nothing. A report that cannot be opened
+ *         - none, not yet available, quick, or a parameter it does not take
+ *         - is refused before the configuration is read. The probe is
+ *         audited under program in directory, by section 9's rule, as
+ *         action quest.probe, finished, information, with the properties
+ *         report, parameter, node and took_ms. Answered:
+ *
+ *   {"report","parameter"?,"node","row","took_ms",...}
+ *
+ *         row is what one row of the Report's second level is called, and
+ *         after it comes what the Quest found at the level row asks, each
+ *         member there only where the Quest answers it: a surface shows a
+ *         title, a tally, rows and a requirement where they are, and never
+ *         makes one up. The Regulation Report's, its parameter the
+ *         regulation and its row a requirement:
+ *
+ *   "title","tally":[{"state","count"}],
+ *   "rows":[{"name","citation","state"}],
+ *   "requirement"?:{"name","citation","state","says",
+ *     "behind":[{"kind":"location","side","name"} | {"kind":"stream","stream"}
+ *               | {"kind":"setting","key","value"}],
+ *     "actions":[{"kind":"configure","setting","says"} | {"kind":"outside","says"}
+ *                | {"kind":"not-yet-available","says"}]}
+ *
+ *         tally is each state, in the order evidence, gap, not applicable,
+ *         with how many requirements are in it; state is evidence, gap or
+ *         not applicable; requirement is there where row names one.
+ * XMIP_OK with the answer. XMIP_E_INVALID with the refusal, one sentence
+ * opening REFUSED: an act that is none, arguments that do not read, a report
+ * not in the list or not yet available, a quick report (its reader presents
+ * it), a parameter or a row that is none of its choices, a configuration
+ * that does not read or names a storage no data domain is kept on, a
+ * cluster.xmip without its node. XMIP_E_IO with the reason, opening FAILED,
+ * where the configuration cannot be read or the probe's record is kept
+ * nowhere. XMIP_E_MALFORMED when a string is not UTF-8. Strings are borrowed
+ * for the call alone; no handle is made and nothing is freed. No snapshot is
+ * read, from any thread, before, during and without a node; not pure: open
+ * reads the configuration it is given and writes one audit record. An open
+ * whose answer does not fit cap is answered for its length alone and is not
+ * audited, so a caller asking first for the length, or again with more room,
+ * leaves the one record of the call that received the answer. A node's build
+ * only, as section 23. Optional symbol; XMIP_OPERATE_VERSION is unchanged.
+ */
+typedef enum {
+    XMIP_REPORT_EXISTING_DATA = 0,
+    XMIP_REPORT_QUEST         = 1
+} XmipReportKind;
+
+typedef XmipStatus (*XmipReportFn)(XmipStr act, XmipStr arguments, uint8_t *out,
+                                   size_t cap, size_t *out_len);
+
+#define XMIP_REPORT_ENTRYPOINT "xmip_report_v1"
+
 #ifdef __cplusplus
 }
 #endif

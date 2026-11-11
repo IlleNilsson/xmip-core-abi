@@ -123,7 +123,7 @@ scope = "xmip:///C1"
 state = "stressed"
 origin = "configured"
 load = 0.0
-activity = 1.0
+activity = 1.5
 evidence = "3 nodes, 5 of 6 leaves fine"
 
 [[topology.nodes]]
@@ -135,7 +135,7 @@ scope = "xmip:///C1/node/R1"
 state = "fine"
 origin = "both"
 load = 0.0
-activity = 1.0
+activity = 1.5
 evidence = "alive"
 
 [[topology.nodes]]
@@ -147,7 +147,7 @@ scope = "xmip:///C1/node/R1/receive"
 state = "fine"
 origin = "both"
 load = 0.0
-activity = 0.0
+activity = 1.5
 evidence = "3/3 rounds passed"
 
 [[topology.nodes]]
@@ -183,7 +183,7 @@ scope = "xmip:///C1/node/P1"
 state = "fine"
 origin = "both"
 load = 0.0
-activity = 1.0
+activity = 1.5
 evidence = "3/3 rounds passed"
 
 [[topology.nodes]]
@@ -195,7 +195,7 @@ scope = "xmip:///C1/node/P1/process"
 state = "fine"
 origin = "both"
 load = 0.0
-activity = 0.0
+activity = 1.5
 evidence = "3/3 rounds passed"
 
 # Declared and not yet reported on: drawn because P1 declared it (ADR-0056).
@@ -220,7 +220,7 @@ scope = "xmip:///C1/node/S1"
 state = "stressed"
 origin = "both"
 load = 0.0
-activity = 1.0
+activity = 1.5
 evidence = "2/3 rounds passed, 1 failed"
 
 [[topology.nodes]]
@@ -232,7 +232,7 @@ scope = "xmip:///C1/node/S1/send"
 state = "stressed"
 origin = "both"
 load = 0.0
-activity = 0.0
+activity = 1.5
 evidence = "2/3 rounds passed, 1 failed"
 
 [[topology.nodes]]
@@ -271,7 +271,7 @@ scope = "xmip:///C1/party/party-x"
 state = "fine"
 origin = "both"
 load = 0.0
-activity = 0.0
+activity = 1.5
 evidence = "sends into R1; worst at R1 over file: 3/3 rounds passed"
 
 [[topology.nodes]]
@@ -283,14 +283,19 @@ scope = "xmip:///C1/party/party-x"
 state = "holding"
 origin = "both"
 load = 0.0
-activity = 0.0
+activity = 1.5
 evidence = "is delivered to by P1, S1; worst at S1 over tcp: 2/3 rounds passed, 1 failed"
 
 # Every pair the roster configures a handoff between, and the hops delivered
 # over each (the owner, 2026-09-25: configured traffic and its usage): R1 to
 # P1 and P1 to S1 are configured and used, P1's own process to its send stage
-# is configured and has carried nothing. The rate is the rise per second since
-# the roll's publication before this one.
+# is configured and has carried nothing. The rate is the rise per second over
+# the roll's window, and each drawn thing's activity what moved through it per
+# second, as the window states it from these links and the counts beneath it
+# (ADR-0052, amendment 2026-11-10): 1.5 on every thing a used link runs into
+# or out of, on their nodes and on the cluster, and 0 on the endpoints, which
+# have nothing counted beneath them, and on P1's send stage, whose links
+# carried nothing.
 [[topology.links]]
 id = "handoff/R1/receive/P1/process"
 from = "node/R1/receive"

@@ -27,7 +27,12 @@ and the declarations standing in a directory are read, both `xmip-core-node`'s,
 ADR-0053), which `RuntimeRules.Processes` binds, and section 20's upgrade
 of a database's schema (`xmip_database_upgrade_v1`, the scripts
 `xmip-core-persist` writes; ADR-0015, amendment 2026-10-20), which
-`RuntimeRules.Databases` binds. `examples/conforming.rs`
+`RuntimeRules.Databases` binds, and section 25's one list of every Report
+(`operate::report`: `xmip_report_v1`, its `list` and `open` acts, and
+`XmipReportKind`, whether a Report presents data that already exists or
+what a Quest probes first; ADR-0072, amendment 2026-11-10), which
+`xmip-core-report` keeps and a node's build of the runtime answers.
+`examples/conforming.rs`
 builds as a cdylib and is the conforming artifact a loader probe is tested
 against.
 
@@ -218,8 +223,16 @@ Location form. Section 13 — a System Process declared (ADR-0053) — is
 `RuntimeRules.Processes` (`RuntimeProcesses`): `Declare` has the node write
 the calling process's declaration and answers the file, or the node's
 refusal of a purpose that is no word; `Read` brings back the declarations
-standing in a directory as `ProcessDeclarations` of `ProcessStanding`. In a
-composed
+standing in a directory as `ProcessDeclarations` of `ProcessStanding`.
+Section 25 — every Report listed and one opened (ADR-0072, amendment
+2026-11-10) — is `RuntimeRules.Reports` (`RuntimeReports`): `Ask` hands the
+act, `list` or `open`, and its JSON arguments over and brings back the
+header's JSON, asking again at the true length until it fits — an open so
+asked again is audited once, by the call that receives it — or throws the
+runtime's sentence, opening REFUSED or FAILED; `ReportKind` is
+`XmipReportKind`.
+A node's build only: a remote build refuses it in words (`RemoteBuild`).
+In a composed
 estate the project copies the runtime's built library beside everything that
 references it. `AbiBoundaries` says both boundaries at once. `xmip abi`, `status` and
 `probe` render those and `Get-XmipAbi`, `ConvertFrom-XmipStatus` and
@@ -405,6 +418,27 @@ answer even when it lists none; *Unlisted* is a source that cannot list;
   `OperatingSystemLog`, the one .NET writer to the Windows Event Log or the
   local syslog, used only when the runtime's library cannot be loaded at all
   and saying why.
+- **Reports.** `ReportCatalog`, every .NET surface's one list of every
+  Report and one opened (ADR-0072, amendment 2026-11-10) — `xmip report`,
+  `Get-XmipReport` and the Reports view — over section 25: `List` reads the
+  `ReportListing`, the kinds' words (`ReportKindWords`, *Quick* and *Takes
+  longer*, the runtime's) and a `ReportEntry` for each Report, its kind and
+  its kind's words (`Words`, set once as the list is read), whether it is
+  available, what to expect, the reader that presents a quick one (`ReadBy`,
+  an entrypoint of the header each surface maps to its own command) and a
+  Quest's parameter, row, levels and last probe, read back from where the
+  surface's `ProgramAudit` records go, with the runtime's sentence where
+  they cannot be (`Unread`); `Named` asks the runtime for the one Report of
+  a name, which finds it and refuses a name that is none in its own
+  sentence. `Open` probes the configuration a `ReportProbe` names — a
+  node's, or a cluster's `cluster.xmip` with its node — the probe audited
+  under the surface's program, and reads the `ReportProbed`: its tally, a
+  `ReportCount` per state, what a row is called, a `ReportRow` per
+  requirement and, for the row named, the `ReportRequirement` in full, what
+  is behind it (`ReportBehind`) and the actions that close it
+  (`ReportAction`); what a Quest does not answer is left empty. Every state,
+  kind and word is the runtime's string; no list of them is kept in C#, and
+  each list is an array, which PowerShell indexes.
 
 `dotnet/Xmip.Surface.Relay` is what a web host adds for its browsers; only a
 web host references it, and it serves no surface to other machines — a remote
