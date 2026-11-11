@@ -63,6 +63,18 @@ public sealed class RemoteBuildTest
     }
 
     [Fact]
+    public void TheRemoteBuildListsNoReportsAndSaysSo()
+    {
+        // The Reports are xmip-core-report's, which reads a node's
+        // configuration: a node's build only (ADR-0072, amendment 2026-11-10).
+        InvalidOperationException refused =
+            Assert.Throws<InvalidOperationException>(() => Rules.Reports);
+
+        Assert.StartsWith(RemoteBuild.Sentence, refused.Message, StringComparison.Ordinal);
+        Assert.Contains(OperateAbi.ReportEntrypoint, refused.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void TheRemoteBuildMakesAPersonsRequestAndSignsNone()
     {
         // The phone makes its own key and request (ADR-0034, amendment

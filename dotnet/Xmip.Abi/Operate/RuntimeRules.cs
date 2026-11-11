@@ -26,7 +26,8 @@ namespace Xmip.Abi.Operate;
 /// subscribed, is <see cref="Events"/>; section 12, the technologies the
 /// runtime carries, is <see cref="Catalogue"/>; section 13, a System
 /// Process declared, is <see cref="Processes"/>; section 20, a database's
-/// schema upgraded, is <see cref="Databases"/>.
+/// schema upgraded, is <see cref="Databases"/>; section 25, every Report
+/// listed and one opened, is <see cref="Reports"/>.
 /// </summary>
 /// <remarks>
 /// Pure calls: none reads the snapshot or holds a table, so one instance
@@ -34,7 +35,7 @@ namespace Xmip.Abi.Operate;
 /// answers is copied out at once; nothing borrowed outlives the call. A
 /// library that is the runtime's remote build, the phone's, carries sections
 /// 7, 8, 9, 17's client, 18 and 19's request only: each node's binding here,
-/// sections 10 to 16 and 19's signing, then throws an
+/// sections 10 to 16, 19's signing and 25, then throws an
 /// <see cref="InvalidOperationException"/> saying so (<see cref="RemoteBuild"/>).
 /// </remarks>
 // Every call encodes its strings into stack buffers the encoder then fills;
@@ -135,6 +136,7 @@ public sealed partial class RuntimeRules
             library, RuntimeMessages.Entrypoints, () => new RuntimeMessages(library));
         Databases = Node(
             library, RuntimeDatabases.Entrypoints, () => new RuntimeDatabases(library));
+        Reports = Node(library, RuntimeReports.Entrypoints, () => new RuntimeReports(library));
         SecurityRoles = new RuntimeSecurityRoles(library);
         RuntimeSecurityRoles callers = SecurityRoles;
         Hosting = Node(
@@ -234,6 +236,12 @@ public sealed partial class RuntimeRules
     public RuntimeSecureSurface Hosting =>
         field ?? throw RemoteBuild.Refused(_library, RuntimeSecureSurface.Entrypoints);
 
+    /// <summary>Section 25: every Report listed, each saying whether it is
+    /// quick or a Quest probes first, and one opened (ADR-0072, amendment
+    /// 2026-11-10). A node's build only.</summary>
+    public RuntimeReports Reports =>
+        field ?? throw RemoteBuild.Refused(_library, RuntimeReports.Entrypoints);
+
     /// <summary>The stage words, in message-path order — the segments a
     /// scope names a stage by: <c>node::Stage::WORDS</c>, read once when the
     /// library loads.</summary>
@@ -247,8 +255,8 @@ public sealed partial class RuntimeRules
     /// <summary>Section 7's, section 8's, section 9's, section 17's client,
     /// section 18's and section 19's request symbols, each of which a runtime
     /// must export, its remote build too. Sections 10 to 16, section 17's
-    /// serve side and section 19's signing are a node's, bound where the
-    /// library exports them (<see cref="RemoteBuild"/>).</summary>
+    /// serve side, section 19's signing and section 25 are a node's, bound
+    /// where the library exports them (<see cref="RemoteBuild"/>).</summary>
     public static IReadOnlyList<string> Entrypoints { get; } =
     [
         OperateAbi.HealthRolledEntrypoint,

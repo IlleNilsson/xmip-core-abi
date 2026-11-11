@@ -315,6 +315,7 @@ pub mod message;
 pub mod process;
 pub mod publication;
 pub mod remote;
+pub mod report;
 pub mod secret;
 pub mod subscription;
 
@@ -471,6 +472,7 @@ mod tests {
                 "XMIP_PROCESS_DECLARATIONS_ENTRYPOINT",
                 process::PROCESS_DECLARATIONS_ENTRYPOINT,
             ),
+            ("XMIP_REPORT_ENTRYPOINT", report::REPORT_ENTRYPOINT),
         ] {
             let line = HEADER
                 .lines()
@@ -551,6 +553,17 @@ mod tests {
         ] {
             assert_eq!(i64::from(value), header_value(name), "{name}");
         }
+    }
+
+    #[test]
+    fn every_report_kind_matches_the_header() {
+        for (name, value) in [
+            ("XMIP_REPORT_EXISTING_DATA", report::kind::EXISTING_DATA),
+            ("XMIP_REPORT_QUEST", report::kind::QUEST),
+        ] {
+            assert_eq!(i64::from(value), header_value(name), "{name}");
+        }
+        assert!(HEADER.contains("XmipReportFn"));
     }
 
     #[test]

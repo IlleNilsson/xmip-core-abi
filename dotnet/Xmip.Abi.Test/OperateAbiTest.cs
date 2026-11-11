@@ -133,6 +133,7 @@ public sealed class OperateAbiTest
     [InlineData("XMIP_NODE_ISSUE_ENTRYPOINT", OperateAbi.NodeIssueEntrypoint)]
     [InlineData("XMIP_AUTHORITY_ENTRYPOINT", OperateAbi.AuthorityEntrypoint)]
     [InlineData("XMIP_DATABASE_UPGRADE_ENTRYPOINT", OperateAbi.DatabaseUpgradeEntrypoint)]
+    [InlineData("XMIP_REPORT_ENTRYPOINT", OperateAbi.ReportEntrypoint)]
     [InlineData("XMIP_HOST_ISSUE_ENTRYPOINT", OperateAbi.HostIssueEntrypoint)]
     [InlineData("XMIP_LISTENER_OPEN_ENTRYPOINT", OperateAbi.ListenerOpenEntrypoint)]
     [InlineData("XMIP_LISTENER_ADDRESS_ENTRYPOINT", OperateAbi.ListenerAddressEntrypoint)]
@@ -229,7 +230,8 @@ public sealed class OperateAbiTest
     [Theory]
     [InlineData("ACTION", typeof(EventAction))]
     [InlineData("OUTCOME", typeof(EventOutcome))]
-    public void KnowsEverySectionElevenValueTheHeaderDefinesAndNoOther(
+    [InlineData("REPORT", typeof(ReportKind))]
+    public void KnowsEverySectionElevenAndTwentyFiveValueTheHeaderDefinesAndNoOther(
         string family, Type values)
     {
         IReadOnlyDictionary<string, int> header = Header.Enumerators(family);

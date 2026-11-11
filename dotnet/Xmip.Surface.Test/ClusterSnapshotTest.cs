@@ -301,6 +301,35 @@ public sealed class ClusterSnapshotTest
     }
 
     [Fact]
+    public void EachDrawnThingIsAsActiveAsWhatItsLinksCarriedPerSecond()
+    {
+        // A drawn thing's activity is what moved through it per second over
+        // its publisher's window (ADR-0052, amendment 2026-11-10): never
+        // less than what the links into it or out of it carried, and the
+        // cluster's never a share of its nodes alive. Until 2026-11-11 the
+        // fixture said 1 for each node alive and 0 for every stage and Party.
+        TopologySnapshot topology = new SnapshotOperator(Fixture).Topology();
+
+        Assert.All(topology.Nodes, node =>
+        {
+            double inward = topology.Links
+                .Where(link => link.To == node.Id)
+                .Sum(link => link.Rate);
+            double outward = topology.Links
+                .Where(link => link.From == node.Id)
+                .Sum(link => link.Rate);
+
+            Assert.True(
+                node.Activity >= Math.Max(inward, outward),
+                $"{node.Id}: {node.Activity} against {inward} in and {outward} out");
+        });
+        double Activity(string id) => Assert.Single(topology.Nodes, node => node.Id == id).Activity;
+        Assert.Equal(1.5D, Activity($"node/{Receiver}/receive"));
+        Assert.Equal(1.5D, Activity("cluster"));
+        Assert.Equal(0D, Activity($"node/{Receiver}/receive/tcp"));
+    }
+
+    [Fact]
     public void APartySendsIntoTheReceiveStagesAndTheSendStagesDeliverToOne()
     {
         // The owner, 2026-09-29: something is sending streams to a Xmip Node;

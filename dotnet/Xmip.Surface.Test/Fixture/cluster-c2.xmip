@@ -48,6 +48,9 @@ roles = ["R1=receiving", "S1=sending"]
 online = ["R1"]
 stress = "harsh"
 
+# Nothing rose over the window its roll keeps: its one link's rate is zero,
+# and every drawn thing's activity, what moved through it per second, too
+# (ADR-0052, amendment 2026-11-10).
 [topology]
 source = "essentials — cluster C2"
 observed_unix_nanos = 1789111688000000000
@@ -61,7 +64,7 @@ scope = "xmip:///C2"
 state = "done"
 origin = "configured"
 load = 0.0
-activity = 1.0
+activity = 0.0
 evidence = "2 nodes, 1 of 2 leaves fine"
 
 [[topology.nodes]]
@@ -73,7 +76,7 @@ scope = "xmip:///C2/node/R1"
 state = "fine"
 origin = "both"
 load = 0.0
-activity = 1.0
+activity = 0.0
 evidence = "3/3 rounds passed"
 
 [[topology.nodes]]
@@ -85,7 +88,7 @@ scope = "xmip:///C2/node/S1"
 state = "done"
 origin = "both"
 load = 0.0
-activity = 1.0
+activity = 0.0
 evidence = "connection refused by billing-x (10.0.9.7:5671)"
 
 [[topology.links]]

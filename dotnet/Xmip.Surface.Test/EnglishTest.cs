@@ -151,6 +151,15 @@ public sealed class EnglishTest
         Assert.Equal("1.2K", English.Moving(1234));
         Assert.Equal("1.2M", English.Moving(1_234_567));
         Assert.Equal("1.2K/s", English.Rate(1234));
+
+        // One Message in a publisher's half-minute window (ADR-0052,
+        // amendment 2026-11-10): a trickle, never stalled.
+        Assert.NotEqual("0/s", English.Rate(0.033));
+        Assert.Equal("0.03/s", English.Rate(0.033));
+        Assert.Equal("0.03", English.Moving(1 / 30D));
+        Assert.Equal("0.05", English.Moving(0.049));
+        Assert.Equal("0.1", English.Moving(0.05));
+        Assert.Equal("<0.01", English.Moving(0.001));
     }
 
     [Fact]

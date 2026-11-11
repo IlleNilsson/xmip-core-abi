@@ -12,8 +12,9 @@ namespace Xmip.Surface;
 /// nowhere in .NET. A status crosses the
 /// boundary as a code; this is the one place it becomes a sentence, so the
 /// board, the command and the cmdlet say the same thing about the same code.
+/// What is moving, a rate and its number, is <c>English.Rate.cs</c>.
 /// </summary>
-public static class English
+public static partial class English
 {
     /// <summary>The mood as the word the estate uses, lower case —
     /// <c>observe::Health::word</c>, called in the runtime, so the word a
@@ -252,48 +253,6 @@ public static class English
             ? refused.Message.Replace($" (Parameter '{name}')", string.Empty,
                 StringComparison.Ordinal)
             : refused.Message;
-    }
-
-    /// <summary>What a figure is moving, as a reader's <see cref="FigureWatch"/>
-    /// gave it: the rate, or — where the reader has seen one publication and so
-    /// has no interval — that it is waiting, which is not a stall.</summary>
-    public static string Flow(double? perSecond)
-    {
-        return perSecond is { } rate ? Rate(rate) : "waiting for the next round";
-    }
-
-    /// <summary>A rate per second as a person reads it: <see cref="Moving"/>
-    /// and its unit.</summary>
-    public static string Rate(double perSecond)
-    {
-        return $"{Moving(perSecond)}/s";
-    }
-
-    /// <summary>
-    /// The number of a rate, without its unit, as every surface writes it:
-    /// the K, M and G ladder, with one decimal below ten of a unit carried down
-    /// to the unit itself — 0.3, 9.9, 240, 1.2K. A trickle is written 0.3 and
-    /// never 0, because <c>0</c> means stalled and nothing else may. The
-    /// prompt writes this bare, since a prompt's units are learned once (the
-    /// owner, 2026-09-20: *the Xmip Prompt does not need /s spelled out*);
-    /// everything else writes <see cref="Rate"/>.
-    /// </summary>
-    public static string Moving(double perSecond)
-    {
-        string[] units = ["K", "M", "G"];
-        double value = perSecond;
-        int unit = -1;
-
-        while (unit < units.Length - 1 && value >= 999.5)
-        {
-            value /= 1000;
-            unit++;
-        }
-
-        string format = value < 9.95 ? "0.#" : "0";
-
-        return value.ToString(format, CultureInfo.InvariantCulture)
-            + (unit < 0 ? string.Empty : units[unit]);
     }
 
     /// <summary>A stage of the message path as its name — <c>Receive</c>,

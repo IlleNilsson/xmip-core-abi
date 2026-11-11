@@ -77,7 +77,9 @@ public enum CommunicationPattern
 /// <summary>
 /// One infrastructure endpoint or a component beneath it. <paramref name="ParentId"/>
 /// forms the progressive drill-down; a null parent is an infrastructure-level node.
-/// Load and activity are normalized from zero to one.
+/// Load is normalized from zero to one; <paramref name="Activity"/> is what moved
+/// through it per second over its publisher's window
+/// (<c>observe::topology::window</c>), zero where nothing moved.
 /// </summary>
 public sealed record TopologyNode(
     string Id,
