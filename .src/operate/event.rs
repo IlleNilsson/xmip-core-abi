@@ -104,13 +104,15 @@ pub struct EventBatch {
     _private: [u8; 0],
 }
 
-/// `xmip_event_subscribe_v1`: `subscriber` (a Party's UUID) subscribes to
-/// what `filter` asks for through a queue of `capacity` (0: the default);
-/// its deliveries are audited as `program`'s, in `directory` when stated.
+/// `xmip_event_subscribe_v1`: this process subscribes to what `filter`
+/// asks for through a queue of `capacity` (0: the default), as the Party
+/// the account it runs as proves to be among the Parties of the node
+/// serving in it — no argument names a Party, and a caller no Party holds
+/// is refused `XMIP_E_AUTH` in `said`; its deliveries are audited as
+/// `program`'s, in `directory` when stated.
 pub type SubscribeFn = unsafe extern "C" fn(
     program: Str,
     directory: Str,
-    subscriber: Str,
     filter: *const EventFilter,
     capacity: usize,
     out: *mut *mut EventSubscription,
@@ -141,7 +143,6 @@ pub type Callback = unsafe extern "C" fn(context: *mut core::ffi::c_void, event:
 pub type ListenFn = unsafe extern "C" fn(
     program: Str,
     directory: Str,
-    subscriber: Str,
     filter: *const EventFilter,
     capacity: usize,
     callback: Callback,

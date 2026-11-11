@@ -4,14 +4,18 @@ namespace Xmip.Surface.Test;
 
 /// <summary>
 /// A .NET face subscribes to Events through the runtime the one discovery
-/// rule found, and its subscription is audited where the program's own
-/// records go (ADR-0065, ADR-0062). The crossing is Xmip.Abi's and tested
-/// there; these prove the face's API over it. Every audit goes to a
-/// temporary directory, never the operating system's log.
+/// rule found, as the Party the account it runs as proves to be among the
+/// Parties of the node serving in its process, and names none (ADR-0065;
+/// ADR-0019, amendment 2026-11-11). No node serves in a test's process, so
+/// these prove the face refused, the refusal audited where the program's own
+/// records go (ADR-0062), and a publish crossing. The crossing is
+/// Xmip.Abi's and tested there; draining and following are proven where a
+/// node serves, in the runtime's own tests. Every audit goes to a temporary
+/// directory, never the operating system's log.
 /// </summary>
 public sealed class EventFeedTest
 {
-    private const string Party = "0198a3c4-0000-7000-8000-000000000043";
+    private const string NoParty = "is no Party of a node serving in this process";
 
     private static readonly TestCluster Cluster = TestCluster.Read();
 
@@ -20,10 +24,8 @@ public sealed class EventFeedTest
 
     static EventFeedTest()
     {
-        // Being in this process admits nobody: the test hands the hub a
-        // policy allowing its Party.
-        RuntimeLibrary.Rules.Events.AuthorizeBy(
-            asked => asked.Party == Party ? true : null);
+        // Whatever the policy allows, a subscriber must prove to be a Party.
+        RuntimeLibrary.Rules.Events.AuthorizeBy(_ => true);
     }
 
     private static string Scratch()
@@ -31,80 +33,48 @@ public sealed class EventFeedTest
         return Path.Combine(Path.GetTempPath(), $"xmip-surface-event-{Guid.NewGuid():n}");
     }
 
-    private static EventRecord Raised(string scope, EventOutcome outcome)
-    {
-        return new EventRecord
-        {
-            Type = "se.xmip.send.test",
-            Action = EventAction.Send,
-            Outcome = outcome,
-            Scope = scope + Sent,
-        };
-    }
-
     [Fact]
-    public void ASubscriptionIsDrainedAndAuditedAsTheProgram()
+    public void AFeedNamesNoPartyAndIsRefusedAndAuditedWhereNoNodeServes()
     {
         string directory = Scratch();
         string scope = $"{Cluster.Scope}/surface-event-{Guid.NewGuid():n}";
-        EventFeed feed = new(new ProgramAudit("Xmip.Surface.Test", directory), Party);
+        EventFeed feed = new(new ProgramAudit("Xmip.Surface.Test", directory));
 
-        using (EventSubscription subscription = feed.Subscribe(new EventFilter { Scope = scope }))
-        {
-            Assert.Equal(1, EventFeed.Publish(Raised(scope, EventOutcome.Rejection)));
+        UnauthorizedAccessException refused = Assert.Throws<UnauthorizedAccessException>(
+            () => feed.Subscribe(new EventFilter { Scope = scope }));
+        Assert.Contains(NoParty, refused.Message, StringComparison.Ordinal);
 
-            EventRecord heard = Assert.Single(
-                subscription.Next(TimeSpan.FromSeconds(2), 16).Events);
-
-            Assert.Equal(EventOutcome.Rejection, heard.Outcome);
-            Assert.Equal(scope + Sent, heard.Scope);
-        }
-
-        // Unsubscribing waits until every record is kept.
         string text = File.ReadAllText(Path.Combine(directory, "audit.toml"));
         Assert.Contains("program = \"Xmip.Surface.Test\"", text, StringComparison.Ordinal);
         Assert.Contains("action = \"event.subscribe\"", text, StringComparison.Ordinal);
+        Assert.Contains(NoParty, text, StringComparison.Ordinal);
         Directory.Delete(directory, recursive: true);
     }
 
     [Fact]
-    public async Task FollowingYieldsEachEventAsItArrivesAndStopsWhenCancelled()
+    public async Task FollowingIsRefusedAsItStartsAndAPublishReachesNobody()
     {
         string directory = Scratch();
         string scope = $"{Cluster.Scope}/surface-follow-{Guid.NewGuid():n}";
-        EventFeed feed = new(new ProgramAudit("Xmip.Surface.Test", directory), Party);
-        using CancellationTokenSource stop = new();
-        List<EventRecord> heard = [];
+        EventFeed feed = new(new ProgramAudit("Xmip.Surface.Test", directory));
         CancellationToken cancelled = TestContext.Current.CancellationToken;
 
-        Task following = Task.Run(async () =>
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(async () =>
         {
             await foreach (EventRecord raised in feed.Follow(
-                new EventFilter { Scope = scope }, stop.Token))
+                new EventFilter { Scope = scope }, cancelled))
             {
-                heard.Add(raised);
-
-                if (heard.Count == 2)
-                {
-                    await stop.CancelAsync();
-                }
+                Assert.Fail($"nothing is heard here, and {raised.Type} was");
             }
-        }, cancelled);
+        });
 
-        // The subscription opens when the enumeration starts; until then a
-        // publish reaches nobody.
-        for (int i = 0; i < 2000 && EventFeed.Publish(Raised(scope, EventOutcome.Success)) == 0;
-            i++)
+        Assert.Equal(0, EventFeed.Publish(new EventRecord
         {
-            await Task.Delay(1, cancelled);
-        }
-
-        Assert.Equal(1, EventFeed.Publish(Raised(scope, EventOutcome.Failure)));
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(
-            () => following.WaitAsync(TimeSpan.FromSeconds(5), cancelled));
-
-        Assert.Equal([EventOutcome.Success, EventOutcome.Failure], heard.Select(e => e.Outcome));
-        Assert.Equal(0, EventFeed.Publish(Raised(scope, EventOutcome.Success)));
+            Type = "se.xmip.send.test",
+            Action = EventAction.Send,
+            Outcome = EventOutcome.Success,
+            Scope = scope + Sent,
+        }));
         Directory.Delete(directory, recursive: true);
     }
 }

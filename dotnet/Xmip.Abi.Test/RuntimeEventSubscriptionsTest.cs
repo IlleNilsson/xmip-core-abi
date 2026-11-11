@@ -6,12 +6,13 @@ namespace Xmip.Abi.Test;
 /// <summary>
 /// <see cref="RuntimeEventSubscriptions"/> crosses section 11's operator calls to
 /// the runtime this estate built and back (ADR-0065, amendment 2026-09-29):
-/// an Event subscription made in this process is listed, paused, resumed
-/// and removed, a second act on it is refused in words, and a publication's
-/// Event subscriptions are read. The order left where a publication says is
-/// one for both nouns, <see cref="RuntimeSubscriptionsTest"/>'s. What
-/// pausing means for delivery is
-/// <c>xmip-core-event</c>'s and tested there; these prove the crossing.
+/// a subscription refused in this process is never listed, an act on one
+/// the hub does not hold is refused in words, and a publication's Event
+/// subscriptions are read. No node serves in a test's process, so no
+/// subscription is made here (ADR-0019, amendment 2026-11-11); listing,
+/// pausing, resuming and removing one the hub holds are proven where a node
+/// serves, in the runtime's own tests. The order left where a publication
+/// says is one for both nouns, <see cref="RuntimeSubscriptionsTest"/>'s.
 /// </summary>
 public sealed class RuntimeEventSubscriptionsTest
 {
@@ -24,43 +25,19 @@ public sealed class RuntimeEventSubscriptionsTest
     private static RuntimeRules Rules => RuntimeRulesTest.Rules;
 
     [Fact]
-    public void ASubscriptionIsListedPausedResumedAndRemovedAndThenRefused()
+    public void ARefusedSubscriptionIsNeverListedAndAnActOnNoneIsRefused()
     {
         using Audited audited = new();
-        using EventSubscription subscription = Rules.Events.Subscribe(
-            "Xmip.Abi.Test", audited.Directory, RuntimeEventsTest.Party,
-            new EventFilter { Scope = audited.Scope, Outcomes = [EventOutcome.Failure] });
 
-        EventSubscriptionRecord mine = Mine(audited);
-        Assert.Equal(Node, mine.Node);
-        Assert.Equal(RuntimeEventsTest.Party, mine.Party);
-        Assert.Equal(string.Empty, mine.Subscriber);
-        Assert.Equal("every Event ending failure", mine.Action);
-        Assert.False(mine.Paused);
-        Assert.Equal("active", mine.State);
+        Assert.Throws<UnauthorizedAccessException>(() => Rules.Events.Subscribe(
+            "Xmip.Abi.Test", audited.Directory, new EventFilter { Scope = audited.Scope }));
 
-        Assert.Equal(
-            XmipStatus.Ok,
-            Rules.EventSubscriptions.Act(mine.Id, "pause", "ilian", out string said));
-        Assert.Contains("paused by ilian", said, StringComparison.Ordinal);
-        Assert.True(Mine(audited).Paused);
-        Assert.Equal(1, Rules.Events.Publish(audited.Raised(EventOutcome.Failure)));
-        Assert.Equal(1ul, Mine(audited).Queued);
-
-        Assert.Equal(
-            XmipStatus.Ok, Rules.EventSubscriptions.Act(mine.Id, "resume", "ilian", out _));
-        Assert.Single(subscription.Next(TimeSpan.FromSeconds(2), 16).Events);
-
-        Assert.Equal(
-            XmipStatus.Invalid, Rules.EventSubscriptions.Act(mine.Id, "sulk", "ilian", out said));
-        Assert.Contains("pause, resume, remove", said, StringComparison.Ordinal);
-        Assert.Equal(
-            XmipStatus.Ok, Rules.EventSubscriptions.Act(mine.Id, "remove", "ilian", out _));
         Assert.DoesNotContain(
             Rules.EventSubscriptions.Standing(Node).EventSubscriptions,
-            entry => entry.Id == mine.Id);
+            entry => entry.Scope == audited.Scope);
         Assert.Equal(
-            XmipStatus.NotFound, Rules.EventSubscriptions.Act(mine.Id, "pause", "ilian", out said));
+            XmipStatus.NotFound,
+            Rules.EventSubscriptions.Act(ulong.MaxValue, "pause", "ilian", out string said));
         Assert.StartsWith("REFUSED", said, StringComparison.Ordinal);
     }
 
@@ -81,12 +58,5 @@ public sealed class RuntimeEventSubscriptionsTest
         Assert.Equal((Sending, 2ul, true, 5ul), (held.Node, held.Id, held.Paused, held.Queued));
         Assert.Equal(
             ("operations", "0199a0a0-0000-7000-8000-000000000001"), (held.Subscriber, held.Party));
-    }
-
-    private static EventSubscriptionRecord Mine(Audited audited)
-    {
-        return Assert.Single(
-            Rules.EventSubscriptions.Standing(Node).EventSubscriptions,
-            entry => entry.Scope == audited.Scope);
     }
 }

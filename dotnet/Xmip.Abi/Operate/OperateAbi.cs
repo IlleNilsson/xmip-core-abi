@@ -197,8 +197,9 @@ public static partial class OperateAbi
     public const string ClusterSignedSliceEntrypoint = "xmip_cluster_signed_slice_v1";
 
     /// <summary>Subscribe to the process's Events with a filter: section 11,
-    /// forwarded to <c>xmip-core-event</c>'s <c>Hub::subscribe</c>
-    /// (ADR-0065).</summary>
+    /// forwarded to <c>xmip-core-event</c>'s <c>Hub::subscribe</c> (ADR-0065)
+    /// as the Party the process's account proves to be, never one it names
+    /// (ADR-0019, amendment 2026-11-11).</summary>
     public const string EventSubscribeEntrypoint = "xmip_event_subscribe_v1";
 
     /// <summary>Drain a subscription's queue as a batch: section 11.</summary>

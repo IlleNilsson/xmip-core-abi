@@ -26,8 +26,8 @@ public sealed class RuntimeRulesTest
             ?? throw new InvalidOperationException(reason);
 
         // Being in this process admits a subscriber to nothing: the tests
-        // hand the hub a policy allowing the Parties they subscribe as, as a
-        // hosting program does.
+        // hand the hub a policy, as a hosting program does, and a subscriber
+        // still has to prove to be a Party.
         rules.Events.AuthorizeBy(RuntimeEventsTest.Allowed);
         return rules;
     });

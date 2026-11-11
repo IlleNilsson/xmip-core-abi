@@ -9,6 +9,14 @@
  * publishes one Event there; drains it, prints it, frees the batch and
  * unsubscribes. The audit directory is the second argument, or the folder
  * xmip-event-example in the working directory.
+ *
+ * No argument names a Party: the subscriber is the account this process
+ * runs as, resolved through the Parties of the node serving in the process
+ * (ADR-0019, amendment 2026-11-11). Only code in a node's own process can
+ * be that, and no export lets a node serve in a standalone program's
+ * process yet (open problem 66): built as it is, this program is refused,
+ * prints the sentence that says so and exits 0, which is the answer there,
+ * not a failure. Its drain and print run where a node serves in the process.
  */
 
 #include <stdio.h>
@@ -16,27 +24,29 @@
 
 #include "xmip_event_library.h"
 
-/* A party UUID for the subscriber: any valid one, in this process. */
-#define SUBSCRIBER "0198a3c4-0000-7000-8000-000000000042"
-#define SCOPE      "xmip:///example/node/n1/receive/orders"
+#define SCOPE "xmip:///example/node/n1/receive/orders"
 
 static void print(const char *name, XmipStr value)
 {
     printf("  %-9s %.*s\n", name, (int)value.len, (const char *)value.ptr);
 }
 
-/* The example's policy: its own Party may subscribe; no opinion on others. */
+/* The example's policy: any Party a node serving here lends may see the
+ * example's scope, the scope itself or beneath it and nothing else; the
+ * subscriber must still prove to be one. */
 static int32_t allowed(void *context, XmipStr party, XmipStr mechanism, XmipStr value,
                        XmipScope artifact, XmipStr contract)
 {
     (void)context;
+    (void)party;
     (void)mechanism;
     (void)value;
-    (void)artifact;
     (void)contract;
-    return party.len == strlen(SUBSCRIBER) && memcmp(party.ptr, SUBSCRIBER, party.len) == 0
-               ? XMIP_EVENT_ALLOW
-               : XMIP_EVENT_NO_OPINION;
+    static const char scope[] = "xmip:///example";
+    const size_t n = sizeof scope - 1;
+    int within = artifact.len >= n && memcmp(artifact.ptr, scope, n) == 0
+                 && (artifact.len == n || artifact.ptr[n] == '/');
+    return within ? XMIP_EVENT_ALLOW : XMIP_EVENT_NO_OPINION;
 }
 
 int main(int argc, char **argv)
@@ -68,10 +78,15 @@ int main(int argc, char **argv)
     uint8_t said[512];
     size_t said_len = 0;
     XmipStatus status = xmip.subscribe(xmip_str("xmip-event-example"), xmip_str(directory),
-                                       xmip_str(SUBSCRIBER), &filter, 0, &subscription,
-                                       said, sizeof said, &said_len);
+                                       &filter, 0, &subscription, said, sizeof said, &said_len);
+    if (status == XMIP_E_AUTH) {
+        /* The sentence opens with REFUSED and says why. */
+        printf("%.*s\n", (int)said_len, (const char *)said);
+        xmip_event_library_close(&xmip);
+        return 0;
+    }
     if (status != XMIP_OK) {
-        fprintf(stderr, "REFUSED (%d). %.*s\n", status, (int)said_len, (const char *)said);
+        fprintf(stderr, "FAILED (%d). %.*s\n", status, (int)said_len, (const char *)said);
         xmip_event_library_close(&xmip);
         return 1;
     }

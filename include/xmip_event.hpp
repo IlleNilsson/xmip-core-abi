@@ -281,18 +281,19 @@ public:
     Library &operator=(const Library &) = delete;
     ~Library() { close(); }
 
-    // Subscribe to drain. Throws Error, with the gate's sentence when refused.
+    // Subscribe to drain, as the Party this process proves to be: the account
+    // it runs as, resolved through the Parties of the node serving in it; no
+    // argument names one. Throws Error with the sentence when refused.
     EventSubscription subscribe(std::string_view program, std::string_view directory,
-                           std::string_view subscriber, const Filter &filter,
-                           std::size_t capacity = 0) const {
-        return open(program, directory, subscriber, filter, capacity, nullptr);
+                           const Filter &filter, std::size_t capacity = 0) const {
+        return open(program, directory, filter, capacity, nullptr);
     }
 
     // Subscribe to be called back on a runtime thread, one call at a time.
     EventSubscription listen(std::string_view program, std::string_view directory,
-                        std::string_view subscriber, const Filter &filter, Callback callback,
+                        const Filter &filter, Callback callback,
                         std::size_t capacity = 0) const {
-        return open(program, directory, subscriber, filter, capacity,
+        return open(program, directory, filter, capacity,
                     std::make_unique<Callback>(std::move(callback)));
     }
 
@@ -396,8 +397,8 @@ private:
     }
 
     EventSubscription open(std::string_view program, std::string_view directory,
-                      std::string_view subscriber, const Filter &filter,
-                      std::size_t capacity, std::unique_ptr<Callback> callback) const {
+                      const Filter &filter, std::size_t capacity,
+                      std::unique_ptr<Callback> callback) const {
         std::vector<XmipStr> types;
         for (const auto &type : filter.types) {
             types.push_back(str(type));
@@ -415,11 +416,11 @@ private:
         uint8_t said[512];
         std::size_t said_len = 0;
         XmipStatus status = callback
-            ? symbols_.listen(str(program), str(directory), str(subscriber), &wire, capacity,
+            ? symbols_.listen(str(program), str(directory), &wire, capacity,
                               &Library::trampoline, callback.get(), &handle, said,
                               sizeof said, &said_len)
-            : symbols_.subscribe(str(program), str(directory), str(subscriber), &wire,
-                                 capacity, &handle, said, sizeof said, &said_len);
+            : symbols_.subscribe(str(program), str(directory), &wire, capacity, &handle,
+                                 said, sizeof said, &said_len);
         if (status != XMIP_OK) {
             throw Error(status, std::string(reinterpret_cast<const char *>(said), said_len));
         }

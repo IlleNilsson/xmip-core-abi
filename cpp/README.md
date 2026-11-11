@@ -21,7 +21,16 @@ them, the queue and the audit are the runtime's.
   thread the runtime starts, one call at a time; the view is valid for that
   call only.
 - Any status other than `XMIP_OK` throws `xmip::event::Error`, carrying the
-  status and, for a refused subscription, the authorization gate's sentence.
+  status and, for a refused subscription, the sentence that refused it.
+- No argument names the subscriber: it is the account this process runs
+  as, resolved through the Parties of the node serving in the process
+  (ADR-0019, amendment 2026-11-11). Where no node serves, or no Party holds
+  the account, `subscribe` and `listen` throw `XMIP_E_AUTH`. Only code in a
+  node's own process can subscribe, and no export lets a node serve in a
+  standalone program's process yet, so the snippet below is refused there
+  today. The test runs where no node serves and proves exactly that, beside
+  publish; the batch, the `listen` trampoline and their latency are
+  untested until a node serves in its process (open problem 66).
 
 ## Use
 
@@ -33,16 +42,14 @@ xmip::event::Filter filter;
 filter.scope = "xmip:///C1";
 filter.outcomes = {XMIP_OUTCOME_FAILURE};
 
-auto subscription = xmip.subscribe("my-program", "/var/log/my-program",
-                                   "0198a3c4-0000-7000-8000-000000000042", filter);
+auto subscription = xmip.subscribe("my-program", "/var/log/my-program", filter);
 if (auto batch = subscription.next(1000)) {
     for (std::size_t i = 0; i < batch->size(); i++) {
         std::string_view type = (*batch)[i].type();
     }
 }
 
-auto listening = xmip.listen("my-program", "/var/log/my-program",
-                             "0198a3c4-0000-7000-8000-000000000042", filter,
+auto listening = xmip.listen("my-program", "/var/log/my-program", filter,
                              [](const xmip::event::EventView &event) { /* ... */ });
 ```
 

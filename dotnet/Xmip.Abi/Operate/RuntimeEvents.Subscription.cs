@@ -102,20 +102,17 @@ public sealed partial class RuntimeEvents
     private EventSubscription Open(
         string program,
         string? directory,
-        string subscriber,
         EventFilter? filter,
         int capacity,
         EventListening? listening)
     {
         ArgumentNullException.ThrowIfNull(program);
-        ArgumentNullException.ThrowIfNull(subscriber);
         ArgumentOutOfRangeException.ThrowIfNegative(capacity);
 
         filter ??= EventFilter.Everything;
 
-        // program, directory, subscriber, scope, party, then the types.
-        List<string> texts =
-            [program, directory ?? string.Empty, subscriber, filter.Scope, filter.Party];
+        // program, directory, scope, party, then the types.
+        List<string> texts = [program, directory ?? string.Empty, filter.Scope, filter.Party];
         texts.AddRange(filter.Types);
 
         Utf8Pack pack = new(texts);
@@ -143,18 +140,18 @@ public sealed partial class RuntimeEvents
 
                 XmipEventFilter asked = new()
                 {
-                    Types = each + 5,
-                    TypesLen = (nuint)(strings.Length - 5),
+                    Types = each + 4,
+                    TypesLen = (nuint)(strings.Length - 4),
                     Outcomes = wanted,
                     OutcomesLen = (nuint)outcomes.Length,
-                    Scope = each[3],
-                    Party = each[4],
+                    Scope = each[2],
+                    Party = each[3],
                 };
 
                 status = listening is null
-                    ? _subscribe(each[0], each[1], each[2], &asked, (nuint)capacity, &handle,
+                    ? _subscribe(each[0], each[1], &asked, (nuint)capacity, &handle,
                         sentence, (nuint)said.Length, &saidLength)
-                    : _listen(each[0], each[1], each[2], &asked, (nuint)capacity,
+                    : _listen(each[0], each[1], &asked, (nuint)capacity,
                         &EventCallbacks.Heard, (void*)GCHandle.ToIntPtr(context), &handle,
                         sentence, (nuint)said.Length, &saidLength);
             }

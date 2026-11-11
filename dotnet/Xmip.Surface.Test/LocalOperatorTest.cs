@@ -15,12 +15,11 @@ namespace Xmip.Surface.Test;
 /// (<see cref="Measured"/>), so the time is Xmip's and not the run's.
 /// </summary>
 /// <remarks>
-/// The notice is held by what is Xmip's alone, as the Event's is
-/// (<c>EventLatencyTest</c>), each figure as the median of the fastest round
-/// in every five: a poll or a busy loop is in every round and is in the
-/// fastest of five too, where a wake that waited its turn for a processor,
-/// or a thread of the .NET runtime compiling beside it, is in some rounds
-/// only. <b>The wake is a wake</b>: from post to notice is under a
+/// The notice is held by what is Xmip's alone, each figure as the median of
+/// the fastest round in every five: a poll or a busy loop is in every round
+/// and is in the fastest of five too, where a wake that waited its turn for a
+/// processor, or a thread of the .NET runtime compiling beside it, is in some
+/// rounds only. <b>The wake is a wake</b>: from post to notice is under a
 /// millisecond plus a plain wake across a pipe, measured beside it round by
 /// round — a thread woken on a kernel event writes a byte and an awaiting
 /// read continues, the notice's kind of hop without Xmip's work in it. A

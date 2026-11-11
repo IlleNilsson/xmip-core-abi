@@ -65,14 +65,14 @@ public final class Library implements AutoCloseable {
         loaded = Arena.ofShared();
         SymbolLookup lookup = SymbolLookup.libraryLookup(path, loaded);
         subscribe = bind(lookup, SUBSCRIBE_ENTRYPOINT, FunctionDescriptor.of(JAVA_INT,
-                Layout.STR, Layout.STR, Layout.STR, ADDRESS, JAVA_LONG, ADDRESS,
-                ADDRESS, JAVA_LONG, ADDRESS));
+                Layout.STR, Layout.STR, ADDRESS, JAVA_LONG, ADDRESS, ADDRESS, JAVA_LONG,
+                ADDRESS));
         next = bind(lookup, NEXT_ENTRYPOINT, FunctionDescriptor.of(JAVA_INT,
                 ADDRESS, JAVA_INT, JAVA_LONG, ADDRESS, ADDRESS, ADDRESS, ADDRESS));
         batchFree = bind(lookup, BATCH_FREE_ENTRYPOINT, FunctionDescriptor.ofVoid(ADDRESS));
         listen = bind(lookup, LISTEN_ENTRYPOINT, FunctionDescriptor.of(JAVA_INT,
-                Layout.STR, Layout.STR, Layout.STR, ADDRESS, JAVA_LONG, ADDRESS, ADDRESS,
-                ADDRESS, ADDRESS, JAVA_LONG, ADDRESS));
+                Layout.STR, Layout.STR, ADDRESS, JAVA_LONG, ADDRESS, ADDRESS, ADDRESS,
+                ADDRESS, JAVA_LONG, ADDRESS));
         unsubscribe = bind(lookup, UNSUBSCRIBE_ENTRYPOINT, FunctionDescriptor.ofVoid(ADDRESS));
         publish = bind(lookup, PUBLISH_ENTRYPOINT,
                 FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS));
@@ -97,13 +97,16 @@ public final class Library implements AutoCloseable {
 
     /**
      * Subscribe to drain. {@code program} and {@code directory} say where the
-     * subscription is audited (an empty directory: the capability decides);
-     * {@code subscriber} is the Party's UUID. Throws {@link EventException},
-     * with the authorization gate's sentence when refused.
+     * subscription is audited (an empty directory: the capability decides).
+     * No argument names the subscriber: it is the account this process runs
+     * as, resolved through the Parties of the node serving in the process
+     * (ADR-0019, amendment 2026-11-11). Throws {@link EventException}, with
+     * the sentence that refused it, where no node serves or no Party holds the
+     * account, or where the authorization gate refuses the Party.
      */
-    public EventSubscription subscribe(String program, String directory, String subscriber,
-            Filter filter, long capacity) {
-        return open(program, directory, subscriber, filter, capacity, null);
+    public EventSubscription subscribe(String program, String directory, Filter filter,
+            long capacity) {
+        return open(program, directory, filter, capacity, null);
     }
 
     /**
@@ -111,9 +114,9 @@ public final class Library implements AutoCloseable {
      * starts for this subscription, one call at a time. An exception the
      * callback throws is dropped, since nothing may unwind into the runtime.
      */
-    public EventSubscription listen(String program, String directory, String subscriber,
-            Filter filter, long capacity, Consumer<Event> callback) {
-        return open(program, directory, subscriber, filter, capacity, callback);
+    public EventSubscription listen(String program, String directory, Filter filter,
+            long capacity, Consumer<Event> callback) {
+        return open(program, directory, filter, capacity, callback);
     }
 
     /** One attempt to subscribe, as the program's policy is asked of it. */
@@ -240,8 +243,8 @@ public final class Library implements AutoCloseable {
         loaded.close();
     }
 
-    private EventSubscription open(String program, String directory, String subscriber,
-            Filter filter, long capacity, Consumer<Event> callback) {
+    private EventSubscription open(String program, String directory, Filter filter,
+            long capacity, Consumer<Event> callback) {
         Arena upcall = callback == null ? null : Arena.ofShared();
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment out = arena.allocate(ADDRESS);
@@ -250,17 +253,16 @@ public final class Library implements AutoCloseable {
             MemorySegment wire = Layout.filter(arena, filter);
             MemorySegment p = Layout.str(arena, program);
             MemorySegment d = Layout.str(arena, directory);
-            MemorySegment s = Layout.str(arena, subscriber);
             int status;
             if (callback == null) {
-                status = (int) subscribe.invokeExact(p, d, s, wire, capacity, out, said,
+                status = (int) subscribe.invokeExact(p, d, wire, capacity, out, said,
                         said.byteSize(), saidLen);
             } else {
                 MethodHandle called = MethodHandles.lookup().findStatic(Library.class,
                         "called", MethodType.methodType(void.class, Consumer.class,
                                 MemorySegment.class, MemorySegment.class)).bindTo(callback);
                 MemorySegment stub = linker.upcallStub(called, CALLBACK, upcall);
-                status = (int) listen.invokeExact(p, d, s, wire, capacity, stub,
+                status = (int) listen.invokeExact(p, d, wire, capacity, stub,
                         MemorySegment.NULL, out, said, said.byteSize(), saidLen);
             }
             if (status != OK) {

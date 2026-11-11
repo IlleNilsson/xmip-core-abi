@@ -5,24 +5,27 @@ using Xmip.Abi.Operate;
 namespace Xmip.Surface;
 
 /// <summary>
-/// Events as every .NET face subscribes to them (ADR-0065): through the
-/// runtime's library that <see cref="RuntimeLibrary"/>'s one rule found, as
-/// the Party <paramref name="subscriber"/>, audited where the program's own
-/// records go (<paramref name="audit"/>, ADR-0062). Which Events match, who
-/// may see them, the queue and the audit of every subscription, delivery and
-/// refusal are <c>xmip-core-event</c>'s; this only opens and reads.
+/// A .NET program's subscription to the Events of its own process
+/// (ADR-0065): through the runtime's library that
+/// <see cref="RuntimeLibrary"/>'s one rule found, as the Party the account
+/// the program runs as proves to be among the Parties of the node serving in
+/// its process — never one it names (ADR-0019, amendment 2026-11-11) —
+/// audited where the program's own records go (<paramref name="audit"/>,
+/// ADR-0062). Which Events match, who may see them, the queue and the audit
+/// of every subscription, delivery and refusal are <c>xmip-core-event</c>'s;
+/// this only opens and reads.
 /// </summary>
 /// <remarks>
-/// In process: what a face hears is what is published in the process that
-/// loaded the library — a node it started, or <see cref="Publish"/>. Events
-/// of a node in another process reach a subscriber over the wire
-/// (ADR-0065 clause 3), not through this.
+/// Only code in a node's own process can subscribe, and no export lets a
+/// node serve in a face's process (<c>xmip_start_v1</c> runs nothing), so in
+/// a face every subscription is refused today and no face calls this; its
+/// draining and following are untested until a node serves in the process
+/// (open problem 66). Events of a node in another process reach a subscriber
+/// over the wire (ADR-0065 clause 3), not through this.
 /// </remarks>
 /// <param name="audit">The program subscribing, and where its records
 /// go.</param>
-/// <param name="subscriber">The Party's UUID the program subscribes
-/// as.</param>
-public sealed class EventFeed(ProgramAudit audit, string subscriber)
+public sealed class EventFeed(ProgramAudit audit)
 {
     // How many Events a follower may hold before the runtime's own queue
     // holds the rest, and counts what it refuses.
@@ -31,23 +34,20 @@ public sealed class EventFeed(ProgramAudit audit, string subscriber)
     /// <summary>The program subscribing.</summary>
     public ProgramAudit Audit { get; } = audit ?? throw new ArgumentNullException(nameof(audit));
 
-    /// <summary>The Party's UUID it subscribes as.</summary>
-    public string Subscriber { get; } =
-        subscriber ?? throw new ArgumentNullException(nameof(subscriber));
-
     /// <summary>
     /// A subscription to drain (<see cref="EventSubscription.Next"/>), which
     /// the caller disposes. <paramref name="capacity"/> bounds its queue, 0
     /// for the runtime's default.
     /// </summary>
-    /// <exception cref="UnauthorizedAccessException">The authorization gate
-    /// refused the subscriber; the message is its sentence.</exception>
+    /// <exception cref="UnauthorizedAccessException">No node serving in this
+    /// process holds its account as a Party, or the authorization gate refused
+    /// the Party; the message is the sentence.</exception>
     /// <exception cref="InvalidOperationException">No runtime library could be
     /// loaded.</exception>
     public EventSubscription Subscribe(EventFilter? filter = null, int capacity = 0)
     {
         return RuntimeLibrary.Rules.Events.Subscribe(
-            Audit.Program, Audit.Directory, Subscriber, filter, capacity);
+            Audit.Program, Audit.Directory, filter, capacity);
     }
 
     /// <summary>
@@ -68,8 +68,7 @@ public sealed class EventFeed(ProgramAudit audit, string subscriber)
         // there while the follower is full; completing the channel first is
         // what lets unsubscribing wait for that callback to return.
         EventSubscription subscription = RuntimeLibrary.Rules.Events.Listen(
-            Audit.Program, Audit.Directory, Subscriber, heard => Hand(arrived.Writer, heard),
-            filter);
+            Audit.Program, Audit.Directory, heard => Hand(arrived.Writer, heard), filter);
 
         try
         {
