@@ -25,6 +25,8 @@ namespace Xmip.Abi.Operate;
 /// <param name="Held">Messages it holds, matched while paused and not yet
 /// picked up.</param>
 /// <param name="Since">When its state began.</param>
+/// <param name="SendPorts">The Send Ports its destination reaches, by name:
+/// where its work goes (ADR-0013, amendment 2026-11-11).</param>
 public sealed record SubscriptionRecord(
     string Node,
     string Name,
@@ -38,7 +40,12 @@ public sealed record SubscriptionRecord(
     string By,
     ulong PickedUp,
     ulong Held,
-    DateTimeOffset Since);
+    DateTimeOffset Since,
+    IReadOnlyList<string>? SendPorts = null)
+{
+    /// <summary>The Send Ports it reaches; none for a Work Process.</summary>
+    public IReadOnlyList<string> Reaches => SendPorts ?? [];
+}
 
 /// <summary>
 /// The Subscriptions a node or a publication carries, and where acts on them
@@ -84,6 +91,9 @@ public sealed record SubscriptionList(
             Text("by"),
             entry.GetProperty("picked_up").GetUInt64(),
             entry.GetProperty("held").GetUInt64(),
-            Operator.FromNanos(entry.GetProperty("since_unix_nanos").GetInt64()));
+            Operator.FromNanos(entry.GetProperty("since_unix_nanos").GetInt64()),
+            entry.TryGetProperty("send_ports", out JsonElement ports)
+                ? [.. ports.EnumerateArray().Select(port => port.GetString() ?? string.Empty)]
+                : []);
     }
 }

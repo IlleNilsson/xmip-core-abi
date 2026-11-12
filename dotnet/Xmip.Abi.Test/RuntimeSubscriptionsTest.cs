@@ -103,4 +103,39 @@ public sealed class RuntimeSubscriptionsTest
         Assert.Equal(("RoundTrip", "ilian"), (held.Application, held.By));
         Assert.Empty(read.EventSubscriptions.EventSubscriptions);
     }
+
+    /// <summary>
+    /// ADR-0013 and ADR-0027, amendments 2026-11-11: a Subscription crosses
+    /// with the Send Ports its destination reaches, and what the publication
+    /// draws crosses with where its work came from and went, every word the
+    /// runtime's (<c>xmip_publication_from_to_v1</c>).
+    /// </summary>
+    [Fact]
+    public void ASubscriptionsSendPortsAndADrawnThingsFromAndToCross()
+    {
+        string location = $"{Node}/receive/In";
+        string text =
+            $"node = \"{Cluster.Scope}\"\n"
+            + $"[[records]]\nscope = \"{location}\"\nstate = \"fine\"\n"
+            + $"[[subscriptions]]\nnode = \"{Node}\"\nname = \"onward\"\n"
+            + "send_ports = [\"Out\"]\n"
+            + "[topology]\nobserved_unix_nanos = 5\n"
+            + $"[[topology.nodes]]\nid = \"node/{Processor}/receive/In\"\nkind = \"endpoint\"\n"
+            + $"scope = \"{location}\"\n"
+            + $"[[topology.links]]\nid = \"in\"\nfrom = \"node/{Processor}/receive/In\"\n"
+            + $"to = \"node/{Processor}/process/onward\"\n";
+
+        Publication read = Rules.Publications.Read(text, out string refusal)
+            ?? throw new InvalidOperationException(refusal);
+
+        Assert.Equal(["Out"], Assert.Single(read.Subscriptions.Subscriptions).Reaches);
+        FromTo path = Assert.Contains(location, read.Topology!.Paths!);
+        Assert.Equal($"In [{Processor}]", path.From);
+        Assert.Equal($"Out", path.To);
+        Assert.Equal($"from In [{Processor}] → to Out", path.Line);
+        Assert.Equal(
+            ["Receive Location", "Subscription", "Send Port"],
+            path.Hops.Select(hop => hop.Kind));
+        Assert.Equal("no Subscription", path.Unrouted);
+    }
 }

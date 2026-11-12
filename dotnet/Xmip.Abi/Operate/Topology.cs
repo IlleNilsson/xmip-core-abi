@@ -113,12 +113,16 @@ public sealed record CommunicationLink(
     uint Attempts,
     string Evidence);
 
-/// <summary>A point-in-time configured and observed communication topology.</summary>
+/// <summary>A point-in-time configured and observed communication topology,
+/// and where the work at each thing it draws came from and went, by the scope
+/// it is drawn at, as the runtime says it (<c>observe::topology::from_to</c>,
+/// section 8; ADR-0027, amendment 2026-11-11).</summary>
 public sealed record TopologySnapshot(
     IReadOnlyList<TopologyNode> Nodes,
     IReadOnlyList<CommunicationLink> Links,
     DateTimeOffset Observed,
-    string Source)
+    string Source,
+    IReadOnlyDictionary<string, FromTo>? Paths = null)
 {
     /// <summary>An empty snapshot from a surface that publishes no topology.</summary>
     public static TopologySnapshot Empty(string source)

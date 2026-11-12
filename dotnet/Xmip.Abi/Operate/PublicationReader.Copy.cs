@@ -67,12 +67,14 @@ public sealed partial class PublicationReader
         unsafe
         {
             string drawnBy = head.TopologySource.Read();
+            TopologyNode[] nodes = [.. Fill(_nodes, handle).Select(PublicationEntries.Node)];
 
             return new TopologySnapshot(
-                [.. Fill(_nodes, handle).Select(PublicationEntries.Node)],
+                nodes,
                 [.. Fill(_links, handle).Select(PublicationEntries.Link)],
                 Operator.FromNanos(head.TopologyObservedUnixNanos),
-                drawnBy.Length > 0 ? drawnBy : source);
+                drawnBy.Length > 0 ? drawnBy : source,
+                Paths(handle, nodes));
         }
     }
 

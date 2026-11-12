@@ -257,6 +257,23 @@ public sealed class ScopeIndex
             .Select(entry => entry.Scope).Order(StringComparer.Ordinal)];
     }
 
+    /// <summary>
+    /// What a person reads a scope's own segment as, on every surface that
+    /// shows it — a crumb, a drill row, a configuration row: a scope where a
+    /// stage begins by the stage's title (<see cref="English.Stage"/>), the
+    /// process stage the Work Process and never a bare process; any other
+    /// scope by its segment. The one rule (the owner, 2026-11-10: <i>it is
+    /// "Work Process", never "Process"</i>; ADR-0052, amendment 2026-11-11).
+    /// </summary>
+    public string Label(string scope)
+    {
+        ArgumentNullException.ThrowIfNull(scope);
+
+        return entries.TryGetValue(Normal(scope), out ScopeEntry? entry)
+            ? entry.BeginsStage ? English.Stage(entry.Label) : entry.Label
+            : ScopeTree.Parts(scope) is [.., string last] ? last : scope;
+    }
+
     /// <summary>The worst leaf on a stage of the message path — receive, process
     /// or send — wherever that stage sits in the tree. Null when no leaf is
     /// on it.</summary>

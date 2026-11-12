@@ -25,6 +25,9 @@ pub const NODES_ENTRYPOINT: &str = "xmip_publication_nodes_v1";
 pub const LINKS_ENTRYPOINT: &str = "xmip_publication_links_v1";
 /// One of its run's lists.
 pub const RUN_ENTRYPOINT: &str = "xmip_publication_run_v1";
+/// Where the work at a scope of it came from and went:
+/// `observe::topology::from_to`.
+pub const FROM_TO_ENTRYPOINT: &str = "xmip_publication_from_to_v1";
 
 /// What a topology kind is called: `observe::NodeKind::word` and `name`.
 pub const KIND_WORDS_ENTRYPOINT: &str = "xmip_topology_kind_words_v1";
@@ -234,6 +237,16 @@ pub type CurvePointsFn = unsafe extern "C" fn(
 /// Release a curve's handle.
 pub type CurveFreeFn = unsafe extern "C" fn(curve: *mut Curve);
 
+/// Where the work observed at a scope of a read publication came from and
+/// where it went, as JSON: `from`, `to`, `hops` and `unrouted`.
+pub type FromToFn = unsafe extern "C" fn(
+    publication: *const Publication,
+    scope: Str,
+    out: *mut u8,
+    cap: usize,
+    out_len: *mut usize,
+) -> i32;
+
 /// What a topology value is called: the word a publication writes and the
 /// name a person reads, both static.
 pub type TopologyWordsFn =
@@ -268,6 +281,7 @@ mod tests {
             ("XMIP_PUBLICATION_NODES_ENTRYPOINT", NODES_ENTRYPOINT),
             ("XMIP_PUBLICATION_LINKS_ENTRYPOINT", LINKS_ENTRYPOINT),
             ("XMIP_PUBLICATION_RUN_ENTRYPOINT", RUN_ENTRYPOINT),
+            ("XMIP_PUBLICATION_FROM_TO_ENTRYPOINT", FROM_TO_ENTRYPOINT),
             ("XMIP_TOPOLOGY_KIND_WORDS_ENTRYPOINT", KIND_WORDS_ENTRYPOINT),
             (
                 "XMIP_TOPOLOGY_ORIGIN_WORDS_ENTRYPOINT",

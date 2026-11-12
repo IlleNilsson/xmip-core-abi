@@ -194,8 +194,13 @@ public sealed class RuntimeRulesTest
         Assert.Null(Rules.StageCounted("Receive"));
         Assert.Equal([true, false, true], Rules.StageWords.Select(Rules.Pausable));
         Assert.Null(Rules.Pausable("file"));
-        Assert.Equal("work process", Rules.Location("process"));
+        Assert.Equal(
+            ["Receive Location", "Subscription", "Send Port"],
+            Rules.StageWords.Select(Rules.Location));
         Assert.Null(Rules.Location("capability"));
+        Assert.Equal(
+            ["Receive", "Work Process", "Send"], Rules.StageWords.Select(Rules.Title));
+        Assert.Null(Rules.Title("Process"));
     }
 
     [Fact]

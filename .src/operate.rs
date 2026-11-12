@@ -201,6 +201,8 @@ pub mod rule {
     pub const STAGE_PAUSABLE_ENTRYPOINT: &str = "xmip_stage_pausable_v1";
     /// `node::Stage::location`.
     pub const STAGE_LOCATION_ENTRYPOINT: &str = "xmip_stage_location_v1";
+    /// `node::Stage::title`.
+    pub const STAGE_TITLE_ENTRYPOINT: &str = "xmip_stage_title_v1";
     /// `observe::capability::declared`.
     pub const CAPABILITY_PUBLISHED_ENTRYPOINT: &str = "xmip_capability_published_v1";
     /// `node::Capability::from_entry`.
@@ -276,6 +278,9 @@ pub mod rule {
 
     /// What a thing at a stage is called, static.
     pub type StageLocationFn = unsafe extern "C" fn(stage: Str, out: *mut Str) -> i32;
+
+    /// A stage's title, what a person reads, static.
+    pub type StageTitleFn = unsafe extern "C" fn(stage: Str, out: *mut Str) -> i32;
 
     /// The capability a node published: its name (borrowed from `scope`),
     /// its roles, its online capability, or its refusal.
