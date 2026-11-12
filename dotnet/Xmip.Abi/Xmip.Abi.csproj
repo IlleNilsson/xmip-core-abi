@@ -33,7 +33,8 @@
          body is all in unsafe blocks, where the modifier now says its caller
          needs one; removing it drops that promise silently. Fixed in Roslyn
          (dotnet/roslyn#85732, a1bbcb8: a <safety> element keeps the modifier),
-         not yet in SDK 11.0.100-rc.3. Once an SDK carries it, XmipStr.Read's
+         not yet in SDK 11.0.100, whose analyzer still flags XmipStr.Read with
+         a <safety> element (2026-11-12). Once an SDK carries it, XmipStr.Read's
          caller promise moves into <safety> and this line goes. -->
     <NoWarn>$(NoWarn);IDE0380</NoWarn>
 
