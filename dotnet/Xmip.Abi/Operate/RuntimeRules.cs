@@ -63,6 +63,7 @@ public sealed partial class RuntimeRules
     private readonly delegate* unmanaged[Cdecl]<XmipStr, int*, int> _stageCounted;
     private readonly delegate* unmanaged[Cdecl]<XmipStr, byte*, int> _stagePausable;
     private readonly delegate* unmanaged[Cdecl]<XmipStr, XmipStr*, int> _stageLocation;
+    private readonly delegate* unmanaged[Cdecl]<XmipStr, XmipStr*, int> _stageTitle;
     private readonly delegate* unmanaged[Cdecl]<XmipStr, XmipStr*, nuint, nuint*, int> _roleStages;
     private readonly delegate* unmanaged[Cdecl]<
         XmipStr, XmipStr, XmipStr*, XmipStr*, nuint, nuint*, byte*, byte*, nuint, nuint*, int>
@@ -107,6 +108,8 @@ public sealed partial class RuntimeRules
             Export(library, OperateAbi.StagePausableEntrypoint);
         _stageLocation = (delegate* unmanaged[Cdecl]<XmipStr, XmipStr*, int>)
             Export(library, OperateAbi.StageLocationEntrypoint);
+        _stageTitle = (delegate* unmanaged[Cdecl]<XmipStr, XmipStr*, int>)
+            Export(library, OperateAbi.StageTitleEntrypoint);
         _roleStages = (delegate* unmanaged[Cdecl]<XmipStr, XmipStr*, nuint, nuint*, int>)
             Export(library, OperateAbi.RoleStagesEntrypoint);
         _published = (delegate* unmanaged[Cdecl]<
@@ -264,6 +267,7 @@ public sealed partial class RuntimeRules
         OperateAbi.StageCountedEntrypoint,
         OperateAbi.StagePausableEntrypoint,
         OperateAbi.StageLocationEntrypoint,
+        OperateAbi.StageTitleEntrypoint,
         OperateAbi.CapabilityPublishedEntrypoint,
         OperateAbi.CapabilityEntryEntrypoint,
         .. PublicationReader.Entrypoints,

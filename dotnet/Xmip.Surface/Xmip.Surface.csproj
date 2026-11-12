@@ -36,13 +36,13 @@
          One reader, here, for a host's configuration and for a published
          snapshot alike. -->
     <PackageReference Include="Tomlyn.Extensions.Configuration" Version="2.0.1" />
-    <PackageReference Include="Microsoft.Extensions.Configuration" Version="11.0.0-rc.3.26522.148" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="11.0.0" />
 
     <!-- A program that cannot reach the audit capability at all writes to
          the Windows Event Log itself (ADR-0062 clause 3; OperatingSystemLog).
          pwsh 7.7 carries its own .NET 11 copy, and the module asks for that
          one. -->
-    <PackageReference Include="System.Diagnostics.EventLog" Version="11.0.0-rc.3.26522.148" />
+    <PackageReference Include="System.Diagnostics.EventLog" Version="11.0.0" />
   </ItemGroup>
 
   <!-- Runtime async (.NET 11): an async method is the runtime's own, not a

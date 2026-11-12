@@ -138,8 +138,8 @@ public static class ScopeTree
         return stage.Length > 0 && RuntimeLibrary.Rules.Pausable(stage) == true;
     }
 
-    /// <summary>What a thing configured at a stage is called — a receive
-    /// location, a work process, a send location: <c>node::Stage::location</c>,
+    /// <summary>What a thing configured at a stage is called — a Receive
+    /// Location, a Subscription, a Send Location: <c>node::Stage::location</c>,
     /// called in the runtime. Null for a word that is no stage.</summary>
     public static string? Location(string stage)
     {
@@ -237,7 +237,7 @@ public static class ScopeTree
     /// through that held one row. A scope not beneath the top is trailed from
     /// the root.
     /// </summary>
-    public static IReadOnlyList<Crumb> Trail(string scope, string top)
+    public static IReadOnlyList<Crumb> Trail(string scope, string top, ScopeIndex? index = null)
     {
         string from = Beneath(scope, top) ? top : Root;
         string[] above = Parts(from);
@@ -247,7 +247,11 @@ public static class ScopeTree
         foreach (string segment in Parts(scope).Skip(above.Length))
         {
             accumulated.Add(segment);
-            trail.Add(new Crumb(segment, Join(accumulated)));
+            string at = Join(accumulated);
+
+            // Read as a person reads it where the publication is indexed: a
+            // stage by its title, Work Process (ScopeIndex.Label).
+            trail.Add(new Crumb(index?.Label(at) ?? segment, at));
         }
 
         return trail;

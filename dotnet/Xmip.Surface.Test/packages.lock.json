@@ -42,6 +42,11 @@
         "resolved": "18.11.0",
         "contentHash": "MhN9wpvL1Es4hfIYslrsVgIsUdDFxuOBTbAl9mGIMvFo8PP5CLf4DrGdNrfwWSyn0lqi6sssm+I/qkkLL3MU+g=="
       },
+      "Microsoft.Extensions.Configuration": {
+        "type": "Transitive",
+        "resolved": "11.0.0",
+        "contentHash": "VQS/GkFU9oLQmXZv0AR/zluF0YAbEAoUQ5aYMqcRc2TWeKa6m2AjInAOnDhCcoWI5a6LQUCzTcl8B3DZZaPZLg=="
+      },
       "Microsoft.Testing.Extensions.Telemetry": {
         "type": "Transitive",
         "resolved": "2.5.1",
@@ -89,6 +94,11 @@
         "type": "Transitive",
         "resolved": "5.0.0",
         "contentHash": "dDoKi0PnDz31yAyETfRntsLArTlVAVzUzCIvvEDsDsucrl33Dl8pIJG06ePTJTI3tGpeyHS9Cq7Foc/s4EeKcg=="
+      },
+      "System.Diagnostics.EventLog": {
+        "type": "Transitive",
+        "resolved": "11.0.0",
+        "contentHash": "lKore9DXE1q8o6ss6/M7++xBpn2FMS0axaAypBspYLqY5OT1ZRPLzFGwF18l61aXfXTPpwkx5tYh4zMUHoAv/g=="
       },
       "System.Security.AccessControl": {
         "type": "Transitive",
@@ -182,6 +192,8 @@
       "xmip.surface": {
         "type": "Project",
         "dependencies": {
+          "Microsoft.Extensions.Configuration": "[11.0.0, )",
+          "System.Diagnostics.EventLog": "[11.0.0, )",
           "Tomlyn.Extensions.Configuration": "[2.0.1, )",
           "Xmip.Abi": "[1.0.0, )"
         }

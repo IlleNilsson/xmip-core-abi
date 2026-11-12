@@ -35,8 +35,9 @@ public sealed partial class RuntimeRules
         }
     }
 
-    /// <summary>What a thing configured at a stage is called —
-    /// <c>node::Stage::location</c>. Null for a word that is no stage.</summary>
+    /// <summary>What a thing configured at a stage is called — Receive
+    /// Location, Subscription, Send Location: <c>node::Stage::location</c>.
+    /// Null for a word that is no stage.</summary>
     public string? Location(string stage)
     {
         using PinnedStr word = XmipStr.Pin(stage);
@@ -45,6 +46,19 @@ public sealed partial class RuntimeRules
         unsafe
         {
             return _stageLocation(word.Value, &text) == 0 ? text.Read() : null;
+        }
+    }
+
+    /// <summary>A stage as a person reads it — Receive, Work Process, Send:
+    /// <c>node::Stage::title</c>. Null for a word that is no stage.</summary>
+    public string? Title(string stage)
+    {
+        using PinnedStr word = XmipStr.Pin(stage);
+        XmipStr text;
+
+        unsafe
+        {
+            return _stageTitle(word.Value, &text) == 0 ? text.Read() : null;
         }
     }
 

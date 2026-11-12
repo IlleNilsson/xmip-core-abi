@@ -57,6 +57,29 @@ public sealed class DrillTest
     }
 
     [Fact]
+    public void ASubscriptionEveryNodeHoldsIsCountedOnceByItsName()
+    {
+        // Until 2026-11-11 the Work Process card counted each Subscription
+        // once for every node that published it.
+        string path = Path.Combine(Path.GetTempPath(), $"xmip-drill-{Guid.NewGuid():N}.xmip");
+        string[] names = ["Sales orders", "Invoices", "Payments"];
+        string records = string.Concat(
+            new[] { Receiving, Sending }.SelectMany(node => names.Select(name => $"""
+                [[records]]
+                scope = "{node}/process/{name}"
+                state = "fine"
+
+                """)));
+        File.WriteAllText(path, $"node = \"{Cluster}\"\n{records}");
+        IOperatorSurface surface = new SnapshotOperator(path);
+
+        Assert.Equal(
+            names.Order(StringComparer.Ordinal),
+            surface.Locations("process").Select(scope => ScopeTree.Parts(scope)[^1]));
+        File.Delete(path);
+    }
+
+    [Fact]
     public void ALocationsOwnVerdictIsNotLostBehindWhatIsBeneathIt()
     {
         // 2026-09-26: a sending node's dns/regex Send Location was Done, its

@@ -255,16 +255,22 @@ public static partial class English
             : refused.Message;
     }
 
-    /// <summary>A stage of the message path as its name — <c>Receive</c>,
-    /// <c>Process</c>, <c>Send</c> — from the runtime's stage word
-    /// (<see cref="ScopeTree.Stages"/>). The prompt's stage letter is the
-    /// name's first.</summary>
+    /// <summary>A stage of the message path as a person reads it —
+    /// <c>Receive</c>, <c>Work Process</c>, <c>Send</c> — from the runtime's
+    /// stage word (<see cref="ScopeTree.Stages"/>): <c>node::Stage::title</c>,
+    /// called in the runtime, never a bare Process (ADR-0027, amendment
+    /// 2026-11-11). The word itself where it is no stage.</summary>
     public static string Stage(string stage)
     {
         ArgumentException.ThrowIfNullOrEmpty(stage);
 
-        return string.Concat(stage[..1].ToUpperInvariant(), stage[1..]);
+        return RuntimeLibrary.Rules.Title(stage) ?? stage;
     }
+
+    /// <summary>What the Work Process card adds while the process stage holds
+    /// Subscriptions alone (<see cref="IOperatorSurface.NoWorkProcessPlaced"/>;
+    /// ADR-0052, amendment 2026-11-11).</summary>
+    public const string NoWorkProcess = "no Work Process placed";
 
     /// <summary>What passes over a communication link, as the topology says
     /// it on the line itself (ADR-0052, amendment 2026-09-25): the volume the

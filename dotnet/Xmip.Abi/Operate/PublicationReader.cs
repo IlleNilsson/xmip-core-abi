@@ -44,6 +44,8 @@ public sealed partial class PublicationReader
         _eventSubscriptions;
     private readonly delegate* unmanaged[Cdecl]<nint, byte*, nuint, nuint*, int> _deadMessages;
     private readonly delegate* unmanaged[Cdecl]<nint, byte*, nuint, nuint*, int> _failedMessages;
+    private readonly delegate* unmanaged[Cdecl]<nint, XmipStr, byte*, nuint, nuint*, int>
+        _fromTo;
 
     internal PublicationReader(nint library)
     {
@@ -83,6 +85,8 @@ public sealed partial class PublicationReader
             NativeLibrary.GetExport(library, OperateAbi.PublicationDeadMessagesEntrypoint);
         _failedMessages = (delegate* unmanaged[Cdecl]<nint, byte*, nuint, nuint*, int>)
             NativeLibrary.GetExport(library, OperateAbi.PublicationFailedMessagesEntrypoint);
+        _fromTo = (delegate* unmanaged[Cdecl]<nint, XmipStr, byte*, nuint, nuint*, int>)
+            NativeLibrary.GetExport(library, OperateAbi.PublicationFromToEntrypoint);
     }
 
     /// <summary>Section 8's symbols, each of which a runtime must export.</summary>
@@ -106,6 +110,7 @@ public sealed partial class PublicationReader
         OperateAbi.PublicationEventSubscriptionsEntrypoint,
         OperateAbi.PublicationDeadMessagesEntrypoint,
         OperateAbi.PublicationFailedMessagesEntrypoint,
+        OperateAbi.PublicationFromToEntrypoint,
     ];
 
     /// <summary>

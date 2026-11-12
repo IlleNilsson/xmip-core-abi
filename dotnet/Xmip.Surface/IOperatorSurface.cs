@@ -61,7 +61,7 @@ public partial interface IOperatorSurface
     /// <summary>
     /// The six figures on one stage of the message path, summed over every
     /// scope where that stage begins (<see cref="ScopeIndex.StageScopes"/>):
-    /// what a Receive, Process or Send card counts. A count not on the stage —
+    /// what a Receive, Work Process or Send card counts. A count not on the stage —
     /// a scenario's, a backlog's — is no figure of it.
     /// </summary>
     public Figures Stage(string stage)
@@ -71,10 +71,12 @@ public partial interface IOperatorSurface
 
     /// <summary>
     /// What is configured at a stage across the cluster — each Receive
-    /// Location, Work Process or Send Location, one scope each: what is
-    /// directly beneath every scope where the stage begins. Until 2026-09-26 a
-    /// stage card called every leaf beneath its stage, each contract and
-    /// identity step, a thing configured.
+    /// Location, Subscription or Send Port, one scope each and each name
+    /// once, its first scope in ordinal order: what is directly beneath every
+    /// scope where the stage begins. Until 2026-09-26 a stage card called
+    /// every leaf beneath its stage, each contract and identity step, a thing
+    /// configured; until 2026-11-11 a Subscription every node holds was
+    /// counted once per node (ADR-0052, amendment 2026-11-11).
     /// </summary>
     public IReadOnlyList<string> Locations(string stage)
     {
@@ -85,7 +87,8 @@ public partial interface IOperatorSurface
             .. index.StageScopes(stage)
                 .SelectMany(index.Branches)
                 .Select(branch => branch.Scope)
-                .Order(StringComparer.Ordinal),
+                .Order(StringComparer.Ordinal)
+                .DistinctBy(scope => ScopeTree.Parts(scope)[^1], StringComparer.Ordinal),
         ];
     }
 

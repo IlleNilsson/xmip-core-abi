@@ -424,12 +424,15 @@ typedef XmipStatus (*XmipCountedWordFn)(XmipCounted counted, XmipStr *out);
  * Facts of a stage, named by its word (exact lower case): the kind of count
  * the stage takes (STREAMS at receive, JOURNEYS in process, MESSAGES at
  * send), whether an operator may pause it (*out 1 or 0: a Receive or Send
- * Location, never a Process), and what a thing configured at it is called
- * (static). XMIP_E_NOT_FOUND for a word that is no stage.
+ * Location, never a Work Process), what a thing configured at it is called
+ * - Receive Location, Subscription, Send Location - and its title, what a
+ * person reads - Receive, Work Process, Send (both static; ADR-0027,
+ * amendment 2026-11-11). XMIP_E_NOT_FOUND for a word that is no stage.
  */
 typedef XmipStatus (*XmipStageCountedFn)(XmipStr stage, XmipCounted *out);
 typedef XmipStatus (*XmipStagePausableFn)(XmipStr stage, uint8_t *out);
 typedef XmipStatus (*XmipStageLocationFn)(XmipStr stage, XmipStr *out);
+typedef XmipStatus (*XmipStageTitleFn)(XmipStr stage, XmipStr *out);
 
 /*
  * What a node declared of itself (ADR-0056), read from one health record it
@@ -476,6 +479,7 @@ typedef XmipStatus (*XmipCapabilityEntryFn)(XmipStr entry, XmipStr *out_node,
 #define XMIP_STAGE_COUNTED_ENTRYPOINT  "xmip_stage_counted_v1"
 #define XMIP_STAGE_PAUSABLE_ENTRYPOINT "xmip_stage_pausable_v1"
 #define XMIP_STAGE_LOCATION_ENTRYPOINT "xmip_stage_location_v1"
+#define XMIP_STAGE_TITLE_ENTRYPOINT    "xmip_stage_title_v1"
 #define XMIP_CAPABILITY_PUBLISHED_ENTRYPOINT "xmip_capability_published_v1"
 #define XMIP_CAPABILITY_ENTRY_ENTRYPOINT     "xmip_capability_entry_v1"
 
@@ -641,6 +645,27 @@ typedef XmipStatus (*XmipPublicationRunFn)(const XmipPublication *publication,
 #define XMIP_PUBLICATION_NODES_ENTRYPOINT   "xmip_publication_nodes_v1"
 #define XMIP_PUBLICATION_LINKS_ENTRYPOINT   "xmip_publication_links_v1"
 #define XMIP_PUBLICATION_RUN_ENTRYPOINT     "xmip_publication_run_v1"
+
+/*
+ * Where the work observed at scope came from and where it went, as the
+ * publication says it (observe::topology::from_to, the one rule): JSON with
+ * from and to in words, hops in path order - each its kind, name, node and
+ * transport: the sending Party, the Receive Location, each Subscription
+ * that routed what it took, the Storage node, each Send Port reached and the
+ * receiving Party, for a Receive Location's, a Subscription's or a Send
+ * Port's scope and what is beneath one; the Parties and nodes around a
+ * node's - unrouted, what a Dead Message Queue entry's to says, line, the
+ * one line every surface says it in, "from <from> -> to <to>", and path, each
+ * hop's words in order. Every word is the runtime's; a surface writes none.
+ * Empty from, to, hops, line and path for a scope on no node. XMIP_OK;
+ * XMIP_E_INVALID for no handle; XMIP_E_MALFORMED when scope is not UTF-8.
+ * XMIP_OPERATE_VERSION is unchanged (ADR-0027, amendment 2026-11-11).
+ */
+typedef XmipStatus (*XmipPublicationFromToFn)(const XmipPublication *publication,
+                                              XmipScope scope, uint8_t *out, size_t cap,
+                                              size_t *out_len);
+
+#define XMIP_PUBLICATION_FROM_TO_ENTRYPOINT "xmip_publication_from_to_v1"
 
 /*
  * What a topology value is called (observe::topology): the word a
@@ -1279,15 +1304,18 @@ typedef XmipStatus (*XmipProcessDeclarationsFn)(XmipStr directory, uint8_t *out,
  *
  *   {"orders":"<where acts are left, empty for none>",
  *    "subscriptions":[{"node","name","application","filter","destination",
- *                      "file","configuration","state","paused","by",
- *                      "picked_up","held","since_unix_nanos"}]}
+ *                      "send_ports","file","configuration","state","paused",
+ *                      "by","picked_up","held","since_unix_nanos"}]}
  *
  * node is the scope of the node that routes by it and name its configured
  * name, the two naming it; application the Xmip Application that draws it,
  * file the node configuration that Application is a section of and
  * configuration its [[xmip_applications.subscriptions]] entry there as the
  * file says it; filter what it
- * subscribes to, as configured; destination where it leads, in words; state
+ * subscribes to, as configured; destination where it leads, in words;
+ * send_ports the Send Ports that destination reaches, by name - its Send
+ * Port, each of its Send Port Group's, none for a Work Process - where its
+ * work goes (ADR-0013, amendment 2026-11-11); state
  * active or paused, paused true when it is, and by who paused it; picked_up
  * what it picked up since the node started and held what it holds now;
  * since when its state began.
@@ -1299,8 +1327,10 @@ typedef XmipStatus (*XmipProcessDeclarationsFn)(XmipStr directory, uint8_t *out,
  * xmip_subscription_act_v1 applies act - pause or resume, exact - to the
  * Subscription name of the node at node in this process, by who. XMIP_OK
  * with what came of it in said, one sentence; XMIP_E_NOT_FOUND with the
- * refusal, opening REFUSED, when that node does not run here or is not
- * configured with that Subscription; XMIP_E_INVALID with the refusal for a
+ * refusal, opening REFUSED, when that node does not run here, is not
+ * configured with that Subscription, or routes by none - it starts no
+ * Receive Location and runs no Work Process, and so lists none either
+ * (ADR-0018, amendment 2026-11-11); XMIP_E_INVALID with the refusal for a
  * word that is no act on a Subscription - remove among them, whose refusal
  * says a Subscription is removed in the TOML configuration.
  *

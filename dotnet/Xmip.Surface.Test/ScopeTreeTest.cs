@@ -275,8 +275,11 @@ public sealed class ScopeTreeTest
         Assert.True(ScopeTree.Pausable($"{Cluster.Scope}/node/{Sender}/send/tcp/json"));
         Assert.False(ScopeTree.Pausable($"{Received}/process/route"));
         Assert.False(ScopeTree.Pausable($"{Received}/capability"));
-        Assert.Equal("receive location", ScopeTree.Location("receive"));
-        Assert.Equal("send location", ScopeTree.Location("send"));
+        Assert.Equal("Receive Location", ScopeTree.Location("receive"));
+        Assert.Equal("Subscription", ScopeTree.Location("process"));
+        // A Subscription routes to a Send Port, never a Send Location: the
+        // send stage's children are its Ports (ADR-0027, amendment 2026-11-11).
+        Assert.Equal("Send Port", ScopeTree.Location("send"));
         Assert.Null(ScopeTree.Location(string.Empty));
     }
 

@@ -163,9 +163,10 @@ public sealed class EnglishTest
     }
 
     [Fact]
-    public void AStageIsNamedFromItsWord()
+    public void AStageIsNamedFromItsWordAndTheProcessStageIsTheWorkProcess()
     {
-        Assert.Equal(["Receive", "Process", "Send"], ScopeTree.Stages.Select(English.Stage));
+        Assert.Equal(
+            ["Receive", "Work Process", "Send"], ScopeTree.Stages.Select(English.Stage));
     }
 
     [Fact]

@@ -42,6 +42,7 @@ public sealed class OperateAbiTest
     [InlineData("XMIP_STAGE_COUNTED_ENTRYPOINT", OperateAbi.StageCountedEntrypoint)]
     [InlineData("XMIP_STAGE_PAUSABLE_ENTRYPOINT", OperateAbi.StagePausableEntrypoint)]
     [InlineData("XMIP_STAGE_LOCATION_ENTRYPOINT", OperateAbi.StageLocationEntrypoint)]
+    [InlineData("XMIP_STAGE_TITLE_ENTRYPOINT", OperateAbi.StageTitleEntrypoint)]
     [InlineData(
         "XMIP_CAPABILITY_PUBLISHED_ENTRYPOINT", OperateAbi.CapabilityPublishedEntrypoint)]
     [InlineData("XMIP_CAPABILITY_ENTRY_ENTRYPOINT", OperateAbi.CapabilityEntryEntrypoint)]
@@ -92,6 +93,7 @@ public sealed class OperateAbiTest
     [InlineData("XMIP_SUBSCRIPTION_ACT_ENTRYPOINT", OperateAbi.SubscriptionActEntrypoint)]
     [InlineData(
         "XMIP_PUBLICATION_SUBSCRIPTIONS_ENTRYPOINT", OperateAbi.PublicationSubscriptionsEntrypoint)]
+    [InlineData("XMIP_PUBLICATION_FROM_TO_ENTRYPOINT", OperateAbi.PublicationFromToEntrypoint)]
     [InlineData("XMIP_ORDER_ENTRYPOINT", OperateAbi.OrderEntrypoint)]
     [InlineData("XMIP_DEAD_MESSAGES_ENTRYPOINT", OperateAbi.DeadMessagesEntrypoint)]
     [InlineData("XMIP_DEAD_MESSAGE_REPLAY_ENTRYPOINT", OperateAbi.DeadMessageReplayEntrypoint)]

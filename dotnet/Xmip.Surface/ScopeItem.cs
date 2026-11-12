@@ -22,6 +22,9 @@ namespace Xmip.Surface;
 /// operator read why and could not reach it.</param>
 /// <param name="Figures">The six figures at the row, summed beneath it.</param>
 /// <param name="Observed">When the newest of them was observed.</param>
+/// <param name="FromTo">Where the work at the row came from and went, as the
+/// runtime says it (<see cref="IOperatorSurface.FromTo"/>); null where the
+/// row was built from health alone.</param>
 public sealed record ScopeItem(
     string Name,
     string Scope,
@@ -31,8 +34,17 @@ public sealed record ScopeItem(
     string Evidence,
     string? Worst,
     Figures Figures,
-    DateTimeOffset? Observed)
+    DateTimeOffset? Observed,
+    Abi.Operate.FromTo? FromTo = null)
 {
+    /// <summary>Where the work at the row came from, in the runtime's words;
+    /// empty where nothing is said: the From column.</summary>
+    public string CameFrom => FromTo?.From ?? string.Empty;
+
+    /// <summary>Where it went, in the runtime's words; empty where nothing is
+    /// said: the To column.</summary>
+    public string WentTo => FromTo?.To ?? string.Empty;
+
     /// <summary>Build a row from health already read and figures already read.</summary>
     public static ScopeItem From(
         string scope, IReadOnlyList<HealthRecord> records, Figures figures)
@@ -57,7 +69,12 @@ public sealed record ScopeItem(
     /// <summary>Read one row from a surface.</summary>
     public static ScopeItem Read(IOperatorSurface surface, string scope)
     {
-        return From(scope, surface.Health(scope), surface.Figures(scope));
+        ArgumentNullException.ThrowIfNull(surface);
+
+        return From(scope, surface.Health(scope), surface.Figures(scope)) with
+        {
+            FromTo = surface.FromTo(scope),
+        };
     }
 
     /// <summary>Read the direct children of a scope, one row each, worst
@@ -69,7 +86,10 @@ public sealed record ScopeItem(
         return
         [
             .. index.Branches(scope).Select(branch => From(
-                branch.Scope, index.Health(branch.Scope), surface.Figures(branch.Scope))),
+                branch.Scope, index.Health(branch.Scope), surface.Figures(branch.Scope)) with
+            {
+                FromTo = surface.FromTo(branch.Scope),
+            }),
         ];
     }
 
