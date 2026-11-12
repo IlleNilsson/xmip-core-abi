@@ -435,8 +435,8 @@ answer even when it lists none; *Unlisted* is a source that cannot list;
 - **Reports.** `ReportCatalog`, every .NET surface's one list of every
   Report and one opened (ADR-0072, amendment 2026-11-10) — `xmip report`,
   `Get-XmipReport` and the Reports view — over section 25: `List` reads the
-  `ReportListing`, the kinds' words (`ReportKindWords`, *Quick* and *Takes
-  longer*, the runtime's) and a `ReportEntry` for each Report, its kind and
+  `ReportListing`, the kinds' words (`ReportKindWords`, *Report* and
+  *Probing report*, the runtime's) and a `ReportEntry` for each Report, its kind and
   its kind's words (`Words`, set once as the list is read), whether it is
   available, what to expect, the reader that presents a quick one (`ReadBy`,
   an entrypoint of the header each surface maps to its own command) and a

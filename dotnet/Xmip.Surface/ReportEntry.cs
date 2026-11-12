@@ -26,8 +26,8 @@ public sealed record ReportListing(
 
 /// <summary>One kind of Report and the words a surface shows it by, the
 /// runtime's: its <paramref name="Word"/> (<c>existing-data</c>,
-/// <c>quest</c>), its <paramref name="Name"/> (<c>Quick</c>, <c>Takes
-/// longer</c>) and its <paramref name="Meaning"/>.</summary>
+/// <c>quest</c>), its <paramref name="Name"/> (<c>Report</c>, <c>Probing
+/// report</c>) and its <paramref name="Meaning"/>.</summary>
 public sealed record ReportKindWords(ReportKind Kind, string Word, string Name, string Meaning);
 
 /// <summary>
@@ -47,8 +47,9 @@ public sealed record ReportKindWords(ReportKind Kind, string Word, string Name, 
 /// <param name="Name">Its name, as it is opened by.</param>
 /// <param name="Covers">What it covers, in a sentence.</param>
 /// <param name="Kind">What it presents.</param>
-/// <param name="Words">Its kind's words: the name <c>Quick</c> or <c>Takes
-/// longer</c>, the word and the meaning, as the list gives them.</param>
+/// <param name="Words">Its kind's words: the name <c>Report</c> or
+/// <c>Probing report</c>, the word and the meaning, as the list gives
+/// them.</param>
 /// <param name="Available">Whether it is built; false says it is not yet
 /// available.</param>
 /// <param name="Expect">What to expect, in words: <c>last probe took 4
