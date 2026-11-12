@@ -40,9 +40,18 @@ public static class ProvenCaller
         return caller is { Handle: not 0 } ? caller : null;
     }
 
-    /// <summary>The request's user: the proven caller — its name to show and
-    /// its handle — or no one. Whatever the request carried before is
-    /// replaced, so nothing else names the caller.</summary>
+    /// <summary>The request's user: the proven caller — its name to show, the
+    /// same name as who it is from one request to the next, and its handle —
+    /// or no one. Whatever the request carried before is replaced, so nothing
+    /// else names the caller.</summary>
+    /// <remarks>Each connection holds a handle of its own, so a circuit's
+    /// requests carry different handles for one caller. ASP.NET Core 11
+    /// refuses a request of a long-lived connection whose authenticated user
+    /// differs from the one that opened it, compared by the
+    /// <see cref="ClaimTypes.NameIdentifier"/> claim where a user has one and
+    /// by every claim where none does; without it a browser's circuit was
+    /// refused at its second request and its page never updated. The gate
+    /// still takes the handle, never this claim.</remarks>
     public static void Prove(HttpContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
@@ -53,6 +62,7 @@ public static class ProvenCaller
             : new ClaimsPrincipal(new ClaimsIdentity(
                 [
                     new Claim(ClaimTypes.Name, caller.Name),
+                    new Claim(ClaimTypes.NameIdentifier, caller.Name),
                     new Claim(
                         HandleClaim, caller.Handle.ToString(CultureInfo.InvariantCulture)),
                 ],
