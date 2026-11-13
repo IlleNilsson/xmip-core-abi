@@ -39,7 +39,7 @@ them, the queue and the audit are the runtime's.
 
 xmip::event::Library xmip("xmip_core_runtime.dll");
 xmip::event::Filter filter;
-filter.scope = "xmip:///C1";
+filter.scope = "xmip:///CL1";
 filter.outcomes = {XMIP_OUTCOME_FAILURE};
 
 auto subscription = xmip.subscribe("my-program", "/var/log/my-program", filter);

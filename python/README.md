@@ -36,7 +36,7 @@ subscriber may see them, the queue and the audit are the runtime's.
 from xmip_event import Filter, Library, Outcome
 
 xmip = Library("xmip_core_runtime.dll")
-failures = Filter(outcomes=(Outcome.FAILURE,), scope="xmip:///C1")
+failures = Filter(outcomes=(Outcome.FAILURE,), scope="xmip:///CL1")
 with xmip.subscribe("my-program", "/var/log/my-program", failures) as subscription:
     delivery = subscription.next(timeout_ms=1000)
     for event in delivery.events if delivery else []:

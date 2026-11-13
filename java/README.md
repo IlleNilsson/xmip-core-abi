@@ -30,7 +30,7 @@ and `set` with a `ValueLayout`, `MemorySegment.copy` with byte arrays, and
 ```java
 try (Library xmip = Library.load(Path.of("xmip_core_runtime.dll"));
      EventSubscription subscription = xmip.subscribe("my-program", "/var/log/my-program",
-             new Filter(List.of(), List.of(Outcome.FAILURE), "xmip:///C1", ""), 0)) {
+             new Filter(List.of(), List.of(Outcome.FAILURE), "xmip:///CL1", ""), 0)) {
     subscription.next(Duration.ofSeconds(1), 64)
             .ifPresent(delivery -> delivery.events().forEach(System.out::println));
 }

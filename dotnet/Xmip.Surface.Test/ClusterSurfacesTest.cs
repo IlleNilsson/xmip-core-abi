@@ -18,7 +18,7 @@ public sealed class ClusterSurfacesTest
 
     /// <summary>The second fixture's cluster, read from what it publishes.</summary>
     private static readonly string Second =
-        new SnapshotOperator(Fixture("cluster-c2.xmip")).Run().Cluster;
+        new SnapshotOperator(Fixture("cluster-cl2.xmip")).Run().Cluster;
 
     private static string Fixture(string name)
     {
@@ -33,7 +33,7 @@ public sealed class ClusterSurfacesTest
     public void TheSecondFixtureIsTheSecondTestClustersOwn()
     {
         TestCluster other = TestCluster.ReadOther();
-        RunHeader run = new SnapshotOperator(Fixture("cluster-c2.xmip")).Run();
+        RunHeader run = new SnapshotOperator(Fixture("cluster-cl2.xmip")).Run();
 
         Assert.Equal(other.Name, run.Cluster);
         Assert.NotEmpty(run.Nodes);
@@ -45,7 +45,7 @@ public sealed class ClusterSurfacesTest
     {
         using ClusterSurfaces held = ClusterSurfaces.Over(
             [new SnapshotOperator(Fixture("cluster.xmip")),
-             new SnapshotOperator(Fixture("cluster-c2.xmip"))]);
+             new SnapshotOperator(Fixture("cluster-cl2.xmip"))]);
 
         Assert.NotEqual(First, Second);
         Assert.Equal([First, Second], held.Clusters);
@@ -74,7 +74,7 @@ public sealed class ClusterSurfacesTest
         // such call; each cluster's figures are its own.
         using ClusterSurfaces held = ClusterSurfaces.Over(
             [new SnapshotOperator(Fixture("cluster.xmip")),
-             new SnapshotOperator(Fixture("cluster-c2.xmip"))]);
+             new SnapshotOperator(Fixture("cluster-cl2.xmip"))]);
 
         Assert.Equal(6UL, held.For(First, includingHidden: false).Figures(ScopeTree.Root).Streams);
         Assert.Equal(2UL, held.For(Second, includingHidden: false).Figures(ScopeTree.Root).Streams);
@@ -104,7 +104,7 @@ public sealed class ClusterSurfacesTest
         string area = Path.Combine(Path.GetTempPath(), $"xmip-clusters-{Guid.NewGuid():n}");
         Directory.CreateDirectory(area);
         string ending = Path.Combine(area, $"{Second}-snapshot.xmip");
-        File.Copy(Fixture("cluster-c2.xmip"), ending);
+        File.Copy(Fixture("cluster-cl2.xmip"), ending);
 
         try
         {
@@ -198,11 +198,11 @@ public sealed class ClusterSurfacesTest
         using Papers two = new("""
             [Xmip]
             Surface = "snapshot"
-            Snapshot = ["Fixture/cluster.xmip", "Fixture/cluster-c2.xmip"]
+            Snapshot = ["Fixture/cluster.xmip", "Fixture/cluster-cl2.xmip"]
             """);
 
         Assert.Equal(
-            ["Fixture/cluster.xmip", "Fixture/cluster-c2.xmip"],
+            ["Fixture/cluster.xmip", "Fixture/cluster-cl2.xmip"],
             SurfaceChoice.Snapshots(two.Configuration));
 
         using ClusterSurfaces held =
@@ -290,7 +290,7 @@ public sealed class ClusterSurfacesTest
         {
             Path = System.IO.Path.Combine(
                 System.IO.Path.GetTempPath(), $"xmip-hidden-{Guid.NewGuid():n}.xmip");
-            string text = File.ReadAllText(Fixture("cluster-c2.xmip"));
+            string text = File.ReadAllText(Fixture("cluster-cl2.xmip"));
 
             if (hidden)
             {
