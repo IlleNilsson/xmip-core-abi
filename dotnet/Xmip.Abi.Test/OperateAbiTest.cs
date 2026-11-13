@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using Xmip.Abi.Operate;
 
@@ -33,6 +34,7 @@ public sealed class OperateAbiTest
     [InlineData("XMIP_ROLE_WORDS_ENTRYPOINT", OperateAbi.RoleWordsEntrypoint)]
     [InlineData("XMIP_ROLE_DECLARED_ENTRYPOINT", OperateAbi.RoleDeclaredEntrypoint)]
     [InlineData("XMIP_ROLE_STAGES_ENTRYPOINT", OperateAbi.RoleStagesEntrypoint)]
+    [InlineData("XMIP_ROLE_PURPOSE_ENTRYPOINT", OperateAbi.RolePurposeEntrypoint)]
     [InlineData("XMIP_HEALTH_WORD_ENTRYPOINT", OperateAbi.HealthWordEntrypoint)]
     [InlineData("XMIP_HEALTH_COLOR_ENTRYPOINT", OperateAbi.HealthColorEntrypoint)]
     [InlineData("XMIP_HEALTH_NAMED_ENTRYPOINT", OperateAbi.HealthNamedEntrypoint)]
@@ -59,6 +61,9 @@ public sealed class OperateAbiTest
         "XMIP_TOPOLOGY_ORIGIN_WORDS_ENTRYPOINT", OperateAbi.TopologyOriginWordsEntrypoint)]
     [InlineData(
         "XMIP_TOPOLOGY_PATTERN_WORDS_ENTRYPOINT", OperateAbi.TopologyPatternWordsEntrypoint)]
+    [InlineData(
+        "XMIP_TOPOLOGY_RELATION_WORDS_ENTRYPOINT", OperateAbi.TopologyRelationWordsEntrypoint)]
+    [InlineData("XMIP_PUBLICATION_LAYOUT_ENTRYPOINT", OperateAbi.PublicationLayoutEntrypoint)]
     [InlineData("XMIP_CURVE_READ_ENTRYPOINT", OperateAbi.CurveReadEntrypoint)]
     [InlineData("XMIP_CURVE_POINTS_ENTRYPOINT", OperateAbi.CurvePointsEntrypoint)]
     [InlineData("XMIP_CURVE_FREE_ENTRYPOINT", OperateAbi.CurveFreeEntrypoint)]
@@ -198,6 +203,9 @@ public sealed class OperateAbiTest
     [InlineData("TOPOLOGY", typeof(TopologyNodeKind))]
     [InlineData("ORIGIN", typeof(TopologyOrigin))]
     [InlineData("PATTERN", typeof(CommunicationPattern))]
+    [InlineData("RELATION", typeof(TopologyRelation))]
+    [InlineData("BAND", typeof(TopologyBand))]
+    [InlineData("COLUMN", typeof(TopologyColumn))]
     [InlineData("RUN", typeof(RunList))]
     public void KnowsEverySectionEightValueTheHeaderDefinesAndNoOther(string family, Type values)
     {
@@ -211,6 +219,27 @@ public sealed class OperateAbiTest
         }
 
         Assert.Equal(header.Count, Enum.GetValues(values).Length);
+    }
+
+    /// <summary>Section 8's structs are laid out as the Rust binding lays them
+    /// out (<c>abi::operate::publication</c>'s own size test, the same sums):
+    /// a field changed in place on one side and not the other reads every
+    /// entry after the first wrong.</summary>
+    [Fact]
+    public void LaysOutSectionEightsStructsAsTheRustBindingDoes()
+    {
+        int text = Marshal.SizeOf<Module.XmipStr>();
+
+        // Six strings, four ints and two doubles: kind pads to 8, health and
+        // origin are 8, place pads to 8.
+        Assert.Equal((6 * text) + 8 + 8 + 16 + 8, Marshal.SizeOf<XmipTopologyNode>());
+        // Five strings, four ints, volume, three doubles, attempts padded:
+        // pattern, origin and relation pad to 16.
+        Assert.Equal((5 * text) + 16 + 8 + 8 + 24 + 8, Marshal.SizeOf<XmipTopologyLink>());
+        // A string, two doubles and two ints.
+        Assert.Equal(text + 16 + 8, Marshal.SizeOf<XmipTopologyPlace>());
+        // Five strings, two flags padded, and when the topology was drawn.
+        Assert.Equal((5 * text) + 8 + 8 + 8, Marshal.SizeOf<XmipPublicationHead>());
     }
 
     [Theory]

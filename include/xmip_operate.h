@@ -385,6 +385,20 @@ typedef XmipStatus (*XmipRoleStagesFn)(XmipStr role,
                                        XmipStr *out, size_t cap, size_t *out_len);
 
 /*
+ * What a node declaring the roles declared names is for - each role as one
+ * declaration says it, with its meaning, one per line, or "declares no role"
+ * (node::NodeRole::purpose, worded from deployment-model.md section 3; the
+ * owner, 2026-11-12: a tooltip, Web or Desktop, saying a node's purpose).
+ * declared is read as xmip_role_declared_v1 reads one, and a topology
+ * node's roles (section 8) are such a declaration. Written into out as
+ * UTF-8, its true byte length in out_len whether or not it fit. A
+ * declaration naming a word that is no role is XMIP_E_INVALID, and out holds
+ * the refusal instead (ADR-0055).
+ */
+typedef XmipStatus (*XmipRolePurposeFn)(XmipStr declared,
+                                        uint8_t *out, size_t cap, size_t *out_len);
+
+/*
  * A mood as the word the estate uses, lower case, and the name of the color a
  * surface paints it in (ADR-0041) - static. XMIP_E_INVALID for a value
  * section 3 does not define.
@@ -470,6 +484,7 @@ typedef XmipStatus (*XmipCapabilityEntryFn)(XmipStr entry, XmipStr *out_node,
 #define XMIP_ROLE_WORDS_ENTRYPOINT     "xmip_role_words_v1"
 #define XMIP_ROLE_DECLARED_ENTRYPOINT  "xmip_role_declared_v1"
 #define XMIP_ROLE_STAGES_ENTRYPOINT    "xmip_role_stages_v1"
+#define XMIP_ROLE_PURPOSE_ENTRYPOINT   "xmip_role_purpose_v1"
 #define XMIP_HEALTH_WORD_ENTRYPOINT    "xmip_health_word_v1"
 #define XMIP_HEALTH_COLOR_ENTRYPOINT   "xmip_health_color_v1"
 #define XMIP_HEALTH_NAMED_ENTRYPOINT   "xmip_health_named_v1"
@@ -541,6 +556,46 @@ typedef enum {
     XMIP_PATTERN_RETRY            = 6
 } XmipCommunicationPattern;
 
+/*
+ * How the two ends of a link are related in their cluster, by the roles each
+ * declares and the order of [storage] nodes, never by a name
+ * (observe::topology::Relation; ADR-0052 and ADR-0056, amendments
+ * 2026-11-13). TRAFFIC is an observed line no relation explains: inside a
+ * node, and between a node and a Party. A word a reader does not know reads
+ * as TRAFFIC.
+ */
+typedef enum {
+    XMIP_RELATION_WRITES_INTO           = 0,
+    XMIP_RELATION_HANDS_WORK_TO         = 1,
+    XMIP_RELATION_COPIES_TO             = 2,
+    XMIP_RELATION_OPERATES              = 3,
+    XMIP_RELATION_MONITORS              = 4,
+    XMIP_RELATION_OPERATES_AND_MONITORS = 5,
+    XMIP_RELATION_TRAFFIC               = 6
+} XmipTopologyRelation;
+
+/*
+ * Where a drawn thing stands on the map (observe::topology::layout): the
+ * band, top to bottom, and the column, left to right as the streams run.
+ */
+typedef enum {
+    XMIP_BAND_OPERATION  = 0,
+    XMIP_BAND_PROCESSING = 1,
+    XMIP_BAND_PATH       = 2,
+    XMIP_BAND_STANDBY    = 3,
+    XMIP_BAND_EXECUTING  = 4,
+    XMIP_BAND_INSIDE     = 5
+} XmipTopologyBand;
+
+typedef enum {
+    XMIP_COLUMN_TX_PARTY  = 0,
+    XMIP_COLUMN_RECEIVING = 1,
+    XMIP_COLUMN_STORAGE   = 2,
+    XMIP_COLUMN_SENDING   = 3,
+    XMIP_COLUMN_RX_PARTY  = 4,
+    XMIP_COLUMN_SPANNING  = 5
+} XmipTopologyColumn;
+
 typedef enum {
     XMIP_RUN_TESTS  = 0,
     XMIP_RUN_NODES  = 1,
@@ -572,6 +627,12 @@ typedef struct {
  * One thing that communicates. parent is empty at the top. load runs from
  * zero to one; activity is what moved through it per second over its
  * publisher's window (observe::topology::window), zero where nothing moved.
+ * A node of the cluster says the roles it declares in roles, the words of
+ * node::Capability::words separated by commas, empty where it declares none
+ * or is no node - what xmip_role_purpose_v1 (section 7) says it is for -
+ * and a Storage node listed in [storage] nodes its place in that list in
+ * place, from 0; -1 for anything else (ADR-0052 and ADR-0056, amendments
+ * 2026-11-13; changed in place, XMIP_OPERATE_VERSION unchanged).
  */
 typedef struct {
     XmipStr     id;
@@ -584,11 +645,14 @@ typedef struct {
     double      load;
     double      activity;   /* per second, over the publisher's window */
     XmipStr     evidence;
+    XmipStr     roles;      /* role words, comma separated; empty for none */
+    int32_t     place;      /* its place in [storage] nodes from 0; -1 none */
 } XmipTopologyNode;
 
 /*
- * One communication relationship, from one node id to another. rate is the
- * rise in its volume per second over its publisher's window.
+ * One communication relationship, from one node id to another, and how its
+ * two ends are related (relation, changed in place on 2026-11-13). rate is
+ * the rise in its volume per second over its publisher's window.
  */
 typedef struct {
     XmipStr     id;
@@ -596,6 +660,7 @@ typedef struct {
     XmipStr     to;
     int32_t     pattern;    /* XmipCommunicationPattern */
     int32_t     origin;     /* XmipTopologyOrigin */
+    int32_t     relation;   /* XmipTopologyRelation */
     XmipStr     protocol;
     XmipHealth  health;
     uint64_t    volume;
@@ -668,14 +733,47 @@ typedef XmipStatus (*XmipPublicationFromToFn)(const XmipPublication *publication
 #define XMIP_PUBLICATION_FROM_TO_ENTRYPOINT "xmip_publication_from_to_v1"
 
 /*
+ * Where each thing the publication draws beneath focus stands on the map -
+ * the things whose parent is focus, empty focus the top - or, where shown_len
+ * is not 0, only those of them whose ids shown names (observe::topology::
+ * layout, the one rule; ADR-0052 and ADR-0056, amendments 2026-11-13). A
+ * cluster's nodes stand by the roles they declare and the order of
+ * [storage] nodes: TX-Parties, receiving, Storage, sending, RX-Parties left
+ * to right, the operation band on top, processing over Storage, standbys
+ * below their primary, executing in a lane of its own below; inside a node
+ * its stages in path order. Never by traffic, never by a name. x and y run
+ * from 0 to 1, left to right and top to bottom; a surface scales them to its
+ * canvas. The reader computes it, not the publisher: a publication carries
+ * facts, and where things stand depends on what the reader shows. Each id
+ * borrows from the publication. The fill shape of section 5. XMIP_OK;
+ * XMIP_E_INVALID for no handle; XMIP_E_MALFORMED when focus or an id shown is
+ * not UTF-8.
+ */
+typedef struct {
+    XmipStr     id;
+    double      x;
+    double      y;
+    int32_t     band;       /* XmipTopologyBand */
+    int32_t     column;     /* XmipTopologyColumn */
+} XmipTopologyPlace;
+
+typedef XmipStatus (*XmipPublicationLayoutFn)(const XmipPublication *publication,
+                                              XmipStr focus, const XmipStr *shown,
+                                              size_t shown_len, XmipTopologyPlace *out,
+                                              size_t cap, size_t *out_len);
+
+#define XMIP_PUBLICATION_LAYOUT_ENTRYPOINT "xmip_publication_layout_v1"
+
+/*
  * What a topology value is called (observe::topology): the word a
  * publication writes it as in *out_word, and the name a person reads it by -
  * under a node, in a legend, in an inspector's row - in *out_name. Both
  * static, and pure like section 7: no handle, any thread, before any node.
  * The kind takes an XmipTopologyKind, the origin an XmipTopologyOrigin, the
- * pattern an XmipCommunicationPattern; XMIP_E_INVALID for a value its enum
- * does not define. A surface asks here rather than keeping a word list of its
- * own (ADR-0052, amendment 2026-09-25).
+ * pattern an XmipCommunicationPattern, the relation an XmipTopologyRelation;
+ * XMIP_E_INVALID for a value its enum does not define. A surface asks here
+ * rather than keeping a word list of its own (ADR-0052, amendment
+ * 2026-09-25).
  */
 typedef XmipStatus (*XmipTopologyWordsFn)(int32_t value, XmipStr *out_word,
                                           XmipStr *out_name);
@@ -683,6 +781,7 @@ typedef XmipStatus (*XmipTopologyWordsFn)(int32_t value, XmipStr *out_word,
 #define XMIP_TOPOLOGY_KIND_WORDS_ENTRYPOINT   "xmip_topology_kind_words_v1"
 #define XMIP_TOPOLOGY_ORIGIN_WORDS_ENTRYPOINT "xmip_topology_origin_words_v1"
 #define XMIP_TOPOLOGY_PATTERN_WORDS_ENTRYPOINT "xmip_topology_pattern_words_v1"
+#define XMIP_TOPOLOGY_RELATION_WORDS_ENTRYPOINT "xmip_topology_relation_words_v1"
 
 /*
  * A curve: a node's throughput over time, as the file a publisher writes

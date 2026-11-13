@@ -24,6 +24,10 @@ public struct XmipTopologyLink
     /// <summary><c>origin</c>, an <c>XmipTopologyOrigin</c>.</summary>
     public int Origin;
 
+    /// <summary><c>relation</c>, an <c>XmipTopologyRelation</c>: how the
+    /// link's two ends are related in their cluster.</summary>
+    public int Relation;
+
     /// <summary><c>protocol</c>.</summary>
     public XmipStr Protocol;
 

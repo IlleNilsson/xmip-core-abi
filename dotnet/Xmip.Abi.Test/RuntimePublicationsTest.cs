@@ -134,6 +134,96 @@ public sealed class RuntimePublicationsTest
         Assert.Null(reader.Words((TopologyNodeKind)99));
         Assert.Null(reader.Words((TopologyOrigin)(-1)));
         Assert.Null(reader.Words((CommunicationPattern)7));
+
+        Assert.All(
+            Enum.GetValues<TopologyRelation>(),
+            relation => Assert.NotNull(reader.Words(relation)));
+        Assert.Equal(
+            new TopologyWord("copies-to", "copies to"), reader.Words(TopologyRelation.CopiesTo));
+        Assert.Null(reader.Words((TopologyRelation)7));
+    }
+
+    /// <summary>
+    /// What a node declares, its place in <c>[storage] nodes</c> and how a
+    /// link's ends are related cross whole, and where each thing beneath a
+    /// focus stands is the runtime's layout, asked while the handle is open:
+    /// by role, the receiving node left of the Storage node on the path, the
+    /// later-listed Storage node below the first, and a node of the cluster
+    /// laid out beneath its cluster, never at the top.
+    /// </summary>
+    [Fact]
+    public void RolesPlacesAndRelationsCrossAndTheLayoutIsTheRuntimes()
+    {
+        string first = Cluster.Nodes.First(node => Cluster.Roles[Index(node)] == "storage");
+        string later = Cluster.Nodes.Last(node => Cluster.Roles[Index(node)] == "storage");
+        string text = $$"""
+            node = "{{Cluster.Scope}}"
+
+            [topology]
+            source = "a roll"
+
+            [[topology.nodes]]
+            id = "cluster"
+            kind = "cluster"
+
+            [[topology.nodes]]
+            id = "node/{{Receiver}}"
+            parent = "cluster"
+            kind = "node"
+            roles = "receiving"
+
+            [[topology.nodes]]
+            id = "node/{{first}}"
+            parent = "cluster"
+            kind = "node"
+            roles = "storage"
+            place = 0
+
+            [[topology.nodes]]
+            id = "node/{{later}}"
+            parent = "cluster"
+            kind = "node"
+            roles = "storage"
+            place = 1
+
+            [[topology.links]]
+            id = "copy"
+            from = "node/{{first}}"
+            to = "node/{{later}}"
+            relation = "copies-to"
+            """;
+
+        TopologySnapshot drawn = Publications.Read(text, out string refusal)!.Topology!;
+
+        Assert.Empty(refusal);
+        TopologyNode taker = drawn.Nodes.Single(node => node.Id == $"node/{Receiver}");
+        Assert.Equal(("receiving", null), (taker.Roles, taker.Place));
+        Assert.Equal(1, drawn.Nodes.Single(node => node.Id == $"node/{later}").Place);
+        TopologyNode top = drawn.Nodes.Single(node => node.Id == "cluster");
+        Assert.Equal(("", null), (top.Roles, top.Place));
+        Assert.Equal(TopologyRelation.CopiesTo, Assert.Single(drawn.Links).Relation);
+
+        TopologyPlace cluster = Assert.Single(drawn.PlacesAt(null));
+        Assert.Equal("cluster", cluster.Id);
+        IReadOnlyList<TopologyPlace> beneath = drawn.PlacesAt("cluster");
+        Assert.Equal(3, beneath.Count);
+        TopologyPlace take = beneath.Single(place => place.Id == taker.Id);
+        TopologyPlace store = beneath.Single(place => place.Id == $"node/{first}");
+        TopologyPlace standby = beneath.Single(place => place.Id == $"node/{later}");
+        Assert.Equal(
+            (TopologyBand.Path, TopologyColumn.Receiving), (take.Band, take.Column));
+        Assert.Equal((TopologyBand.Path, TopologyColumn.Storage), (store.Band, store.Column));
+        Assert.Equal(TopologyBand.Standby, standby.Band);
+        Assert.True(take.X < store.X, "the receiving column is left of Storage's");
+        Assert.True(store.Y < standby.Y, "a standby stands below its primary");
+        Assert.All(beneath, place => Assert.InRange(place.X, 0D, 1D));
+        Assert.All(beneath, place => Assert.InRange(place.Y, 0D, 1D));
+        Assert.Empty(drawn.PlacesAt($"node/{Receiver}"));
+    }
+
+    private static int Index(string node)
+    {
+        return Cluster.Nodes.ToList().IndexOf(node);
     }
 
     [Fact]

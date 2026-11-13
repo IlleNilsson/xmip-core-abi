@@ -183,6 +183,8 @@ pub mod rule {
     pub const ROLE_DECLARED_ENTRYPOINT: &str = "xmip_role_declared_v1";
     /// `node::NodeRole::stages`.
     pub const ROLE_STAGES_ENTRYPOINT: &str = "xmip_role_stages_v1";
+    /// `node::NodeRole::purpose`.
+    pub const ROLE_PURPOSE_ENTRYPOINT: &str = "xmip_role_purpose_v1";
     /// `observe::Health::word`.
     pub const HEALTH_WORD_ENTRYPOINT: &str = "xmip_health_word_v1";
     /// `observe::Health::color`.
@@ -253,6 +255,11 @@ pub mod rule {
     /// The stages a role serves, static, in the fill shape.
     pub type RoleStagesFn =
         unsafe extern "C" fn(role: Str, out: *mut Str, cap: usize, out_len: *mut usize) -> i32;
+
+    /// What a node declaring `declared` is for, or the refusal, written as
+    /// UTF-8, its true length in `out_len`.
+    pub type RolePurposeFn =
+        unsafe extern "C" fn(declared: Str, out: *mut u8, cap: usize, out_len: *mut usize) -> i32;
 
     /// A mood's word or color name, static.
     pub type HealthTextFn = unsafe extern "C" fn(health: i32, out: *mut Str) -> i32;
@@ -399,6 +406,10 @@ mod tests {
                 rule::ROLE_DECLARED_ENTRYPOINT,
             ),
             ("XMIP_ROLE_STAGES_ENTRYPOINT", rule::ROLE_STAGES_ENTRYPOINT),
+            (
+                "XMIP_ROLE_PURPOSE_ENTRYPOINT",
+                rule::ROLE_PURPOSE_ENTRYPOINT,
+            ),
             ("XMIP_HEALTH_WORD_ENTRYPOINT", rule::HEALTH_WORD_ENTRYPOINT),
             (
                 "XMIP_HEALTH_COLOR_ENTRYPOINT",

@@ -2,9 +2,9 @@ namespace Xmip.Abi.Operate;
 
 /// <summary>
 /// Each entry a section 8 read lends — a health record, a measurement, a
-/// topology node and a communication link — copied out of the runtime's
-/// borrow into the record .NET keeps. Unsafe, each: the caller promises the
-/// borrow is live.
+/// topology node, a communication link and a place on the map — copied out
+/// of the runtime's borrow into the record .NET keeps. Unsafe, each: the
+/// caller promises the borrow is live.
 /// </summary>
 internal static class PublicationEntries
 {
@@ -51,7 +51,9 @@ internal static class PublicationEntries
                 (TopologyOrigin)entry.Origin,
                 entry.Load,
                 entry.Activity,
-                entry.Evidence.Read());
+                entry.Evidence.Read(),
+                entry.Roles.Read(),
+                entry.Place >= 0 ? entry.Place : null);
         }
     }
 
@@ -72,7 +74,21 @@ internal static class PublicationEntries
                 entry.LatencyMilliseconds,
                 entry.Progress,
                 entry.Attempts,
-                entry.Evidence.Read());
+                entry.Evidence.Read(),
+                (TopologyRelation)entry.Relation);
+        }
+    }
+
+    internal static unsafe TopologyPlace Place(XmipTopologyPlace entry)
+    {
+        unsafe
+        {
+            return new TopologyPlace(
+                entry.Id.Read(),
+                entry.X,
+                entry.Y,
+                (TopologyBand)entry.Band,
+                (TopologyColumn)entry.Column);
         }
     }
 }

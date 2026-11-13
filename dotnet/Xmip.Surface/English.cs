@@ -12,7 +12,10 @@ namespace Xmip.Surface;
 /// nowhere in .NET. A status crosses the
 /// boundary as a code; this is the one place it becomes a sentence, so the
 /// board, the command and the cmdlet say the same thing about the same code.
-/// What is moving, a rate and its number, is <c>English.Rate.cs</c>.
+/// What is moving, a rate and its number, is <c>English.Rate.cs</c>; what the
+/// topology says — what a kind, an origin, a pattern and a relation are
+/// called, what passes over a link and what a node is for — is
+/// <c>English.Topology.cs</c>.
 /// </summary>
 public static partial class English
 {
@@ -32,54 +35,6 @@ public static partial class English
     public static string Kind(Counted counted)
     {
         return RuntimeLibrary.Rules.CountedWord(counted) ?? "unknown";
-    }
-
-    /// <summary>What a person reads a topology kind as — <c>virtual
-    /// machine</c> — <c>observe::NodeKind::name</c>, called in the runtime
-    /// (ADR-0052, amendment 2026-09-25: the web GUI kept its own until then).
-    /// <c>unknown</c> for a value the runtime does not define.</summary>
-    public static string Name(TopologyNodeKind kind)
-    {
-        return RuntimeLibrary.Rules.Publications.Words(kind)?.Name ?? "unknown";
-    }
-
-    /// <summary>What a person reads an origin as — <c>configured and
-    /// observed</c> — <c>observe::Origin::name</c>, called in the
-    /// runtime.</summary>
-    public static string Name(TopologyOrigin origin)
-    {
-        return RuntimeLibrary.Rules.Publications.Words(origin)?.Name ?? "unknown";
-    }
-
-    /// <summary>What a person reads a communication pattern as — <c>Publish →
-    /// consume</c> — <c>observe::Pattern::name</c>, called in the
-    /// runtime.</summary>
-    public static string Name(CommunicationPattern pattern)
-    {
-        return RuntimeLibrary.Rules.Publications.Words(pattern)?.Name ?? "unknown";
-    }
-
-    /// <summary>The word a publication writes a topology kind as —
-    /// <c>virtual-machine</c> — <c>observe::NodeKind::word</c>, for a surface
-    /// that styles by it. <c>unknown</c> for a value the runtime does not
-    /// define.</summary>
-    public static string Word(TopologyNodeKind kind)
-    {
-        return RuntimeLibrary.Rules.Publications.Words(kind)?.Word ?? "unknown";
-    }
-
-    /// <summary>The word a publication writes an origin as —
-    /// <c>observe::Origin::word</c>.</summary>
-    public static string Word(TopologyOrigin origin)
-    {
-        return RuntimeLibrary.Rules.Publications.Words(origin)?.Word ?? "unknown";
-    }
-
-    /// <summary>The word a publication writes a communication pattern as —
-    /// <c>publish-consume</c> — <c>observe::Pattern::word</c>.</summary>
-    public static string Word(CommunicationPattern pattern)
-    {
-        return RuntimeLibrary.Rules.Publications.Words(pattern)?.Word ?? "unknown";
     }
 
     /// <summary>A value as a person reads it, or an em dash where the
@@ -271,20 +226,6 @@ public static partial class English
     /// Subscriptions alone (<see cref="IOperatorSurface.NoWorkProcessPlaced"/>;
     /// ADR-0052, amendment 2026-11-11).</summary>
     public const string NoWorkProcess = "no Work Process placed";
-
-    /// <summary>What passes over a communication link, as the topology says
-    /// it on the line itself (ADR-0052, amendment 2026-09-25): the volume the
-    /// publisher counted and the rate it stated, or — for a link configured
-    /// and never used — that nothing has passed, so a path with no traffic is
-    /// seen as such rather than as a zero.</summary>
-    public static string Traffic(CommunicationLink link)
-    {
-        ArgumentNullException.ThrowIfNull(link);
-
-        return link.Origin == TopologyOrigin.Configured && link.Volume == 0
-            ? "configured · no traffic observed"
-            : $"{Figure(link.Volume)} · {Rate(link.Rate)}";
-    }
 
     /// <summary>A byte count scaled to the unit a person reads.</summary>
     public static string Bytes(ulong value)

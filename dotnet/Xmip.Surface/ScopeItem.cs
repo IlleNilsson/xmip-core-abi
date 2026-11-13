@@ -45,6 +45,14 @@ public sealed record ScopeItem(
     /// said: the To column.</summary>
     public string WentTo => FromTo?.To ?? string.Empty;
 
+    /// <summary>What the node the row is is for, from the roles it declares
+    /// (<see cref="English.Purpose(IEnumerable{string})"/>), one role per line,
+    /// or its refusal where its declaration was refused; empty on every row
+    /// that is not a node's own, <c>xmip:///&lt;cluster&gt;/node/&lt;name&gt;</c>
+    /// exactly, and on a node's that declared nothing a surface can read
+    /// (ADR-0056, amendment 2026-11-13).</summary>
+    public string Purpose { get; init; } = string.Empty;
+
     /// <summary>Build a row from health already read and figures already read.</summary>
     public static ScopeItem From(
         string scope, IReadOnlyList<HealthRecord> records, Figures figures)
@@ -74,6 +82,7 @@ public sealed record ScopeItem(
         return From(scope, surface.Health(scope), surface.Figures(scope)) with
         {
             FromTo = surface.FromTo(scope),
+            Purpose = PurposeAt(surface, scope),
         };
     }
 
@@ -81,6 +90,8 @@ public sealed record ScopeItem(
     /// first.</summary>
     public static IReadOnlyList<ScopeItem> Children(IOperatorSurface surface, string scope)
     {
+        ArgumentNullException.ThrowIfNull(surface);
+
         ScopeIndex index = surface.Index();
 
         return
@@ -89,8 +100,21 @@ public sealed record ScopeItem(
                 branch.Scope, index.Health(branch.Scope), surface.Figures(branch.Scope)) with
             {
                 FromTo = surface.FromTo(branch.Scope),
+                Purpose = PurposeAt(surface, branch.Scope),
             }),
         ];
+    }
+
+    // What the node at a node's own scope is for, by what the surface says it
+    // declares — published, else what [run] started it with
+    // (NodeCapability.Purpose); empty for any other scope.
+    private static string PurposeAt(IOperatorSurface surface, string scope)
+    {
+        string node = ScopeTree.Node(scope);
+
+        return node.Length == 0 || ScopeTree.NodeScope(scope) != scope
+            ? string.Empty
+            : surface.Capability(node).Purpose();
     }
 
     /// <summary>

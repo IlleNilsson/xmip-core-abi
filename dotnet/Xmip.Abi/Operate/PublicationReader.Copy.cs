@@ -74,7 +74,8 @@ public sealed partial class PublicationReader
                 [.. Fill(_links, handle).Select(PublicationEntries.Link)],
                 Operator.FromNanos(head.TopologyObservedUnixNanos),
                 drawnBy.Length > 0 ? drawnBy : source,
-                Paths(handle, nodes));
+                Paths(handle, nodes),
+                Places(handle, nodes));
         }
     }
 

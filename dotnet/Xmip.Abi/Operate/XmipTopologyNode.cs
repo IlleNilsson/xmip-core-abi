@@ -39,4 +39,13 @@ public struct XmipTopologyNode
 
     /// <summary><c>evidence</c>.</summary>
     public XmipStr Evidence;
+
+    /// <summary><c>roles</c>: the role words a node of the cluster declares,
+    /// comma separated; empty for none and for anything that is no
+    /// node.</summary>
+    public XmipStr Roles;
+
+    /// <summary><c>place</c>: a Storage node's place in <c>[storage]
+    /// nodes</c>, from 0; -1 for anything else.</summary>
+    public int Place;
 }

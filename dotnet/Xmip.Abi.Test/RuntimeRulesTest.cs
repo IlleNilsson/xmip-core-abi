@@ -149,6 +149,32 @@ public sealed class RuntimeRulesTest
         Assert.EndsWith("or nothing at all.", crowded, StringComparison.Ordinal);
     }
 
+    /// <summary>What a node's roles say it is for crosses as
+    /// <c>node::NodeRole::purpose</c> says it — each role with its meaning, one
+    /// per line, in declaration order, the stage roles together said as
+    /// executing — and a word that is no role is answered with its
+    /// refusal.</summary>
+    [Fact]
+    public void APurposeCrossesWholeAndAStrangerIsRefused()
+    {
+        string[] lines = Rules.Purpose("monitoring, operational").Split('\n');
+
+        Assert.Equal(2, lines.Length);
+        Assert.StartsWith("operational: ", lines[0], StringComparison.Ordinal);
+        Assert.StartsWith("monitoring: ", lines[1], StringComparison.Ordinal);
+        Assert.Equal("declares no role", Rules.Purpose(string.Empty));
+        Assert.StartsWith("executing: ", Rules.Purpose("sending+receiving+processing"),
+            StringComparison.Ordinal);
+
+        string[] every = Rules.Purpose(string.Join(',', Rules.RoleWords)).Split('\n');
+
+        Assert.Equal(
+            ["operational", "monitoring", "executing", "development", "storage"],
+            every.Select(line => line[..line.IndexOf(':', StringComparison.Ordinal)]));
+        Assert.StartsWith("REFUSED: no role is called relay", Rules.Purpose("relay"),
+            StringComparison.Ordinal);
+    }
+
     [Fact]
     public void EveryMoodCrossesWithAWordAColorAndBackAgain()
     {

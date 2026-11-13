@@ -65,6 +65,10 @@ public static partial class OperateAbi
     /// <c>observe::Pattern</c>.</summary>
     public const string TopologyPatternWordsEntrypoint = "xmip_topology_pattern_words_v1";
 
+    /// <summary>What a relation is called: section 8, <c>observe::Relation</c>
+    /// (ADR-0052, amendment 2026-11-13).</summary>
+    public const string TopologyRelationWordsEntrypoint = "xmip_topology_relation_words_v1";
+
     /// <summary>Read a curve, a node's throughput over time: section 8,
     /// <c>observe::Curve::read</c>.</summary>
     public const string CurveReadEntrypoint = "xmip_curve_read_v1";

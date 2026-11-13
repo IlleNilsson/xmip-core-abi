@@ -39,6 +39,9 @@ public sealed partial class PublicationReader
     private readonly delegate* unmanaged[Cdecl]<int, XmipStr*, XmipStr*, int> _kindWords;
     private readonly delegate* unmanaged[Cdecl]<int, XmipStr*, XmipStr*, int> _originWords;
     private readonly delegate* unmanaged[Cdecl]<int, XmipStr*, XmipStr*, int> _patternWords;
+    private readonly delegate* unmanaged[Cdecl]<int, XmipStr*, XmipStr*, int> _relationWords;
+    private readonly delegate* unmanaged[Cdecl]<
+        nint, XmipStr, XmipStr*, nuint, XmipTopologyPlace*, nuint, nuint*, int> _layout;
     private readonly delegate* unmanaged[Cdecl]<nint, byte*, nuint, nuint*, int> _subscriptions;
     private readonly delegate* unmanaged[Cdecl]<nint, byte*, nuint, nuint*, int>
         _eventSubscriptions;
@@ -77,6 +80,11 @@ public sealed partial class PublicationReader
             NativeLibrary.GetExport(library, OperateAbi.TopologyOriginWordsEntrypoint);
         _patternWords = (delegate* unmanaged[Cdecl]<int, XmipStr*, XmipStr*, int>)
             NativeLibrary.GetExport(library, OperateAbi.TopologyPatternWordsEntrypoint);
+        _relationWords = (delegate* unmanaged[Cdecl]<int, XmipStr*, XmipStr*, int>)
+            NativeLibrary.GetExport(library, OperateAbi.TopologyRelationWordsEntrypoint);
+        _layout = (delegate* unmanaged[Cdecl]<
+            nint, XmipStr, XmipStr*, nuint, XmipTopologyPlace*, nuint, nuint*, int>)
+            NativeLibrary.GetExport(library, OperateAbi.PublicationLayoutEntrypoint);
         _subscriptions = (delegate* unmanaged[Cdecl]<nint, byte*, nuint, nuint*, int>)
             NativeLibrary.GetExport(library, OperateAbi.PublicationSubscriptionsEntrypoint);
         _eventSubscriptions = (delegate* unmanaged[Cdecl]<nint, byte*, nuint, nuint*, int>)
@@ -106,6 +114,8 @@ public sealed partial class PublicationReader
         OperateAbi.TopologyKindWordsEntrypoint,
         OperateAbi.TopologyOriginWordsEntrypoint,
         OperateAbi.TopologyPatternWordsEntrypoint,
+        OperateAbi.TopologyRelationWordsEntrypoint,
+        OperateAbi.PublicationLayoutEntrypoint,
         OperateAbi.PublicationSubscriptionsEntrypoint,
         OperateAbi.PublicationEventSubscriptionsEntrypoint,
         OperateAbi.PublicationDeadMessagesEntrypoint,
@@ -190,6 +200,14 @@ public sealed partial class PublicationReader
     public TopologyWord? Words(CommunicationPattern pattern)
     {
         return Said(_patternWords, (int)pattern);
+    }
+
+    /// <summary>What a relation is called — <c>observe::Relation</c>'s word
+    /// and name: <c>copies-to</c>, <c>copies to</c>. Null for a value the
+    /// runtime does not define.</summary>
+    public TopologyWord? Words(TopologyRelation relation)
+    {
+        return Said(_relationWords, (int)relation);
     }
 
     private static TopologyWord? Said(
