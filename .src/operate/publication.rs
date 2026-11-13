@@ -28,6 +28,9 @@ pub const RUN_ENTRYPOINT: &str = "xmip_publication_run_v1";
 /// Where the work at a scope of it came from and went:
 /// `observe::topology::from_to`.
 pub const FROM_TO_ENTRYPOINT: &str = "xmip_publication_from_to_v1";
+/// Where each thing it draws beneath a focus stands on the map:
+/// `observe::topology::layout`.
+pub const LAYOUT_ENTRYPOINT: &str = "xmip_publication_layout_v1";
 
 /// What a topology kind is called: `observe::NodeKind::word` and `name`.
 pub const KIND_WORDS_ENTRYPOINT: &str = "xmip_topology_kind_words_v1";
@@ -36,6 +39,8 @@ pub const ORIGIN_WORDS_ENTRYPOINT: &str = "xmip_topology_origin_words_v1";
 /// What a communication pattern is called: `observe::Pattern::word` and
 /// `name`.
 pub const PATTERN_WORDS_ENTRYPOINT: &str = "xmip_topology_pattern_words_v1";
+/// What a relation is called: `observe::Relation::word` and `name`.
+pub const RELATION_WORDS_ENTRYPOINT: &str = "xmip_topology_relation_words_v1";
 
 /// A curve (a node's throughput over time), `observe::Curve::read`, into a
 /// handle.
@@ -81,6 +86,37 @@ pub mod pattern {
     pub const FIRE_AND_FORGET: i32 = 4;
     pub const SESSION: i32 = 5;
     pub const RETRY: i32 = 6;
+}
+
+/// Header section 8, `XmipTopologyRelation`, as it crosses.
+pub mod relation {
+    pub const WRITES_INTO: i32 = 0;
+    pub const HANDS_WORK_TO: i32 = 1;
+    pub const COPIES_TO: i32 = 2;
+    pub const OPERATES: i32 = 3;
+    pub const MONITORS: i32 = 4;
+    pub const OPERATES_AND_MONITORS: i32 = 5;
+    pub const TRAFFIC: i32 = 6;
+}
+
+/// Header section 8, `XmipTopologyBand`, as it crosses.
+pub mod band {
+    pub const OPERATION: i32 = 0;
+    pub const PROCESSING: i32 = 1;
+    pub const PATH: i32 = 2;
+    pub const STANDBY: i32 = 3;
+    pub const EXECUTING: i32 = 4;
+    pub const INSIDE: i32 = 5;
+}
+
+/// Header section 8, `XmipTopologyColumn`, as it crosses.
+pub mod column {
+    pub const TX_PARTY: i32 = 0;
+    pub const RECEIVING: i32 = 1;
+    pub const STORAGE: i32 = 2;
+    pub const SENDING: i32 = 3;
+    pub const RX_PARTY: i32 = 4;
+    pub const SPANNING: i32 = 5;
 }
 
 /// Header section 8, `XmipRunList`, as it crosses.
@@ -138,9 +174,14 @@ pub struct TopologyNode {
     /// (`observe::topology::window`), zero where nothing moved.
     pub activity: f64,
     pub evidence: Str,
+    /// The role words it declares, comma separated; empty for none.
+    pub roles: Str,
+    /// Its place in `[storage] nodes`, from zero; -1 for none.
+    pub place: i32,
 }
 
-/// Header section 8. One communication relationship.
+/// Header section 8. One communication relationship, and how its ends are
+/// related.
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct TopologyLink {
@@ -149,6 +190,7 @@ pub struct TopologyLink {
     pub to: Str,
     pub pattern: i32,
     pub origin: i32,
+    pub relation: i32,
     pub protocol: Str,
     pub health: i32,
     pub volume: u64,
@@ -252,6 +294,30 @@ pub type FromToFn = unsafe extern "C" fn(
 pub type TopologyWordsFn =
     unsafe extern "C" fn(value: i32, out_word: *mut Str, out_name: *mut Str) -> i32;
 
+/// Header section 8. Where one drawn thing stands, its id borrowed from the
+/// publication, `x` and `y` from zero to one.
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct TopologyPlace {
+    pub id: Str,
+    pub x: f64,
+    pub y: f64,
+    pub band: i32,
+    pub column: i32,
+}
+
+/// Where each thing a read publication draws beneath `focus` stands — or
+/// only the `shown_len` ids `shown` names — in the fill shape.
+pub type LayoutFn = unsafe extern "C" fn(
+    publication: *const Publication,
+    focus: Str,
+    shown: *const Str,
+    shown_len: usize,
+    out: *mut TopologyPlace,
+    cap: usize,
+    out_len: *mut usize,
+) -> i32;
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -282,6 +348,11 @@ mod tests {
             ("XMIP_PUBLICATION_LINKS_ENTRYPOINT", LINKS_ENTRYPOINT),
             ("XMIP_PUBLICATION_RUN_ENTRYPOINT", RUN_ENTRYPOINT),
             ("XMIP_PUBLICATION_FROM_TO_ENTRYPOINT", FROM_TO_ENTRYPOINT),
+            ("XMIP_PUBLICATION_LAYOUT_ENTRYPOINT", LAYOUT_ENTRYPOINT),
+            (
+                "XMIP_TOPOLOGY_RELATION_WORDS_ENTRYPOINT",
+                RELATION_WORDS_ENTRYPOINT,
+            ),
             ("XMIP_TOPOLOGY_KIND_WORDS_ENTRYPOINT", KIND_WORDS_ENTRYPOINT),
             (
                 "XMIP_TOPOLOGY_ORIGIN_WORDS_ENTRYPOINT",
@@ -320,6 +391,28 @@ mod tests {
             ("XMIP_PATTERN_REQUEST_RESPONSE", pattern::REQUEST_RESPONSE),
             ("XMIP_PATTERN_SEND_RECEIVE", pattern::SEND_RECEIVE),
             ("XMIP_PATTERN_RETRY", pattern::RETRY),
+            ("XMIP_RELATION_WRITES_INTO", relation::WRITES_INTO),
+            ("XMIP_RELATION_HANDS_WORK_TO", relation::HANDS_WORK_TO),
+            ("XMIP_RELATION_COPIES_TO", relation::COPIES_TO),
+            ("XMIP_RELATION_OPERATES", relation::OPERATES),
+            ("XMIP_RELATION_MONITORS", relation::MONITORS),
+            (
+                "XMIP_RELATION_OPERATES_AND_MONITORS",
+                relation::OPERATES_AND_MONITORS,
+            ),
+            ("XMIP_RELATION_TRAFFIC", relation::TRAFFIC),
+            ("XMIP_BAND_OPERATION", band::OPERATION),
+            ("XMIP_BAND_PROCESSING", band::PROCESSING),
+            ("XMIP_BAND_PATH", band::PATH),
+            ("XMIP_BAND_STANDBY", band::STANDBY),
+            ("XMIP_BAND_EXECUTING", band::EXECUTING),
+            ("XMIP_BAND_INSIDE", band::INSIDE),
+            ("XMIP_COLUMN_TX_PARTY", column::TX_PARTY),
+            ("XMIP_COLUMN_RECEIVING", column::RECEIVING),
+            ("XMIP_COLUMN_STORAGE", column::STORAGE),
+            ("XMIP_COLUMN_SENDING", column::SENDING),
+            ("XMIP_COLUMN_RX_PARTY", column::RX_PARTY),
+            ("XMIP_COLUMN_SPANNING", column::SPANNING),
         ] {
             assert_eq!(i64::from(value), defined(name), "{name}");
         }
@@ -337,10 +430,14 @@ mod tests {
     #[test]
     fn the_structs_are_plain_c_layouts() {
         let s = size_of::<Str>();
-        // Five strings, three ints and two doubles: the ints pad to 16.
-        assert_eq!(size_of::<TopologyNode>(), 5 * s + 16 + 16);
-        // Five strings, three ints, volume, three doubles, attempts padded.
-        assert_eq!(size_of::<TopologyLink>(), 5 * s + 16 + 8 + 24 + 8);
+        // Six strings, four ints and two doubles: kind pads to 8, health and
+        // origin are 8, place pads to 8.
+        assert_eq!(size_of::<TopologyNode>(), 6 * s + 8 + 8 + 16 + 8);
+        // Five strings, four ints, volume, three doubles, attempts padded:
+        // pattern, origin and relation pad to 16.
+        assert_eq!(size_of::<TopologyLink>(), 5 * s + 16 + 8 + 8 + 24 + 8);
+        // A string, two doubles and two ints.
+        assert_eq!(size_of::<TopologyPlace>(), s + 16 + 8);
         // Five strings, two flags padded, and when the topology was drawn.
         assert_eq!(size_of::<PublicationHead>(), 5 * s + 8 + 8 + 8);
     }

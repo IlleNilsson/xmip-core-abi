@@ -110,6 +110,9 @@ roles = ["RX1=receiving", "PX1=processing+sending", "TX1=sending"]
 online = ["RX1"]
 stress = "realistic"
 
+# Each node of the cluster says the roles it declares (ADR-0052 and ADR-0056,
+# amendments 2026-11-13): where the reader stands it on the map, by role and
+# never by name, and what its tooltip says it is for.
 [topology]
 source = "essentials — cluster CL1"
 observed_unix_nanos = 1789111688000000000
@@ -137,6 +140,7 @@ origin = "both"
 load = 0.0
 activity = 1.5
 evidence = "alive"
+roles = "receiving"
 
 [[topology.nodes]]
 id = "node/RX1/receive"
@@ -185,6 +189,7 @@ origin = "both"
 load = 0.0
 activity = 1.5
 evidence = "3/3 rounds passed"
+roles = "processing,sending"
 
 [[topology.nodes]]
 id = "node/PX1/process"
@@ -222,6 +227,7 @@ origin = "both"
 load = 0.0
 activity = 1.5
 evidence = "2/3 rounds passed, 1 failed"
+roles = "sending"
 
 [[topology.nodes]]
 id = "node/TX1/send"

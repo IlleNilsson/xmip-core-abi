@@ -182,6 +182,55 @@ public sealed class EnglishTest
         Assert.Equal("0/s", English.Rate(0));
     }
 
+    /// <summary>A link a relation explains says the relation before its
+    /// figure, in the runtime's name for it (the owner, 2026-11-12: <i>Related
+    /// by its role in the cluster, not by name</i>); traffic no relation
+    /// explains says the figure alone.</summary>
+    [Fact]
+    public void ALinkSaysHowItsEndsAreRelatedBeforeItsFigure()
+    {
+        Assert.Equal(
+            "copies to · 48,213 · 310/s",
+            English.Traffic(Link(TopologyOrigin.Both, 48_213, 310) with
+            {
+                Relation = TopologyRelation.CopiesTo,
+            }));
+        Assert.Equal(
+            "writes into · configured · no traffic observed",
+            English.Traffic(Link(TopologyOrigin.Configured, 0, 0) with
+            {
+                Relation = TopologyRelation.WritesInto,
+            }));
+        Assert.Equal(
+            "40 · 12/s",
+            English.Traffic(Link(TopologyOrigin.Observed, 40, 12.4) with
+            {
+                Relation = TopologyRelation.Traffic,
+            }));
+        Assert.Equal(
+            "48,213 · 310/s",
+            English.Passed(Link(TopologyOrigin.Both, 48_213, 310) with
+            {
+                Relation = TopologyRelation.CopiesTo,
+            }));
+    }
+
+    /// <summary>What a node is for is <c>node::NodeRole::purpose</c>'s, tested
+    /// there; the surface says what the runtime's export says, a list of roles
+    /// as their declaration, and a word that is no role its refusal.</summary>
+    [Fact]
+    public void ANodesPurposeIsWhatTheRuntimeSaysItsRolesAreFor()
+    {
+        string both = English.Purpose("operational,monitoring");
+
+        Assert.Equal(RuntimeLibrary.Rules.Purpose("operational,monitoring"), both);
+        Assert.Equal(both, English.Purpose(["operational", "monitoring"]));
+        Assert.Equal(2, both.Split('\n').Length);
+        Assert.Equal("declares no role", English.Purpose(string.Empty));
+        Assert.Equal("declares no role", English.Purpose([]));
+        Assert.StartsWith("REFUSED", English.Purpose("relay"), StringComparison.Ordinal);
+    }
+
     /// <summary>What a topology value is called is <c>observe::topology</c>'s,
     /// tested there; the surface says what the runtime's export says. Until
     /// 2026-09-25 the web GUI kept its own list of both.</summary>
@@ -209,6 +258,14 @@ public sealed class EnglishTest
                 new TopologyWord(English.Word(pattern), English.Name(pattern)));
         }
 
+        foreach (TopologyRelation relation in Enum.GetValues<TopologyRelation>())
+        {
+            Assert.Equal(
+                reader.Words(relation),
+                new TopologyWord(English.Word(relation), English.Name(relation)));
+        }
+
+        Assert.Equal("unknown", English.Name((TopologyRelation)99));
         Assert.Equal("virtual machine", English.Name(TopologyNodeKind.VirtualMachine));
         Assert.Equal("unknown", English.Name((TopologyNodeKind)99));
         Assert.Equal("unknown", English.Word((CommunicationPattern)99));

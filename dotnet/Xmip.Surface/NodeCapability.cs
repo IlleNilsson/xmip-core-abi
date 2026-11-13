@@ -75,6 +75,23 @@ public sealed record NodeCapability(
                 : $"{(Roles.Count > 0 ? Words : "no role")} · {Route}";
     }
 
+    /// <summary>What the node is for, by the roles it declares — each with its
+    /// meaning, a line each, or <c>declares no role</c>
+    /// (<see cref="English.Purpose(IEnumerable{string})"/>) — what every surface
+    /// shows of a node: on hover on the Topology and the Monitor, beneath its
+    /// row in <c>xmip</c> and PowerShell (ADR-0056, amendment 2026-11-13). A
+    /// refused declaration says its refusal instead, and a node behind which
+    /// nothing was declared that a surface can read says nothing, which is
+    /// not a node declaring no role.</summary>
+    public string Purpose()
+    {
+        return !Said
+            ? string.Empty
+            : Refusal.Length > 0
+                ? Refusal
+                : English.Purpose(Roles);
+    }
+
     /// <summary>What a node published of itself, when the record at
     /// <paramref name="scope"/> is the capability record it publishes at
     /// <c>&lt;node&gt;/capability</c>: the node beneath which it sits, the

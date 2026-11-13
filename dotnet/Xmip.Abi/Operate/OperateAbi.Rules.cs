@@ -38,6 +38,10 @@ public static partial class OperateAbi
     /// <c>node::NodeRole::stages</c>.</summary>
     public const string RoleStagesEntrypoint = "xmip_role_stages_v1";
 
+    /// <summary>What a node declaring some roles is for: section 7,
+    /// <c>node::NodeRole::purpose</c> (ADR-0056, amendment 2026-11-13).</summary>
+    public const string RolePurposeEntrypoint = "xmip_role_purpose_v1";
+
     /// <summary>A mood's word: section 7, <c>observe::Health::word</c>.</summary>
     public const string HealthWordEntrypoint = "xmip_health_word_v1";
 
@@ -79,6 +83,11 @@ public static partial class OperateAbi
     /// went: section 8, <c>observe::topology::from_to</c> (ADR-0027, amendment
     /// 2026-11-11).</summary>
     public const string PublicationFromToEntrypoint = "xmip_publication_from_to_v1";
+
+    /// <summary>Where each thing a read publication draws beneath a focus
+    /// stands on the map: section 8, <c>observe::topology::layout</c>
+    /// (ADR-0052 and ADR-0056, amendments 2026-11-13).</summary>
+    public const string PublicationLayoutEntrypoint = "xmip_publication_layout_v1";
 
     /// <summary>What a published capability record declares: section 7,
     /// <c>observe::capability::declared</c>.</summary>

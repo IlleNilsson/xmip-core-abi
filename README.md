@@ -85,7 +85,11 @@ and the probe's judgment of whether a library loaded at all
 (`ModuleProbe.Result.Unloadable`) and whether a module conforms, and `StatusMeaning`,
 what a status code means; `Operate/` the operator boundary and its records,
 and `RuntimeRules`, section 7 bound once: scope containment, a scope's
-parts and the node and stage it is on, the stage words and the facts of a stage, the role words, a declaration's parse and the stages a role serves, a
+parts and the node and stage it is on, the stage words and the facts of a stage, the role words, a declaration's parse and the stages a role serves,
+what a node declaring some roles is for (`Purpose`, `node::NodeRole::purpose`:
+each role with its meaning, a line each, or the refusal of a word that is no
+role — the one purpose every surface shows a node by; ADR-0056, amendment
+2026-11-13), a
 node's published capability and a run's entry for it, a mood's word, color
 name and rollup, a counted kind's word and the worst-first order, each written
 once in the crate that owns it (`observe`, `node`) and forwarded by the
@@ -93,9 +97,20 @@ runtime's library, so no .NET surface writes a rule again; and
 `PublicationReader`, section 8, which hands a publication's text to the
 runtime's one reader and brings back a `Publication` — its records, counts,
 topology (`Topology.cs`, the header's values) and run (ADR-0052, amendments
-2026-09-24), and what each topology kind, origin and pattern is called
+2026-09-24), and what each topology kind, origin, pattern and relation is called
 (`Words`, a `TopologyWord` of the word a publication writes and the name a
-person reads, `observe::topology`'s; ADR-0052, amendment 2026-09-25); and `RuntimeAudit`, section 9, a program's audit record handed
+person reads, `observe::topology`'s; ADR-0052, amendment 2026-09-25). Since
+2026-11-13 a `TopologyNode` says the `Roles` a node of the cluster declares
+and a Storage node its `Place` in `[storage] nodes`, a `CommunicationLink`
+its `Relation` — how its two ends are related by their roles, never their
+names (`TopologyRelation`) — and the snapshot carries `Places`, where each
+thing beneath each focus stands on the map as the runtime lays it out
+(`xmip_publication_layout_v1`, asked for every focus while the handle is
+open; `PlacesAt` answers one, the empty string the top): a `TopologyPlace`'s
+`X` and `Y` in the unit square, its `TopologyBand` and its `TopologyColumn`
+(ADR-0052 and ADR-0056, amendments 2026-11-13). `XmipTopologyNode` and
+`XmipTopologyLink` changed in place and `XmipTopologyPlace` is new, each
+held to the Rust binding's size by a test. And `RuntimeAudit`, section 9, a program's audit record handed
 to `xmip-core-audit` through the runtime's library, with `AuditPhase`,
 `AuditSeverity` and `AuditKept` as the header defines them (ADR-0062), and
 `Read`, the records read back by the capability's one reader and query —

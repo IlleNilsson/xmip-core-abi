@@ -4,8 +4,9 @@ using Xmip.Abi.Module;
 namespace Xmip.Abi.Operate;
 
 // Section 7's stage, role and capability rules: what a stage counts, whether
-// it pauses, what a thing at it is called, the roles a declaration names and
-// the stages each serves, and a node's declared capability.
+// it pauses, what a thing at it is called, the roles a declaration names, the
+// stages each serves and what a node declaring them is for, and a node's
+// declared capability.
 public sealed partial class RuntimeRules
 {
     /// <summary>What a stage counts — <c>observe::Counted::at</c>: Streams at
@@ -142,6 +143,51 @@ public sealed partial class RuntimeRules
 
         Check(status);
         return Read(stages, count);
+    }
+
+    /// <summary>
+    /// What a node declaring <paramref name="roles"/> is for —
+    /// <c>node::NodeRole::purpose</c>: each role as one declaration says it,
+    /// with its meaning, one per line, or <c>declares no role</c>. The roles
+    /// are read as <see cref="Declared"/> reads a declaration, a topology
+    /// node's roles among them; one naming a word that is no role is answered
+    /// with the REFUSED sentence naming it instead (ADR-0055). The one
+    /// purpose every surface shows (ADR-0056, amendment 2026-11-13).
+    /// </summary>
+    public string Purpose(string roles)
+    {
+        ArgumentNullException.ThrowIfNull(roles);
+
+        using PinnedStr text = XmipStr.Pin(roles);
+        byte[] said = new byte[Small];
+        nuint length = 0;
+        int status;
+
+        // Asked again, at its true length, only when it did not fit.
+        unsafe
+        {
+            fixed (byte* into = said)
+            {
+                status = _purpose(text.Value, into, (nuint)said.Length, &length);
+            }
+
+            if (length > (nuint)said.Length)
+            {
+                said = new byte[checked((int)length)];
+
+                fixed (byte* into = said)
+                {
+                    status = _purpose(text.Value, into, (nuint)said.Length, &length);
+                }
+            }
+        }
+
+        if (status != (int)XmipStatus.Invalid)
+        {
+            Check(status);
+        }
+
+        return Encoding.UTF8.GetString(said, 0, checked((int)length));
     }
 
     /// <summary>

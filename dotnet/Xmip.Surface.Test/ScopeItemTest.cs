@@ -54,6 +54,31 @@ public sealed class ScopeItemTest
             rows.Select(row => row.Scope));
     }
 
+    /// <summary>A node's own row says what the node is for, from the roles it
+    /// published (the owner, 2026-11-12: <i>what are nodes purpose</i>), read
+    /// and listed alike; a row beneath it, the cluster's, and a node's that
+    /// declared nothing a surface can read say nothing.</summary>
+    [Fact]
+    public void ANodesRowSaysItsPurposeAndNoOtherRowDoes()
+    {
+        IOperatorSurface surface = new Published(
+            new(
+                $"{Receiving}/capability", HealthState.Fine, 0, "declares receiving; online; x",
+                Now),
+            new($"{Receiving}/receive/tcp", HealthState.Fine, 0, "", Now),
+            new($"{Processing}/receive/tcp", HealthState.Fine, 0, "", Now));
+
+        string purpose = surface.Describe(Receiving).Purpose;
+
+        Assert.Equal(English.Purpose("receiving"), purpose);
+        Assert.StartsWith("receiving: ", purpose, StringComparison.Ordinal);
+        Assert.Equal(
+            purpose, surface.Children(Nodes).Single(row => row.Scope == Receiving).Purpose);
+        Assert.Empty(surface.Describe(Processing).Purpose);
+        Assert.Empty(surface.Describe($"{Receiving}/receive").Purpose);
+        Assert.Empty(surface.Describe(Test.Scope).Purpose);
+    }
+
     [Fact]
     public void ARowWithNoHealthSaysSoInWords()
     {

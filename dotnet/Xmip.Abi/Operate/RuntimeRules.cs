@@ -65,6 +65,7 @@ public sealed partial class RuntimeRules
     private readonly delegate* unmanaged[Cdecl]<XmipStr, XmipStr*, int> _stageLocation;
     private readonly delegate* unmanaged[Cdecl]<XmipStr, XmipStr*, int> _stageTitle;
     private readonly delegate* unmanaged[Cdecl]<XmipStr, XmipStr*, nuint, nuint*, int> _roleStages;
+    private readonly delegate* unmanaged[Cdecl]<XmipStr, byte*, nuint, nuint*, int> _purpose;
     private readonly delegate* unmanaged[Cdecl]<
         XmipStr, XmipStr, XmipStr*, XmipStr*, nuint, nuint*, byte*, byte*, nuint, nuint*, int>
         _published;
@@ -112,6 +113,8 @@ public sealed partial class RuntimeRules
             Export(library, OperateAbi.StageTitleEntrypoint);
         _roleStages = (delegate* unmanaged[Cdecl]<XmipStr, XmipStr*, nuint, nuint*, int>)
             Export(library, OperateAbi.RoleStagesEntrypoint);
+        _purpose = (delegate* unmanaged[Cdecl]<XmipStr, byte*, nuint, nuint*, int>)
+            Export(library, OperateAbi.RolePurposeEntrypoint);
         _published = (delegate* unmanaged[Cdecl]<
             XmipStr, XmipStr, XmipStr*, XmipStr*, nuint, nuint*, byte*, byte*, nuint, nuint*, int>)
             Export(library, OperateAbi.CapabilityPublishedEntrypoint);
@@ -284,6 +287,7 @@ public sealed partial class RuntimeRules
         OperateAbi.RoleWordsEntrypoint,
         OperateAbi.RoleDeclaredEntrypoint,
         OperateAbi.RoleStagesEntrypoint,
+        OperateAbi.RolePurposeEntrypoint,
         OperateAbi.HealthWordEntrypoint,
         OperateAbi.HealthColorEntrypoint,
         OperateAbi.HealthNamedEntrypoint,
