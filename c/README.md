@@ -23,7 +23,7 @@ XmipEventLibrary xmip;
 xmip_event_library_open("xmip_core_runtime.dll", &xmip);
 
 XmipEventFilter filter = {0};              /* every empty list is any */
-filter.scope = xmip_str("xmip:///C1");
+filter.scope = xmip_str("xmip:///CL1");
 XmipEventSubscription *subscription = NULL;
 uint8_t said[512];
 size_t said_len = 0;

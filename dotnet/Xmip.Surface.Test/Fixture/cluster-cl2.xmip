@@ -2,27 +2,27 @@
 # clusters (ADR-0052, amendment 2026-09-14, ruling 1), each publishing its own
 # file, and a face holds both at once (amendment 2026-09-20). Small on purpose:
 # what it has to carry is its own [run].cluster, its own scope root and enough
-# topology for a view to draw something that is plainly not C1's.
+# topology for a view to draw something that is plainly not CL1's.
 
-source = "essentials — xmip:///C2"
-node = "xmip:///C2"
+source = "essentials — xmip:///CL2"
+node = "xmip:///CL2"
 
 [[records]]
-scope = "xmip:///C2/node/R1/capability"
+scope = "xmip:///CL2/node/RX1/capability"
 state = "fine"
 severity = 0
 evidence = "declares receiving; online"
 observed_unix_nanos = 1789111688000000000
 
 [[records]]
-scope = "xmip:///C2/node/R1/receive/tcp/json"
+scope = "xmip:///CL2/node/RX1/receive/tcp/json"
 state = "fine"
 severity = 0
 evidence = "3/3 rounds passed"
 observed_unix_nanos = 1789111688000000000
 
 [[records]]
-scope = "xmip:///C2/node/S1/send/tcp/json"
+scope = "xmip:///CL2/node/TX1/send/tcp/json"
 state = "done"
 severity = 95
 evidence = "connection refused by billing-x (10.0.9.7:5671)"
@@ -41,26 +41,26 @@ counted = "messages"
 value = 1
 
 [run]
-cluster = "C2"
+cluster = "CL2"
 tests = ["RoundTrip"]
-nodes = ["R1", "S1"]
-roles = ["R1=receiving", "S1=sending"]
-online = ["R1"]
+nodes = ["RX1", "TX1"]
+roles = ["RX1=receiving", "TX1=sending"]
+online = ["RX1"]
 stress = "harsh"
 
 # Nothing rose over the window its roll keeps: its one link's rate is zero,
 # and every drawn thing's activity, what moved through it per second, too
 # (ADR-0052, amendment 2026-11-10).
 [topology]
-source = "essentials — cluster C2"
+source = "essentials — cluster CL2"
 observed_unix_nanos = 1789111688000000000
 
 [[topology.nodes]]
 id = "cluster"
 parent = ""
-label = "C2"
+label = "CL2"
 kind = "cluster"
-scope = "xmip:///C2"
+scope = "xmip:///CL2"
 state = "done"
 origin = "configured"
 load = 0.0
@@ -68,11 +68,11 @@ activity = 0.0
 evidence = "2 nodes, 1 of 2 leaves fine"
 
 [[topology.nodes]]
-id = "node/R1"
+id = "node/RX1"
 parent = "cluster"
-label = "R1"
+label = "RX1"
 kind = "node"
-scope = "xmip:///C2/node/R1"
+scope = "xmip:///CL2/node/RX1"
 state = "fine"
 origin = "both"
 load = 0.0
@@ -80,11 +80,11 @@ activity = 0.0
 evidence = "3/3 rounds passed"
 
 [[topology.nodes]]
-id = "node/S1"
+id = "node/TX1"
 parent = "cluster"
-label = "S1"
+label = "TX1"
 kind = "node"
-scope = "xmip:///C2/node/S1"
+scope = "xmip:///CL2/node/TX1"
 state = "done"
 origin = "both"
 load = 0.0
@@ -92,9 +92,9 @@ activity = 0.0
 evidence = "connection refused by billing-x (10.0.9.7:5671)"
 
 [[topology.links]]
-id = "R1->S1"
-from = "node/R1"
-to = "node/S1"
+id = "RX1->TX1"
+from = "node/RX1"
+to = "node/TX1"
 pattern = "send-receive"
 origin = "observed"
 protocol = "handoff"

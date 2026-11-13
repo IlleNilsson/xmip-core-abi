@@ -7,39 +7,39 @@
 # the publisher is the processing node, the receiving and the sending nodes
 # stand directly beneath the root.
 
-source = "P1"
-node = "xmip:///P1"
+source = "PX1"
+node = "xmip:///PX1"
 
 [[records]]
-scope = "xmip:///R1/receive/orders"
+scope = "xmip:///RX1/receive/orders"
 state = "fine"
 severity = 0
 evidence = ""
 observed_unix_nanos = 1789111688000000000
 
 [[records]]
-scope = "xmip:///R1/receive/party"
+scope = "xmip:///RX1/receive/party"
 state = "done"
 severity = 95
 evidence = "connection refused by party-x (10.0.4.21:22)"
 observed_unix_nanos = 1789111684000000000
 
 [[records]]
-scope = "xmip:///R1/process/approval"
+scope = "xmip:///RX1/process/approval"
 state = "stressed"
 severity = 55
 evidence = "3 Messages waiting longer than 5 minutes"
 observed_unix_nanos = 1789111686000000000
 
 [[records]]
-scope = "xmip:///S1/send/warehouse"
+scope = "xmip:///TX1/send/warehouse"
 state = "paused"
 severity = 30
 evidence = "paused by ilian"
 observed_unix_nanos = 1789111687000000000
 
 [[records]]
-scope = "xmip:///S1/send/billing"
+scope = "xmip:///TX1/send/billing"
 state = "fine"
 severity = 0
 evidence = ""

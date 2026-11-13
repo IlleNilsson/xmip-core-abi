@@ -327,7 +327,7 @@ answer even when it lists none; *Unlisted* is a source that cannot list;
   reached the same three ways. `EventSubscriptionQuery` is their one drill,
   pattern and order (ADR-0065, amendments 2026-09-29 and 2026-09-30), and
   `EventSubscriptionQuery.Unheard` and `Line` the one selection and wording
-  of the members the nodes there do not hear — *R1: not hearing
+  of the members the nodes there do not hear — *RX1: not hearing
   `<node>` since `<time>`: `<why>`* — which every surface shows read-only
   beside them (amendment 2026-10-02); the links between nodes are never
   listed or acted on.
