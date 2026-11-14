@@ -272,8 +272,8 @@ typedef XmipStatus (*XmipValidateFn)(XmipStr configuration,
  * language boundary too (ADR-0052, amendment 2026-09-24; ADR-0027, amendment
  * of the same date). Each symbol below is a thin forwarder into its owner:
  *
- *     containment, parts    observe::Scope        (xmip-core-observe)
- *     the wildcard          observe::wildcard     (xmip-core-observe)
+ *     containment, parts    node::Scope           (xmip-core-node)
+ *     the wildcard          node::wildcard        (xmip-core-node)
  *     stage words,          node::Stage           (xmip-core-node)
  *       pausable, location
  *     role words, a parse   node::NodeRole        (xmip-core-node)
@@ -1238,8 +1238,7 @@ typedef XmipStatus (*XmipEventUnheardFn)(uint8_t *out, size_t cap, size_t *out_l
  * A list is JSON, in memory only (ADR-0031 clause 2), written into out as
  * UTF-8, its true byte length in out_len whether or not it fit:
  *
- *   {"orders":"<where acts are left, empty for none>",
- *    "event_subscriptions":[{"node","id","subscriber","party","action","scope",
+ *   {"event_subscriptions":[{"node","id","subscriber","party","action","scope",
  *                            "state","paused","queued","capacity","delivered",
  *                            "missed","since_unix_nanos"}],
  *    "unheard":[{"by","node","since_unix_nanos","why","said"}]}
@@ -1258,7 +1257,7 @@ typedef XmipStatus (*XmipEventUnheardFn)(uint8_t *out, size_t cap, size_t *out_l
  * acted on.
  *
  * xmip_event_subscriptions_v1 lists this process's hub, each entry at node,
- * the scope the caller says this process publishes at; orders is empty.
+ * the scope the caller says this process publishes at.
  * XMIP_OK; XMIP_E_MALFORMED when node is not UTF-8.
  *
  * xmip_event_subscription_act_v1 applies act - pause, resume or remove,
@@ -1270,12 +1269,12 @@ typedef XmipStatus (*XmipEventUnheardFn)(uint8_t *out, size_t cap, size_t *out_l
  * the refusal, opening REFUSED, when no subscription of that number is held;
  * XMIP_E_INVALID with the refusal for a word that is no act.
  *
- * A surface reading a publication touches no node: it leaves the act where
- * the publication says (orders) through section 14's xmip_order_v1, noun
- * event-subscription, target the number.
+ * A surface reading a publication touches no node and acts on none: an act
+ * is asked at a node's door, through section 17's act and Xmip Storage
+ * (ADR-0014, amendment 2026-11-13).
  *
  * xmip_publication_event_subscriptions_v1 lists what a read publication
- * (section 8) carries, orders as it says. XMIP_E_INVALID for no handle.
+ * (section 8) carries. XMIP_E_INVALID for no handle.
  *
  * Every string may be empty. Optional symbols, as section 7's are;
  * XMIP_OPERATE_VERSION is unchanged.
@@ -1339,17 +1338,20 @@ typedef XmipStatus (*XmipCatalogueFn)(XmipStr technology, uint8_t *out,
  * Every System Process Xmip owns says of itself its name, its location and
  * its purpose, test or runtime, to one file named for it and its pid in the
  * directory XMIP_PROCESS_DIRECTORY names, else xmip/process under the
- * system's temporary directory (ADR-0053 clause 3). The file, its directory
- * and its words are xmip-core-node's; a .NET program declares itself and the
- * estate's tooling lists the declarations through these two thin forwarders,
- * and writes or reads no file of its own. Pure like section 7: no handle,
- * any thread, before any node.
+ * system's temporary directory (ADR-0053 clause 3). The words are
+ * xmip-core-node's, the file and its directory xmip-core-runtime's
+ * (declared.rs); a .NET program declares itself and takes its declaration
+ * away, and the estate's tooling lists the declarations and takes away those
+ * whose process is gone, through these three thin forwarders, and writes,
+ * reads or removes no file of its own. Pure like section 7: no handle, any
+ * thread, before any node.
  *
  * xmip_process_declare_v1 declares the calling process: name (xmip-<what>),
  * location, purpose ("test" or "runtime", exact), and properties_len strings
  * in properties, key then value, for what else it says. The file it wrote
  * is written into out as UTF-8, its true byte length in out_len whether or
- * not it fit; the declaration stands until the caller removes that file.
+ * not it fit; the declaration stands until the caller takes it away with
+ * xmip_process_undeclare_v1.
  * XMIP_OK with the file; XMIP_E_INVALID with the refusal, one sentence, in
  * out when the purpose is no purpose word or a key is not a bare word or is
  * one of the six every declaration writes; XMIP_E_IO with the reason when
@@ -1366,6 +1368,17 @@ typedef XmipStatus (*XmipCatalogueFn)(XmipStr technology, uint8_t *out,
  *                  "path","said":{"<key>":"<value>",...}}]}
  *
  * XMIP_OK with the answer; XMIP_E_MALFORMED when directory is not UTF-8.
+ *
+ * xmip_process_undeclare_v1 takes away the declaration standing in file:
+ * the caller's own where its process ends, or one a listing found whose
+ * process is gone. A file already gone is as good as removed. Only a
+ * declaration's file is removed, one named xmip-*.toml as every declaration
+ * is; anything else is left where it is. Whatever is said is written into
+ * out as UTF-8, its true byte length in out_len whether or not it fit.
+ * XMIP_OK, saying nothing; XMIP_E_INVALID with the refusal, one sentence,
+ * when file is no declaration's; XMIP_E_IO with the reason when it could
+ * not be removed; XMIP_E_MALFORMED when file is not UTF-8.
+ *
  * Optional symbols, as section 7's are; XMIP_OPERATE_VERSION is unchanged.
  */
 typedef XmipStatus (*XmipProcessDeclareFn)(XmipStr name, XmipStr location, XmipStr purpose,
@@ -1375,11 +1388,15 @@ typedef XmipStatus (*XmipProcessDeclareFn)(XmipStr name, XmipStr location, XmipS
 typedef XmipStatus (*XmipProcessDeclarationsFn)(XmipStr directory, uint8_t *out,
                                                 size_t cap, size_t *out_len);
 
+typedef XmipStatus (*XmipProcessUndeclareFn)(XmipStr file, uint8_t *out, size_t cap,
+                                             size_t *out_len);
+
 #define XMIP_PROCESS_DECLARE_ENTRYPOINT      "xmip_process_declare_v1"
 #define XMIP_PROCESS_DECLARATIONS_ENTRYPOINT "xmip_process_declarations_v1"
+#define XMIP_PROCESS_UNDECLARE_ENTRYPOINT    "xmip_process_undeclare_v1"
 
 /* ===================================================================== */
-/* 14. A node's Subscriptions, seen and paused; an operator's order      */
+/* 14. A node's Subscriptions, seen                                      */
 /* ===================================================================== */
 
 /*
@@ -1387,10 +1404,12 @@ typedef XmipStatus (*XmipProcessDeclarationsFn)(XmipStr directory, uint8_t *out,
  * It is configuration: drawn in an Xmip Application, bound in a node's TOML,
  * and added and removed there and nowhere else. An operator lists every
  * Subscription and pauses or resumes one; there is no remove (ADR-0013,
- * amendment 2026-09-30). Thin forwarders into the runtime's pickup, pure
- * like section 7: no handle, any thread, before, during and without a node.
- * Who may act is the surface's to decide by role; the node applies what
- * reaches it and audits it with who acted.
+ * amendment 2026-09-30). The lists are thin forwarders into the runtime's
+ * pickup, pure like section 7: no handle, any thread, before, during and
+ * without a node. A pause or resume is asked at a node's door, through
+ * section 17's act and Xmip Storage, and the node that routes by the
+ * Subscription applies it and audits it with who acted (ADR-0014, amendment
+ * 2026-11-13).
  *
  * Paused, every Message routing matches to the Subscription is held: kept
  * in the node's runtime store, numbered in the order held and counted, and
@@ -1401,8 +1420,7 @@ typedef XmipStatus (*XmipProcessDeclarationsFn)(XmipStr directory, uint8_t *out,
  * A list is JSON, in memory only (ADR-0031 clause 2), written into out as
  * UTF-8, its true byte length in out_len whether or not it fit:
  *
- *   {"orders":"<where acts are left, empty for none>",
- *    "subscriptions":[{"node","name","application","filter","destination",
+ *   {"subscriptions":[{"node","name","application","filter","destination",
  *                      "send_ports","file","configuration","state","paused",
  *                      "by","picked_up","held","since_unix_nanos"}]}
  *
@@ -1420,53 +1438,24 @@ typedef XmipStatus (*XmipProcessDeclarationsFn)(XmipStr directory, uint8_t *out,
  * since when its state began.
  *
  * xmip_subscriptions_v1 lists the Subscriptions of every node running in
- * this process at or beneath node (empty: every one); orders is empty.
+ * this process at or beneath node (empty: every one).
  * XMIP_OK; XMIP_E_MALFORMED when node is not UTF-8.
  *
- * xmip_subscription_act_v1 applies act - pause or resume, exact - to the
- * Subscription name of the node at node in this process, by who. XMIP_OK
- * with what came of it in said, one sentence; XMIP_E_NOT_FOUND with the
- * refusal, opening REFUSED, when that node does not run here, is not
- * configured with that Subscription, or routes by none - it starts no
- * Receive Location and runs no Work Process, and so lists none either
- * (ADR-0018, amendment 2026-11-11); XMIP_E_INVALID with the refusal for a
- * word that is no act on a Subscription - remove among them, whose refusal
- * says a Subscription is removed in the TOML configuration.
- *
  * xmip_publication_subscriptions_v1 lists what a read publication (section
- * 8) carries, orders as it says. XMIP_E_INVALID for no handle.
- *
- * A surface reading a publication touches no node. Where the publication
- * says where its publisher takes orders, xmip_order_v1 leaves act on the
- * noun called target of the node at node there - noun subscription with a
- * Subscription's name, event-subscription with an Event subscription's
- * number, dead-message with a Message's identifier and the act replay
- * (section 15), or journey with a Journey's identifier and the act retry or
- * dismiss (section 16) - for the node to take and apply; said
- * holds the file written. XMIP_OK; XMIP_E_INVALID with the refusal for an
- * empty orders, a node that names no node, a noun that is no noun, or an
- * act the noun does not take; XMIP_E_IO with the reason when it could not
- * be written.
+ * 8) carries. XMIP_E_INVALID for no handle. A surface reading a publication
+ * touches no node and acts on none.
  *
  * Every string may be empty. Optional symbols, as section 7's are;
  * XMIP_OPERATE_VERSION is unchanged.
  */
 typedef XmipStatus (*XmipSubscriptionsFn)(XmipScope node, uint8_t *out, size_t cap,
                                           size_t *out_len);
-typedef XmipStatus (*XmipSubscriptionActFn)(XmipScope node, XmipStr name, XmipStr act,
-                                            XmipStr who, uint8_t *said, size_t said_cap,
-                                            size_t *said_len);
 typedef XmipStatus (*XmipPublicationSubscriptionsFn)(const XmipPublication *publication,
                                                      uint8_t *out, size_t cap,
                                                      size_t *out_len);
-typedef XmipStatus (*XmipOrderFn)(XmipStr orders, XmipScope node, XmipStr noun,
-                                  XmipStr target, XmipStr act, XmipStr who, uint8_t *said,
-                                  size_t said_cap, size_t *said_len);
 
 #define XMIP_SUBSCRIPTIONS_ENTRYPOINT             "xmip_subscriptions_v1"
-#define XMIP_SUBSCRIPTION_ACT_ENTRYPOINT          "xmip_subscription_act_v1"
 #define XMIP_PUBLICATION_SUBSCRIPTIONS_ENTRYPOINT "xmip_publication_subscriptions_v1"
-#define XMIP_ORDER_ENTRYPOINT                     "xmip_order_v1"
 
 /*
  * 15. A node's Dead Message Queue (ADR-0052, amendment 2026-10-01).
@@ -1479,13 +1468,14 @@ typedef XmipStatus (*XmipOrderFn)(XmipStr orders, XmipScope node, XmipStr noun,
  * one once a Subscription is added or fixed: its promoted properties are
  * routed against the node's Subscriptions of now, a Journey opened for each
  * match and held in its Subscription's queue, and the entry taken out, in
- * one write, once. A Message that still matches nothing stays.
+ * one write, once. A Message that still matches nothing stays. A Replay is
+ * asked at a node's door, through section 17's act and Xmip Storage
+ * (ADR-0014, amendment 2026-11-13).
  *
  * A list is JSON, written into out as UTF-8, its true byte length in out_len
  * whether or not it fit:
  *
- *   {"orders":"<where acts are left, empty for none>",
- *    "dead_messages":[{"node","message","sequence","location",
+ *   {"dead_messages":[{"node","message","sequence","location",
  *                      "received_unix_nanos","validation","promoted",
  *                      "declines"}]}
  *
@@ -1498,36 +1488,21 @@ typedef XmipStatus (*XmipOrderFn)(XmipStr orders, XmipScope node, XmipStr noun,
  * lists its oldest hundred.
  *
  * xmip_dead_messages_v1 lists the Dead Message Queues of every node running
- * in this process at or beneath node (empty: every one); orders is empty.
+ * in this process at or beneath node (empty: every one).
  * XMIP_OK; XMIP_E_MALFORMED when node is not UTF-8.
  *
- * xmip_dead_message_replay_v1 replays the Message message from the Dead
- * Message Queue of the node at node in this process, by who. XMIP_OK with
- * what came of it in said, one sentence - also for a Message replayed
- * already, which is not replayed twice; XMIP_E_NOT_FOUND with the refusal,
- * opening REFUSED, when that node does not run here, its queue never kept
- * such a Message, or it still matches no Subscription; XMIP_E_IO, opening
- * FAILED, when Xmip Storage did not answer and nothing changed.
- *
  * xmip_publication_dead_messages_v1 lists what a read publication (section
- * 8) carries, orders as it says. XMIP_E_INVALID for no handle.
- *
- * A surface over a publication replays through section 14's xmip_order_v1,
- * noun dead-message, target the Message's identifier, act replay.
+ * 8) carries. XMIP_E_INVALID for no handle.
  *
  * Optional symbols, as section 7's are; XMIP_OPERATE_VERSION is unchanged.
  */
 typedef XmipStatus (*XmipDeadMessagesFn)(XmipScope node, uint8_t *out, size_t cap,
                                          size_t *out_len);
-typedef XmipStatus (*XmipDeadMessageReplayFn)(XmipScope node, XmipStr message, XmipStr who,
-                                              uint8_t *said, size_t said_cap,
-                                              size_t *said_len);
 typedef XmipStatus (*XmipPublicationDeadMessagesFn)(const XmipPublication *publication,
                                                     uint8_t *out, size_t cap,
                                                     size_t *out_len);
 
 #define XMIP_DEAD_MESSAGES_ENTRYPOINT             "xmip_dead_messages_v1"
-#define XMIP_DEAD_MESSAGE_REPLAY_ENTRYPOINT       "xmip_dead_message_replay_v1"
 #define XMIP_PUBLICATION_DEAD_MESSAGES_ENTRYPOINT "xmip_publication_dead_messages_v1"
 
 /*
@@ -1552,8 +1527,7 @@ typedef XmipStatus (*XmipPublicationDeadMessagesFn)(const XmipPublication *publi
  * A list is JSON, written into out as UTF-8, its true byte length in out_len
  * whether or not it fit:
  *
- *   {"orders":"<where acts are left, empty for none>",
- *    "failed_messages":[{"node","send_port","count","blocked","next",
+ *   {"failed_messages":[{"node","send_port","count","blocked","next",
  *                        "messages":[{"journey","sequence","reason"}],
  *                        "last_failure":{"journey","reason"}|null}]}
  *
@@ -1574,38 +1548,24 @@ typedef XmipStatus (*XmipPublicationDeadMessagesFn)(const XmipPublication *publi
  * Port port (empty: every Port it sends), read from Xmip Storage from the
  * place from on in each Port's index of failed Messages (0: the oldest), at
  * most most of each Port (0: a hundred), each page one read of the index.
- * orders is empty. XMIP_OK; XMIP_E_MALFORMED
+ * XMIP_OK; XMIP_E_MALFORMED
  * when node or port is not UTF-8; XMIP_E_IO with the reason, opening FAILED,
  * when Xmip Storage did not answer.
  *
  * xmip_publication_failed_messages_v1 lists what a read publication (section
- * 8) carries, orders as it says, next null. XMIP_E_INVALID for no handle.
+ * 8) carries, next null. XMIP_E_INVALID for no handle.
  *
- * xmip_message_act_v1 applies act - retry or dismiss, exact - to the Message
- * whose Journey is journey (its identifier), sent by the node at node in this process, by who.
- * Retry writes it Active, its tries begun anew, and moves it to the end of
- * its Send Port's queue, from where it is sent again; where it blocks a
- * Sequential Send Port it keeps its place. Dismiss writes it Dismissed -
- * terminal, its history, Message and Stream kept - and takes it out of the
- * queue, so a Sequential Port's next of its order key goes. Each is one
- * write under a claim, audited with who acted. XMIP_OK with what came of it
- * in said, one sentence - also for a Message dismissed already; XMIP_E_NOT_FOUND
- * with the refusal, opening REFUSED, when that node does not run here, the
- * Ledger holds no such Journey, its Message has not failed, or that node does not
- * send its Send Port; XMIP_E_INVALID with the refusal for a word that is no
- * act on a Message; XMIP_E_IO, opening FAILED, when Xmip Storage did not
- * answer or take it and nothing changed.
- *
- * A surface over a publication acts through section 14's xmip_order_v1,
- * noun message, target the Journey's identifier, act retry or dismiss. Who
- * may act is the surface's to decide by role.
+ * Retry writes a failed Message Active, its tries begun anew, and moves it
+ * to the end of its Send Port's queue, from where it is sent again; where it
+ * blocks a Sequential Send Port it keeps its place. Dismiss writes it
+ * Dismissed - terminal, its history, Message and Stream kept - and takes it
+ * out of the queue, so a Sequential Port's next of its order key goes. Each
+ * is one write under a claim, audited with who acted, and each is asked at
+ * a node's door, noun message, target the Journey's identifier, through
+ * section 17's act and Xmip Storage (ADR-0014, amendment 2026-11-13).
  *
  * Optional symbols, as section 7's are; XMIP_OPERATE_VERSION is unchanged.
  */
-typedef XmipStatus (*XmipMessageActFn)(XmipScope node, XmipStr journey, XmipStr act,
-                                       XmipStr who, uint8_t *said, size_t said_cap,
-                                       size_t *said_len);
-
 typedef XmipStatus (*XmipFailedMessagesFn)(XmipScope node, XmipStr port, uint64_t from,
                                            uint32_t most, uint8_t *out, size_t cap,
                                            size_t *out_len);
@@ -1613,7 +1573,6 @@ typedef XmipStatus (*XmipPublicationFailedMessagesFn)(const XmipPublication *pub
                                                       uint8_t *out, size_t cap,
                                                       size_t *out_len);
 
-#define XMIP_MESSAGE_ACT_ENTRYPOINT                 "xmip_message_act_v1"
 #define XMIP_FAILED_MESSAGES_ENTRYPOINT             "xmip_failed_messages_v1"
 #define XMIP_PUBLICATION_FAILED_MESSAGES_ENTRYPOINT "xmip_publication_failed_messages_v1"
 
@@ -1674,20 +1633,62 @@ typedef XmipStatus (*XmipPublicationFailedMessagesFn)(const XmipPublication *pub
  * answer - said at once, without a second try, while the follow is
  * recovering it.
  *
+ * xmip_remote_cluster_v1 reads the cluster's publication the node gathered
+ * and its revision, where the node declares the monitoring role (ADR-0027
+ * decision 8, amendment 2026-11-13): every member's own publication merged,
+ * each member's <node>/reached - reached at where it is, did not answer and
+ * why, or stopped in order and when - the cluster's rollup and its drawing,
+ * at the cluster's scope, its source saying the cluster, the node that
+ * gathered it and how many of its nodes it reached, read with the reader
+ * of section 8 as any publication is. The node's own publication stays
+ * xmip_remote_publication_v1's. XMIP_OK with the text in out, its true
+ * length in out_len - revision 0 and an empty text until the node has
+ * gathered its first view; XMIP_E_TRUNCATED where it did not fit, kept and
+ * handed whole at the next call, as the publication is;
+ * XMIP_E_UNSUPPORTED with the node's refusal in out where it declares no
+ * monitoring role and so gathers no cluster - a surface then follows the
+ * node's own publication, decided by this answer and never by a name;
+ * XMIP_E_UNAVAILABLE with why in out where the node did not answer or
+ * refused the call, by the caller's role among them (section 18), which is
+ * judged before the node says whether it gathers.
+ *
  * xmip_remote_wait_v1 waits until the follow has told more than seen
  * times, or for timeout_ms, and says how many times it has told, the
- * revision of the node's publication, whether the node is reached, and
- * why not in reason (empty where it is). The follow starts at the first
+ * revision of the publication it follows, whether the node is reached,
+ * which publication it follows in out_follows, and why not reached in
+ * reason (empty where it is). follows names which:
+ * XMIP_REMOTE_FOLLOWS_NODE the node's own publication,
+ * XMIP_REMOTE_FOLLOWS_CLUSTER the cluster's it gathered, and
+ * XMIP_REMOTE_FOLLOWS_ANSWERED the cluster's where the node answers one,
+ * else the node's own - the node's answer decides, as each connection to
+ * it is made: its answer that it gathers no cluster, of the kind
+ * xmip_remote_cluster_v1 reports as XMIP_E_UNSUPPORTED and decided by that
+ * kind and never by its words, turns the follow to the node's own on the
+ * same connection, so a surface never asks which, and every other refusal
+ * is a node not reached. out_follows says XMIP_REMOTE_FOLLOWS_NODE or
+ * XMIP_REMOTE_FOLLOWS_CLUSTER once a handle following ANSWERED was
+ * decided, and XMIP_REMOTE_FOLLOWS_ANSWERED until then and while the node
+ * is lost; a surface reads what it says with xmip_remote_publication_v1 or
+ * xmip_remote_cluster_v1. A handle follows what its first wait names. The
+ * follow starts at the first
  * wait and runs until the handle is freed, on a connection of its own:
  * the node answers its wait when the publication advances, so a surface
  * is told and never asks again and again. When the node is lost, or the
  * first try fails, every waiter is told at once with why, and the node is
  * tried again after 0, 2, 10 and 30 seconds, the last repeated; told once
- * more the moment it answers. XMIP_OK; XMIP_E_INVALID for no handle.
+ * more the moment it answers. Following the cluster's at a node that
+ * gathers none is told unreached, the node's refusal in reason, and tried
+ * again alike. XMIP_OK; XMIP_E_STATE with why in reason where follows names
+ * another than the handle follows; XMIP_E_INVALID for no handle, or a
+ * follows that is none of the three.
  *
  * xmip_remote_act_v1 asks the node to apply act to the noun called target
- * of the node at node - the nouns and acts of section 14's xmip_order_v1 -
- * as the identity the certificate proves, or on the local endpoint the
+ * of the node at node - noun subscription with a Subscription's name and
+ * the act pause or resume (section 14), event-subscription with an Event
+ * subscription's number and the act pause, resume or remove (section 11),
+ * dead-message with a Message's identifier and the act replay (section 15),
+ * or message with a Journey's identifier and the act retry or dismiss
+ * (section 16) - as the identity the certificate proves, or on the local endpoint the
  * user the operating system says this process runs as; no name crosses. The node admits
  * it by the role it grants that identity (section 18) and audits it, taken
  * or refused. Where caller is a handle this process holds a caller by
@@ -1707,10 +1708,18 @@ typedef XmipStatus (*XmipPublicationFailedMessagesFn)(const XmipPublication *pub
  * the caller go (Unvouch). 0 is this side itself, and so is a caller the
  * operating system proved for this process. A caller that is no one, or a
  * node that relays for no one, is refused: XMIP_E_AUTH, the refusal in
- * said. XMIP_OK taken; XMIP_E_AUTH refused by role; XMIP_E_NOT_FOUND
- * refused by the node, opening REFUSED; XMIP_E_INVALID no act the noun
- * takes; XMIP_E_IO, opening FAILED, Xmip Storage did not answer and nothing
- * changed; XMIP_E_UNAVAILABLE the node did not answer. The sentence in said.
+ * said. The node asked is the act's door: it writes the act to Xmip
+ * Storage, asked of the node at node, which takes it - where that node
+ * runs in the door's process, or the door declares the operational role;
+ * any other door refuses it, naming the role - and holds the call while
+ * that node decides it, at most its [tuning] operate_act (ADR-0014,
+ * amendment 2026-11-13). XMIP_OK taken; XMIP_E_AGAIN asked: written to
+ * Xmip Storage and not taken yet, its node taking it as soon as it runs,
+ * never expiring - not a failure; XMIP_E_AUTH refused by role;
+ * XMIP_E_NOT_FOUND refused by the node or the door, opening REFUSED;
+ * XMIP_E_INVALID no act the noun takes; XMIP_E_IO, opening FAILED, Xmip
+ * Storage did not answer and nothing changed; XMIP_E_UNAVAILABLE the node
+ * did not answer. The sentence in said.
  *
  * xmip_remote_end_v1 ends the follow and wakes every wait, from any
  * thread, while a call may still be in flight on another; a binding asks
@@ -1736,6 +1745,14 @@ typedef XmipStatus (*XmipPublicationFailedMessagesFn)(const XmipPublication *pub
  * holds (section 8) - as what the listener answers: a new revision where it
  * differs from the last, every surface following told at once. Until a
  * first post it answers revision 0 and an empty text.
+ * xmip_operate_post_cluster_v1 posts publication as the cluster's the
+ * program gathered, which xmip_remote_cluster_v1 reads: a program
+ * gathers by posting one. From its first post the listener answers the
+ * cluster's publication and the wait on it from what is posted, as
+ * xmip_operate_post_v1 has it answer the node's own; until then it
+ * refuses both in the words a node declaring no monitoring role refuses
+ * them in. XMIP_OK; XMIP_E_INVALID for no handle; XMIP_E_MALFORMED for a
+ * publication that is not UTF-8.
  * xmip_operate_served_address_v1 says where it listens, host:port or the
  * local endpoint's path;
  * xmip_operate_serve_stop_v1 stops it - every connection shut, every wait
@@ -1761,10 +1778,13 @@ typedef XmipStatus (*XmipRemoteOpenLocalFn)(XmipStr endpoint, uint32_t within_ms
 typedef XmipStatus (*XmipRemotePublicationFn)(const XmipRemote *remote, uint8_t *out,
                                               size_t cap, size_t *out_len,
                                               uint64_t *out_revision);
-typedef XmipStatus (*XmipRemoteWaitFn)(const XmipRemote *remote, uint64_t seen,
-                                       uint32_t timeout_ms, uint64_t *out_told,
+typedef XmipStatus (*XmipRemoteClusterFn)(const XmipRemote *remote, uint8_t *out, size_t cap,
+                                          size_t *out_len, uint64_t *out_revision);
+typedef XmipStatus (*XmipRemoteWaitFn)(const XmipRemote *remote, uint32_t follows,
+                                       uint64_t seen, uint32_t timeout_ms, uint64_t *out_told,
                                        uint64_t *out_revision, uint8_t *out_reachable,
-                                       uint8_t *reason, size_t cap, size_t *reason_len);
+                                       uint32_t *out_follows, uint8_t *reason, size_t cap,
+                                       size_t *reason_len);
 typedef XmipStatus (*XmipRemoteActFn)(const XmipRemote *remote, uint64_t caller, XmipScope node,
                                       XmipStr noun, XmipStr target, XmipStr act, uint8_t *said,
                                       size_t cap, size_t *said_len);
@@ -1782,12 +1802,19 @@ typedef XmipStatus (*XmipOperateServeLocalFn)(XmipStr local, XmipStr observers,
 typedef XmipStatus (*XmipOperateServedAddressFn)(const XmipServed *served, uint8_t *out,
                                                  size_t cap, size_t *out_len);
 typedef XmipStatus (*XmipOperatePostFn)(const XmipServed *served, XmipStr publication);
+typedef XmipStatus (*XmipOperatePostClusterFn)(const XmipServed *served, XmipStr publication);
 typedef void (*XmipOperateServeStopFn)(XmipServed *served);
+
+/* Which publication xmip_remote_wait_v1 follows. */
+#define XMIP_REMOTE_FOLLOWS_NODE     0u
+#define XMIP_REMOTE_FOLLOWS_CLUSTER  1u
+#define XMIP_REMOTE_FOLLOWS_ANSWERED 2u
 
 #define XMIP_REMOTE_OPEN_ENTRYPOINT            "xmip_remote_open_v1"
 #define XMIP_REMOTE_OPEN_KEPT_ENTRYPOINT       "xmip_remote_open_kept_v1"
 #define XMIP_REMOTE_OPEN_LOCAL_ENTRYPOINT      "xmip_remote_open_local_v1"
 #define XMIP_REMOTE_PUBLICATION_ENTRYPOINT     "xmip_remote_publication_v1"
+#define XMIP_REMOTE_CLUSTER_ENTRYPOINT         "xmip_remote_cluster_v1"
 #define XMIP_REMOTE_WAIT_ENTRYPOINT            "xmip_remote_wait_v1"
 #define XMIP_REMOTE_ACT_ENTRYPOINT             "xmip_remote_act_v1"
 #define XMIP_REMOTE_END_ENTRYPOINT             "xmip_remote_end_v1"
@@ -1796,6 +1823,7 @@ typedef void (*XmipOperateServeStopFn)(XmipServed *served);
 #define XMIP_OPERATE_SERVE_LOCAL_ENTRYPOINT    "xmip_operate_serve_local_v2"
 #define XMIP_OPERATE_SERVED_ADDRESS_ENTRYPOINT "xmip_operate_served_address_v1"
 #define XMIP_OPERATE_POST_ENTRYPOINT           "xmip_operate_post_v1"
+#define XMIP_OPERATE_POST_CLUSTER_ENTRYPOINT   "xmip_operate_post_cluster_v1"
 #define XMIP_OPERATE_SERVE_STOP_ENTRYPOINT     "xmip_operate_serve_stop_v1"
 
 /*

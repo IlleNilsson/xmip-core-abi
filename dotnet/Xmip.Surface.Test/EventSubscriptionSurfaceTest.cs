@@ -6,9 +6,8 @@ namespace Xmip.Surface.Test;
 /// <summary>
 /// The Event subscriptions as every surface lists and acts on them (ADR-0065,
 /// amendment 2026-09-29): a snapshot lists what its publication carries and
-/// leaves an act where it says its publisher takes orders, or declines where
-/// it says nowhere; the one query drills, filters and sorts; every act the
-/// runtime knows is a word it takes.
+/// declines every act (ADR-0014, amendment 2026-11-13); the one query
+/// drills, filters and sorts; every act the runtime knows is a word it takes.
 /// </summary>
 public sealed class EventSubscriptionSurfaceTest
 {
@@ -19,10 +18,9 @@ public sealed class EventSubscriptionSurfaceTest
     private static readonly string Sender = Cluster.WithRole("sending");
     private static readonly string Sending = $"{Cluster.Scope}/node/{Sender}";
 
-    private static string Published(string orders)
+    private static string Published()
     {
         return $"node = \"{Cluster.Scope}\"\n"
-            + (orders.Length > 0 ? $"orders = '{orders}'\n" : string.Empty)
             + Entry(Receiver, 1, "every Event", "active", 3, $"{Cluster.Scope}/node/{Receiver}")
             + Entry(Sender, 2, "every Event ending failure", "paused", 9, Sending)
             + Entry(Sender, 4, "se.xmip.send.failure", "active", 1, Cluster.Scope);
@@ -58,47 +56,22 @@ public sealed class EventSubscriptionSurfaceTest
     }
 
     [Fact]
-    public void ASnapshotListsWhatItsPublicationCarriesAndLeavesAnActWhereItSays()
+    public void ASnapshotListsWhatItsPublicationCarriesAndDeclinesEveryAct()
     {
-        string orders = Path.Combine(Path.GetTempPath(), $"xmip-orders-{Guid.NewGuid():N}");
-        SnapshotOperator surface = Over(Published(orders), out string file);
+        SnapshotOperator surface = Over(Published(), out string file);
 
         try
         {
             EventSubscriptionList listed = surface.EventSubscriptions();
-            Assert.Equal(orders, listed.Orders);
             Assert.Equal(3, listed.EventSubscriptions.Count);
             EventSubscriptionRecord held = listed.EventSubscriptions.Single(entry => entry.Id == 2);
             Assert.True(held.Paused);
-
-            EventSubscriptionOperation resumed =
-                surface.Act(held, EventSubscriptionAct.Resume, "ilian", caller: null);
-
-            Assert.True(resumed.Applied, resumed.Result);
-            Assert.Contains($"left for {Sender}", resumed.Result, StringComparison.Ordinal);
-            Assert.Single(Directory.GetFiles(Path.Combine(orders, Sender), "*.toml"));
-        }
-        finally
-        {
-            File.Delete(file);
-            Directory.Delete(orders, recursive: true);
-        }
-    }
-
-    [Fact]
-    public void ASnapshotWhosePublisherTakesNoOrdersDeclinesEveryAct()
-    {
-        SnapshotOperator surface = Over(Published(string.Empty), out string file);
-
-        try
-        {
-            EventSubscriptionRecord held = surface.EventSubscriptions().EventSubscriptions[0];
 
             foreach (EventSubscriptionAct act in Enum.GetValues<EventSubscriptionAct>())
             {
                 EventSubscriptionOperation declined = surface.Act(held, act, "ilian", caller: null);
                 Assert.False(declined.Applied);
-                Assert.Contains("takes no orders", declined.Result, StringComparison.Ordinal);
+                Assert.Equal(SnapshotOperator.NotActed, declined.Result);
             }
         }
         finally
@@ -110,7 +83,7 @@ public sealed class EventSubscriptionSurfaceTest
     [Fact]
     public void TheQueryDrillsFiltersAndSorts()
     {
-        SnapshotOperator surface = Over(Published(string.Empty), out string file);
+        SnapshotOperator surface = Over(Published(), out string file);
 
         try
         {

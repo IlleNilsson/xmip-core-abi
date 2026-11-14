@@ -22,9 +22,10 @@ text, an edit, and each node's slice — ADR-0064; ADR-0031, amendment
 12's technology catalogue (`operate::catalogue`: the technologies a runtime
 carries and the settings each declares, ADR-0064 amendment 2026-09-26),
 which the language server calls and `RuntimeRules.Catalogue` binds, and section
-13's System Process declaration (`operate::process`: a process declares itself
-and the declarations standing in a directory are read, both `xmip-core-node`'s,
-ADR-0053), which `RuntimeRules.Processes` binds, and section 20's upgrade
+13's System Process declaration (`operate::process`: a process declares itself,
+the declarations standing in a directory are read and one is taken away, all
+`xmip-core-runtime`'s over `xmip-core-node`'s words, ADR-0053), which
+`RuntimeRules.Processes` binds, and section 20's upgrade
 of a database's schema (`xmip_database_upgrade_v1`, the scripts
 `xmip-core-persist` writes; ADR-0015, amendment 2026-10-20), which
 `RuntimeRules.Databases` binds, and section 25's one list of every Report
@@ -138,19 +139,18 @@ members its nodes do not hear (`EventSubscriptionList.Unheard`) (ADR-0065, amend
 2026-09-29 and 2026-09-30). Section 14 — a node's Subscriptions (ADR-0013,
 amendment 2026-09-30) — is `RuntimeRules.Subscriptions`
 (`RuntimeSubscriptions`): `Standing`, the `SubscriptionList` of
-`SubscriptionRecord`s of every node running in the process, `Act`, pause or
-resume one — there is no remove — and `Order`, an act on any noun left
-where a publication says; a `Publication` carries its own `Subscriptions`.
+`SubscriptionRecord`s of every node running in the process; a `Publication`
+carries its own `Subscriptions`. A pause or resume — there is no remove —
+a Replay, a Retry and a Dismiss are each asked at a node's door,
+`RemoteNode.Act`, and reach their node through Xmip Storage (ADR-0014,
+amendment 2026-11-13); a publication is never acted on.
 Section 15 — a node's Dead Message Queue (ADR-0052, amendment 2026-10-01) —
 is `RuntimeRules.DeadMessages` (`RuntimeDeadMessages`): `Standing`, the
 `DeadMessageList` of `DeadMessageRecord`s every node running in the process
 keeps, each with its gate verdicts, promoted properties and declines as name
-and value pairs, and `Replay`, one by its node and Message; a `Publication`
-carries its own `DeadMessages`, and a Replay over one is `Order` on the noun
-`dead-message`. Section 16 — a Message that failed (runtime-model.md section
-13; ADR-0013) — is `RuntimeRules.Messages` (`RuntimeMessages`): `Act`, retry
-or dismiss one by its node and its Journey's identifier, by who acts; over a publication
-it is `Order` on the noun `message` — and `Failed`, the `FailedMessageList`
+and value pairs; a `Publication` carries its own `DeadMessages`. Section 16
+— a Message that failed (runtime-model.md section 13; ADR-0013) — is
+`RuntimeRules.Messages` (`RuntimeMessages`): `Failed`, the `FailedMessageList`
 of every Message that failed at the Send Ports of the nodes running in the
 process, each Port's `FailedMessagePort` with its count, the place its next
 page reads from and its `FailedMessageRecord`s, read from Xmip Storage a page
@@ -179,13 +179,21 @@ certificate, the node taking every call as the user this process runs as,
 each call waiting at most the `within` it is given or else what the node
 declared from its `[tuning] local_timeout`, two seconds by default, then
 saying *the node did not answer within* it;
-its `Publication`, `Wait` and `Act` read the node's publication, wait on the
-runtime's follow and ask an act as the identity the connection proved, and
+its `Publication`, `Cluster`, `Wait` and `Act` read the node's publication,
+read the cluster's view the node gathers (`xmip_remote_cluster_v1`: a node
+declaring the monitoring role answers it, any other refuses with
+`Unsupported` and its words), wait on the runtime's follow of what its
+first wait names (`RemoteFollows`, the header's `XMIP_REMOTE_FOLLOWS_*`: the
+node's own, the cluster's, or `Answered`, the cluster's where the node
+answers one, else its own, each telling saying which the node's answer
+decided; naming another later is a defect, thrown) and ask
+an act as the identity the connection proved, and
 its `Dispose` ends the follow, lets every call in flight return and frees the
 handle; `Serve` and `ServeLocal` give a `ServedNode`, an operate listener
-this process serves for what it `Post`s, each caller holding the role of
-the list naming it — observers, operators, developers — and none where no
-list does. Every .NET surface operates a node
+this process serves for what it `Post`s — and, from its first `PostCluster`,
+a cluster's gathered view it answers the cluster with — each caller holding
+the role of the list naming it — observers, operators, developers — and none
+where no list does. Every .NET surface operates a node
 through these, on its machine and elsewhere alike; the C ABI is crossed
 directly only for what has no node behind it — validating, editing and
 slicing configuration, the language server's design exports, module
@@ -246,10 +254,13 @@ technologies the runtime carries and what each declares a Location may set —
 is `RuntimeRules.Catalogue` (`RuntimeCatalogue`): `TryRead` brings back the
 header's JSON, every technology or the one named, for the desktop editor's
 Location form. Section 13 — a System Process declared (ADR-0053) — is
-`RuntimeRules.Processes` (`RuntimeProcesses`): `Declare` has the node write
+`RuntimeRules.Processes` (`RuntimeProcesses`): `Declare` has the runtime write
 the calling process's declaration and answers the file, or the node's
 refusal of a purpose that is no word; `Read` brings back the declarations
-standing in a directory as `ProcessDeclarations` of `ProcessStanding`.
+standing in a directory as `ProcessDeclarations` of `ProcessStanding`; and
+`Undeclare` has the runtime take one away, refusing a file that is no
+declaration's — `ProcessDeclaration.Dispose` and the estate's
+`Read-XmipProcessDeclaration` call it, and neither deletes a file itself.
 Section 25 — every Report listed and one opened (ADR-0072, amendment
 2026-11-10) — is `RuntimeRules.Reports` (`RuntimeReports`): `Ask` hands the
 act, `list` or `open`, and its JSON arguments over and brings back the
@@ -301,7 +312,24 @@ answer even when it lists none; *Unlisted* is a source that cannot list;
   another — and `SnapshotOperator` over a published snapshot — and
   `ClusterSurfaces`, the set a face holds when more than one
   cluster is published: one surface per cluster, and nothing added across them
-  (ADR-0052, amendment 2026-09-20). A `ListenerOperator` tells every watch
+  (ADR-0052, amendments 2026-09-20 and 2026-11-13). Several clusters are named
+  one way, each of its own kind: `Clusters = [{ Surface = "local",
+  Local = … }, { Surface = "snapshot", Snapshot = … }]` in a host's document,
+  or `--Xmip:Clusters:0:Surface=local` on its line; `Snapshot` is one path,
+  one cluster. `SurfaceChoice.OpenAll` opens each by the one rule a single
+  surface is, refused in its own keys, and the list wins over `Surface`; a
+  command and the prompt read the first (`OpenFirst`). A surface that has
+  published nothing when the set is opened — a node not answering yet —
+  names no cluster and is refused with nothing; it is named by its first
+  publication (`ClusterListTest`). A `ListenerOperator` follows what the
+  runtime calls answered (`RemoteFollows.Answered`): the cluster's view where
+  the node it reaches gathers one (`Gathers`), its own publication where the
+  node refuses, the node's answer deciding in the runtime as each connection
+  is made, never a name; it reads what the follow says it follows. Its
+  `Source` then says, after where the node is reached, what the view says of
+  itself — the cluster, gathered by which node, and how many nodes it
+  reached, the runtime's words (`GatheredClusterTest`; ADR-0052, amendment
+  2026-11-13). A `ListenerOperator` tells every watch
   first and reads the publication by the next question: a change reaches a
   .NET watch in about 0.3 ms on the local endpoint (`LocalOperatorTest`
   holds it under a millisecond). `ConfigurationRuntime` asks the runtime
@@ -317,8 +345,8 @@ answer even when it lists none; *Unlisted* is a source that cannot list;
   `tests/plane`). A snapshot is read once per change: a
   followed `SnapshotOperator` reads each publication before its change feed
   announces it, and answers every question from that reading without touching
-  the file; `SurfaceChoice.OpenAll` follows every snapshot it opens
-  (`ClusterSurfaces.Follow`), so no render reads one (ADR-0052, amendment
+  the file; `SurfaceChoice.OpenAll` follows every surface its `Clusters`
+  names (`ClusterSurfaces.Follow`), so no render reads one (ADR-0052, amendment
   2026-10-03; `SnapshotReadCostTest` holds the bound). A watch begun before
   its source recovers when the source arrives (`PathArrival`): a
   `SnapshotOperator` whose publication's directory is not made yet says its
@@ -331,9 +359,9 @@ answer even when it lists none; *Unlisted* is a source that cannot list;
   which holds no remove, answered as a `SubscriptionOperation`; a
   Subscription is added and removed in the TOML configuration,
   `SubscriptionOperation.Configured` says so in words): by the node, over
-  its operate listener, for a `ListenerOperator`,
-  and for `SnapshotOperator` left where the publication says its publisher
-  takes orders, or declined where it says nowhere. `SubscriptionQuery` is the
+  its operate listener, for a `ListenerOperator`, and for `SnapshotOperator`
+  declined in words (`SnapshotOperator.NotActed`): a snapshot is never acted
+  on (ADR-0014, amendment 2026-11-13). `SubscriptionQuery` is the
   one drill, pattern and order every surface asks of them (ADR-0013,
   amendment 2026-09-30).
 - **Event subscriptions.** `IOperatorSurface.EventSubscriptions` lists what
@@ -360,7 +388,7 @@ answer even when it lists none; *Unlisted* is a source that cannot list;
   prompt's letters are `MessagePath`, each stage its own figure (the owner,
   2026-09-26: *drill-down does not work and datapoints are wrong*).
 - **Narrowing.** `ScopePattern`, the one wildcard every surface matches with
-  (ADR-0059 clauses 7 and 8), `observe::wildcard`'s since 2026-09-29, called
+  (ADR-0059 clauses 7 and 8), `node::wildcard`'s, called
   through `RuntimeRules.Matches` (`xmip_scope_matches_v1`); `ScopeFilter`, that pattern applied to a
   publication so the views narrow alike and none decides for itself what a
   pattern means; and `ScopeSelection`, what a scope argument selects on the
@@ -397,7 +425,7 @@ answer even when it lists none; *Unlisted* is a source that cannot list;
   operator typed over all three; and `Rules`, the one library a process calls
   the runtime's rules in, and its gRPC client — every surface alike),
   `SurfaceChoice` (the surface a host chose in
-  its TOML, every snapshot it names, and — over a `SurfaceLine` — the one
+  its TOML, one per cluster under `Clusters`, and — over a `SurfaceLine` — the one
   precedence the executable, the prompt and the cmdlets share: a remote
   node, a local node or a snapshot stated for the invocation, then the
   document, else no node, said so (`LocalOperator.Unnamed`); a line whose

@@ -11,7 +11,7 @@ namespace Xmip.Surface;
 /// </summary>
 /// <remarks>
 /// <para>The rules underneath are not written here. Containment, a scope's
-/// parts and the node and stage it is on are <c>observe::Scope</c>'s, the
+/// parts and the node and stage it is on are <c>node::Scope</c>'s, the
 /// stage words and whether a stage pauses <c>node::Stage</c>'s, what a stage
 /// counts <c>observe::Counted</c>'s, and the rollup and the worst-first order
 /// <c>observe::Health</c>'s and <c>observe::Standing</c>'s, and this calls
@@ -33,7 +33,7 @@ public static class ScopeTree
     /// is <c>&lt;cluster&gt;</c>, <c>receive</c>, <c>orders</c>. The scheme and the
     /// authority go; an omitted host means estate-wide and the tree is the
     /// path. The root has no segments, so everything is beneath it.
-    /// <c>observe::Scope::segments</c>, called in the runtime.
+    /// <c>node::Scope::segments</c>, called in the runtime.
     /// </summary>
     public static string[] Parts(string scope)
     {
@@ -48,7 +48,7 @@ public static class ScopeTree
 
     /// <summary>Whether <paramref name="candidate"/> is <paramref name="scope"/>
     /// itself or beneath it: the scope's segments are a prefix of the
-    /// candidate's. <c>observe::Scope::contains</c>, called in the runtime —
+    /// candidate's. <c>node::Scope::contains</c>, called in the runtime —
     /// the one rule the snapshot answers by (ADR-0052, amendment
     /// 2026-09-24).</summary>
     public static bool Beneath(string candidate, string scope)
@@ -67,7 +67,7 @@ public static class ScopeTree
     /// <summary>The node a thing runs on: the segment after the node marker
     /// beneath the cluster, <c>&lt;node&gt;</c> in
     /// <c>xmip:///&lt;cluster&gt;/node/&lt;node&gt;/receive/tcp</c>, or empty for a scope on no
-    /// node — the cluster is never one. <c>observe::Scope::node</c>, called in
+    /// node — the cluster is never one. <c>node::Scope::node</c>, called in
     /// the runtime.</summary>
     public static string Node(string scope)
     {
@@ -109,7 +109,7 @@ public static class ScopeTree
     /// beneath its cluster, where the Essentials nests a test between
     /// (<c>&lt;cluster&gt;/round-trip/receive/tcp/json</c>); a cluster's or a node's name
     /// is never one. Empty for a scope on no stage.
-    /// <c>observe::Scope::stage</c>, called in the runtime.</summary>
+    /// <c>node::Scope::stage</c>, called in the runtime.</summary>
     public static string Stage(string scope)
     {
         return RuntimeLibrary.Rules.Node(scope).Stage;
@@ -154,7 +154,7 @@ public static class ScopeTree
     }
 
     /// <summary>What a thing is called within its cluster: every segment
-    /// beneath the first, which is the cluster (<c>observe::Scope</c>: segment
+    /// beneath the first, which is the cluster (<c>node::Scope</c>: segment
     /// 0 is the cluster and never the node) — <c>node/&lt;node&gt;/receive/http/json</c>,
     /// <c>filing/s3/xml</c> — or the scope itself when it is the cluster or
     /// the root. Until 2026-09-26 the first two segments were dropped, which

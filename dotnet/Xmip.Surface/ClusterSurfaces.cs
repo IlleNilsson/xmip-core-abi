@@ -19,7 +19,10 @@ namespace Xmip.Surface;
 /// publishing. Two surfaces naming one cluster are REFUSED, because
 /// <c>Start-XmipTest</c> refuses a cluster already rolling (ADR-0052,
 /// amendment 2026-09-19) and a face that showed two of them could not say
-/// which it was showing.
+/// which it was showing. A surface that has published nothing when the set
+/// is opened — a node, one per cluster, that has not answered yet — names
+/// nothing and is refused with nothing; it is named by its first
+/// publication, and kept from then on.
 ///
 /// A cluster whose run declared itself hidden — an assistant's test run
 /// (the owner, 2026-09-29; ADR-0028 and ADR-0052, amendments 2026-09-30) —
@@ -36,6 +39,12 @@ public sealed class ClusterSurfaces : IDisposable
 
     private readonly bool[] hidden;
 
+    // Which clusters had published nothing when the set was opened — a node
+    // not reached yet — each named by the first publication it says one in.
+    private readonly bool[] unnamed;
+
+    private readonly Lock naming = new();
+
     // Ends every follow this set started, when the set is disposed.
     private readonly CancellationTokenSource following = new();
 
@@ -44,12 +53,14 @@ public sealed class ClusterSurfaces : IDisposable
         this.clusters = clusters;
         this.surfaces = surfaces;
         hidden = [.. surfaces.Select(surface => surface.Run().Hidden)];
+        unnamed = [.. surfaces.Select((surface, at) => Silent(clusters[at], surface))];
     }
 
     /// <summary>Every cluster this face holds, hidden or not, in the order it
     /// was given them. A publication that names no cluster is an empty name,
-    /// which only ever happens where there is one.</summary>
-    public IReadOnlyList<string> Clusters => clusters;
+    /// which only ever happens where there is one; so is a surface that has
+    /// published nothing yet, until it does.</summary>
+    public IReadOnlyList<string> Clusters => Named();
 
     /// <summary>How many clusters are held.</summary>
     public int Count => surfaces.Length;
@@ -59,7 +70,7 @@ public sealed class ClusterSurfaces : IDisposable
     /// <paramref name="includingHidden"/>.</summary>
     public IReadOnlyList<string> Listed(bool includingHidden)
     {
-        return [.. clusters.Where((_, at) => Shown(at, includingHidden))];
+        return [.. Named().Where((_, at) => Shown(at, includingHidden))];
     }
 
     /// <summary>Whether there is more than one listed to move between — what
@@ -73,14 +84,14 @@ public sealed class ClusterSurfaces : IDisposable
     /// started; false for a name this set does not hold.</summary>
     public bool Hidden(string? cluster)
     {
-        int held = cluster is null ? -1 : Array.IndexOf(clusters, cluster);
+        int held = cluster is null ? -1 : Array.IndexOf(Named(), cluster);
 
         return held >= 0 && hidden[held];
     }
 
     /// <summary>Whether any cluster held is hidden — whether a face has
     /// anything for a "show test clusters" choice to show.</summary>
-    public bool AnyHidden => hidden.Contains(true);
+    public bool AnyHidden => Named().Length > 0 && hidden.Contains(true);
 
     /// <summary>The one a face shows when nothing said which: the first given.
     /// A set is never empty, so this always answers.</summary>
@@ -89,7 +100,7 @@ public sealed class ClusterSurfaces : IDisposable
     /// <summary>Where the records come from, for a process that declares
     /// itself (ADR-0053) and for anything that wants one line.</summary>
     public string Source => Count > 1
-        ? $"{Count} clusters — {string.Join(", ", clusters)}"
+        ? $"{Count} clusters — {string.Join(", ", Named())}"
         : First.Source;
 
     /// <summary>One surface, held as a set of one. Every face reads a set, so
@@ -107,7 +118,9 @@ public sealed class ClusterSurfaces : IDisposable
     /// <exception cref="ArgumentException">No surface at all: a face with
     /// nothing to read is not a set, and whoever opened it says so instead.</exception>
     /// <exception cref="InvalidOperationException">Two of them name one
-    /// cluster. The message begins REFUSED and names the cluster.</exception>
+    /// cluster. The message begins REFUSED and names the cluster. A surface
+    /// that has published nothing yet names none and is refused with
+    /// nothing: it is named by its first publication.</exception>
     public static ClusterSurfaces Over(IEnumerable<IOperatorSurface> surfaces)
     {
         ArgumentNullException.ThrowIfNull(surfaces);
@@ -121,14 +134,18 @@ public sealed class ClusterSurfaces : IDisposable
         }
 
         string[] named = [.. held.Select(NameOf)];
+        bool[] silent = [.. held.Select((surface, at) => Silent(named[at], surface))];
 
         for (int later = 1; later < named.Length; later++)
         {
-            int first = Array.IndexOf(named, named[later]);
-
-            if (first < later)
+            for (int first = 0; first < later; first++)
             {
-                throw new InvalidOperationException(Twice(named[later], held[first], held[later]));
+                if (!silent[first] && !silent[later]
+                    && string.Equals(named[first], named[later], StringComparison.Ordinal))
+                {
+                    throw new InvalidOperationException(
+                        Twice(named[later], held[first], held[later]));
+                }
             }
         }
 
@@ -167,7 +184,7 @@ public sealed class ClusterSurfaces : IDisposable
     /// <summary>Whether this set holds a cluster by that name.</summary>
     public bool Holds(string? cluster)
     {
-        return cluster is not null && Array.IndexOf(clusters, cluster) >= 0;
+        return cluster is not null && Array.IndexOf(Named(), cluster) >= 0;
     }
 
     /// <summary>
@@ -205,7 +222,7 @@ public sealed class ClusterSurfaces : IDisposable
     /// </summary>
     public bool Publishing(string cluster)
     {
-        int held = Array.IndexOf(clusters, cluster);
+        int held = Array.IndexOf(Named(), cluster);
 
         return held >= 0 && surfaces[held].Index().Leaves > 0;
     }
@@ -216,11 +233,46 @@ public sealed class ClusterSurfaces : IDisposable
         return RuntimeLibrary.Rules.Shown(hidden[at], includingHidden);
     }
 
+    // The names held, each cluster that had published nothing when the set
+    // was opened named by the first publication it says one in — a node the
+    // host reached before it answered — and kept from then on. A name another
+    // cluster holds already is not taken, so no face holds one twice.
+    private string[] Named()
+    {
+        lock (naming)
+        {
+            for (int at = 0; at < unnamed.Length; at++)
+            {
+                if (!unnamed[at] || surfaces[at].Index().Leaves == 0)
+                {
+                    continue;
+                }
+
+                unnamed[at] = false;
+                string said = NameOf(surfaces[at]);
+
+                if (Array.IndexOf(clusters, said) < 0)
+                {
+                    clusters[at] = said;
+                    hidden[at] = surfaces[at].Run().Hidden;
+                }
+            }
+
+            return clusters;
+        }
+    }
+
+    // Whether a surface named nothing because it has published nothing yet.
+    private static bool Silent(string name, IOperatorSurface surface)
+    {
+        return name.Length == 0 && surface.Index().Leaves == 0;
+    }
+
     // The index a face is on: the asked cluster where it is listed, else the
     // first listed, else none.
     private int Chosen(string? cluster, bool includingHidden)
     {
-        int asked = cluster is null ? -1 : Array.IndexOf(clusters, cluster);
+        int asked = cluster is null ? -1 : Array.IndexOf(Named(), cluster);
 
         if (asked >= 0 && Shown(asked, includingHidden))
         {

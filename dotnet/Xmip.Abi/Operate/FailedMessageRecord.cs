@@ -42,10 +42,8 @@ public sealed record FailedMessagePort(
 
 /// <summary>
 /// The Messages that failed at the Send Ports a node or a publication
-/// carries, and where an act is left when they are read through a
-/// publication — empty where it is applied in the process itself.
+/// carries.
 /// </summary>
-/// <param name="Orders">Where a surface leaves an act for the publisher.</param>
 /// <param name="Ports">Each Send Port's, by node and Port.</param>
 /// <param name="Listed">Whether the list is an answer: true where a node or
 /// a publication was read, even with no Message in it; false where the
@@ -56,20 +54,19 @@ public sealed record FailedMessagePort(
 /// opens <c>FAILED:</c>; empty otherwise, <see cref="Unlisted"/> among
 /// them.</param>
 public sealed record FailedMessageList(
-    string Orders,
     IReadOnlyList<FailedMessagePort> Ports,
     bool Listed = true,
     string Failure = "")
 {
     /// <summary>No answer: the surface cannot list failed Messages — it
     /// reaches no node, no runtime is loaded, no publication was read.</summary>
-    public static FailedMessageList Unlisted { get; } = new(string.Empty, [], false);
+    public static FailedMessageList Unlisted { get; } = new([], false);
 
     /// <summary>No answer, though the surface asked: <paramref name="why"/>,
     /// as what asked was told it.</summary>
     public static FailedMessageList Unanswered(string why)
     {
-        return new FailedMessageList(string.Empty, [], false, $"FAILED: {why}");
+        return new FailedMessageList([], false, $"FAILED: {why}");
     }
 
     /// <summary>Every Message listed, Port by Port.</summary>
@@ -82,7 +79,6 @@ public sealed record FailedMessageList(
         JsonElement root = answer.RootElement;
 
         return new FailedMessageList(
-            root.GetProperty("orders").GetString() ?? string.Empty,
             [.. root.GetProperty("failed_messages").EnumerateArray().Select(Port)]);
     }
 

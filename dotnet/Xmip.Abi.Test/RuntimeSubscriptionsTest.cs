@@ -1,4 +1,3 @@
-using Xmip.Abi.Module;
 using Xmip.Abi.Operate;
 
 namespace Xmip.Abi.Test;
@@ -6,11 +5,10 @@ namespace Xmip.Abi.Test;
 /// <summary>
 /// <see cref="RuntimeSubscriptions"/> crosses section 14 to the runtime this
 /// estate built and back (ADR-0013, amendment 2026-09-30): no node runs in a
-/// test's process, so the list is empty and an act on a node is refused in
-/// words; remove is no act on a Subscription and is refused as one; an order
-/// on either noun is left where a publication says and nowhere else; and a
-/// publication's Subscriptions are read. What pausing holds is the runtime's
-/// and tested there; these prove the crossing.
+/// test's process, so the list is empty; and a publication's Subscriptions
+/// are read. What pausing holds is the runtime's and tested there, and a
+/// pause or resume is asked at a node's door (ADR-0014, amendment
+/// 2026-11-13); these prove the crossing.
 /// </summary>
 public sealed class RuntimeSubscriptionsTest
 {
@@ -23,70 +21,16 @@ public sealed class RuntimeSubscriptionsTest
     private static RuntimeRules Rules => RuntimeRulesTest.Rules;
 
     [Fact]
-    public void NoNodeRunsHereSoNothingIsListedAndAnActIsRefusedAndRemoveIsNoAct()
+    public void NoNodeRunsHereSoNothingIsListed()
     {
         Assert.Empty(Rules.Subscriptions.Standing(Node).Subscriptions);
-
-        Assert.Equal(
-            XmipStatus.NotFound,
-            Rules.Subscriptions.Act(Node, "structured", "pause", "ilian", out string said));
-        Assert.StartsWith("REFUSED", said, StringComparison.Ordinal);
-
-        Assert.Equal(
-            XmipStatus.Invalid,
-            Rules.Subscriptions.Act(Node, "structured", "remove", "ilian", out said));
-        Assert.Contains("TOML configuration", said, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void AnOrderOnEitherNounIsLeftWhereThePublicationSaysAndNowhereElse()
-    {
-        string orders = Path.Combine(Path.GetTempPath(), $"xmip-abi-orders-{Guid.NewGuid():n}");
-
-        try
-        {
-            Assert.Equal(
-                XmipStatus.Ok,
-                Rules.Subscriptions.Order(
-                    orders, Node, "subscription", "structured", "pause", "ilian", out string file));
-            Assert.True(File.Exists(file), file);
-            Assert.StartsWith(Path.Combine(orders, Processor), file, StringComparison.Ordinal);
-            Assert.Equal(
-                XmipStatus.Ok,
-                Rules.Subscriptions.Order(
-                    orders, Node, "event-subscription", "3", "remove", "ilian", out _));
-
-            Assert.Equal(
-                XmipStatus.Invalid,
-                Rules.Subscriptions.Order(
-                    orders,
-                    Node,
-                    "subscription",
-                    "structured",
-                    "remove",
-                    "ilian",
-                    out string said));
-            Assert.Contains("TOML configuration", said, StringComparison.Ordinal);
-            Assert.Equal(
-                XmipStatus.Invalid,
-                Rules.Subscriptions.Order(
-                    string.Empty, Node, "subscription", "structured", "pause", "ilian", out _));
-            Assert.Equal(
-                XmipStatus.Invalid,
-                Rules.Subscriptions.Order(
-                    orders, Cluster.Scope, "subscription", "structured", "pause", "ilian", out _));
-        }
-        finally
-        {
-            Directory.Delete(orders, recursive: true);
-        }
-    }
-
-    [Fact]
-    public void APublicationsSubscriptionsAndItsOrdersAreRead()
+    public void APublicationsSubscriptionsAreRead()
     {
         string text =
-            $"node = \"{Cluster.Scope}\"\norders = \"shared/orders\"\n"
+            $"node = \"{Cluster.Scope}\"\n"
             + $"[[subscriptions]]\nnode = \"{Node}\"\nname = \"structured\"\n"
             + "application = \"RoundTrip\"\nfilter = \"MessageType = 'json'\"\n"
             + "destination = \"the Send Port 'RoundTripOut'\"\nstate = \"paused\"\n"
@@ -96,7 +40,6 @@ public sealed class RuntimeSubscriptionsTest
             ?? throw new InvalidOperationException("no publication");
         SubscriptionRecord held = Assert.Single(read.Subscriptions.Subscriptions);
 
-        Assert.Equal("shared/orders", read.Subscriptions.Orders);
         Assert.Equal(
             (Node, "structured", true, 5ul, 7ul),
             (held.Node, held.Name, held.Paused, held.Held, held.PickedUp));

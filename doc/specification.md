@@ -495,8 +495,8 @@ carries what an operator lists and does (ADR-0065, amendment of that date):
 memory; `xmip_event_subscription_act_v1`, pause, resume or remove one by its
 number; and `xmip_publication_event_subscriptions_v1`, what a read publication
 carries, over section 8's handle. .NET binds the first two as
-`RuntimeEventSubscriptions` and the third in `PublicationReader`. The act
-left where a publication says is section 14's one order.
+`RuntimeEventSubscriptions` and the third in `PublicationReader`. A read
+publication is never acted on.
 
 Section 12 is the technologies a runtime carries (ADR-0064, amendment
 2026-09-26): `xmip_technology_catalogue_v1` answers, as JSON in memory, each
@@ -507,16 +507,21 @@ Location's form is built from it, never written in a surface. The Rust
 mirror is `.src/operate/catalogue.rs`; .NET binds it as `RuntimeCatalogue`.
 
 Section 13 is a System Process declared (ADR-0053 clause 3):
-`xmip_process_declare_v1` has `xmip-core-node` write the calling process's
+`xmip_process_declare_v1` has the runtime write the calling process's
 declaration — its name, location and purpose (`test` or `runtime`, exact),
 and what else it says, key then value — and answers the file, which the
-caller removes where its process ends, or the node's refusal of a purpose
-that is no word or a key that is not a bare word; and
+caller takes away where its process ends, or the node's refusal of a purpose
+that is no word or a key that is not a bare word;
 `xmip_process_declarations_v1` answers, as JSON in memory, the declarations
 standing in a directory, the node's own when none is named, whether or not
-their processes still run. The file, its directory, its words and its
-reading are the node's alone. The Rust mirror is `.src/operate/process.rs`;
-.NET binds it as `RuntimeProcesses`.
+their processes still run; and `xmip_process_undeclare_v1` takes away the
+declaration standing in a file — the caller's own, or one whose process a
+listing found gone — refusing a file that is no declaration's, named
+otherwise than `xmip-*.toml`, and leaving it where it is. Its words and its
+text are `xmip-core-node`'s alone, the file, its directory, its reading and
+its removal `xmip-core-runtime`'s (`declared`; ADR-0058 and ADR-0053,
+amendments 2026-11-13): no surface deletes a declaration itself. The Rust
+mirror is `.src/operate/process.rs`; .NET binds it as `RuntimeProcesses`.
 
 Section 14 is a node's Subscriptions (ADR-0013, amendment 2026-09-30): a
 Subscription picks a published Message up and is configuration, added and
@@ -525,14 +530,12 @@ pauses and resumes one and never removes one. `xmip_subscriptions_v1`
 answers, as JSON in memory, the Subscriptions of every node running in the
 process — each with its Application, file and entry as the file says it,
 its filter and destination, whether it is paused and by whom, what it
-picked up and what it holds; `xmip_subscription_act_v1` pauses or resumes
-one by its node and name, and refuses remove in words;
-`xmip_publication_subscriptions_v1` is what a read publication carries; and
-`xmip_order_v1` leaves an act — on a Subscription by its name, or on an
-Event subscription by its number — where a publication says its publisher
-takes orders, the file `observe::Order`'s alone. The Rust mirror is
-`.src/operate/subscription.rs`; .NET binds the first, second and fourth as
-`RuntimeSubscriptions` and the third in `PublicationReader`.
+picked up and what it holds; and `xmip_publication_subscriptions_v1` is what
+a read publication carries. A pause or resume is asked at a node's door,
+through section 17's `xmip_remote_act_v1` and Xmip Storage, and taken by the
+node that routes by the Subscription (ADR-0014, amendment 2026-11-13). The
+Rust mirror is `.src/operate/subscription.rs`; .NET binds the first as
+`RuntimeSubscriptions` and the second in `PublicationReader`.
 
 Section 15 is a node's Dead Message Queue (ADR-0052, amendment 2026-10-01):
 an accepted Message that no Subscription matched is kept in the Ledger with
@@ -542,16 +545,15 @@ replays it once a Subscription is added or fixed. It is not a dead letter
 queue: a failed Message never goes there. `xmip_dead_messages_v1` answers, as
 JSON in memory, what the queues of every node running in the process keep,
 the oldest hundred of each, each entry's verdicts, properties and declines
-as name and value pairs in the order written; `xmip_dead_message_replay_v1`
-replays one by its node and Message — routed against the node's
-Subscriptions of now, a Journey opened for each match and the entry taken
-out, in one write, once; a Message replayed before is said so and not
-replayed twice, and one that still matches nothing stays, refused in words;
-and `xmip_publication_dead_messages_v1` is what a read publication carries.
-A surface over a publication replays through section 14's `xmip_order_v1`,
-noun `dead-message`, act `replay`. The Rust mirror is
-`.src/operate/dead_message.rs`; .NET binds the first two as
-`RuntimeDeadMessages` and the third in `PublicationReader`.
+as name and value pairs in the order written; and
+`xmip_publication_dead_messages_v1` is what a read publication carries. A
+Replay, noun `dead-message`, act `replay`, is asked at a node's door through
+section 17's `xmip_remote_act_v1` and Xmip Storage: routed against the
+node's Subscriptions of now, a Journey opened for each match and the entry
+taken out, in one write, once; a Message replayed before is said so and not
+replayed twice, and one that still matches nothing stays, refused in words.
+The Rust mirror is `.src/operate/dead_message.rs`; .NET binds the first as
+`RuntimeDeadMessages` and the second in `PublicationReader`.
 
 Section 16 is a Message that failed (runtime-model.md section 13; ADR-0013,
 amendment 2026-08-26): a Message travels to one Send Port on each Journey, and
@@ -561,18 +563,17 @@ waits in its Port's queue for an Operator. A node's publication carries, at
 that failed there with why, its Journey's identifier the one an act names.
 `xmip_failed_messages_v1` lists every failed Message of a Send Port from Xmip
 Storage a page at a time, and `xmip_publication_failed_messages_v1` what a
-read publication carries of them. `xmip_message_act_v1` applies `retry` or
-`dismiss`, exact, to one by its node and its Journey's identifier, by who acts: Retry writes it Active, its
-tries begun anew, and sends it again from the end of its Port's queue — or
-from its place, where it blocks its sequence; Dismiss writes it
-Dismissed, terminal, its history, Message and Stream kept, and takes it out
-of the queue. Each is one write under a claim, audited with who acted, as
-`message.retry` or `message.dismiss`. A node not running here, no such
-Journey, one whose Message has not failed, or a node that does not send its Port is
-refused in words, opening REFUSED; a word that is no act on a failed Message
-is invalid. A surface over a publication acts through section 14's
-`xmip_order_v1`, noun `message`, act `retry` or `dismiss`. The Rust mirror is
-`.src/operate/message.rs`; .NET binds it as `RuntimeMessages`.
+read publication carries of them. Retry and Dismiss, noun `message`, act
+`retry` or `dismiss`, by its Journey's identifier, are asked at a node's
+door through section 17's `xmip_remote_act_v1` and Xmip Storage: Retry
+writes it Active, its tries begun anew, and sends it again from the end of
+its Port's queue — or from its place, where it blocks its sequence; Dismiss
+writes it Dismissed, terminal, its history, Message and Stream kept, and
+takes it out of the queue. Each is one write under a claim, audited with who
+acted, as `message.retry` or `message.dismiss`. No such Journey, one whose
+Message has not failed, or a node that does not send its Port is refused in
+words, opening REFUSED. The Rust mirror is `.src/operate/message.rs`; .NET
+binds it as `RuntimeMessages`.
 
 Section 20 is a database's schema (open problem 41; ADR-0015, amendment
 2026-10-20). Every Xmip database records the schema version it holds, and a
@@ -585,6 +586,14 @@ one to each database, `04-<domain>-upgrade-<from>-<to>.sql`, adding only,
 with this build's version beside them. An upgrade that is none, or a server
 Xmip Storage keeps no database on, is refused in words. The schema and its
 versions are `xmip-core-persist`'s; .NET binds it as `RuntimeDatabases`.
+
+A node's membership of its cluster takes no section of its own (ADR-0056,
+amendment 2026-11-13): it is a health record, `<node>/membership`, read as
+every record is, through section 8 or a follow. Working until the node's
+row of the `membership` table is in Xmip Storage, Fine saying since when it
+is a member, where it answers and the save it runs, and Stressed where that
+save is not its peers' (ADR-0031, amendment 2026-11-13). The words are the
+runtime's (`runtime::membership`), so no surface writes them.
 
 Section 25 is every Report in one list (ADR-0072, amendment 2026-11-10). A
 Report presents existing data; a Quest probes for data to present in a
@@ -613,7 +622,7 @@ one step down the drill and the words a reader offers. The reader and the
 query are the capability's alone. The Rust mirror is
 `.src/operate/audit.rs`; .NET binds it as `RuntimeAudit`. Section 7 gained
 `xmip_scope_matches_v1` the same day, the one wildcard over scopes,
-`observe::wildcard`'s.
+`node::wildcard`'s.
 
 Section 7 gained `xmip_run_shown_v1` on 2026-09-30, `observe::run::shown`:
 whether what a run made is shown, as the run declared (hidden) and the reader

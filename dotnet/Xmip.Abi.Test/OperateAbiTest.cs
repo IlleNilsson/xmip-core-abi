@@ -95,24 +95,22 @@ public sealed class OperateAbiTest
         "XMIP_PUBLICATION_EVENT_SUBSCRIPTIONS_ENTRYPOINT",
         OperateAbi.PublicationEventSubscriptionsEntrypoint)]
     [InlineData("XMIP_SUBSCRIPTIONS_ENTRYPOINT", OperateAbi.SubscriptionsEntrypoint)]
-    [InlineData("XMIP_SUBSCRIPTION_ACT_ENTRYPOINT", OperateAbi.SubscriptionActEntrypoint)]
     [InlineData(
         "XMIP_PUBLICATION_SUBSCRIPTIONS_ENTRYPOINT", OperateAbi.PublicationSubscriptionsEntrypoint)]
     [InlineData("XMIP_PUBLICATION_FROM_TO_ENTRYPOINT", OperateAbi.PublicationFromToEntrypoint)]
-    [InlineData("XMIP_ORDER_ENTRYPOINT", OperateAbi.OrderEntrypoint)]
     [InlineData("XMIP_DEAD_MESSAGES_ENTRYPOINT", OperateAbi.DeadMessagesEntrypoint)]
-    [InlineData("XMIP_DEAD_MESSAGE_REPLAY_ENTRYPOINT", OperateAbi.DeadMessageReplayEntrypoint)]
     [InlineData(
         "XMIP_PUBLICATION_DEAD_MESSAGES_ENTRYPOINT", OperateAbi.PublicationDeadMessagesEntrypoint)]
-    [InlineData("XMIP_MESSAGE_ACT_ENTRYPOINT", OperateAbi.MessageActEntrypoint)]
     [InlineData(
         "XMIP_TECHNOLOGY_CATALOGUE_ENTRYPOINT", OperateAbi.TechnologyCatalogueEntrypoint)]
     [InlineData("XMIP_PROCESS_DECLARE_ENTRYPOINT", OperateAbi.ProcessDeclareEntrypoint)]
     [InlineData(
         "XMIP_PROCESS_DECLARATIONS_ENTRYPOINT", OperateAbi.ProcessDeclarationsEntrypoint)]
+    [InlineData("XMIP_PROCESS_UNDECLARE_ENTRYPOINT", OperateAbi.ProcessUndeclareEntrypoint)]
     [InlineData("XMIP_REMOTE_OPEN_ENTRYPOINT", OperateAbi.RemoteOpenEntrypoint)]
     [InlineData("XMIP_REMOTE_OPEN_KEPT_ENTRYPOINT", OperateAbi.RemoteOpenKeptEntrypoint)]
     [InlineData("XMIP_REMOTE_PUBLICATION_ENTRYPOINT", OperateAbi.RemotePublicationEntrypoint)]
+    [InlineData("XMIP_REMOTE_CLUSTER_ENTRYPOINT", OperateAbi.RemoteClusterEntrypoint)]
     [InlineData("XMIP_REMOTE_WAIT_ENTRYPOINT", OperateAbi.RemoteWaitEntrypoint)]
     [InlineData("XMIP_REMOTE_ACT_ENTRYPOINT", OperateAbi.RemoteActEntrypoint)]
     [InlineData("XMIP_REMOTE_END_ENTRYPOINT", OperateAbi.RemoteEndEntrypoint)]
@@ -123,6 +121,7 @@ public sealed class OperateAbiTest
     [InlineData(
         "XMIP_OPERATE_SERVED_ADDRESS_ENTRYPOINT", OperateAbi.OperateServedAddressEntrypoint)]
     [InlineData("XMIP_OPERATE_POST_ENTRYPOINT", OperateAbi.OperatePostEntrypoint)]
+    [InlineData("XMIP_OPERATE_POST_CLUSTER_ENTRYPOINT", OperateAbi.OperatePostClusterEntrypoint)]
     [InlineData("XMIP_OPERATE_SERVE_STOP_ENTRYPOINT", OperateAbi.OperateServeStopEntrypoint)]
     [InlineData(
         "XMIP_SECURITY_ROLE_NAMED_ENTRYPOINT", OperateAbi.SecurityRoleNamedEntrypoint)]
@@ -159,6 +158,18 @@ public sealed class OperateAbiTest
     public void NamesEachSymbolTheHeaderDeclares(string define, string symbol)
     {
         Assert.Equal(Header.Define("xmip_operate.h", define), symbol);
+    }
+
+    [Theory]
+    [InlineData("XMIP_REMOTE_FOLLOWS_NODE", RemoteFollows.Node)]
+    [InlineData("XMIP_REMOTE_FOLLOWS_CLUSTER", RemoteFollows.Cluster)]
+    [InlineData("XMIP_REMOTE_FOLLOWS_ANSWERED", RemoteFollows.Answered)]
+    public void NamesEachPublicationAFollowFollowsAsTheHeaderDefinesIt(
+        string define, RemoteFollows follows)
+    {
+        Assert.Equal(
+            Header.Define("xmip_operate.h", define),
+            ((int)follows).ToString(System.Globalization.CultureInfo.InvariantCulture));
     }
 
     [Fact]

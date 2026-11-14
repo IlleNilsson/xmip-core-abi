@@ -185,34 +185,26 @@ public sealed class ClusterSurfacesTest
     }
 
     [Fact]
-    public void ADocumentNamesOneSnapshotOrSeveral()
+    public void ADocumentNamingOneSnapshotIsASetOfOneReadAtItsPath()
     {
+        // Several clusters are named by Clusters alone (ClusterListTest); a
+        // snapshot is one path, one cluster (ADR-0052, amendment 2026-11-13).
         using Papers one = new("""
             [Xmip]
             Surface = "snapshot"
             Snapshot = "Fixture/cluster.xmip"
             """);
 
-        Assert.Equal(["Fixture/cluster.xmip"], SurfaceChoice.Snapshots(one.Configuration));
-
-        using Papers two = new("""
-            [Xmip]
-            Surface = "snapshot"
-            Snapshot = ["Fixture/cluster.xmip", "Fixture/cluster-cl2.xmip"]
-            """);
-
-        Assert.Equal(
-            ["Fixture/cluster.xmip", "Fixture/cluster-cl2.xmip"],
-            SurfaceChoice.Snapshots(two.Configuration));
+        Assert.Equal(["Fixture/cluster.xmip"], SurfaceChoice.Places(one.Configuration));
 
         using ClusterSurfaces held =
-            SurfaceChoice.OpenAll(two.Configuration, AppContext.BaseDirectory);
+            SurfaceChoice.OpenAll(one.Configuration, AppContext.BaseDirectory);
 
-        Assert.Equal([First, Second], held.Clusters);
+        Assert.Equal([First], held.Clusters);
     }
 
     [Fact]
-    public void AnythingButAListOfSnapshotsIsASetOfOne()
+    public void ADocumentNamingNoClustersIsASetOfOne()
     {
         using Papers local = new("""
             [Xmip]

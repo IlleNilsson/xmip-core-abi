@@ -11,8 +11,7 @@ namespace Xmip.Abi.Test;
 /// subscriptions are read. No node serves in a test's process, so no
 /// subscription is made here (ADR-0019, amendment 2026-11-11); listing,
 /// pausing, resuming and removing one the hub holds are proven where a node
-/// serves, in the runtime's own tests. The order left where a publication
-/// says is one for both nouns, <see cref="RuntimeSubscriptionsTest"/>'s.
+/// serves, in the runtime's own tests.
 /// </summary>
 public sealed class RuntimeEventSubscriptionsTest
 {
@@ -42,10 +41,10 @@ public sealed class RuntimeEventSubscriptionsTest
     }
 
     [Fact]
-    public void APublicationsEventSubscriptionsAndItsOrdersAreRead()
+    public void APublicationsEventSubscriptionsAreRead()
     {
         string text =
-            $"node = \"{Cluster.Scope}\"\norders = \"shared/orders\"\n"
+            $"node = \"{Cluster.Scope}\"\n"
             + $"[[event_subscriptions]]\nnode = \"{Sending}\"\nid = 2\n"
             + "subscriber = \"operations\"\nparty = \"0199a0a0-0000-7000-8000-000000000001\"\n"
             + "action = \"every Event\"\nstate = \"paused\"\nqueued = 5\n";
@@ -54,7 +53,6 @@ public sealed class RuntimeEventSubscriptionsTest
             ?? throw new InvalidOperationException("no publication");
         EventSubscriptionRecord held = Assert.Single(read.EventSubscriptions.EventSubscriptions);
 
-        Assert.Equal("shared/orders", read.EventSubscriptions.Orders);
         Assert.Equal((Sending, 2ul, true, 5ul), (held.Node, held.Id, held.Paused, held.Queued));
         Assert.Equal(
             ("operations", "0199a0a0-0000-7000-8000-000000000001"), (held.Subscriber, held.Party));

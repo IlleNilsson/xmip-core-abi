@@ -16,6 +16,8 @@ pub const OPEN_KEPT_ENTRYPOINT: &str = "xmip_remote_open_kept_v1";
 pub const OPEN_LOCAL_ENTRYPOINT: &str = "xmip_remote_open_local_v1";
 /// `xmip_remote_publication_v1`.
 pub const PUBLICATION_ENTRYPOINT: &str = "xmip_remote_publication_v1";
+/// `xmip_remote_cluster_v1`.
+pub const CLUSTER_ENTRYPOINT: &str = "xmip_remote_cluster_v1";
 /// `xmip_remote_wait_v1`.
 pub const WAIT_ENTRYPOINT: &str = "xmip_remote_wait_v1";
 /// `xmip_remote_act_v1`.
@@ -32,6 +34,8 @@ pub const SERVE_LOCAL_ENTRYPOINT: &str = "xmip_operate_serve_local_v2";
 pub const SERVED_ADDRESS_ENTRYPOINT: &str = "xmip_operate_served_address_v1";
 /// `xmip_operate_post_v1`.
 pub const POST_ENTRYPOINT: &str = "xmip_operate_post_v1";
+/// `xmip_operate_post_cluster_v1`.
+pub const POST_CLUSTER_ENTRYPOINT: &str = "xmip_operate_post_cluster_v1";
 /// `xmip_operate_serve_stop_v1`.
 pub const SERVE_STOP_ENTRYPOINT: &str = "xmip_operate_serve_stop_v1";
 /// `xmip_security_role_named_v1`.
@@ -121,15 +125,38 @@ pub type PublicationFn = unsafe extern "C" fn(
     out_revision: *mut u64,
 ) -> i32;
 
+/// `xmip_remote_cluster_v1`: the cluster's publication the node gathered,
+/// and its revision; refused where the node declares no monitoring role.
+pub type ClusterFn = unsafe extern "C" fn(
+    remote: *const Remote,
+    out: *mut u8,
+    cap: usize,
+    out_len: *mut usize,
+    out_revision: *mut u64,
+) -> i32;
+
+/// `XMIP_REMOTE_FOLLOWS_NODE`: a wait follows the node's own publication.
+pub const FOLLOWS_NODE: u32 = 0;
+/// `XMIP_REMOTE_FOLLOWS_CLUSTER`: a wait follows the cluster's the node
+/// gathered.
+pub const FOLLOWS_CLUSTER: u32 = 1;
+/// `XMIP_REMOTE_FOLLOWS_ANSWERED`: a wait follows the cluster's where the
+/// node answers one, else the node's own, the node's answer deciding; what
+/// a wait says it follows until that answer.
+pub const FOLLOWS_ANSWERED: u32 = 2;
+
 /// `xmip_remote_wait_v1`: the follow's state once told more than `seen`
-/// times, or after `timeout_ms`.
+/// times, or after `timeout_ms`, following the publication `follows` names,
+/// and which it follows.
 pub type WaitFn = unsafe extern "C" fn(
     remote: *const Remote,
+    follows: u32,
     seen: u64,
     timeout_ms: u32,
     out_told: *mut u64,
     out_revision: *mut u64,
     out_reachable: *mut u8,
+    out_follows: *mut u32,
     reason: *mut u8,
     cap: usize,
     reason_len: *mut usize,
@@ -197,6 +224,10 @@ pub type ServedAddressFn = unsafe extern "C" fn(
 
 /// `xmip_operate_post_v1`: what the listener answers from now.
 pub type PostFn = unsafe extern "C" fn(served: *const Served, publication: Str) -> i32;
+
+/// `xmip_operate_post_cluster_v1`: the cluster's publication the program
+/// gathered, what the listener answers the cluster's from now.
+pub type PostClusterFn = unsafe extern "C" fn(served: *const Served, publication: Str) -> i32;
 
 /// `xmip_operate_serve_stop_v1`.
 pub type ServeStopFn = unsafe extern "C" fn(served: *mut Served);

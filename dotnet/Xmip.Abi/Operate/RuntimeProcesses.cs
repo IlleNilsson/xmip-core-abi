@@ -7,10 +7,11 @@ namespace Xmip.Abi.Operate;
 
 /// <summary>
 /// Section 13 of <c>include/xmip_operate.h</c>, crossed by P/Invoke: a System
-/// Process declared, and the declarations that stand (ADR-0053 clause 3). The
-/// file, its directory, its words and its reading are <c>xmip-core-node</c>'s;
-/// this binds the two calls once for every .NET program and for the estate's
-/// PowerShell module, which write and read no declaration of their own.
+/// Process declared, the declarations that stand, and one taken away (ADR-0053
+/// clause 3). The words are <c>xmip-core-node</c>'s, the file, its directory,
+/// its reading and its removal <c>xmip-core-runtime</c>'s; this binds the three
+/// calls once for every .NET program and for the estate's PowerShell module,
+/// which write, read and remove no declaration of their own.
 /// </summary>
 /// <remarks>
 /// Pure in the header's sense: it reads no snapshot and holds nothing, so one
@@ -29,6 +30,8 @@ public sealed class RuntimeProcesses
 
     private readonly delegate* unmanaged[Cdecl]<XmipStr, byte*, nuint, nuint*, int> _list;
 
+    private readonly delegate* unmanaged[Cdecl]<XmipStr, byte*, nuint, nuint*, int> _undeclare;
+
     internal RuntimeProcesses(nint library)
     {
         _declare = (delegate* unmanaged[Cdecl]<
@@ -36,19 +39,26 @@ public sealed class RuntimeProcesses
             NativeLibrary.GetExport(library, OperateAbi.ProcessDeclareEntrypoint);
         _list = (delegate* unmanaged[Cdecl]<XmipStr, byte*, nuint, nuint*, int>)
             NativeLibrary.GetExport(library, OperateAbi.ProcessDeclarationsEntrypoint);
+        _undeclare = (delegate* unmanaged[Cdecl]<XmipStr, byte*, nuint, nuint*, int>)
+            NativeLibrary.GetExport(library, OperateAbi.ProcessUndeclareEntrypoint);
     }
 
     /// <summary>Section 13's symbols, which a runtime must export.</summary>
     public static IReadOnlyList<string> Entrypoints { get; } =
-        [OperateAbi.ProcessDeclareEntrypoint, OperateAbi.ProcessDeclarationsEntrypoint];
+    [
+        OperateAbi.ProcessDeclareEntrypoint,
+        OperateAbi.ProcessDeclarationsEntrypoint,
+        OperateAbi.ProcessUndeclareEntrypoint,
+    ];
 
     /// <summary>
     /// Declare the calling process where the node says: its
     /// <paramref name="name"/>, <paramref name="location"/> and
     /// <paramref name="purpose"/> (<c>test</c> or <c>runtime</c>), and what
     /// else it says, key then value. <see cref="XmipStatus.Ok"/> with the file
-    /// the declaration stands in, which the caller removes where the process
-    /// ends; <see cref="XmipStatus.Invalid"/> with the node's refusal, or
+    /// the declaration stands in, which the caller takes away where the process
+    /// ends (<see cref="Undeclare"/>); <see cref="XmipStatus.Invalid"/> with the
+    /// node's refusal, or
     /// <see cref="XmipStatus.Io"/> with why the file could not be written, in
     /// <paramref name="answer"/>.
     /// </summary>
@@ -136,6 +146,44 @@ public sealed class RuntimeProcesses
         return new ProcessDeclarations(
             root.GetProperty("directory").GetString() ?? string.Empty,
             [.. root.GetProperty("processes").EnumerateArray().Select(Standing)]);
+    }
+
+    /// <summary>
+    /// Take away the declaration standing in <paramref name="file"/>: the
+    /// caller's own where its process ends, or one a listing found whose process
+    /// is gone. <see cref="XmipStatus.Ok"/> when it is gone, already gone
+    /// included; <see cref="XmipStatus.Invalid"/> with the runtime's refusal of a
+    /// file that is no declaration's, left where it is, or
+    /// <see cref="XmipStatus.Io"/> with why it could not be removed, in
+    /// <paramref name="answer"/>.
+    /// </summary>
+    public XmipStatus Undeclare(string file, out string answer)
+    {
+        ArgumentNullException.ThrowIfNull(file);
+
+        byte[] named = Encoding.UTF8.GetBytes(file);
+        byte[] text = new byte[Room];
+        nuint length = 0;
+        int status;
+
+        fixed (byte* data = named)
+        fixed (byte* written = text)
+        {
+            unsafe
+            {
+                status = _undeclare(
+                    new XmipStr(data, (nuint)named.Length), written, (nuint)text.Length, &length);
+            }
+        }
+
+        answer = Encoding.UTF8.GetString(text, 0, (int)Math.Min(length, (nuint)text.Length));
+
+        return status switch
+        {
+            0 or (int)XmipStatus.Invalid or (int)XmipStatus.Io => (XmipStatus)status,
+            _ => throw new InvalidOperationException(
+                $"the runtime answered a declaration's removal with {(XmipStatus)status}"),
+        };
     }
 
     private static ProcessStanding Standing(JsonElement process)

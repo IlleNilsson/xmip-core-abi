@@ -20,6 +20,11 @@ internal sealed record PublicationReading(
     DeadMessageList DeadMessages,
     FailedMessageList FailedMessages)
 {
+    /// <summary>Who published, in the publication's own words: a gathered
+    /// view's <c>&lt;cluster&gt;, gathered by &lt;node&gt;</c> line among them.
+    /// Empty where it names no one.</summary>
+    public string Said { get; init; } = string.Empty;
+
     /// <summary>Nothing published, said by <paramref name="source"/>.</summary>
     public static PublicationReading Nothing(string source)
     {
@@ -74,7 +79,10 @@ internal sealed record PublicationReading(
             read.Subscriptions,
             read.EventSubscriptions,
             read.DeadMessages,
-            read.FailedMessages);
+            read.FailedMessages)
+        {
+            Said = read.Source,
+        };
     }
 
     /// <summary>

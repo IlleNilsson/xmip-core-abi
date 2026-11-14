@@ -68,7 +68,7 @@ public sealed class ScopeTreeTest
 
     /// <summary>
     /// The tree answers what the runtime's export answers, because it asks it:
-    /// containment and a scope's parts are <c>observe::Scope</c>'s, the stage
+    /// containment and a scope's parts are <c>node::Scope</c>'s, the stage
     /// words <c>node::Stage</c>'s and the order <c>observe::Standing</c>'s,
     /// tested once where they are written, and not written here again
     /// (ADR-0052, amendment 2026-09-24). What is tested here is that the
@@ -122,7 +122,7 @@ public sealed class ScopeTreeTest
     }
 
     /// <summary>
-    /// The node a scope is on and its stage are <c>observe::Scope</c>'s, asked
+    /// The node a scope is on and its stage are <c>node::Scope</c>'s, asked
     /// of the runtime: the surface returns what the export returns (open
     /// problem 25, row q). Segment 0 is the cluster and never the node.
     /// </summary>

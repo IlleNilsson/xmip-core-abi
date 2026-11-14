@@ -53,8 +53,6 @@ public sealed class BrowserCallerTest : IDisposable
         Environment.SetEnvironmentVariable(RoleAssignment.EnvironmentVariable, null);
     }
 
-    private string Orders => Path.Combine(scratch, "orders");
-
     private string Audit => Path.Combine(scratch, "audit");
 
     public void Dispose()
@@ -134,7 +132,6 @@ public sealed class BrowserCallerTest : IDisposable
         Assert.False(done.Applied);
         Assert.StartsWith(
             "REFUSED. Nothing proved who asks", done.Result, StringComparison.Ordinal);
-        Assert.False(Directory.Exists(Orders));
         Assert.Contains("phase = \"Failure\"", Audited(), StringComparison.Ordinal);
     }
 
@@ -153,7 +150,6 @@ public sealed class BrowserCallerTest : IDisposable
         Assert.False(done.Applied);
         Assert.StartsWith(
             $"REFUSED. {certificate.Subject} may not", done.Result, StringComparison.Ordinal);
-        Assert.False(Directory.Exists(Orders));
         Assert.Contains(
             $"\"who\" = \"{certificate.Subject}\"", Audited(), StringComparison.Ordinal);
     }
@@ -168,15 +164,12 @@ public sealed class BrowserCallerTest : IDisposable
 
         SubscriptionOperation done = Pause(caller);
 
-        Assert.True(done.Applied, done.Result);
-        string order = File.ReadAllText(
-            Assert.Single(Directory.GetFiles(Orders, "*.toml", SearchOption.AllDirectories)));
+        // Admitted, it reaches the surface beneath the gate - a snapshot,
+        // which declines it in its own words - as that operator.
+        Assert.Equal(SnapshotOperator.NotActed, done.Result);
         string audited = Audited();
-        Assert.All([order, audited], text =>
-        {
-            Assert.Contains(certificate.Subject, text, StringComparison.Ordinal);
-            Assert.DoesNotContain(Claimed, text, StringComparison.Ordinal);
-        });
+        Assert.Contains($"{certificate.Subject} asked to pause", audited, StringComparison.Ordinal);
+        Assert.DoesNotContain(Claimed, audited, StringComparison.Ordinal);
         Assert.Contains($"\"who\" = \"{certificate.Subject}\"", audited, StringComparison.Ordinal);
         Assert.Contains("\"role\" = \"Operator\"", audited, StringComparison.Ordinal);
     }
@@ -193,7 +186,7 @@ public sealed class BrowserCallerTest : IDisposable
 
         Assert.Null(caller.Who);
         Assert.Equal(Role.Observer, caller.Role);
-        Assert.False(Pause(caller).Applied);
+        Assert.False(Passes(caller));
     }
 
     [Fact]
@@ -212,7 +205,7 @@ public sealed class BrowserCallerTest : IDisposable
 
         Assert.Null(ProvenCaller.Who(request.User));
         Assert.Equal((null, Role.Observer), (caller.Who, caller.Role));
-        Assert.False(Pause(caller).Applied);
+        Assert.False(Passes(caller));
     }
 
     [Fact]
@@ -238,7 +231,7 @@ public sealed class BrowserCallerTest : IDisposable
             Configured((RoleAssignment.ConfigurationKey, "operator")), forged);
 
         Assert.Equal((null, Role.Observer), (caller.Who, caller.Role));
-        Assert.False(Pause(caller).Applied);
+        Assert.False(Passes(caller));
         Assert.False(RuntimeLibrary.Rules.SecurityRoles.Admitted(
             null, (int)Role.Developer, "pause", "x", out string refused));
         Assert.StartsWith("REFUSED. Nothing proved", refused, StringComparison.Ordinal);
@@ -257,7 +250,7 @@ public sealed class BrowserCallerTest : IDisposable
         (RoleContext circuit, IServiceScope scope) = Scoped(operators, request);
         session.Session.Dispose();
         Assert.Equal(0ul, session.Session.Caller!.Handle);
-        Assert.True(Pause(circuit).Applied, "the circuit outlives its session");
+        Assert.True(Passes(circuit), "the circuit outlives its session");
 
         // The circuit ends: its handle is no one.
         HeldCaller kept = circuit.Caller!;
@@ -273,7 +266,7 @@ public sealed class BrowserCallerTest : IDisposable
         ProvenCaller.Prove(second);
         RoleContext stopped = Circuit(operators, second);
         another.Stop();
-        Assert.False(Pause(stopped).Applied);
+        Assert.False(Passes(stopped));
     }
 
     [Fact]
@@ -289,13 +282,13 @@ public sealed class BrowserCallerTest : IDisposable
 
         RoleContext tester = Circuit(over, Request(IPAddress.Loopback, testers));
         Assert.Equal((testers.Subject, Role.Developer), (tester.Who, tester.Role));
-        Assert.True(Pause(tester).Applied);
+        Assert.True(Passes(tester));
 
         RoleContext stranger = Circuit(over, Request(IPAddress.Loopback, another));
         Assert.Equal((another.Subject, Role.Observer), (stranger.Who, stranger.Role));
         RoleContext nobody = Circuit(over, Request(IPAddress.Loopback, certificate: null));
         Assert.Equal((null, Role.Observer), (nobody.Who, nobody.Role));
-        Assert.All([stranger, nobody], caller => Assert.False(Pause(caller).Applied));
+        Assert.All([stranger, nobody], caller => Assert.False(Passes(caller)));
     }
 
     // A request as it reaches the web host over a session the runtime took,
@@ -354,7 +347,7 @@ public sealed class BrowserCallerTest : IDisposable
     // gate, claiming a name of their own.
     private SubscriptionOperation Pause(RoleContext caller)
     {
-        SnapshotOperator inner = TestHost.Acting(cluster, scratch, Orders);
+        SnapshotOperator inner = TestHost.Acting(cluster, scratch);
         GatedOperator gated = new(inner, caller, new ProgramAudit("Xmip.Surface.Test", Audit));
 
         return gated.Act(
@@ -362,6 +355,14 @@ public sealed class BrowserCallerTest : IDisposable
             SubscriptionAct.Pause,
             Claimed,
             caller: null);
+    }
+
+    // Whether the gate lets the caller's pause through to the surface
+    // beneath it: a snapshot, which answers every act it is passed in its
+    // own words; the gate's refusal is its own.
+    private bool Passes(RoleContext caller)
+    {
+        return Pause(caller).Result == SnapshotOperator.NotActed;
     }
 
     private string Audited()

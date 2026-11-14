@@ -178,34 +178,17 @@ public static partial class OperateAbi
     /// section 14 (ADR-0013, amendment 2026-09-30).</summary>
     public const string SubscriptionsEntrypoint = "xmip_subscriptions_v1";
 
-    /// <summary>Pause or resume one of them: section 14. There is no
-    /// remove.</summary>
-    public const string SubscriptionActEntrypoint = "xmip_subscription_act_v1";
-
     /// <summary>The Subscriptions a read publication carries: section 14
     /// over section 8's handle.</summary>
     public const string PublicationSubscriptionsEntrypoint = "xmip_publication_subscriptions_v1";
-
-    /// <summary>An act on a Subscription, an Event subscription, a Message
-    /// in a Dead Message Queue or a Message that failed, left for a node read
-    /// through its publication: section 14, <c>observe::Order::leave</c>.</summary>
-    public const string OrderEntrypoint = "xmip_order_v1";
 
     /// <summary>The Dead Message Queues of every node running in this
     /// process: section 15 (ADR-0052, amendment 2026-10-01).</summary>
     public const string DeadMessagesEntrypoint = "xmip_dead_messages_v1";
 
-    /// <summary>Replay one Message from a Dead Message Queue: section
-    /// 15.</summary>
-    public const string DeadMessageReplayEntrypoint = "xmip_dead_message_replay_v1";
-
     /// <summary>The Dead Message Queue entries a read publication carries:
     /// section 15 over section 8's handle.</summary>
     public const string PublicationDeadMessagesEntrypoint = "xmip_publication_dead_messages_v1";
-
-    /// <summary>Retry or Dismiss a Message that failed: section 16
-    /// (runtime-model.md section 13; ADR-0013).</summary>
-    public const string MessageActEntrypoint = "xmip_message_act_v1";
 
     /// <summary>The Messages that failed at the Send Ports of the nodes
     /// running in this process, read from Xmip Storage a page at a time:
@@ -222,12 +205,17 @@ public static partial class OperateAbi
     public const string TechnologyCatalogueEntrypoint = "xmip_technology_catalogue_v1";
 
     /// <summary>Declare the calling System Process: section 13, forwarded to
-    /// <c>xmip-core-node</c>'s <c>Declaration::declare</c> (ADR-0053).</summary>
+    /// <c>xmip-core-runtime</c>'s <c>declared::declare</c> (ADR-0053).</summary>
     public const string ProcessDeclareEntrypoint = "xmip_process_declare_v1";
 
     /// <summary>The System Process declarations standing in a directory:
-    /// section 13, forwarded to <c>xmip-core-node</c>'s <c>standing</c>.</summary>
+    /// section 13, forwarded to <c>xmip-core-runtime</c>'s
+    /// <c>declared::standing</c>.</summary>
     public const string ProcessDeclarationsEntrypoint = "xmip_process_declarations_v1";
+
+    /// <summary>A System Process declaration taken away: section 13,
+    /// forwarded to <c>xmip-core-runtime</c>'s <c>declared::undeclare</c>.</summary>
+    public const string ProcessUndeclareEntrypoint = "xmip_process_undeclare_v1";
 
     /// <summary>A node reached at its operate address: section 17 (ADR-0014,
     /// amendment 2026-10-12).</summary>
@@ -245,7 +233,12 @@ public static partial class OperateAbi
     /// <summary>The remote node's publication: section 17.</summary>
     public const string RemotePublicationEntrypoint = "xmip_remote_publication_v1";
 
-    /// <summary>The remote node's follow, waited on: section 17.</summary>
+    /// <summary>The cluster's view the remote node gathers, a node declaring
+    /// the monitoring role: section 17.</summary>
+    public const string RemoteClusterEntrypoint = "xmip_remote_cluster_v1";
+
+    /// <summary>The remote node's follow, of its own publication or of the
+    /// cluster's view it gathers, waited on: section 17.</summary>
     public const string RemoteWaitEntrypoint = "xmip_remote_wait_v1";
 
     /// <summary>An act asked of the remote node: section 17.</summary>
@@ -277,6 +270,10 @@ public static partial class OperateAbi
 
     /// <summary>A publication posted to a served listener: section 17.</summary>
     public const string OperatePostEntrypoint = "xmip_operate_post_v1";
+
+    /// <summary>A cluster's gathered view posted to a served listener, which
+    /// answers the cluster from then on: section 17.</summary>
+    public const string OperatePostClusterEntrypoint = "xmip_operate_post_cluster_v1";
 
     /// <summary>A served listener stopped and released: section 17.</summary>
     public const string OperateServeStopEntrypoint = "xmip_operate_serve_stop_v1";

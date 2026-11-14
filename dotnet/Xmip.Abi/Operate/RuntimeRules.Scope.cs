@@ -8,7 +8,7 @@ namespace Xmip.Abi.Operate;
 public sealed partial class RuntimeRules
 {
     /// <summary>Whether <paramref name="candidate"/> is <paramref name="scope"/>
-    /// or sits beneath it — <c>observe::Scope::contains</c>.</summary>
+    /// or sits beneath it — <c>node::Scope::contains</c>.</summary>
     public bool Contains(string scope, string candidate)
     {
         ArgumentNullException.ThrowIfNull(scope);
@@ -19,7 +19,7 @@ public sealed partial class RuntimeRules
 
     /// <summary>Whether <paramref name="candidate"/> is what
     /// <paramref name="pattern"/> names by the one wildcard —
-    /// <c>observe::wildcard::matches</c>.</summary>
+    /// <c>node::wildcard::matches</c>.</summary>
     public bool Matches(string candidate, string pattern)
     {
         ArgumentNullException.ThrowIfNull(candidate);
@@ -87,7 +87,7 @@ public sealed partial class RuntimeRules
     }
 
     /// <summary>The segments of a scope's path, top first —
-    /// <c>observe::Scope::segments</c>. The root has none.</summary>
+    /// <c>node::Scope::segments</c>. The root has none.</summary>
     public string[] Parts(string scope)
     {
         ArgumentNullException.ThrowIfNull(scope);
@@ -156,8 +156,8 @@ public sealed partial class RuntimeRules
     }
 
     /// <summary>
-    /// Where a scope sits — <c>observe::Scope::node</c> and
-    /// <c>observe::Scope::stage</c>: the node it is on, the segment after the
+    /// Where a scope sits — <c>node::Scope::node</c> and
+    /// <c>node::Scope::stage</c>: the node it is on, the segment after the
     /// node marker beneath the cluster, and the stage of the message path it is
     /// on beneath that node or, on no node, beneath the cluster. Each is empty
     /// where there is none; the cluster is never a node.

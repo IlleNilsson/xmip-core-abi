@@ -70,6 +70,10 @@ public sealed class SnapshotReadCostTest(ITestOutputHelper output) : IDisposable
         {
             Assert.True(await follow.MoveNextAsync());
             Assert.Equal("round 1", surface.Run().Stress);
+            // Viewed once before the change, so what the first view after it
+            // measures is the change's reading and not the view's first
+            // compile, which the order the tests run in decides.
+            Assert.Equal(Records, View(surface));
 
             // Replaced whole, as a publisher replaces it (observe::write_atomic).
             File.WriteAllText(path + ".next", Publication(2));

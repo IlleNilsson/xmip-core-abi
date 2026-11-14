@@ -1,4 +1,3 @@
-using Xmip.Abi.Module;
 using Xmip.Abi.Operate;
 
 namespace Xmip.Surface.Test;
@@ -7,11 +6,11 @@ namespace Xmip.Surface.Test;
 /// The Dead Message Queues as every surface lists them and replays from them
 /// (ADR-0052, amendment 2026-10-01): a snapshot lists what its publication
 /// carries — each entry's gate verdicts, promoted properties and declines in
-/// the order written — and leaves a Replay where it says its publisher takes
-/// orders, or declines where it says nowhere; the one query drills, filters
-/// and sorts; Replay is the one act and a word the runtime takes; and a
-/// Replay from elsewhere passes the one role check, taken as the proven
-/// caller and never the name given (ADR-0009, amendment 2026-10-03).
+/// the order written — and declines the Replay, which is asked at a node's
+/// door (ADR-0014, amendment 2026-11-13); the one query drills, filters and
+/// sorts; Replay is the one act and a word the runtime takes; and a Replay
+/// from elsewhere passes the one role check, taken as the proven caller and
+/// never the name given (ADR-0009, amendment 2026-10-03).
 /// </summary>
 public sealed class DeadMessageSurfaceTest : IDisposable
 {
@@ -36,17 +35,14 @@ public sealed class DeadMessageSurfaceTest : IDisposable
         Directory.CreateDirectory(scratch);
     }
 
-    private string Orders => Path.Combine(scratch, "orders");
-
     private string Audit => Path.Combine(scratch, "audit");
 
     [Fact]
-    public void ASnapshotListsWhatItsPublicationCarriesAndLeavesAReplayWhereItSays()
+    public void ASnapshotListsWhatItsPublicationCarriesAndDeclinesTheReplay()
     {
-        SnapshotOperator surface = Over(Orders);
+        SnapshotOperator surface = Over();
 
         DeadMessageList listed = surface.DeadMessages();
-        Assert.Equal(Orders, listed.Orders);
         Assert.Equal(3, listed.DeadMessages.Count);
         DeadMessageRecord invoice = listed.DeadMessages.Single(entry => entry.Message == "m-2");
         Assert.Equal(
@@ -59,35 +55,18 @@ public sealed class DeadMessageSurfaceTest : IDisposable
             [new("structured", "MessageType is Invoice, not json"), new("edi", "paused")],
             invoice.Declines);
 
-        DeadMessageOperation replayed =
+        DeadMessageOperation declined =
             surface.Act(invoice, DeadMessageAct.Replay, "ilian", caller: null);
 
-        Assert.True(replayed.Applied, replayed.Result);
-        Assert.Equal(
-            $"replay of Message m-2 left for {Receiver} to take",
-            replayed.Result);
-        string order = Assert.Single(Directory.GetFiles(Path.Combine(Orders, Receiver), "*.toml"));
-        Assert.Contains(
-            DeadMessageOperation.Noun, File.ReadAllText(order), StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void ASnapshotWhosePublisherTakesNoOrdersDeclinesTheReplay()
-    {
-        SnapshotOperator surface = Over(string.Empty);
-        DeadMessageRecord kept = surface.DeadMessages().DeadMessages[0];
-
-        DeadMessageOperation declined =
-            surface.Act(kept, DeadMessageAct.Replay, "ilian", caller: null);
-
         Assert.False(declined.Applied);
-        Assert.Contains("takes no orders", declined.Result, StringComparison.Ordinal);
+        Assert.Equal(ActOutcome.Refused, declined.Outcome);
+        Assert.Equal(SnapshotOperator.NotActed, declined.Result);
     }
 
     [Fact]
     public void TheQueryDrillsFiltersAndSorts()
     {
-        IReadOnlyList<DeadMessageRecord> all = Over(string.Empty).DeadMessages().DeadMessages;
+        IReadOnlyList<DeadMessageRecord> all = Over().DeadMessages().DeadMessages;
 
         Assert.Equal(["m-1", "m-2", "m-3"], new DeadMessageQuery().Apply(all).Select(Id));
         Assert.Equal(
@@ -115,12 +94,7 @@ public sealed class DeadMessageSurfaceTest : IDisposable
     public void ReplayIsTheOneActAndAWordTheRuntimeTakes()
     {
         Assert.Equal(["Replay"], Enum.GetNames<DeadMessageAct>());
-
-        XmipStatus status = RuntimeLibrary.Rules.DeadMessages.Replay(
-            Receiving, "m-1", "ilian", out string said);
-
-        Assert.True(status == XmipStatus.NotFound, $"{status} {said}");
-        Assert.StartsWith("REFUSED", said, StringComparison.Ordinal);
+        Assert.Equal("replay", DeadMessageOperation.Word(DeadMessageAct.Replay));
         Assert.Empty(RuntimeLibrary.Rules.DeadMessages.Standing(Receiving).DeadMessages);
     }
 
@@ -128,7 +102,7 @@ public sealed class DeadMessageSurfaceTest : IDisposable
     public void TheGateRefusesAnObserverAndAnUnprovenCallerAndTakesAnOperatorAsProven()
     {
         ProgramAudit audit = new("Xmip.Surface.Test", Audit);
-        SnapshotOperator inner = Over(Orders);
+        SnapshotOperator inner = Over();
         DeadMessageRecord kept = inner.DeadMessages().DeadMessages[0];
 
         DeadMessageOperation observed = new GatedOperator(
@@ -143,17 +117,22 @@ public sealed class DeadMessageSurfaceTest : IDisposable
             Assert.False(refused.Applied);
             Assert.StartsWith("REFUSED. ", refused.Result, StringComparison.Ordinal);
         });
-        Assert.False(Directory.Exists(Orders));
 
+        // Admitted, the act reaches the surface beneath the gate - a
+        // snapshot, which declines it in its own words - as the proven
+        // caller, audited so.
         DeadMessageOperation taken = new GatedOperator(
                 inner, new RoleContext(Role.Operator, RoleAssignment.ProcessCaller()), audit)
             .Act(kept, DeadMessageAct.Replay, Claimed, caller: null);
 
-        Assert.True(taken.Applied, taken.Result);
-        string order = File.ReadAllText(
-            Assert.Single(Directory.GetFiles(Orders, "*.toml", SearchOption.AllDirectories)));
-        Assert.Contains(Me, order, StringComparison.Ordinal);
-        Assert.DoesNotContain(Claimed, order, StringComparison.Ordinal);
+        Assert.Equal(SnapshotOperator.NotActed, taken.Result);
+        IReadOnlyList<AuditEntry> audited = audit
+            .Read(new AuditQuery { Order = "ascending", IncludeHidden = true }).Records;
+        Assert.Contains(audited, record => record.Message?.StartsWith(
+            $"{Me} asked to replay", StringComparison.Ordinal) == true);
+        Assert.DoesNotContain(audited, record => record.Message?.Contains(
+            Claimed, StringComparison.Ordinal) == true
+            || record.Properties.Values.Contains(Claimed));
     }
 
     public void Dispose()
@@ -175,13 +154,12 @@ public sealed class DeadMessageSurfaceTest : IDisposable
 
     // Two entries on the receiving node and one on the processing node; the
     // second declined twice, the first once, the third not asked.
-    private SnapshotOperator Over(string orders)
+    private SnapshotOperator Over()
     {
         string file = Path.Combine(scratch, $"snapshot-{Guid.NewGuid():N}.xmip");
         File.WriteAllText(
             file,
             $"node = \"{Cluster.Scope}\"\n"
-            + (orders.Length > 0 ? $"orders = '{orders}'\n" : string.Empty)
             + Entry(Receiver, "m-1", 1, 1_000, "validation = [[\"schema\", \"valid\"]]\n"
                 + "declines = [[\"structured\", \"no MessageType\"]]\n")
             + Entry(Receiver, "m-2", 2, 2_000,

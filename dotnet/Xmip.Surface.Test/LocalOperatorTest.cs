@@ -130,7 +130,15 @@ public sealed class LocalOperatorTest
         using LocalOperator acting = new(operated.Address);
         MessageOperation taken = acting.Act(node, "j1", MessageAct.Retry, "a name", caller: null);
         Assert.False(taken.Applied);
-        Assert.Equal($"REFUSED: no node at {node} runs in this process", taken.Result);
+        Assert.Equal(ActOutcome.Refused, taken.Outcome);
+        // A listener a program hosts is the door of no node: it carries no
+        // act to a node that does not run in its process (ADR-0014,
+        // amendment 2026-11-13).
+        Assert.StartsWith(
+            $"REFUSED: no node at {node} runs in this process, and this node declares no "
+            + "operational role",
+            taken.Result,
+            StringComparison.Ordinal);
     }
 
     [Fact]

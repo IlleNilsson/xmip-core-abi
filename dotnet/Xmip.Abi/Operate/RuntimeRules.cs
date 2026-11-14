@@ -8,8 +8,8 @@ namespace Xmip.Abi.Operate;
 /// <summary>
 /// Section 7 of <c>include/xmip_operate.h</c>, crossed by P/Invoke: the rules
 /// a surface calls instead of keeping its own. Scope containment, a scope's
-/// parts, and the node and stage it is on are <c>observe::Scope</c>'s, and
-/// the one wildcard over scopes <c>observe::wildcard</c>'s; the
+/// parts, and the node and stage it is on are <c>node::Scope</c>'s, and
+/// the one wildcard over scopes <c>node::wildcard</c>'s; the
 /// stage words, whether a stage pauses and what a thing at it is called are
 /// <c>node::Stage</c>'s, the role words and their parse
 /// <c>node::NodeRole</c>'s, and a run's node entry <c>node::Capability</c>'s; a

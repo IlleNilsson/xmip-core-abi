@@ -20,8 +20,9 @@ namespace Xmip.Surface;
 /// walks nothing itself; until 2026-09-24 it parsed the TOML again, and the
 /// Essentials' writer and this reader were two writings of one format (open
 /// problem 25). A read-only surface: it reports what was published and never
-/// acts on it, so <see cref="PauseScope"/> and <see cref="ResumeScope"/>
-/// decline. ADR-0027, ADR-0028.
+/// acts on it, so <see cref="PauseScope"/>, <see cref="ResumeScope"/> and
+/// every act decline; an act is asked at a node's door (ADR-0014, amendment
+/// 2026-11-13). ADR-0027, ADR-0028.
 ///
 /// A followed surface is told, it does not ask (ADR-0052, amendment
 /// 2026-09-15): while anything follows <see cref="WatchAsync"/>, the follow
@@ -40,6 +41,12 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
 
     // How many follows are reading this publication as it changes.
     private int following;
+
+    /// <summary>What every act on a snapshot is declined with: it touches no
+    /// node, and an act is asked at a node's door.</summary>
+    public const string NotActed =
+        "a snapshot is a record of what was published and is never acted on; "
+        + "ask the node at its operate listener";
 
     /// <summary>The snapshot file this surface reads.</summary>
     public string Path { get; } = path;
@@ -201,23 +208,13 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
 
     /// <inheritdoc cref="IOperatorSurface.Act(EventSubscriptionRecord,
     /// EventSubscriptionAct, string, HeldCaller)" />
-    /// <remarks>A snapshot touches no node. Where its publication says where
-    /// its publisher takes orders, the act is left there for the node that
-    /// holds the Event subscription, which applies it as it takes it and
-    /// publishes what came of it (<c>observe::Order</c>, ADR-0065, amendment
-    /// 2026-09-29); where it says nowhere, the act is declined.</remarks>
+    /// <remarks>Declined: a snapshot touches no node and is never acted on
+    /// (<see cref="NotActed"/>).</remarks>
     public EventSubscriptionOperation Act(
         EventSubscriptionRecord subscription, EventSubscriptionAct act, string who,
         HeldCaller? caller)
     {
-        ArgumentNullException.ThrowIfNull(subscription);
-
-        (bool left, string said) = SnapshotOrder.Leave(
-            Read().EventSubscriptions.Orders, subscription.Node, "event-subscription",
-            subscription.Id.ToString(System.Globalization.CultureInfo.InvariantCulture),
-            EventSubscriptionOperation.Word(act), who, $"Event subscription {subscription.Id}");
-
-        return new EventSubscriptionOperation(subscription.Node, subscription.Id, act, left, said);
+        return EventSubscriptionOperation.Declined(subscription, act, NotActed);
     }
 
     /// <inheritdoc />
@@ -228,21 +225,12 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
 
     /// <inheritdoc
     /// cref="IOperatorSurface.Act(SubscriptionRecord, SubscriptionAct, string, HeldCaller)" />
-    /// <remarks>A snapshot touches no node. Where its publication says where
-    /// its publisher takes orders, the act is left there for the node that
-    /// routes by the Subscription, which applies it as it takes it and
-    /// publishes what came of it (<c>observe::Order</c>, ADR-0013, amendment
-    /// 2026-09-30); where it says nowhere, the act is declined.</remarks>
+    /// <remarks>Declined: a snapshot touches no node and is never acted on
+    /// (<see cref="NotActed"/>).</remarks>
     public SubscriptionOperation Act(
         SubscriptionRecord subscription, SubscriptionAct act, string who, HeldCaller? caller)
     {
-        ArgumentNullException.ThrowIfNull(subscription);
-
-        (bool left, string said) = SnapshotOrder.Leave(
-            Read().Subscriptions.Orders, subscription.Node, "subscription", subscription.Name,
-            SubscriptionOperation.Word(act), who, $"Subscription '{subscription.Name}'");
-
-        return new SubscriptionOperation(subscription.Node, subscription.Name, act, left, said);
+        return SubscriptionOperation.Declined(subscription, act, NotActed);
     }
 
     /// <inheritdoc />
@@ -253,21 +241,12 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
 
     /// <inheritdoc
     /// cref="IOperatorSurface.Act(DeadMessageRecord, DeadMessageAct, string, HeldCaller)" />
-    /// <remarks>A snapshot touches no node. Where its publication says where
-    /// its publisher takes orders, the Replay is left there for the node whose
-    /// queue keeps the Message, which takes it, applies it and publishes
-    /// what came of it (<c>observe::Order</c>, ADR-0052, amendment
-    /// 2026-10-01); where it says nowhere, the act is declined.</remarks>
+    /// <remarks>Declined: a snapshot touches no node and is never acted on
+    /// (<see cref="NotActed"/>).</remarks>
     public DeadMessageOperation Act(
         DeadMessageRecord message, DeadMessageAct act, string who, HeldCaller? caller)
     {
-        ArgumentNullException.ThrowIfNull(message);
-
-        (bool left, string said) = SnapshotOrder.Leave(
-            Read().DeadMessages.Orders, message.Node, DeadMessageOperation.Noun, message.Message,
-            DeadMessageOperation.Word(act), who, $"Message {message.Message}");
-
-        return new DeadMessageOperation(message.Node, message.Message, act, left, said);
+        return DeadMessageOperation.Declined(message, act, NotActed);
     }
 
     /// <inheritdoc />
@@ -282,23 +261,13 @@ public sealed class SnapshotOperator(string path) : IOperatorSurface
     }
 
     /// <inheritdoc cref="IOperatorSurface.Act(string, string, MessageAct, string, HeldCaller)" />
-    /// <remarks>A snapshot touches no node. Where its publication says where
-    /// its publisher takes orders — one place for every noun — the act is
-    /// left there for the node that sends the Message's Send Port, which takes
-    /// it, applies it and publishes what came of it
-    /// (<c>observe::Order</c>, runtime-model.md section 13); where it says
-    /// nowhere, the act is declined.</remarks>
+    /// <remarks>Declined: a snapshot touches no node and is never acted on
+    /// (<see cref="NotActed"/>).</remarks>
     public MessageOperation Act(
         string scope, string journey, MessageAct act, string who, HeldCaller? caller)
     {
-        return MessageOperation.OnNode(scope, journey, act, node =>
-        {
-            (bool left, string said) = SnapshotOrder.Leave(
-                Read().DeadMessages.Orders, node, MessageOperation.Noun, journey,
-                MessageOperation.Word(act), who, $"the Message of the Journey {journey}");
-
-            return new MessageOperation(node, journey, act, left, said);
-        });
+        return MessageOperation.OnNode(
+            scope, journey, act, node => MessageOperation.Declined(node, journey, act, NotActed));
     }
 
     /// <inheritdoc />

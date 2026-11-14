@@ -165,15 +165,15 @@ pub mod rule {
     use super::{HealthEntry, Scope};
     use crate::ffi::Str;
 
-    /// `observe::Scope::contains`.
+    /// `node::Scope::contains`.
     pub const SCOPE_CONTAINS_ENTRYPOINT: &str = "xmip_scope_contains_v1";
-    /// `observe::wildcard::matches`.
+    /// `node::wildcard::matches`.
     pub const SCOPE_MATCHES_ENTRYPOINT: &str = "xmip_scope_matches_v1";
     /// `observe::run::shown`.
     pub const RUN_SHOWN_ENTRYPOINT: &str = "xmip_run_shown_v1";
-    /// `observe::Scope::segments`.
+    /// `node::Scope::segments`.
     pub const SCOPE_PARTS_ENTRYPOINT: &str = "xmip_scope_parts_v1";
-    /// `observe::Scope::node` and `observe::Scope::stage`.
+    /// `node::Scope::node` and `node::Scope::stage`.
     pub const SCOPE_NODE_ENTRYPOINT: &str = "xmip_scope_node_v1";
     /// `node::Stage::WORDS`.
     pub const STAGE_WORDS_ENTRYPOINT: &str = "xmip_stage_words_v1";
@@ -487,6 +487,10 @@ mod tests {
             (
                 "XMIP_PROCESS_DECLARATIONS_ENTRYPOINT",
                 process::PROCESS_DECLARATIONS_ENTRYPOINT,
+            ),
+            (
+                "XMIP_PROCESS_UNDECLARE_ENTRYPOINT",
+                process::PROCESS_UNDECLARE_ENTRYPOINT,
             ),
             ("XMIP_REPORT_ENTRYPOINT", report::REPORT_ENTRYPOINT),
         ] {

@@ -10,15 +10,13 @@ namespace Xmip.Abi.Operate;
 /// subscriptions this process's hub holds, and pause, resume and remove on
 /// one of them. The standing, the acts and their audit are
 /// <c>xmip-core-event</c>'s; this binds each call once and decides none of
-/// it. The same act left for a node a surface reads through its publication
-/// is <see cref="RuntimeSubscriptions.Order"/>, one order for both nouns.
+/// it.
 /// </summary>
 /// <remarks>Pure in the header's sense: one instance serves a whole process
 /// from any thread.</remarks>
 public sealed class RuntimeEventSubscriptions
 {
-    // A sentence, or a file's path, fits in this; a list is asked for again
-    // at its true length.
+    // A sentence fits in this; a list is asked for again at its true length.
     private const int Room = 16 * 1024;
 
     private readonly delegate* unmanaged[Cdecl]<XmipStr, byte*, nuint, nuint*, int> _standing;
@@ -94,7 +92,13 @@ public sealed class RuntimeEventSubscriptions
 
         said = Encoding.UTF8.GetString(text, 0, (int)Math.Min(length, (nuint)text.Length));
 
-        return RuntimeSubscriptions.Answered(status, "an act on an Event subscription");
+        return status switch
+        {
+            0 or (int)XmipStatus.Invalid or (int)XmipStatus.NotFound => (XmipStatus)status,
+            _ => throw new InvalidOperationException(
+                "the runtime answered an act on an Event subscription with "
+                + $"{(XmipStatus)status}"),
+        };
     }
 
     private int Listed(Utf8Pack pack, byte[] text, ref nuint needed)

@@ -42,6 +42,21 @@ public sealed class ServedNode : IDisposable
     /// told when it differs from the last.</summary>
     public void Post(string publication)
     {
+        Posted(RemoteFollows.Node, publication);
+    }
+
+    /// <summary>Post <paramref name="publication"/>, a cluster's gathered
+    /// view as a publication file holds it, as what the listener answers to
+    /// a surface asking for the cluster: from the first post it answers one,
+    /// every surface following it told when it differs from the last; before
+    /// it, it refuses as a node declaring no monitoring role does.</summary>
+    public void PostCluster(string publication)
+    {
+        Posted(RemoteFollows.Cluster, publication);
+    }
+
+    private void Posted(RemoteFollows which, string publication)
+    {
         ArgumentNullException.ThrowIfNull(publication);
 
         Utf8Pack pack = new([publication]);
@@ -51,14 +66,17 @@ public sealed class ServedNode : IDisposable
         {
             unsafe
             {
-                status = calls.Post(Volatile.Read(ref handle), pack.Borrow(data, 0));
+                nint served = Volatile.Read(ref handle);
+                status = which == RemoteFollows.Cluster
+                    ? calls.PostCluster(served, pack.Borrow(data, 0))
+                    : calls.Post(served, pack.Borrow(data, 0));
             }
         }
 
         if (status != 0)
         {
             throw new InvalidOperationException(
-                $"the runtime answered a post with {(XmipStatus)status}");
+                $"the runtime answered a {which} post with {(XmipStatus)status}");
         }
     }
 

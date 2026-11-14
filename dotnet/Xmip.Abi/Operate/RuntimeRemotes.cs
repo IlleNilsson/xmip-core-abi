@@ -8,11 +8,11 @@ namespace Xmip.Abi.Operate;
 /// Section 17 of <c>include/xmip_operate.h</c>, crossed by P/Invoke
 /// (ADR-0014, amendments 2026-10-12 and 2026-10-13): a node reached at its
 /// operate listener over gRPC — at its address inside Xmip's mutual TLS, or
-/// on this machine at its local endpoint — its publication read, its follow
-/// waited on, an act asked of it — and this process's node served on an
-/// operate listener of its own. The connection, the follow and its
-/// recovery loop, the gate and every word are the runtime's; this binds
-/// each call once and decides none of it.
+/// on this machine at its local endpoint — its publication or the cluster's
+/// view it gathers read and followed, an act asked of it — and this
+/// process's node served on an operate listener of its own. The
+/// connection, the follow and its recovery loop, the gate and every word
+/// are the runtime's; this binds each call once and decides none of it.
 /// </summary>
 public sealed class RuntimeRemotes
 {
@@ -56,8 +56,10 @@ public sealed class RuntimeRemotes
             NativeLibrary.GetExport(library, OperateAbi.RemoteOpenKeptEntrypoint);
         Publication = (delegate* unmanaged[Cdecl]<nint, byte*, nuint, nuint*, ulong*, int>)
             NativeLibrary.GetExport(library, OperateAbi.RemotePublicationEntrypoint);
+        Cluster = (delegate* unmanaged[Cdecl]<nint, byte*, nuint, nuint*, ulong*, int>)
+            NativeLibrary.GetExport(library, OperateAbi.RemoteClusterEntrypoint);
         Wait = (delegate* unmanaged[Cdecl]<
-            nint, ulong, uint, ulong*, ulong*, byte*, byte*, nuint, nuint*, int>)
+            nint, uint, ulong, uint, ulong*, ulong*, byte*, uint*, byte*, nuint, nuint*, int>)
             NativeLibrary.GetExport(library, OperateAbi.RemoteWaitEntrypoint);
         Act = (delegate* unmanaged[Cdecl]<
             nint, ulong, XmipStr, XmipStr, XmipStr, XmipStr, byte*, nuint, nuint*, int>)
@@ -89,6 +91,8 @@ public sealed class RuntimeRemotes
             NativeLibrary.GetExport(library, OperateAbi.OperateServedAddressEntrypoint);
         Post = (delegate* unmanaged[Cdecl]<nint, XmipStr, int>)
             NativeLibrary.GetExport(library, OperateAbi.OperatePostEntrypoint);
+        PostCluster = (delegate* unmanaged[Cdecl]<nint, XmipStr, int>)
+            NativeLibrary.GetExport(library, OperateAbi.OperatePostClusterEntrypoint);
         ServeStop = (delegate* unmanaged[Cdecl]<nint, void>)
             NativeLibrary.GetExport(library, OperateAbi.OperateServeStopEntrypoint);
     }
@@ -101,6 +105,7 @@ public sealed class RuntimeRemotes
         OperateAbi.RemoteOpenKeptEntrypoint,
         OperateAbi.RemoteOpenLocalEntrypoint,
         OperateAbi.RemotePublicationEntrypoint,
+        OperateAbi.RemoteClusterEntrypoint,
         OperateAbi.RemoteWaitEntrypoint,
         OperateAbi.RemoteActEntrypoint,
         OperateAbi.SecretEntrypoint,
@@ -117,6 +122,7 @@ public sealed class RuntimeRemotes
         OperateAbi.OperateServeLocalEntrypoint,
         OperateAbi.OperateServedAddressEntrypoint,
         OperateAbi.OperatePostEntrypoint,
+        OperateAbi.OperatePostClusterEntrypoint,
         OperateAbi.OperateServeStopEntrypoint,
     ];
 
@@ -124,8 +130,11 @@ public sealed class RuntimeRemotes
     internal readonly delegate* unmanaged[Cdecl]<nint, byte*, nuint, nuint*, ulong*, int>
         Publication;
 
+    internal readonly delegate* unmanaged[Cdecl]<nint, byte*, nuint, nuint*, ulong*, int>
+        Cluster;
+
     internal readonly delegate* unmanaged[Cdecl]<
-        nint, ulong, uint, ulong*, ulong*, byte*, byte*, nuint, nuint*, int> Wait;
+        nint, uint, ulong, uint, ulong*, ulong*, byte*, uint*, byte*, nuint, nuint*, int> Wait;
 
     internal readonly delegate* unmanaged[Cdecl]<
         nint, ulong, XmipStr, XmipStr, XmipStr, XmipStr, byte*, nuint, nuint*, int> Act;
@@ -143,6 +152,8 @@ public sealed class RuntimeRemotes
     internal readonly delegate* unmanaged[Cdecl]<nint, byte*, nuint, nuint*, int> ServedAddress;
 
     internal readonly delegate* unmanaged[Cdecl]<nint, XmipStr, int> Post;
+
+    internal readonly delegate* unmanaged[Cdecl]<nint, XmipStr, int> PostCluster;
 
     internal readonly delegate* unmanaged[Cdecl]<nint, void> ServeStop;
 

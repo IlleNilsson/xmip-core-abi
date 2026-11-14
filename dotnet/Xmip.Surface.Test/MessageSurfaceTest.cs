@@ -1,15 +1,15 @@
-using Xmip.Abi.Module;
+using Xmip.Abi.Operate;
 
 namespace Xmip.Surface.Test;
 
 /// <summary>
 /// Retry and Dismiss on a Message that failed as every surface takes them
-/// (runtime-model.md section 13; ADR-0013): a snapshot leaves the act for the
-/// node that sends the Message's Send Port — named by the node or by the
-/// Send Port's scope beneath it, where the node publishes the last Message
-/// that failed — where its publication says its publisher takes orders, and
-/// declines where it says nowhere or the scope is on no node; Retry and
-/// Dismiss are the acts and words the runtime takes; and an act from
+/// (runtime-model.md section 13; ADR-0013): a snapshot finds the node that
+/// sends the Message's Send Port — named by the node or by the Send Port's
+/// scope beneath it, where the node publishes the last Message that failed —
+/// and declines the act, which is asked at a node's door (ADR-0014,
+/// amendment 2026-11-13), and refuses where the scope is on no node; Retry
+/// and Dismiss are the acts and words the runtime takes; and an act from
 /// elsewhere passes the one role check, taken as the proven caller and never
 /// the name given (ADR-0009, amendment 2026-10-03).
 /// </summary>
@@ -39,65 +39,44 @@ public sealed class MessageSurfaceTest : IDisposable
         Directory.CreateDirectory(scratch);
     }
 
-    private string Orders => Path.Combine(scratch, "orders");
-
     private string Audit => Path.Combine(scratch, "audit");
 
     [Theory]
     [InlineData(MessageAct.Retry)]
     [InlineData(MessageAct.Dismiss)]
-    public void ASnapshotLeavesTheActForTheNodeThatSendsThePort(MessageAct act)
+    public void ASnapshotFindsTheNodeThatSendsThePortAndDeclinesTheAct(MessageAct act)
     {
-        MessageOperation done = Over(Orders).Act(Port, Journey, act, "ilian", caller: null);
+        MessageOperation declined = Over().Act(Port, Journey, act, "ilian", caller: null);
 
-        Assert.True(done.Applied, done.Result);
-        Assert.Equal(Sending, done.Node);
-        Assert.Equal(
-            $"{MessageOperation.Word(act)} of the Message of the Journey {Journey} left for "
-                + $"{Sender} to take",
-            done.Result);
-        string order = File.ReadAllText(
-            Assert.Single(Directory.GetFiles(Path.Combine(Orders, Sender), "*.toml")));
-        Assert.Contains(MessageOperation.Noun, order, StringComparison.Ordinal);
-        Assert.Contains(Journey, order, StringComparison.Ordinal);
+        Assert.False(declined.Applied);
+        Assert.Equal(Sending, declined.Node);
+        Assert.Equal(SnapshotOperator.NotActed, declined.Result);
     }
 
     [Fact]
-    public void ASnapshotDeclinesWhereItsPublisherTakesNoOrdersOrTheScopeIsOnNoNode()
+    public void ASnapshotRefusesWhereTheScopeIsOnNoNodeOrNoJourneyIsNamed()
     {
-        MessageOperation untaken =
-            Over(string.Empty).Act(Port, Journey, MessageAct.Retry, "ilian", caller: null);
-        MessageOperation nowhere = Over(Orders).Act(
+        MessageOperation nowhere = Over().Act(
             Cluster.Scope, Journey, MessageAct.Dismiss, "ilian", caller: null);
-        MessageOperation unnamed = Over(Orders).Act(
+        MessageOperation unnamed = Over().Act(
             Port, string.Empty, MessageAct.Dismiss, "ilian", caller: null);
 
-        Assert.False(untaken.Applied);
-        Assert.Contains("takes no orders", untaken.Result, StringComparison.Ordinal);
         Assert.All([nowhere, unnamed], refused =>
         {
             Assert.False(refused.Applied);
             Assert.StartsWith("REFUSED", refused.Result, StringComparison.Ordinal);
         });
-        Assert.False(Directory.Exists(Orders));
     }
 
     [Fact]
     public void RetryAndDismissAreTheActsAndWordsTheRuntimeTakes()
     {
         Assert.Equal(["Retry", "Dismiss"], Enum.GetNames<MessageAct>());
+        Assert.Equal(
+            ["retry", "dismiss"], Enum.GetValues<MessageAct>().Select(MessageOperation.Word));
         Assert.Equal(Sending, ScopeTree.NodeScope(Port));
         Assert.Equal(Sending, ScopeTree.NodeScope(Sending));
         Assert.Equal(string.Empty, ScopeTree.NodeScope(Cluster.Scope));
-
-        foreach (MessageAct act in Enum.GetValues<MessageAct>())
-        {
-            XmipStatus status = RuntimeLibrary.Rules.Messages.Act(
-                Sending, Journey, MessageOperation.Word(act), "ilian", out string said);
-
-            Assert.True(status == XmipStatus.NotFound, $"{status} {said}");
-            Assert.StartsWith("REFUSED", said, StringComparison.Ordinal);
-        }
     }
 
     [Fact]
@@ -117,7 +96,7 @@ public sealed class MessageSurfaceTest : IDisposable
     public void TheGateRefusesAnObserverAndAnUnprovenCallerAndTakesAnOperatorAsProven()
     {
         ProgramAudit audit = new("Xmip.Surface.Test", Audit);
-        SnapshotOperator inner = Over(Orders);
+        SnapshotOperator inner = Over();
 
         MessageOperation observed = new GatedOperator(
                 inner, new RoleContext(Role.Observer, RoleAssignment.ProcessCaller()), audit)
@@ -131,17 +110,22 @@ public sealed class MessageSurfaceTest : IDisposable
             Assert.False(refused.Applied);
             Assert.StartsWith("REFUSED. ", refused.Result, StringComparison.Ordinal);
         });
-        Assert.False(Directory.Exists(Orders));
 
+        // Admitted, the act reaches the surface beneath the gate - a
+        // snapshot, which declines it in its own words - as the proven
+        // caller, audited so.
         MessageOperation taken = new GatedOperator(
                 inner, new RoleContext(Role.Operator, RoleAssignment.ProcessCaller()), audit)
             .Act(Port, Journey, MessageAct.Retry, Claimed, caller: null);
 
-        Assert.True(taken.Applied, taken.Result);
-        string order = File.ReadAllText(
-            Assert.Single(Directory.GetFiles(Orders, "*.toml", SearchOption.AllDirectories)));
-        Assert.Contains(Me, order, StringComparison.Ordinal);
-        Assert.DoesNotContain(Claimed, order, StringComparison.Ordinal);
+        Assert.Equal(SnapshotOperator.NotActed, taken.Result);
+        IReadOnlyList<AuditEntry> audited = audit
+            .Read(new AuditQuery { Order = "ascending", IncludeHidden = true }).Records;
+        Assert.Contains(audited, record => record.Message?.StartsWith(
+            $"{Me} asked to retry", StringComparison.Ordinal) == true);
+        Assert.DoesNotContain(audited, record => record.Message?.Contains(
+            Claimed, StringComparison.Ordinal) == true
+            || record.Properties.Values.Contains(Claimed));
     }
 
     public void Dispose()
@@ -156,14 +140,11 @@ public sealed class MessageSurfaceTest : IDisposable
         }
     }
 
-    // A publication of the test cluster, its orders where given.
-    private SnapshotOperator Over(string orders)
+    // A publication of the test cluster.
+    private SnapshotOperator Over()
     {
         string file = Path.Combine(scratch, $"snapshot-{Guid.NewGuid():N}.xmip");
-        File.WriteAllText(
-            file,
-            $"node = \"{Cluster.Scope}\"\n"
-            + (orders.Length > 0 ? $"orders = '{orders}'\n" : string.Empty));
+        File.WriteAllText(file, $"node = \"{Cluster.Scope}\"\n");
 
         return new SnapshotOperator(file);
     }
