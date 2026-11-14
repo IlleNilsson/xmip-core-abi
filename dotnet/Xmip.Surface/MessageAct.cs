@@ -22,13 +22,17 @@ public enum MessageAct
 /// <summary>
 /// What came of a <see cref="MessageAct"/> on the Message whose Journey is
 /// <paramref name="Journey"/> sent by the node at <paramref name="Node"/>:
-/// whether it was applied — or, through a publication, left for the node —
-/// and what was said. The executable and the PowerShell module emit this one
-/// shape, as they emit a <see cref="DeadMessageOperation"/>.
+/// whether it was applied, and what was said. The executable and the
+/// PowerShell module emit this one shape, as they emit a
+/// <see cref="DeadMessageOperation"/>.
 /// </summary>
 public sealed record MessageOperation(
     string Node, string Journey, MessageAct Act, bool Applied, string Result)
 {
+    /// <summary>What came of it: taken where it was applied, refused where
+    /// it was not, unless the door said asked (<see cref="ActOutcome"/>).</summary>
+    public ActOutcome Outcome { get; init; } = Applied ? ActOutcome.Taken : ActOutcome.Refused;
+
     /// <summary>The noun an order on a failed Message is left under:
     /// <c>observe::Noun::Message</c>'s word.</summary>
     public const string Noun = "message";

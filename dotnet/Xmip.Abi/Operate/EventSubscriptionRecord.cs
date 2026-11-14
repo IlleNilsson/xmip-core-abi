@@ -38,23 +38,19 @@ public sealed record EventSubscriptionRecord(
     DateTimeOffset Since);
 
 /// <summary>
-/// The subscriptions a hub or a publication carries, where acts on them are
-/// left when they are read through a publication — empty where they are
-/// applied in the process itself — and the members of the cluster their
-/// nodes do not hear now. The links that carry Events between nodes are the
-/// cluster's, never listed and never acted on (ADR-0065, amendment
-/// 2026-10-02).
+/// The subscriptions a hub or a publication carries, and the members of the
+/// cluster their nodes do not hear now. The links that carry Events between
+/// nodes are the cluster's, never listed and never acted on (ADR-0065,
+/// amendment 2026-10-02).
 /// </summary>
-/// <param name="Orders">Where a surface leaves an act for the publisher.</param>
 /// <param name="EventSubscriptions">The Event subscriptions, by node and number.</param>
 /// <param name="Unheard">The members not heard, each said in one line.</param>
 public sealed record EventSubscriptionList(
-    string Orders,
     IReadOnlyList<EventSubscriptionRecord> EventSubscriptions,
     IReadOnlyList<UnheardRecord> Unheard)
 {
-    /// <summary>No subscription, nowhere to leave an act, nobody unheard.</summary>
-    public static EventSubscriptionList Empty { get; } = new(string.Empty, [], []);
+    /// <summary>No subscription, nobody unheard.</summary>
+    public static EventSubscriptionList Empty { get; } = new([], []);
 
     /// <summary>The list section 11 wrote.</summary>
     public static EventSubscriptionList Parse(ReadOnlyMemory<byte> json)
@@ -63,7 +59,6 @@ public sealed record EventSubscriptionList(
         JsonElement root = answer.RootElement;
 
         return new EventSubscriptionList(
-            root.GetProperty("orders").GetString() ?? string.Empty,
             [.. root.GetProperty("event_subscriptions").EnumerateArray().Select(Record)],
             UnheardRecord.Read(root.GetProperty("unheard")));
     }

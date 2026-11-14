@@ -48,17 +48,13 @@ public sealed record SubscriptionRecord(
 }
 
 /// <summary>
-/// The Subscriptions a node or a publication carries, and where acts on them
-/// are left when they are read through a publication — empty where they are
-/// applied in the process itself.
+/// The Subscriptions a node or a publication carries.
 /// </summary>
-/// <param name="Orders">Where a surface leaves an act for the publisher.</param>
 /// <param name="Subscriptions">The Subscriptions, by node and name.</param>
-public sealed record SubscriptionList(
-    string Orders, IReadOnlyList<SubscriptionRecord> Subscriptions)
+public sealed record SubscriptionList(IReadOnlyList<SubscriptionRecord> Subscriptions)
 {
-    /// <summary>No Subscription, nowhere to leave an act.</summary>
-    public static SubscriptionList Empty { get; } = new(string.Empty, []);
+    /// <summary>No Subscription.</summary>
+    public static SubscriptionList Empty { get; } = new([]);
 
     /// <summary>The list section 14 wrote.</summary>
     public static SubscriptionList Parse(ReadOnlyMemory<byte> json)
@@ -67,7 +63,6 @@ public sealed record SubscriptionList(
         JsonElement root = answer.RootElement;
 
         return new SubscriptionList(
-            root.GetProperty("orders").GetString() ?? string.Empty,
             [.. root.GetProperty("subscriptions").EnumerateArray().Select(Record)]);
     }
 

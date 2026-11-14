@@ -13,7 +13,7 @@ namespace Xmip.Surface;
 /// PowerShell matches with <c>-like</c> and declares <c>[SupportsWildcards()]</c>;
 /// the executable and the GUI match here, so an operator who learns the pattern
 /// at one surface is right at the others. The matching itself is
-/// <c>observe::wildcard</c>'s, in Rust, reached through the runtime's library
+/// <c>node::wildcard</c>'s, in Rust, reached through the runtime's library
 /// (<c>xmip_scope_matches_v1</c>): the audit read filters by it too, and a rule
 /// is placed once (ADR-0052, amendment 2026-09-24; moved 2026-09-29). Where
 /// this cannot be <c>-like</c> exactly, it says so:

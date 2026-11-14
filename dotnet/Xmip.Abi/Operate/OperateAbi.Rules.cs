@@ -6,22 +6,22 @@ namespace Xmip.Abi.Operate;
 public static partial class OperateAbi
 {
     /// <summary>Whether one scope is at or beneath another: section 7,
-    /// forwarded to <c>observe::Scope::contains</c>.</summary>
+    /// forwarded to <c>node::Scope::contains</c>.</summary>
     public const string ScopeContainsEntrypoint = "xmip_scope_contains_v1";
 
     /// <summary>Whether a scope is what a pattern names by the one wildcard:
-    /// section 7, forwarded to <c>observe::wildcard::matches</c>.</summary>
+    /// section 7, forwarded to <c>node::wildcard::matches</c>.</summary>
     public const string ScopeMatchesEntrypoint = "xmip_scope_matches_v1";
 
     /// <summary>Whether what a run made is shown, as the run declared and the
     /// reader asked: section 7, <c>observe::run::shown</c>.</summary>
     public const string RunShownEntrypoint = "xmip_run_shown_v1";
 
-    /// <summary>A scope's segments: section 7, <c>observe::Scope::segments</c>.</summary>
+    /// <summary>A scope's segments: section 7, <c>node::Scope::segments</c>.</summary>
     public const string ScopePartsEntrypoint = "xmip_scope_parts_v1";
 
     /// <summary>The node a scope is on and its stage there: section 7,
-    /// <c>observe::Scope::node</c> and <c>observe::Scope::stage</c>.</summary>
+    /// <c>node::Scope::node</c> and <c>node::Scope::stage</c>.</summary>
     public const string ScopeNodeEntrypoint = "xmip_scope_node_v1";
 
     /// <summary>The stage words: section 7, <c>node::Stage::WORDS</c>.</summary>

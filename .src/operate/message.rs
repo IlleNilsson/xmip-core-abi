@@ -1,13 +1,13 @@
-//! Header section 16: the Messages that failed, listed, and an operator's act
-//! on one, Retry or Dismiss (`runtime-model.md` section 13; ADR-0013,
-//! amendment 2026-08-26).
+//! Header section 16: the Messages that failed, listed (`runtime-model.md`
+//! section 13; ADR-0013, amendment 2026-08-26).
 //!
 //! A Message whose Send Port's every Send Location failed its tries is
-//! written Failed on its Journey and waits in its Port's queue for an operator: Retry sends
-//! it again, Dismiss ends it Dismissed. Every one is listed at its Port, a
-//! page at a time from Xmip Storage, or as a read publication carries them.
-//! The runtime's library forwards each call to the send step of the node
-//! named; a surface over a publication acts through section 14's order.
+//! written Failed on its Journey and waits in its Port's queue for an
+//! operator: Retry sends it again, Dismiss ends it Dismissed, each asked at
+//! a node's door through section 17's act and Xmip Storage (ADR-0014,
+//! amendment 2026-11-13). Every one is listed at its Port, a page at a time
+//! from Xmip Storage, or as a read publication carries them. The runtime's
+//! library forwards each call to the send step of the node named.
 //! Declarations only; the runtime's tests fail to compile if an export
 //! drifts from them.
 
@@ -15,8 +15,6 @@ use crate::ffi::Str;
 
 use super::Scope;
 
-/// `xmip_message_act_v1`.
-pub const MESSAGE_ACT_ENTRYPOINT: &str = "xmip_message_act_v1";
 /// `xmip_failed_messages_v1`.
 pub const FAILED_MESSAGES_ENTRYPOINT: &str = "xmip_failed_messages_v1";
 /// `xmip_publication_failed_messages_v1`.
@@ -45,19 +43,6 @@ pub type PublicationFailedMessagesFn = unsafe extern "C" fn(
     out_len: *mut usize,
 ) -> i32;
 
-/// `xmip_message_act_v1`: apply `act` — retry or dismiss — to the Message
-/// whose Journey is `journey`, sent by the node at `node` in this process, by `who`; what
-/// came of it in `said`.
-pub type MessageActFn = unsafe extern "C" fn(
-    node: Scope,
-    journey: Str,
-    act: Str,
-    who: Str,
-    said: *mut u8,
-    said_cap: usize,
-    said_len: *mut usize,
-) -> i32;
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -67,7 +52,6 @@ mod tests {
     #[test]
     fn every_entrypoint_matches_the_header() {
         for (define, name) in [
-            ("XMIP_MESSAGE_ACT_ENTRYPOINT", MESSAGE_ACT_ENTRYPOINT),
             (
                 "XMIP_FAILED_MESSAGES_ENTRYPOINT",
                 FAILED_MESSAGES_ENTRYPOINT,

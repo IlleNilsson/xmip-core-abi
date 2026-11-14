@@ -22,14 +22,18 @@ public enum EventSubscriptionAct
 
 /// <summary>
 /// What came of an <see cref="EventSubscriptionAct"/> on the Event subscription numbered
-/// <paramref name="Id"/> on <paramref name="Node"/>: whether it was applied
-/// — or, through a publication, left for the node — and what was said. The
+/// <paramref name="Id"/> on <paramref name="Node"/>: whether it was applied,
+/// and what was said. The
 /// executable and the PowerShell module emit this one shape, as they emit a
 /// <see cref="ScopeOperation"/>.
 /// </summary>
 public sealed record EventSubscriptionOperation(
     string Node, ulong Id, EventSubscriptionAct Act, bool Applied, string Result)
 {
+    /// <summary>What came of it: taken where it was applied, refused where
+    /// it was not, unless the door said asked (<see cref="ActOutcome"/>).</summary>
+    public ActOutcome Outcome { get; init; } = Applied ? ActOutcome.Taken : ActOutcome.Refused;
+
     /// <summary>The word the runtime names <paramref name="act"/> by.</summary>
     public static string Word(EventSubscriptionAct act)
     {

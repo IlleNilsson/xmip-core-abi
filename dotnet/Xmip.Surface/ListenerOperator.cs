@@ -14,17 +14,10 @@ namespace Xmip.Surface;
 /// its browser.
 /// </summary>
 /// <remarks>
-/// It reads the node's publication — the text its file holds, read by the
-/// one reader (<see cref="PublicationReading"/>) — once per revision, and is
-/// told, never asks, when it advances: the runtime's follow holds the node's
-/// wait. A watch is told first and the publication read after, by the first
-/// question that needs it, off the follow: until 2026-10-13 the follow read
-/// and parsed the whole publication before it told, and a .NET watch heard
-/// of a change 1.7 ms after the node posted it. A lost node is told too:
-/// every watch at once, with a <see cref="Source"/> that says the node is
-/// unreachable and why, and every answer is empty until it is back — never
-/// the publication held from before. The follow tries a lost node again on
-/// its own loop (ADR-0052, note of 2026-10-05), in the runtime.
+/// It reads the node's publication — or, where the node gathers its
+/// cluster's view, that view — once per revision, and is told, never asks,
+/// when it advances (<c>ListenerOperator.Follow.cs</c> says how, and how
+/// which of the two is decided).
 ///
 /// An act crosses without a name: the node takes it as the identity the
 /// connection proved — this side's certificate, or on the local endpoint
@@ -35,29 +28,11 @@ namespace Xmip.Surface;
 /// </remarks>
 public abstract partial class ListenerOperator : IOperatorSurface, IDisposable
 {
-    /// <summary>How long a watch's one wait lasts before it looks whether
-    /// the watch ended; a change wakes it at once.</summary>
-    private static readonly TimeSpan Turn = TimeSpan.FromSeconds(1);
-
     private readonly RemoteNode? node;
 
     private readonly ChangeFeed feed = new();
 
     private readonly Lock gate = new();
-
-    // One read of the node at a time, so a change told is read once.
-    private readonly Lock reading = new();
-
-    private PublicationReading? held;
-
-    private ulong heldRevision;
-
-    // The revision the follow last told.
-    private ulong toldRevision;
-
-    private Thread? following;
-
-    private volatile bool ended;
 
     /// <summary>A surface over <paramref name="node"/>, called
     /// <paramref name="address"/> in what it says, of the
@@ -87,9 +62,14 @@ public abstract partial class ListenerOperator : IOperatorSurface, IDisposable
     public string Reason { get; private set; }
 
     /// <inheritdoc />
-    public string Source => IsConnected
-        ? $"{Kind} — {Address}"
-        : $"{Kind} — {Address} unreachable: {Reason}";
+    /// <remarks>Where the node gathers its cluster's view, what that view says
+    /// of itself follows — <c>&lt;cluster&gt;, gathered by &lt;node&gt;</c> and
+    /// how many it reached, the runtime's words and never this one's.</remarks>
+    public string Source => !IsConnected
+        ? $"{Kind} — {Address} unreachable: {Reason}"
+        : Gathered.Length > 0
+            ? $"{Kind} — {Address} — {Gathered}"
+            : $"{Kind} — {Address}";
 
     /// <summary>Ask the node for its publication: whether it answered, why
     /// not in <see cref="Reason"/>.</summary>
@@ -154,13 +134,17 @@ public abstract partial class ListenerOperator : IOperatorSurface, IDisposable
     {
         ArgumentNullException.ThrowIfNull(subscription);
 
-        (bool taken, string said) = Asked(
+        (ActOutcome outcome, string said) = Asked(
             caller,
             subscription.Node, "event-subscription",
             subscription.Id.ToString(System.Globalization.CultureInfo.InvariantCulture),
             EventSubscriptionOperation.Word(act));
 
-        return new EventSubscriptionOperation(subscription.Node, subscription.Id, act, taken, said);
+        return new EventSubscriptionOperation(
+            subscription.Node, subscription.Id, act, outcome == ActOutcome.Taken, said)
+        {
+            Outcome = outcome,
+        };
     }
 
     /// <inheritdoc />
@@ -175,11 +159,15 @@ public abstract partial class ListenerOperator : IOperatorSurface, IDisposable
     {
         ArgumentNullException.ThrowIfNull(subscription);
 
-        (bool taken, string said) = Asked(
+        (ActOutcome outcome, string said) = Asked(
             caller, subscription.Node, "subscription", subscription.Name,
             SubscriptionOperation.Word(act));
 
-        return new SubscriptionOperation(subscription.Node, subscription.Name, act, taken, said);
+        return new SubscriptionOperation(
+            subscription.Node, subscription.Name, act, outcome == ActOutcome.Taken, said)
+        {
+            Outcome = outcome,
+        };
     }
 
     /// <inheritdoc />
@@ -194,14 +182,18 @@ public abstract partial class ListenerOperator : IOperatorSurface, IDisposable
     {
         ArgumentNullException.ThrowIfNull(message);
 
-        (bool taken, string said) = Asked(
+        (ActOutcome outcome, string said) = Asked(
             caller,
             message.Node,
             DeadMessageOperation.Noun,
             message.Message,
             DeadMessageOperation.Word(act));
 
-        return new DeadMessageOperation(message.Node, message.Message, act, taken, said);
+        return new DeadMessageOperation(
+            message.Node, message.Message, act, outcome == ActOutcome.Taken, said)
+        {
+            Outcome = outcome,
+        };
     }
 
     /// <inheritdoc />
@@ -220,10 +212,13 @@ public abstract partial class ListenerOperator : IOperatorSurface, IDisposable
     {
         return MessageOperation.OnNode(scope, journey, act, at =>
         {
-            (bool taken, string said) = Asked(
+            (ActOutcome outcome, string said) = Asked(
                 caller, at, MessageOperation.Noun, journey, MessageOperation.Word(act));
 
-            return new MessageOperation(at, journey, act, taken, said);
+            return new MessageOperation(at, journey, act, outcome == ActOutcome.Taken, said)
+            {
+                Outcome = outcome,
+            };
         });
     }
 
@@ -256,19 +251,6 @@ public abstract partial class ListenerOperator : IOperatorSurface, IDisposable
         return feed.Watch(() => SurfaceChange.Initial(Source), Followed, stop);
     }
 
-    // The follow starts with the first watch and runs while this lives.
-    private void Followed()
-    {
-        lock (gate)
-        {
-            if (node is not null && following is null)
-            {
-                following = new Thread(Follow) { IsBackground = true, Name = "xmip-operate" };
-                following.Start();
-            }
-        }
-    }
-
     /// <inheritdoc />
     public void Dispose()
     {
@@ -276,81 +258,12 @@ public abstract partial class ListenerOperator : IOperatorSurface, IDisposable
         GC.SuppressFinalize(this);
     }
 
-    /// <summary>End every watch, the follow and the node's handle.</summary>
-    protected virtual void Dispose(bool disposing)
-    {
-        if (!disposing || ended)
-        {
-            return;
-        }
-
-        ended = true;
-        feed.Complete();
-        node?.Dispose();
-        following?.Join();
-    }
-
-    // The publication, read once per revision the follow told, by the first
-    // question after it told; read on every question where nothing follows.
-    // Unreachable, nothing — never what was held from before.
-    private PublicationReading Read()
-    {
-        if (node is null)
-        {
-            IsConnected = false;
-            return PublicationReading.Nothing(Source);
-        }
-
-        lock (reading)
-        {
-            lock (gate)
-            {
-                if (following is not null && held is { } current && IsConnected)
-                {
-                    return current;
-                }
-            }
-
-            XmipStatus status = node.Publication(out string text, out ulong revision);
-
-            if (status != XmipStatus.Ok)
-            {
-                IsConnected = false;
-                Reason = text;
-                return PublicationReading.Nothing(Source);
-            }
-
-            IsConnected = true;
-            Reason = string.Empty;
-
-            lock (gate)
-            {
-                if (held is { } same && heldRevision == revision)
-                {
-                    return same;
-                }
-
-                PublicationReading read = PublicationReading.Of(text, revision, Source);
-
-                // A reading older than what the follow has since told is
-                // answered, not kept: the next question reads the newer.
-                if (revision >= Volatile.Read(ref toldRevision))
-                {
-                    held = read;
-                    heldRevision = revision;
-                }
-
-                return read;
-            }
-        }
-    }
-
-    private (bool Taken, string Said) Asked(
+    private (ActOutcome Outcome, string Said) Asked(
         HeldCaller? caller, string at, string noun, string target, string act)
     {
         if (node is null)
         {
-            return (false, Source);
+            return (ActOutcome.Refused, Source);
         }
 
         XmipStatus status = node.Act(caller, at, noun, target, act, out string said);
@@ -359,41 +272,9 @@ public abstract partial class ListenerOperator : IOperatorSurface, IDisposable
         {
             IsConnected = false;
             Reason = said;
-            return (false, Source);
+            return (ActOutcome.Refused, Source);
         }
 
-        return (status == XmipStatus.Ok, said);
-    }
-
-    // The runtime's follow, waited on: each time it tells, the publication
-    // held goes and every watch is told at once; the publication is read by
-    // whoever asks next, never before the telling.
-    private void Follow()
-    {
-        ulong seen = 0;
-
-        while (!ended && node is not null)
-        {
-            RemoteFollow told = node.Wait(seen, Turn);
-
-            if (ended || told.Told == seen)
-            {
-                continue;
-            }
-
-            seen = told.Told;
-
-            lock (gate)
-            {
-                Volatile.Write(ref toldRevision, told.Revision);
-                held = null;
-            }
-
-            IsConnected = told.Reachable;
-            Reason = told.Reachable ? string.Empty : told.Reason;
-
-            feed.Announce(new SurfaceChange(
-                told.Revision, SurfaceChangeKind.All, DateTimeOffset.UtcNow, Source));
-        }
+        return (ActOutcomes.Of(status), said);
     }
 }

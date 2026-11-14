@@ -4,9 +4,9 @@ namespace Xmip.Surface.Test;
 
 /// <summary>
 /// A System Process declares its name, its location and its purpose through
-/// the node, and takes the declaration away where it ends (ADR-0053 clause 3).
-/// The file itself is <c>xmip-core-node</c>'s and tested there; these prove
-/// that a .NET process declares through it and reads it back through it.
+/// the runtime, and takes the declaration away where it ends (ADR-0053 clause
+/// 3). The file itself is <c>xmip-core-runtime</c>'s and tested there; these
+/// prove that a .NET process declares, reads back and takes away through it.
 /// </summary>
 public sealed class ProcessDeclarationTest
 {
@@ -35,6 +35,31 @@ public sealed class ProcessDeclarationTest
         }
 
         Assert.False(File.Exists(declared.File), "taken away where the process ends");
+    }
+
+    [Fact]
+    public void ALeftDeclarationIsTakenAwayByTheRuntimeAndAStrangerIsKept()
+    {
+        ProcessDeclaration? declared = ProcessDeclaration.Declare(
+            "xmip-surface-test", string.Empty, "test");
+
+        Assert.NotNull(declared);
+        Assert.Equal(Abi.Module.XmipStatus.Ok, ProcessDeclaration.Undeclare(declared.File));
+        Assert.False(File.Exists(declared.File), "taken away by the runtime");
+        Assert.Equal(Abi.Module.XmipStatus.Ok, ProcessDeclaration.Undeclare(declared.File));
+
+        string stranger = Path.Combine(Path.GetTempPath(), $"other-{Environment.ProcessId}.toml");
+        File.WriteAllText(stranger, "kept");
+
+        try
+        {
+            Assert.Equal(Abi.Module.XmipStatus.Invalid, ProcessDeclaration.Undeclare(stranger));
+            Assert.True(File.Exists(stranger), "no declaration's file, so not removed");
+        }
+        finally
+        {
+            File.Delete(stranger);
+        }
     }
 
     [Fact]

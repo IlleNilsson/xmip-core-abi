@@ -13,18 +13,15 @@ namespace Xmip.Abi.Operate;
 /// <param name="Counts">Its counts, each at the scope it was recorded at.</param>
 /// <param name="Topology">The topology it draws, or null.</param>
 /// <param name="Run">What its run was started with, or null.</param>
-/// <param name="Subscriptions">The Subscriptions its nodes route by, and
-/// where its publisher takes an act on one (ADR-0013, amendment
-/// 2026-09-30).</param>
-/// <param name="EventSubscriptions">The Event subscriptions its nodes hold, and
-/// where its publisher takes an act on one (ADR-0065, amendment
-/// 2026-09-29).</param>
+/// <param name="Subscriptions">The Subscriptions its nodes route by
+/// (ADR-0013, amendment 2026-09-30).</param>
+/// <param name="EventSubscriptions">The Event subscriptions its nodes hold
+/// (ADR-0065, amendment 2026-09-29).</param>
 /// <param name="DeadMessages">What its nodes' Dead Message Queues keep, the
-/// oldest of each, and where its publisher takes a Replay (ADR-0052,
-/// amendment 2026-10-01).</param>
+/// oldest of each (ADR-0052, amendment 2026-10-01).</param>
 /// <param name="FailedMessages">The Messages that failed at its nodes' Send
-/// Ports, how many at each and the oldest, and where its publisher takes an
-/// act on one (runtime-model.md section 13).</param>
+/// Ports, how many at each and the oldest (runtime-model.md section
+/// 13).</param>
 public sealed record Publication(
     string Source,
     string Node,

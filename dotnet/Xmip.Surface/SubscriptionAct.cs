@@ -22,13 +22,16 @@ public enum SubscriptionAct
 /// <summary>
 /// What came of a <see cref="SubscriptionAct"/> on the Subscription called
 /// <paramref name="Name"/> on <paramref name="Node"/>: whether it was
-/// applied — or, through a publication, left for the node — and what was
-/// said. The executable and the PowerShell module emit this one shape, as
+/// applied, and what was said. The executable and the PowerShell module emit this one shape, as
 /// they emit a <see cref="ScopeOperation"/>.
 /// </summary>
 public sealed record SubscriptionOperation(
     string Node, string Name, SubscriptionAct Act, bool Applied, string Result)
 {
+    /// <summary>What came of it: taken where it was applied, refused where
+    /// it was not, unless the door said asked (<see cref="ActOutcome"/>).</summary>
+    public ActOutcome Outcome { get; init; } = Applied ? ActOutcome.Taken : ActOutcome.Refused;
+
     /// <summary>What a surface says where a Subscription would be removed:
     /// it is not removed by an act.</summary>
     public const string Configured =

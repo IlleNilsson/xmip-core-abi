@@ -1,4 +1,3 @@
-using Xmip.Abi.Module;
 using Xmip.Abi.Operate;
 
 namespace Xmip.Abi.Test;
@@ -6,67 +5,26 @@ namespace Xmip.Abi.Test;
 /// <summary>
 /// <see cref="RuntimeMessages"/> crosses section 16 to the runtime this
 /// estate built and back (runtime-model.md section 13; ADR-0013): no node
-/// runs in a test's process, so a Retry or a Dismiss on a node is refused in
-/// words and a word that is no act on a Message is invalid; and either act is
-/// left as an order on the noun message where a publication says, no other
-/// act taken on it. What a Retry sends again is the runtime's and tested
-/// there; these prove the crossing.
+/// runs in a test's process, so no Send Port is listed with a Message that
+/// failed. What a Retry sends again is the runtime's and tested there, and
+/// Retry and Dismiss are asked at a node's door (ADR-0014, amendment
+/// 2026-11-13); this proves the crossing.
 /// </summary>
 public sealed class RuntimeMessagesTest
 {
     private static readonly TestCluster Cluster = TestCluster.Read();
 
     // The test cluster's sending node, by what it declares.
-    private static readonly string Sender = Cluster.WithRole("sending");
-    private static readonly string Node = $"{Cluster.Scope}/node/{Sender}";
+    private static readonly string Node = $"{Cluster.Scope}/node/{Cluster.WithRole("sending")}";
 
     private static RuntimeRules Rules => RuntimeRulesTest.Rules;
 
-    [Theory]
-    [InlineData("retry")]
-    [InlineData("dismiss")]
-    public void NoNodeRunsHereSoAnActIsRefused(string act)
-    {
-        Assert.Equal(
-            XmipStatus.NotFound, Rules.Messages.Act(Node, "j-1", act, "ilian", out string said));
-        Assert.StartsWith("REFUSED", said, StringComparison.Ordinal);
-    }
-
     [Fact]
-    public void AWordThatIsNoActOnAMessageIsInvalid()
+    public void NoNodeRunsHereSoNoSendPortIsListed()
     {
-        Assert.Equal(
-            XmipStatus.Invalid,
-            Rules.Messages.Act(Node, "j-1", "replay", "ilian", out string said));
-        Assert.NotEmpty(said);
-    }
+        FailedMessageList failed = Rules.Messages.Failed(Node, string.Empty, 0, 0);
 
-    [Fact]
-    public void AnActIsLeftAsAnOrderAndNoOtherActIsTaken()
-    {
-        string orders = Path.Combine(Path.GetTempPath(), $"xmip-abi-journey-{Guid.NewGuid():n}");
-
-        try
-        {
-            foreach (string act in new[] { "retry", "dismiss" })
-            {
-                Assert.Equal(
-                    XmipStatus.Ok,
-                    Rules.Subscriptions.Order(
-                        orders, Node, "message", "j-1", act, "ilian", out string file));
-                Assert.True(File.Exists(file), file);
-                Assert.StartsWith(Path.Combine(orders, Sender), file, StringComparison.Ordinal);
-            }
-
-            Assert.Equal(
-                XmipStatus.Invalid,
-                Rules.Subscriptions.Order(
-                    orders, Node, "message", "j-1", "replay", "ilian", out string said));
-            Assert.Contains("retry", said, StringComparison.Ordinal);
-        }
-        finally
-        {
-            Directory.Delete(orders, recursive: true);
-        }
+        Assert.True(failed.Listed);
+        Assert.Empty(failed.Ports);
     }
 }

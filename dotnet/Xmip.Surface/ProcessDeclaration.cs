@@ -13,12 +13,13 @@ namespace Xmip.Surface;
 /// and whoever lists the declarations drops those whose process is gone.
 /// </summary>
 /// <remarks>
-/// The file, its directory, its words and its reading are
-/// <c>xmip-core-node</c>'s, reached through the runtime's library
-/// (<c>xmip_operate.h</c> section 13, <see cref="RuntimeProcesses"/>): this
-/// writes and reads no file of its own. Until 2026-09-27 it wrote the file
-/// again, took any purpose but <c>test</c> for runtime, and the estate's
-/// PowerShell module read the files with a TOML reader of its own.
+/// Its words are <c>xmip-core-node</c>'s, the file, its directory, its
+/// reading and its removal <c>xmip-core-runtime</c>'s, reached through the
+/// runtime's library (<c>xmip_operate.h</c> section 13,
+/// <see cref="RuntimeProcesses"/>): this writes, reads and removes no file of
+/// its own. Until 2026-09-27 it wrote the file again, took any purpose but
+/// <c>test</c> for runtime, and the estate's PowerShell module read the files
+/// with a TOML reader of its own; until 2026-11-13 it deleted its file itself.
 /// </remarks>
 public sealed class ProcessDeclaration : IDisposable
 {
@@ -29,9 +30,12 @@ public sealed class ProcessDeclaration : IDisposable
     /// unless what started it states otherwise.</summary>
     public const string Runtime = "runtime";
 
-    private ProcessDeclaration(string file)
+    private readonly RuntimeProcesses _processes;
+
+    private ProcessDeclaration(string file, RuntimeProcesses processes)
     {
         File = file;
+        _processes = processes;
     }
 
     /// <summary>The file the declaration stands in.</summary>
@@ -90,7 +94,7 @@ public sealed class ProcessDeclaration : IDisposable
             return null;
         }
 
-        ProcessDeclaration declared = new(answer);
+        ProcessDeclaration declared = new(answer, processes);
         AppDomain.CurrentDomain.ProcessExit += (_, _) => declared.Dispose();
 
         return declared;
@@ -107,16 +111,22 @@ public sealed class ProcessDeclaration : IDisposable
         return RuntimeLibrary.Rules.Processes.Read(directory);
     }
 
-    /// <inheritdoc />
+    /// <summary>Take away the declaration standing in <paramref name="file"/>,
+    /// one a listing found whose process is gone: by the runtime, which removes
+    /// only a declaration's file. Whether it went is said and nothing is
+    /// thrown: one gone already is as good as removed, and one the runtime could
+    /// not remove is dropped by the next listing.</summary>
+    /// <exception cref="InvalidOperationException">No runtime library could be
+    /// loaded to take it away through.</exception>
+    public static XmipStatus Undeclare(string file)
+    {
+        return RuntimeLibrary.Rules.Processes.Undeclare(file, out _);
+    }
+
+    /// <summary>The declaration taken away by the runtime. One it could not
+    /// remove, held by a reader, is dropped by whoever lists next.</summary>
     public void Dispose()
     {
-        try
-        {
-            System.IO.File.Delete(File);
-        }
-        catch (Exception failure) when (failure is IOException or UnauthorizedAccessException)
-        {
-            // Gone already, or held by a reader: whoever lists drops it.
-        }
+        _processes.Undeclare(File, out _);
     }
 }

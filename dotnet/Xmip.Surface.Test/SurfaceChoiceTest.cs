@@ -256,7 +256,9 @@ public sealed class SurfaceChoiceTest
         // moves between them.
         IOperatorSurface chosen = SurfaceChoice.Stated(
             SurfaceLine.None,
-            Pairs(("Surface", "snapshot"), ("Snapshot:0", "a.xmip"), ("Snapshot:1", "b.xmip")),
+            Pairs(
+                ("Clusters:0:Surface", "snapshot"), ("Clusters:0:Snapshot", "a.xmip"),
+                ("Clusters:1:Surface", "snapshot"), ("Clusters:1:Snapshot", "b.xmip")),
             Beside,
             Beside);
 

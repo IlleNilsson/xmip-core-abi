@@ -45,10 +45,11 @@ public sealed class RuntimeRemotesTest
         Assert.Equal(XmipStatus.Ok, remote.Publication(out string text, out ulong revision));
         Assert.Equal(("source = \"one\"\n", 1ul), (text, revision));
 
-        RemoteFollow reached = remote.Wait(0, TimeSpan.FromSeconds(5));
+        RemoteFollow reached = remote.Wait(RemoteFollows.Node, 0, TimeSpan.FromSeconds(5));
         Assert.True(reached.Reachable, reached.Reason);
         served.Post("source = \"two\"\n");
-        Assert.Equal(2ul, remote.Wait(reached.Told, TimeSpan.FromSeconds(5)).Revision);
+        Assert.Equal(
+            2ul, remote.Wait(RemoteFollows.Node, reached.Told, TimeSpan.FromSeconds(5)).Revision);
 
         Assert.Equal(
             XmipStatus.Auth,
@@ -58,12 +59,85 @@ public sealed class RuntimeRemotesTest
         // Disposed while a wait is in flight on another thread: the wait
         // returns, and nothing crosses after the handle is freed.
         Task<RemoteFollow> waiting = Task.Run(
-            () => remote.Wait(ulong.MaxValue - 1, TimeSpan.FromSeconds(30)));
+            () => remote.Wait(RemoteFollows.Node, ulong.MaxValue - 1, TimeSpan.FromSeconds(30)));
         remote.Dispose();
         // Woken, not timed out: WaitAsync throws where it was not.
         _ = await waiting.WaitAsync(
             TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken).ConfigureAwait(true);
         Assert.Equal(XmipStatus.Unavailable, remote.Publication(out _, out _));
+    }
+
+    [Fact]
+    public void AClusterIsReadAndFollowedOnlyWhereTheNodeGathersOne()
+    {
+        // Before its first gathered view a served listener refuses the
+        // cluster as a node declaring no monitoring role does: Unsupported,
+        // in its words, so a surface follows the node's own publication. From
+        // the first post it answers the cluster, and a follow of it is told.
+        using Issuer issuer = new();
+        (string certificate, string key) = issuer.Issue("node", "1.3.6.1.5.5.7.3.1");
+        using ServedNode served = Rules.Remotes.Serve(
+            "127.0.0.1:0", certificate, key, issuer.Anchor, ["CN=surface"], [], [], "abi-test",
+            out string why) ?? throw new InvalidOperationException(why);
+        served.Post("source = \"own\"\n");
+
+        (certificate, key) = issuer.Issue("surface", "1.3.6.1.5.5.7.3.2");
+        using RemoteNode remote = Rules.Remotes.Open(
+            served.Address, certificate, key, issuer.Anchor, out why)
+            ?? throw new InvalidOperationException(why);
+
+        Assert.Equal(XmipStatus.Unsupported, remote.Cluster(out string refused, out _));
+        Assert.NotEmpty(refused);
+
+        served.PostCluster("source = \"gathered\"\n");
+        Assert.Equal(XmipStatus.Ok, remote.Cluster(out string text, out ulong revision));
+        Assert.Equal(("source = \"gathered\"\n", 1ul), (text, revision));
+        Assert.Equal(XmipStatus.Ok, remote.Publication(out string own, out _));
+        Assert.Equal("source = \"own\"\n", own);
+
+        RemoteFollow reached = remote.Wait(RemoteFollows.Cluster, 0, TimeSpan.FromSeconds(5));
+        Assert.True(reached.Reachable, reached.Reason);
+        Assert.Equal(RemoteFollows.Cluster, reached.Follows);
+        served.PostCluster("source = \"gathered again\"\n");
+        Assert.Equal(
+            2ul,
+            remote.Wait(RemoteFollows.Cluster, reached.Told, TimeSpan.FromSeconds(5)).Revision);
+
+        // A handle follows the publication its first wait named.
+        Assert.Throws<InvalidOperationException>(
+            () => remote.Wait(RemoteFollows.Node, 0, TimeSpan.Zero));
+    }
+
+    [Theory]
+    [InlineData(true, RemoteFollows.Cluster)]
+    [InlineData(false, RemoteFollows.Node)]
+    public void AFollowOfWhatTheNodeAnswersSaysWhichItsAnswerDecided(
+        bool gathers, RemoteFollows decided)
+    {
+        // The runtime decides, never a name: a listener that gathers its
+        // cluster's view is followed for it, one that refuses as a node
+        // declaring no monitoring role does, for its own publication.
+        using Issuer issuer = new();
+        (string certificate, string key) = issuer.Issue("node", "1.3.6.1.5.5.7.3.1");
+        using ServedNode served = Rules.Remotes.Serve(
+            "127.0.0.1:0", certificate, key, issuer.Anchor, ["CN=surface"], [], [], "abi-test",
+            out string why) ?? throw new InvalidOperationException(why);
+        served.Post("source = \"own\"\n");
+
+        if (gathers)
+        {
+            served.PostCluster("source = \"gathered\"\n");
+        }
+
+        (certificate, key) = issuer.Issue("surface", "1.3.6.1.5.5.7.3.2");
+        using RemoteNode remote = Rules.Remotes.Open(
+            served.Address, certificate, key, issuer.Anchor, out why)
+            ?? throw new InvalidOperationException(why);
+
+        RemoteFollow told = remote.Wait(RemoteFollows.Answered, 0, TimeSpan.FromSeconds(5));
+
+        Assert.True(told.Reachable, told.Reason);
+        Assert.Equal(decided, told.Follows);
     }
 
     [Fact]

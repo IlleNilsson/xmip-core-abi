@@ -15,34 +15,50 @@ namespace Xmip.Surface;
 /// configuration that names none is refused rather than defaulted. The
 /// runtime library, found by <see cref="RuntimeLibrary"/>'s rule, is what
 /// every surface calls the runtime through — the gRPC client among it — and
-/// chooses no surface.
+/// chooses no surface. A host holding several clusters names one surface per
+/// cluster, each of its own kind, under <c>Clusters</c> (<see cref="OpenAll"/>).
 /// </summary>
-public static class SurfaceChoice
+public static partial class SurfaceChoice
 {
     /// <summary>The key naming the surface.</summary>
-    public const string SurfaceKey = "Xmip:Surface";
+    public const string SurfaceKey = Table + ":" + SurfaceLeaf;
 
-    /// <summary>The key naming the snapshot file, when the surface is one. It
-    /// takes one path, or a list of them — one per cluster (ADR-0052,
-    /// amendment 2026-09-20).</summary>
-    public const string SnapshotKey = "Xmip:Snapshot";
+    /// <summary>The key naming the snapshot file, when the surface is one.
+    /// One path, one cluster; several clusters are <see cref="ClustersKey"/>'s
+    /// (ADR-0052, amendment 2026-11-13).</summary>
+    public const string SnapshotKey = Table + ":" + SnapshotLeaf;
 
     /// <summary>The word for the surface over a node on this machine.</summary>
     public const string Local = "local";
 
     /// <summary>The key naming the node's local endpoint, a name or a path,
     /// when the surface is local.</summary>
-    public const string LocalKey = "Xmip:Local";
+    public const string LocalKey = Table + ":" + LocalLeaf;
 
     /// <summary>The word for the surface over a published snapshot.</summary>
     public const string Snapshot = "snapshot";
 
     /// <summary>The key naming the node's operate address, <c>host:port</c>,
     /// when the surface is remote.</summary>
-    public const string AddressKey = "Xmip:Address";
+    public const string AddressKey = Table + ":" + AddressLeaf;
 
     /// <summary>The word for the surface over a node on another machine.</summary>
     public const string Remote = "remote";
+
+    /// <summary>The key listing one surface per cluster, each a table of its
+    /// own naming its <c>Surface</c> and the <c>Local</c>, <c>Address</c> or
+    /// <c>Snapshot</c> that word reads: one cluster local at its monitoring
+    /// node, another a snapshot — the one way a host names several. It wins
+    /// over <c>Surface</c>: a line naming two clusters must not be quietly
+    /// replaced by the one the shipped document names.</summary>
+    public const string ClustersKey = Table + ":Clusters";
+
+    // The host's table, and the keys every cluster's table shares with it.
+    private const string Table = "Xmip";
+    private const string SurfaceLeaf = "Surface";
+    private const string SnapshotLeaf = "Snapshot";
+    private const string LocalLeaf = "Local";
+    private const string AddressLeaf = "Address";
 
     /// <summary>Whether the configuration names a surface at all. A host
     /// whose line may name none — a command, a cmdlet, the prompt — asks this
@@ -50,7 +66,8 @@ public static class SurfaceChoice
     /// rather than refused.</summary>
     public static bool IsChosen(IConfiguration configuration)
     {
-        return !string.IsNullOrWhiteSpace(configuration[SurfaceKey]);
+        return !string.IsNullOrWhiteSpace(configuration[SurfaceKey])
+            || Clusters(configuration).Length > 0;
     }
 
     /// <summary>Open the surface the configuration names. Relative paths
@@ -65,112 +82,171 @@ public static class SurfaceChoice
     public static IOperatorSurface Open(
         IConfiguration configuration, string basePath, IOperatorKeeper? keeper = null)
     {
-        string chosen = configuration[SurfaceKey]?.Trim() ?? string.Empty;
+        ArgumentNullException.ThrowIfNull(configuration);
 
         // Found for every surface: each calls the runtime's rules, and the
         // gRPC client, in this library.
         _ = RuntimeLibrary.Find(configuration, basePath);
 
+        return Opened(configuration.GetSection(Table), configuration, basePath, keeper);
+    }
+
+    // The one surface a table names — [Xmip] itself, or one cluster of its
+    // Clusters — refused in the table's own keys. What a remote presents and
+    // trusts is the host's, read from the document: one host, one identity.
+    private static IOperatorSurface Opened(
+        IConfigurationSection table, IConfiguration document, string basePath,
+        IOperatorKeeper? keeper)
+    {
+        string chosen = table[SurfaceLeaf]?.Trim() ?? string.Empty;
+        string surfaceKey = $"{table.Path}:{SurfaceLeaf}";
+
         // A local surface naming no endpoint names no node, and says so on
         // every answer (LocalOperator.Unnamed), as a command naming none does.
         if (string.Equals(chosen, Local, StringComparison.OrdinalIgnoreCase))
         {
-            return new LocalOperator(configuration[LocalKey]);
+            return new LocalOperator(table[LocalLeaf]);
         }
 
         if (string.Equals(chosen, Snapshot, StringComparison.OrdinalIgnoreCase))
         {
-            string? path = configuration[SnapshotKey];
+            string? path = table[SnapshotLeaf];
 
             return string.IsNullOrWhiteSpace(path)
                 ? throw new InvalidOperationException(
-                    $"{SurfaceKey} is \"{Snapshot}\" and {SnapshotKey} names no file")
+                    $"{surfaceKey} is \"{Snapshot}\" and {table.Path}:{SnapshotLeaf} " +
+                    "names no file")
                 : new SnapshotOperator(TomlDocument.Resolve(path, basePath));
         }
 
         if (string.Equals(chosen, Remote, StringComparison.OrdinalIgnoreCase))
         {
-            string? address = configuration[AddressKey];
+            string? address = table[AddressLeaf];
 
             return RemoteOperator.Refusal(address) is null
-                ? new RemoteOperator(address!, SecureSurface.From(configuration, basePath, keeper))
+                ? new RemoteOperator(address!, SecureSurface.From(document, basePath, keeper))
                 : throw new InvalidOperationException(
-                    $"{SurfaceKey} is \"{Remote}\" and {AddressKey} names no node");
+                    $"{surfaceKey} is \"{Remote}\" and {table.Path}:{AddressLeaf} names no node");
         }
 
         string words = $"\"{Local}\", \"{Snapshot}\" or \"{Remote}\"";
 
         throw new InvalidOperationException(
             chosen.Length == 0
-                ? $"{SurfaceKey} is not set; it is {words}"
-                : $"{SurfaceKey} is \"{chosen}\"; it is {words}");
-    }
-
-    /// <summary>
-    /// Every snapshot path the document names, in the order it names them:
-    /// one where <c>Snapshot</c> is a path, several where it is a list —
-    /// <c>Snapshot = ["…/&lt;cluster&gt;-snapshot.xmip",
-    /// "…/&lt;other&gt;-snapshot.xmip"]</c> in a
-    /// document, <c>--Xmip:Snapshot:0=… --Xmip:Snapshot:1=…</c> on a line.
-    /// Empty where it names none. A list wins over a path: the two sit at the
-    /// same key from different sources, and a line naming two clusters must
-    /// not be quietly replaced by the one the shipped document names.
-    /// </summary>
-    public static IReadOnlyList<string> Snapshots(IConfiguration configuration)
-    {
-        ArgumentNullException.ThrowIfNull(configuration);
-
-        string[] listed =
-        [
-            .. configuration.GetSection(SnapshotKey).GetChildren()
-                .Select(child => child.Value)
-                .Where(path => !string.IsNullOrWhiteSpace(path))
-                .Select(path => path!),
-        ];
-
-        if (listed.Length > 0)
-        {
-            return listed;
-        }
-
-        string? one = configuration[SnapshotKey];
-
-        return string.IsNullOrWhiteSpace(one) ? [] : [one];
+                ? $"{surfaceKey} is not set; it is {words}"
+                : $"{surfaceKey} is \"{chosen}\"; it is {words}");
     }
 
     /// <summary>
     /// Every cluster the configuration names, as one set a face navigates
-    /// (ADR-0052, amendment 2026-09-20). A snapshot surface over a list of
-    /// paths is one surface per path; every other choice is the one surface
-    /// <see cref="Open"/> returns, held as a set of one, so a face reads the
-    /// same shape whatever it was given. Snapshots are followed for as long
-    /// as the set lives (<see cref="ClusterSurfaces.Follow"/>): a face names
-    /// every cluster on every render, and each publication is read once as it
-    /// changes rather than by whichever render asks first.
-    /// <paramref name="keeper"/> is as <see cref="Open"/> takes it.
+    /// (ADR-0052, amendments 2026-09-20 and 2026-11-13). <c>Clusters</c> names
+    /// one surface per cluster, each of its own kind —
+    /// <c>Clusters = [{ Surface = "local", Local = "xmip-&lt;node&gt;" },
+    /// { Surface = "snapshot", Snapshot = "…" }]</c>, or
+    /// <c>--Xmip:Clusters:0:Surface=local --Xmip:Clusters:0:Local=…</c> on a
+    /// line — each opened by <see cref="Open"/>'s one rule; a document naming
+    /// no <c>Clusters</c> names the one surface <see cref="Open"/> returns,
+    /// held as a set of one, so a face reads the same shape whatever it was
+    /// given. Several are followed for as long as the set lives
+    /// (<see cref="ClusterSurfaces.Follow"/>): a face names every cluster on
+    /// every render, and each publication is read once as it changes rather
+    /// than by whichever render asks first. <paramref name="keeper"/> is as
+    /// <see cref="Open"/> takes it.
     /// </summary>
     /// <exception cref="InvalidOperationException">What <see cref="Open"/>
-    /// refuses, or two paths publishing one cluster.</exception>
+    /// refuses, of any cluster, or two surfaces publishing one cluster; every
+    /// surface opened before it is let go.</exception>
     public static ClusterSurfaces OpenAll(
         IConfiguration configuration, string basePath, IOperatorKeeper? keeper = null)
     {
         ArgumentNullException.ThrowIfNull(configuration);
 
-        IReadOnlyList<string> paths = Listed(configuration);
+        IConfigurationSection[] clusters = Clusters(configuration);
 
-        return paths.Count == 0
-            ? ClusterSurfaces.Over(Open(configuration, basePath, keeper))
-            : ClusterSurfaces.Over(paths.Select(Snapshot)).Follow();
-
-        SnapshotOperator Snapshot(string path)
+        if (clusters.Length == 0)
         {
-            return new SnapshotOperator(TomlDocument.Resolve(path, basePath));
+            return ClusterSurfaces.Over(Open(configuration, basePath, keeper));
         }
+
+        _ = RuntimeLibrary.Find(configuration, basePath);
+
+        return Held(clusters.Select<IConfigurationSection, Func<IOperatorSurface>>(
+            table => () => Opened(table, configuration, basePath, keeper)));
+    }
+
+    /// <summary>
+    /// Where each cluster the configuration names is read, as its surface word
+    /// says: the endpoint, the address or the snapshot each of its
+    /// <c>Clusters</c> names, else the one <c>[Xmip]</c> itself names. Empty
+    /// where it names none. What a host declares it reads (ADR-0053).
+    /// </summary>
+    public static IReadOnlyList<string> Places(IConfiguration configuration)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+
+        IConfigurationSection[] clusters = Clusters(configuration);
+
+        if (clusters.Length > 0)
+        {
+            return [.. clusters.Select(table => Place(table) ?? table.Path)];
+        }
+
+        string? one = Place(configuration.GetSection(Table));
+
+        return string.IsNullOrWhiteSpace(one) ? [] : [one];
+    }
+
+    // Where one table's surface reads, as its Surface word says; null where
+    // the word names no surface or the table no place for it.
+    private static string? Place(IConfigurationSection table)
+    {
+        string chosen = table[SurfaceLeaf]?.Trim() ?? string.Empty;
+
+        return string.Equals(chosen, Local, StringComparison.OrdinalIgnoreCase)
+            ? table[LocalLeaf]
+            : string.Equals(chosen, Remote, StringComparison.OrdinalIgnoreCase)
+                ? table[AddressLeaf]
+                : string.Equals(chosen, Snapshot, StringComparison.OrdinalIgnoreCase)
+                    ? table[SnapshotLeaf]
+                    : null;
+    }
+
+    // Each surface opened in turn and held as one set, followed; where one
+    // is refused, or two name one cluster, every one opened is let go.
+    private static ClusterSurfaces Held(IEnumerable<Func<IOperatorSurface>> opening)
+    {
+        List<IOperatorSurface> opened = [];
+
+        try
+        {
+            foreach (Func<IOperatorSurface> open in opening)
+            {
+                opened.Add(open());
+            }
+
+            return ClusterSurfaces.Over(opened).Follow();
+        }
+        catch (Exception refused) when (refused is InvalidOperationException
+            or ArgumentException)
+        {
+            foreach (IOperatorSurface surface in opened)
+            {
+                (surface as IDisposable)?.Dispose();
+            }
+
+            throw;
+        }
+    }
+
+    // The tables of Clusters, in the order they are named.
+    private static IConfigurationSection[] Clusters(IConfiguration configuration)
+    {
+        return [.. configuration.GetSection(ClustersKey).GetChildren()];
     }
 
     /// <summary>
     /// The one surface a host reads where it reads one: the document's choice,
-    /// and the first cluster where the document names several. A command and a
+    /// the first of its <c>Clusters</c> where it names several. A command and a
     /// prompt answer one publication, because a rollup or a sum over two
     /// clusters would be a figure at a scope that is in neither tree (ADR-0052,
     /// amendment 2026-09-20).
@@ -181,127 +257,14 @@ public static class SurfaceChoice
     {
         ArgumentNullException.ThrowIfNull(configuration);
 
-        IReadOnlyList<string> paths = Listed(configuration);
+        IConfigurationSection[] clusters = Clusters(configuration);
 
-        return paths.Count > 0
-            ? new SnapshotOperator(TomlDocument.Resolve(paths[0], basePath))
-            : Open(configuration, basePath);
-    }
-
-    /// <summary>
-    /// The one surface a command, a cmdlet or the prompt reads, the line over
-    /// the document: a node on another machine <paramref name="line"/> names,
-    /// else a node on this one it names, else the snapshot it names, else the
-    /// document's choice, the first cluster where it names several; else a
-    /// <see cref="LocalOperator"/> that names no node and says so
-    /// (<see cref="LocalOperator.Unnamed"/>). The runtime library
-    /// <see cref="RuntimeLibrary.Stated"/> finds is what every one of them
-    /// calls the runtime through, and chooses none. Not yet asked to answer, so
-    /// the precedence is tested without a runtime or a network. Held here for
-    /// the executable and the PowerShell module alike (ADR-0052 clause 1);
-    /// until 2026-09-24 the executable wrote it and the prompt wrote it again.
-    /// </summary>
-    /// <param name="line">What the operator stated for this invocation.</param>
-    /// <param name="document">The host's document.</param>
-    /// <param name="basePath">The directory the document's paths, and a
-    /// snapshot named on the line, are written from.</param>
-    /// <param name="besideExecutable">Where the runtime library lies by
-    /// default: beside the executable, or beside a module pwsh loaded.</param>
-    /// <exception cref="InvalidOperationException">What <see cref="Open"/>
-    /// refuses, or the line's own <see cref="SurfaceLine.Refusal"/>.</exception>
-    public static IOperatorSurface Stated(
-        SurfaceLine line, IConfiguration document, string basePath, string besideExecutable)
-    {
-        ArgumentNullException.ThrowIfNull(line);
-        ArgumentNullException.ThrowIfNull(document);
-
-        if (line.Refusal is { } refusal)
+        if (clusters.Length == 0)
         {
-            throw new InvalidOperationException(refusal);
+            return Open(configuration, basePath);
         }
 
-        // Found whatever the surface: every one calls the runtime in it.
-        _ = RuntimeLibrary.Stated(line.Runtime, document, basePath, besideExecutable);
-
-        return !string.IsNullOrWhiteSpace(line.Remote)
-            ? new RemoteOperator(line.Remote, SecureSurface.From(document, basePath))
-            : !string.IsNullOrWhiteSpace(line.Local)
-                ? new LocalOperator(line.Local)
-                : !string.IsNullOrWhiteSpace(line.Snapshot)
-                    ? new SnapshotOperator(TomlDocument.Resolve(line.Snapshot, basePath))
-                    : IsChosen(document)
-                        ? OpenFirst(document, basePath)
-                        : new LocalOperator(null);
-    }
-
-    /// <summary>
-    /// The surface <see cref="Stated"/> chooses from the document at
-    /// <paramref name="documentPath"/>, once it has answered: a node
-    /// connected, a snapshot file present. Null with the
-    /// reason otherwise — the line's own <see cref="SurfaceLine.Refusal"/>,
-    /// the document's refusal prefixed with its file name, or the surface's
-    /// own <see cref="IOperatorSurface.Source"/> — and the surface released.
-    /// The caller disposes what it gets.
-    /// </summary>
-    public static IOperatorSurface? Answering(
-        SurfaceLine line, string documentPath, string besideExecutable, out string reason)
-    {
-        ArgumentNullException.ThrowIfNull(line);
-        ArgumentNullException.ThrowIfNull(documentPath);
-
-        // The line's own refusal is the line's, not the document's.
-        if (line.Refusal is { } refusal)
-        {
-            reason = refusal;
-            return null;
-        }
-
-        string basePath = Path.GetDirectoryName(Path.GetFullPath(documentPath))
-            ?? besideExecutable;
-        IOperatorSurface surface;
-
-        try
-        {
-            surface = Stated(line, TomlDocument.Read(documentPath), basePath, besideExecutable);
-        }
-        catch (InvalidOperationException misconfigured)
-        {
-            reason = $"{Path.GetFileName(documentPath)}: {misconfigured.Message}";
-            return null;
-        }
-
-        if (Answers(surface))
-        {
-            reason = string.Empty;
-            return surface;
-        }
-
-        reason = surface.Source;
-        (surface as IDisposable)?.Dispose();
-        return null;
-    }
-
-    /// <summary>Whether a surface answers at all: a node, on this machine or
-    /// another, answers at its operate listener; a snapshot file is there. A
-    /// surface of another kind is taken at its word.</summary>
-    public static bool Answers(IOperatorSurface surface)
-    {
-        return surface switch
-        {
-            ListenerOperator node => node.Connect(),
-            SnapshotOperator snapshot => snapshot.Exists,
-            _ => true,
-        };
-    }
-
-    // The snapshot paths, where a snapshot is what the document chose; none
-    // otherwise, so that every other surface goes through Open as it did.
-    private static IReadOnlyList<string> Listed(IConfiguration configuration)
-    {
-        string chosen = configuration[SurfaceKey]?.Trim() ?? string.Empty;
-
-        return string.Equals(chosen, Snapshot, StringComparison.OrdinalIgnoreCase)
-            ? Snapshots(configuration)
-            : [];
+        _ = RuntimeLibrary.Find(configuration, basePath);
+        return Opened(clusters[0], configuration, basePath, keeper: null);
     }
 }

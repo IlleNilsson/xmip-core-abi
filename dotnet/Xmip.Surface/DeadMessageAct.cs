@@ -19,14 +19,18 @@ public enum DeadMessageAct
 /// <summary>
 /// What came of a <see cref="DeadMessageAct"/> on the Message
 /// <paramref name="Message"/> in the Dead Message Queue of
-/// <paramref name="Node"/>: whether it was applied — or, through a
-/// publication, left for the node — and what was said. The executable and
+/// <paramref name="Node"/>: whether it was applied, and what was
+/// said. The executable and
 /// the PowerShell module emit this one shape, as they emit a
 /// <see cref="SubscriptionOperation"/>.
 /// </summary>
 public sealed record DeadMessageOperation(
     string Node, string Message, DeadMessageAct Act, bool Applied, string Result)
 {
+    /// <summary>What came of it: taken where it was applied, refused where
+    /// it was not, unless the door said asked (<see cref="ActOutcome"/>).</summary>
+    public ActOutcome Outcome { get; init; } = Applied ? ActOutcome.Taken : ActOutcome.Refused;
+
     /// <summary>The noun an order on a Message in a Dead Message Queue is
     /// left under: <c>observe::Noun::DeadMessage</c>'s word.</summary>
     public const string Noun = "dead-message";

@@ -37,17 +37,13 @@ public sealed record DeadMessageRecord(
     IReadOnlyList<KeyValuePair<string, string>> Declines);
 
 /// <summary>
-/// The Dead Message Queue entries a node or a publication carries, and where
-/// a Replay is left when they are read through a publication — empty where
-/// it is applied in the process itself.
+/// The Dead Message Queue entries a node or a publication carries.
 /// </summary>
-/// <param name="Orders">Where a surface leaves an act for the publisher.</param>
 /// <param name="DeadMessages">The entries, by node and Message.</param>
-public sealed record DeadMessageList(
-    string Orders, IReadOnlyList<DeadMessageRecord> DeadMessages)
+public sealed record DeadMessageList(IReadOnlyList<DeadMessageRecord> DeadMessages)
 {
-    /// <summary>No entry, nowhere to leave an act.</summary>
-    public static DeadMessageList Empty { get; } = new(string.Empty, []);
+    /// <summary>No entry.</summary>
+    public static DeadMessageList Empty { get; } = new([]);
 
     /// <summary>The list section 15 wrote.</summary>
     public static DeadMessageList Parse(ReadOnlyMemory<byte> json)
@@ -56,7 +52,6 @@ public sealed record DeadMessageList(
         JsonElement root = answer.RootElement;
 
         return new DeadMessageList(
-            root.GetProperty("orders").GetString() ?? string.Empty,
             [.. root.GetProperty("dead_messages").EnumerateArray().Select(Record)]);
     }
 

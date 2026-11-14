@@ -1,4 +1,3 @@
-using Xmip.Abi.Module;
 using Xmip.Abi.Operate;
 
 namespace Xmip.Surface.Test;
@@ -6,10 +5,9 @@ namespace Xmip.Surface.Test;
 /// <summary>
 /// The Subscriptions as every surface lists and acts on them (ADR-0013,
 /// amendment 2026-09-30): a snapshot lists what its publication carries and
-/// leaves a pause or a resume where it says its publisher takes orders, or
-/// declines where it says nowhere; the one query drills, filters and sorts;
-/// every act a surface offers is a word the runtime takes, and there is no
-/// remove among them.
+/// declines every act, which is asked at a node's door (ADR-0014, amendment
+/// 2026-11-13); the one query drills, filters and sorts; every act a surface
+/// offers is a word the runtime takes, and there is no remove among them.
 /// </summary>
 public sealed class SubscriptionSurfaceTest
 {
@@ -20,10 +18,9 @@ public sealed class SubscriptionSurfaceTest
     private static readonly string Sender = Cluster.WithRole("sending");
     private static readonly string Processing = $"{Cluster.Scope}/node/{Processor}";
 
-    private static string Published(string orders)
+    private static string Published()
     {
         return $"node = \"{Cluster.Scope}\"\n"
-            + (orders.Length > 0 ? $"orders = '{orders}'\n" : string.Empty)
             + Entry(Processor, "structured", "active", 12, 0)
             + Entry(Processor, "edi", "paused", 3, 9)
             + Entry(Sender, "flat", "active", 40, 0);
@@ -46,48 +43,24 @@ public sealed class SubscriptionSurfaceTest
     }
 
     [Fact]
-    public void ASnapshotListsWhatItsPublicationCarriesAndLeavesAnActWhereItSays()
+    public void ASnapshotListsWhatItsPublicationCarriesAndDeclinesEveryAct()
     {
-        string orders = Path.Combine(Path.GetTempPath(), $"xmip-orders-{Guid.NewGuid():N}");
-        SnapshotOperator surface = Over(Published(orders), out string file);
+        SnapshotOperator surface = Over(Published(), out string file);
 
         try
         {
             SubscriptionList listed = surface.Subscriptions();
-            Assert.Equal(orders, listed.Orders);
             Assert.Equal(3, listed.Subscriptions.Count);
             SubscriptionRecord held = listed.Subscriptions.Single(entry => entry.Name == "edi");
             Assert.True(held.Paused);
             Assert.Equal(9ul, held.Held);
 
-            SubscriptionOperation resumed =
-                surface.Act(held, SubscriptionAct.Resume, "ilian", caller: null);
-
-            Assert.True(resumed.Applied, resumed.Result);
-            Assert.Contains($"left for {Processor}", resumed.Result, StringComparison.Ordinal);
-            Assert.Single(Directory.GetFiles(Path.Combine(orders, Processor), "*.toml"));
-        }
-        finally
-        {
-            File.Delete(file);
-            Directory.Delete(orders, recursive: true);
-        }
-    }
-
-    [Fact]
-    public void ASnapshotWhosePublisherTakesNoOrdersDeclinesEveryAct()
-    {
-        SnapshotOperator surface = Over(Published(string.Empty), out string file);
-
-        try
-        {
-            SubscriptionRecord held = surface.Subscriptions().Subscriptions[0];
-
             foreach (SubscriptionAct act in Enum.GetValues<SubscriptionAct>())
             {
                 SubscriptionOperation declined = surface.Act(held, act, "ilian", caller: null);
                 Assert.False(declined.Applied);
-                Assert.Contains("takes no orders", declined.Result, StringComparison.Ordinal);
+                Assert.Equal(ActOutcome.Refused, declined.Outcome);
+                Assert.Equal(SnapshotOperator.NotActed, declined.Result);
             }
         }
         finally
@@ -99,7 +72,7 @@ public sealed class SubscriptionSurfaceTest
     [Fact]
     public void TheQueryDrillsFiltersAndSorts()
     {
-        SnapshotOperator surface = Over(Published(string.Empty), out string file);
+        SnapshotOperator surface = Over(Published(), out string file);
 
         try
         {
@@ -148,19 +121,8 @@ public sealed class SubscriptionSurfaceTest
     public void EveryActIsAWordTheRuntimeTakesAndNoneRemoves()
     {
         Assert.Equal(["Pause", "Resume"], Enum.GetNames<SubscriptionAct>());
-
-        foreach (SubscriptionAct act in Enum.GetValues<SubscriptionAct>())
-        {
-            XmipStatus status = RuntimeLibrary.Rules.Subscriptions.Act(
-                Processing, "structured", SubscriptionOperation.Word(act), "ilian",
-                out string said);
-
-            Assert.True(status == XmipStatus.NotFound, $"{act}: {status} {said}");
-        }
-
-        XmipStatus removed = RuntimeLibrary.Rules.Subscriptions.Act(
-            Processing, "structured", "remove", "ilian", out string refusal);
-        Assert.Equal(XmipStatus.Invalid, removed);
-        Assert.Contains("TOML configuration", refusal, StringComparison.Ordinal);
+        Assert.Equal(
+            ["pause", "resume"],
+            Enum.GetValues<SubscriptionAct>().Select(SubscriptionOperation.Word));
     }
 }
