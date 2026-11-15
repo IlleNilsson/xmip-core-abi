@@ -1615,15 +1615,22 @@ typedef XmipStatus (*XmipPublicationFailedMessagesFn)(const XmipPublication *pub
  *
  * xmip_remote_open_local_v1 makes the same handle over the node on this
  * machine whose local endpoint is called endpoint: a name - \\.\pipe\<name>
- * on Windows, /run/xmip/<name>.sock on Linux, /var/run/xmip/<name>.sock on
- * macOS - or that place itself. The node takes every call as the operating
- * system user this process runs as; no name crosses. Each call waits at
- * most within_ms; 0 takes what the node declared from its [tuning]
+ * on Windows; elsewhere <folder><name>/<name>.sock, in its node's folder,
+ * named as the endpoint is, so xmip-node1 is
+ * /run/xmip/xmip-node1/xmip-node1.sock on Linux and
+ * /var/run/xmip/xmip-node1/xmip-node1.sock on macOS, or in the folder
+ * XMIP_RUNTIME_DIRECTORY names in place of /run/xmip/ or /var/run/xmip/,
+ * for a node no service manager started (ADR-0014, amendment 2026-11-15) -
+ * or that place itself. The node takes every call as the operating system
+ * user this process runs as; no name crosses. Each call waits at most
+ * within_ms; 0 takes what the node declared from its [tuning]
  * local_timeout, else 2 s, and a node that took longer is unreachable,
  * "the node did not answer within" the wait, until the follow hears it
  * again. XMIP_OK; XMIP_E_INVALID with the refusal in report for a name
- * that would leave the endpoints' folder. Every call below takes either
- * handle.
+ * that would leave its folder, naming the folder it holds the name to; a
+ * socket's path longer than the system holds (107 bytes on Linux, 103 on
+ * macOS), naming the path and the limit; or an XMIP_RUNTIME_DIRECTORY that
+ * names no absolute path. Every call below takes either handle.
  *
  * xmip_remote_publication_v1 reads the node's publication - the text its
  * file holds, which section 8 reads - and its revision. XMIP_OK with the

@@ -20,7 +20,7 @@ public sealed class ClusterListTest
     [Fact]
     public void ADocumentNamesOneSurfacePerClusterEachOfItsOwnKind()
     {
-        string endpoint = $"xmip-nobody-{Guid.NewGuid():n}";
+        string endpoint = TestEndpoint.Named("nobody");
         using Papers papers = new($"""
             [Xmip]
             RuntimeLibrary = "lib/xmip_core_runtime.dll"

@@ -70,7 +70,7 @@ public sealed class GatheredClusterTest
         // the runtime's follow tries it again on its own loop, its answer
         // decides what is followed as it connects, and the watch is told.
         string words = $"{Cluster.Name}, gathered by a monitoring node: 3 of 3 nodes reached";
-        string endpoint = $"xmip-gathered-late-{Guid.NewGuid():n}";
+        string endpoint = TestEndpoint.Named("gathered-late");
         using LocalOperator local = new(endpoint);
         IOperatorSurface surface = local;
 
@@ -127,7 +127,7 @@ public sealed class GatheredClusterTest
         using HeldCaller me = RuntimeLibrary.Rules.SecurityRoles.Process(out string refused)
             ?? throw new InvalidOperationException(refused);
         ServedNode served = RuntimeLibrary.Rules.Remotes.ServeLocal(
-            endpoint ?? $"xmip-gathered-test-{Guid.NewGuid():n}", [me.Name], [], [],
+            endpoint ?? TestEndpoint.Named("gathered"), [me.Name], [], [],
             "gathered-test", out string reason) ?? throw new InvalidOperationException(reason);
         served.Post(publication);
         return served;

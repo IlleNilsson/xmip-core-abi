@@ -53,7 +53,7 @@ public sealed class SurfaceChoiceTest
     [Fact]
     public void ALocalSurfaceFollowsTheEndpointTheDocumentNames()
     {
-        string endpoint = $"xmip-nobody-{Guid.NewGuid():n}";
+        string endpoint = TestEndpoint.Named("nobody");
         using Document document = new($"""
             [Xmip]
             Surface = "Local"
@@ -226,7 +226,7 @@ public sealed class SurfaceChoiceTest
     [Fact]
     public void ALocalNodeStatedWinsOverTheSnapshotAndTheDocument()
     {
-        string endpoint = $"xmip-nobody-{Guid.NewGuid():n}";
+        string endpoint = TestEndpoint.Named("nobody");
         IOperatorSurface chosen = SurfaceChoice.Stated(
             new SurfaceLine(Snapshot: "b-snapshot.xmip", Local: endpoint),
             Pairs(("Surface", "snapshot"), ("Snapshot", "a.xmip")),

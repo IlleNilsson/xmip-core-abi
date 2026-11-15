@@ -166,7 +166,7 @@ public sealed class LocalOperatorTest
     [Fact]
     public void ANodeThatIsNotThereAndNoNodeNamedAreSaidSo()
     {
-        using LocalOperator absent = new($"xmip-nobody-{Guid.NewGuid():n}");
+        using LocalOperator absent = new(TestEndpoint.Named("nobody"));
         Assert.False(absent.Connect());
         Assert.Contains(" unreachable: ", absent.Source, StringComparison.Ordinal);
         Assert.Empty(absent.Health(ScopeTree.Root));
@@ -186,7 +186,7 @@ public sealed class LocalOperatorTest
     [Fact]
     public void ANodeThatDoesNotAnswerWithinTheWaitIsShownUnreachable()
     {
-        string name = $"xmip-silent-test-{Guid.NewGuid():n}";
+        string name = TestEndpoint.Named("silent");
         using IDisposable silent = Silent(name);
         using LocalOperator local = new(name, TimeSpan.FromMilliseconds(200));
 
@@ -211,11 +211,22 @@ public sealed class LocalOperatorTest
             return pipe;
         }
 
-        string folder = OperatingSystem.IsLinux() ? "/run/xmip/" : "/var/run/xmip/";
+        // The socket's place is the runtime's, as every endpoint's is
+        // (plane::local::place): an endpoint called name served a moment
+        // says it and readies its node's folder, and nothing here writes a
+        // folder of its own (ADR-0014, amendment 2026-11-15).
+        string place;
+        using (ServedNode placed = RuntimeLibrary.Rules.Remotes.ServeLocal(
+            name, [], [], [], "local-operator-test", out string reason)
+            ?? throw new InvalidOperationException(reason))
+        {
+            place = placed.Address;
+        }
+
         System.Net.Sockets.Socket socket = new(
             System.Net.Sockets.AddressFamily.Unix, System.Net.Sockets.SocketType.Stream,
             System.Net.Sockets.ProtocolType.Unspecified);
-        socket.Bind(new System.Net.Sockets.UnixDomainSocketEndPoint($"{folder}{name}.sock"));
+        socket.Bind(new System.Net.Sockets.UnixDomainSocketEndPoint(place));
         socket.Listen(1);
         return socket;
     }
@@ -240,7 +251,7 @@ public sealed class LocalOperatorTest
             ?? throw new InvalidOperationException(refused);
         string[] account = [me.Name];
         ServedNode served = RuntimeLibrary.Rules.Remotes.ServeLocal(
-            $"xmip-local-operator-test-{Guid.NewGuid():n}", operating ? [] : account,
+            TestEndpoint.Named("local-operator"), operating ? [] : account,
             operating ? account : [], [], "local-operator-test", out string reason)
             ?? throw new InvalidOperationException(reason);
         served.Post(publication);
