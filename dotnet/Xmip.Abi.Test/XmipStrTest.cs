@@ -8,7 +8,9 @@ public sealed class XmipStrTest
     [Fact]
     public void PinnedTextReadsBackTheSame()
     {
-        string text = $"{TestCluster.Read().NodeScope(0)}/receive/orders — åäö";
+        // Text beyond ASCII, and no cluster's name: the binding carries
+        // text, whatever it names.
+        string text = "receive/orders — åäö";
 
         using PinnedStr pinned = XmipStr.Pin(text);
 

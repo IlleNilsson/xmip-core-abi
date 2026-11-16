@@ -1,8 +1,8 @@
 # Xmip Events from C
 
 `include/xmip_operate.h` section 11 is the C binding: a program includes the
-header, loads the runtime's library (`xmip_core_runtime.dll`,
-`libxmip_core_runtime.so` or `libxmip_core_runtime.dylib`) and looks up the
+header, loads the runtime's library (`xmip_core_operate.dll`,
+`libxmip_core_operate.so` or `libxmip_core_operate.dylib`) and looks up the
 nine `XMIP_EVENT_*_ENTRYPOINT` symbols a subscriber calls by name
 (ADR-0065). Which Events a filter matches, whether a subscriber may see them,
 the queue and the audit are the runtime's; nothing here decides any of it.
@@ -20,7 +20,7 @@ Being in the process admits a subscriber to nothing (ADR-0065, amendment 2026-09
 #include "xmip_event_library.h"
 
 XmipEventLibrary xmip;
-xmip_event_library_open("xmip_core_runtime.dll", &xmip);
+xmip_event_library_open("xmip_core_operate.dll", &xmip);
 
 XmipEventFilter filter = {0};              /* every empty list is any */
 filter.scope = xmip_str("xmip:///CL1");

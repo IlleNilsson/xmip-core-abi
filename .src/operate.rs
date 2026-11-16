@@ -56,8 +56,8 @@ pub mod counted {
 // the domain model (observability-model.md section 6, ADR-0027 clause 5). This
 // crate keeps only the wire vocabulary — the `health::` and `counted::` int
 // constants and the `#[repr(C)]` structs below — and the one conversion between
-// the enum and the wire int lives at the runtime bridge (`runtime/src/wire.rs`,
-// split out of `operate.rs` on 2026-09-14), the single place that has both.
+// the enum and the wire int lives where the exports are, xmip-core-operate's
+// `src/wire.rs` (ADR-0058, amendment 2026-11-16), the single place that has both.
 // ADR-0009-era duplication removed 2026-09-06.
 //
 // That placement was re-examined on 2026-09-19 and kept (ADR-0058). Bringing
