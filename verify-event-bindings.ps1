@@ -28,9 +28,10 @@
     and fails nothing.
 
     .PARAMETER Library
-    The runtime's library, xmip_core_runtime. Defaults to
+    The runtime's library, xmip_core_operate. Defaults to
     XMIP_RUNTIME_LIBRARY, then to the estate's build of
-    module/platform/runtime, whichever of release and debug was built last.
+    module/core/operation/operate, whichever of release and debug was built
+    last.
 
     .PARAMETER Language
     Which bindings to test; all four by default.
@@ -58,14 +59,14 @@ function Find-XmipRuntimeLibrary {
     [OutputType([string])]
     param()
 
-    [string] $name = 'libxmip_core_runtime.so'
+    [string] $name = 'libxmip_core_operate.so'
     if ($IsWindows) {
-        $name = 'xmip_core_runtime.dll'
+        $name = 'xmip_core_operate.dll'
     }
     elseif ($IsMacOS) {
-        $name = 'libxmip_core_runtime.dylib'
+        $name = 'libxmip_core_operate.dylib'
     }
-    [string] $target = Join-Path $PSScriptRoot '..' '..' 'platform' 'runtime' 'target'
+    [string] $target = Join-Path $PSScriptRoot '..' '..' 'core' 'operation' 'operate' 'target'
     # The newer of the two builds: a stale release lacks what debug has.
     $built = @(
         foreach ($flavor in @('release', 'debug')) {
@@ -281,7 +282,7 @@ if ([string]::IsNullOrWhiteSpace($Library)) {
     $Library = Find-XmipRuntimeLibrary
 }
 if ([string]::IsNullOrWhiteSpace($Library) -or -not (Test-Path -LiteralPath $Library)) {
-    Write-Host 'FAILED. No runtime library; build module/platform/runtime or pass -Library.'
+    Write-Host 'FAILED. No runtime library; build module/core/operation/operate or pass -Library.'
     exit 2
 }
 $Library = (Resolve-Path -LiteralPath $Library).Path

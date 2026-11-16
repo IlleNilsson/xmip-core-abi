@@ -37,7 +37,7 @@ them, the queue and the audit are the runtime's.
 ```cpp
 #include "xmip_event.hpp"
 
-xmip::event::Library xmip("xmip_core_runtime.dll");
+xmip::event::Library xmip("xmip_core_operate.dll");
 xmip::event::Filter filter;
 filter.scope = "xmip:///CL1";
 filter.outcomes = {XMIP_OUTCOME_FAILURE};

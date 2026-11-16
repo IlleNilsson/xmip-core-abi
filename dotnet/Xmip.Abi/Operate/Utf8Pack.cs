@@ -7,9 +7,10 @@ namespace Xmip.Abi.Operate;
 /// Several .NET strings encoded as UTF-8 end to end in one buffer, each
 /// crossing as its own span of it: how a call that hands the runtime many
 /// strings at once — an audit record, a subscription's filter, an Event to
-/// publish — lays them out, written once.
+/// publish — lays them out, written once, beside <see cref="PinnedStr"/>,
+/// which does it for one.
 /// </summary>
-internal sealed class Utf8Pack
+public sealed class Utf8Pack
 {
     private readonly int[] _starts;
 

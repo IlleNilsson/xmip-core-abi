@@ -4,7 +4,8 @@ The Xmip application binary interface (ABI): the stable boundary used by the
 runtime, operator surfaces, and loadable Modules.
 
 `include/xmip_module.h`, `include/xmip_operate.h` and `doc/specification.md`
-are normative. The Rust crate, whose source sits aside under `.src`
+are normative; xmip-core-operate's library implements `xmip_operate.h` over
+the runtime (ADR-0058, amendment 2026-11-16). The Rust crate, whose source sits aside under `.src`
 (ADR-0049), is a convenience binding over that boundary and must not introduce
 Rust-specific types into the ABI: the descriptor and the two judgments a
 load makes of it — `validate_module_abi`, whether it is well formed, and
@@ -32,7 +33,7 @@ of a database's schema (`xmip_database_upgrade_v1`, the scripts
 (`operate::report`: `xmip_report_v1`, its `list` and `open` acts, and
 `XmipReportKind`, whether a Report presents data that already exists or
 what a Quest probes first; ADR-0072, amendment 2026-11-10), which
-`xmip-core-report` keeps and a node's build of the runtime answers.
+`xmip-core-report` keeps and a node's build of xmip-core-operate answers.
 `examples/conforming.rs`
 builds as a cdylib and is the conforming artifact a loader probe is tested
 against.
@@ -44,7 +45,8 @@ test; `include/xmip_event.hpp` is a header-only C++17 wrapper whose
 subscriptions and batches release themselves; `java/` is the `se.xmip.event`
 package over the foreign function and memory API (Java 27, where it is
 final); `python/xmip_event` binds it over ctypes (Python 3.15); and .NET's is
-`Xmip.Abi`'s `RuntimeEvents`, below. Each binding only crosses the boundary —
+`RuntimeEvents`, in xmip-core-operate's `Xmip.Operate`, over the declarations
+`Xmip.Abi` binds, below. Each binding only crosses the boundary —
 the matching, the authorization, the queue and the audit are
 `xmip-core-event`'s, forwarded by the runtime's library. No argument names
 the subscriber: it is the account the process runs as, resolved through the
@@ -60,8 +62,8 @@ policy and who is unheard cross; the Java and Python tests also hold their
 copies of the header's numbers and entrypoint names to the header.
 Untested until a node serves in a binding's process (open problem 66):
 each binding's drain, listen and call back marshalling, and the latency
-through it. The runtime's own tests (`ffi::event`) reach the C exports,
-never a binding's marshalling.
+through it. xmip-core-operate's own tests (`ffi::event`) reach the C
+exports, never a binding's marshalling.
 `./verify-event-bindings.ps1 -Library <runtime library>` builds and runs the C,
 C++, Java and Python tests, into the git-ignored `build/`: C and C++ with the
 compiler Rust's toolchain already requires (the MSVC build tools' `cl.exe` on
@@ -69,498 +71,37 @@ Windows, `cc` and `c++` elsewhere), Java with the JDK, Python with Python.
 
 The .NET binding is here too: `dotnet/Xmip.Abi`, one class library declaring
 both headers for every operator surface — the cli, the PowerShell module and
-the GUI reference it as a project and bind nothing themselves (ADR-0014,
-amendment of 2026-08-26). It compiles under C# 15's updated memory safety
-rules, a preview: no type is `unsafe`; an `unsafe` block stands only around a
-dereference, a call through a function pointer or a framework call the runtime
-marks unsafe (`GCHandle.Free`, an uninitialized `stackalloc`); and a member
-whose safety rests on its caller is marked `unsafe` itself — `XmipStr`'s
-pointer, constructor and `Read`, `PinnedStr.Value`, `Utf8Pack.Borrow`, and
-every raw pointer a header struct exposes. Xmip's own fixed answers are
-unions, so a switch over one names every case: `SecureSurfaceAccepted`
-(`Accepted`, `Refused`, `Stopped`, `Failed`) and `AuditOutcome` (`Kept`,
-`Refused`) here, `NodeDelivery.Standing` (`Shipped`, `NotShipped`, `Refused`)
-in `Xmip.Surface`, whose `ClusterEdit` is a `closed` hierarchy. `Xmip.Surface`
-and `Xmip.Surface.Relay` build with runtime async on Windows. `Module/` carries the module boundary, its probe
-and the probe's judgment of whether a library loaded at all
-(`ModuleProbe.Result.Unloadable`) and whether a module conforms, and `StatusMeaning`,
-what a status code means; `Operate/` the operator boundary and its records,
-and `RuntimeRules`, section 7 bound once: scope containment, a scope's
-parts and the node and stage it is on, the stage words and the facts of a stage, the role words, a declaration's parse and the stages a role serves,
-what a node declaring some roles is for (`Purpose`, `node::NodeRole::purpose`:
-each role with its meaning, a line each, or the refusal of a word that is no
-role — the one purpose every surface shows a node by; ADR-0056, amendment
-2026-11-13), a
-node's published capability and a run's entry for it, a mood's word, color
-name and rollup, a counted kind's word and the worst-first order, each written
-once in the crate that owns it (`observe`, `node`) and forwarded by the
-runtime's library, so no .NET surface writes a rule again; and
-`PublicationReader`, section 8, which hands a publication's text to the
-runtime's one reader and brings back a `Publication` — its records, counts,
-topology (`Topology.cs`, the header's values) and run (ADR-0052, amendments
-2026-09-24), and what each topology kind, origin, pattern and relation is called
-(`Words`, a `TopologyWord` of the word a publication writes and the name a
-person reads, `observe::topology`'s; ADR-0052, amendment 2026-09-25). Since
-2026-11-13 a `TopologyNode` says the `Roles` a node of the cluster declares
-and a Storage node its `Place` in `[storage] nodes`, a `CommunicationLink`
-its `Relation` — how its two ends are related by their roles, never their
-names (`TopologyRelation`) — and the snapshot carries `Places`, where each
-thing beneath each focus stands on the map as the runtime lays it out
-(`xmip_publication_layout_v1`, asked for every focus while the handle is
-open; `PlacesAt` answers one, the empty string the top): a `TopologyPlace`'s
-`X` and `Y` in the unit square, its `TopologyBand` and its `TopologyColumn`
-(ADR-0052 and ADR-0056, amendments 2026-11-13). `XmipTopologyNode` and
-`XmipTopologyLink` changed in place and `XmipTopologyPlace` is new, each
-held to the Rust binding's size by a test. And `RuntimeAudit`, section 9, a program's audit record handed
-to `xmip-core-audit` through the runtime's library, with `AuditPhase`,
-`AuditSeverity` and `AuditKept` as the header defines them (ADR-0062), and
-`Read`, the records read back by the capability's one reader and query —
-`AuditRead`, its `AuditEntry` page and its `AuditGroup`s one step down the
-drill (ADR-0062, amendment 2026-09-29), and, where the read asks `verify`,
-its `AuditChain`s, each writer's audit chain walked whole, and its
-`AuditFragment`s, each part of the file no write finished, said apart from
-the chains (ADR-0070 clause 5). Section 11 — Events, subscribed (ADR-0065) — is bound once as
-`RuntimeRules.Events` (`RuntimeEvents`): `Subscribe` returns a disposable
-`EventSubscription` drained with `Next(timeout, max)`, `Listen` calls a
-handler on the runtime's listener thread, and `Publish` hands an Event to
-every matching subscription in the process; `AuthorizeBy` hands the hub
-the program's policy of who may subscribe, asked of each attempt as an
-`EventAuthorization` and answering allow, deny or no opinion — being in the
-process admits nobody (ADR-0065, amendment 2026-09-26) — and every `EventDelivery` carries `Unheard`, the members of
-the cluster not heard now as `UnheardRecord`s, with `UnheardChanged`, a
-drain waking for that alone (amendment 2026-10-02); `Unheard()` asks the
-hub; `EventRecord`, `EventFilter`,
-`EventAction` and `EventOutcome` are the header's. What an operator lists and
-does of Event subscriptions is `RuntimeRules.EventSubscriptions`
-(`RuntimeEventSubscriptions`): `Standing`, the hub's `EventSubscriptionList`
-of `EventSubscriptionRecord`s, and `Act`, pause, resume or remove one; a
-`Publication` carries its own `EventSubscriptions`, each list with the
-members its nodes do not hear (`EventSubscriptionList.Unheard`) (ADR-0065, amendments
-2026-09-29 and 2026-09-30). Section 14 — a node's Subscriptions (ADR-0013,
-amendment 2026-09-30) — is `RuntimeRules.Subscriptions`
-(`RuntimeSubscriptions`): `Standing`, the `SubscriptionList` of
-`SubscriptionRecord`s of every node running in the process; a `Publication`
-carries its own `Subscriptions`. A pause or resume — there is no remove —
-a Replay, a Retry and a Dismiss are each asked at a node's door,
-`RemoteNode.Act`, and reach their node through Xmip Storage (ADR-0014,
-amendment 2026-11-13); a publication is never acted on.
-Section 15 — a node's Dead Message Queue (ADR-0052, amendment 2026-10-01) —
-is `RuntimeRules.DeadMessages` (`RuntimeDeadMessages`): `Standing`, the
-`DeadMessageList` of `DeadMessageRecord`s every node running in the process
-keeps, each with its gate verdicts, promoted properties and declines as name
-and value pairs; a `Publication` carries its own `DeadMessages`. Section 16
-— a Message that failed (runtime-model.md section 13; ADR-0013) — is
-`RuntimeRules.Messages` (`RuntimeMessages`): `Failed`, the `FailedMessageList`
-of every Message that failed at the Send Ports of the nodes running in the
-process, each Port's `FailedMessagePort` with its count, the place its next
-page reads from and its `FailedMessageRecord`s, read from Xmip Storage a page
-at a time; a `Publication` carries its own `FailedMessages`, each Port's
-count and oldest hundred. `Xmip.Surface` lists them through
-`IOperatorSurface.FailedMessages` at a cluster, a node or one Send Port's
-scope (`MessageOperation.PortAt`, `MessageOperation.Within`). A Port's page
-may be empty with a next place, where the stretch the node read held no
-failed Message: the place, not the Messages, says whether more remain. A
-list is an answer (`FailedMessageList.Listed`) even when it lists none;
-`FailedMessageList.Unlisted` is a surface that cannot list them — no node
-reached, no runtime loaded, no publication read yet — and
-`FailedMessageList.Unanswered` one that asked and was not answered, its
-`Failure` the sentence, opening `FAILED:`, in the runtime's words: where Xmip
-Storage does not answer, a surface says so through `MessageOperation.Read`
-rather than throwing. The evidence a Send
-Port publishes is read in one place each: the last Message that ever failed
-there by `MessageOperation.FailedIn`, how many wait in its queue now by
-`MessageOperation.FailingIn`.
-Section 17 — a node reached at its operate listener (ADR-0014, amendments
-2026-10-12 and 2026-10-13) — is `RuntimeRules.Remotes` (`RuntimeRemotes`):
-`Open` gives a `RemoteNode` over `host:port` with PEM certificate, key and
-anchors, and `OpenLocal` one over the local endpoint of a node on this
-machine — a named pipe on Windows, a Unix domain socket elsewhere, no
-certificate, the node taking every call as the user this process runs as,
-each call waiting at most the `within` it is given or else what the node
-declared from its `[tuning] local_timeout`, two seconds by default, then
-saying *the node did not answer within* it;
-its `Publication`, `Cluster`, `Wait` and `Act` read the node's publication,
-read the cluster's view the node gathers (`xmip_remote_cluster_v1`: a node
-declaring the monitoring role answers it, any other refuses with
-`Unsupported` and its words), wait on the runtime's follow of what its
-first wait names (`RemoteFollows`, the header's `XMIP_REMOTE_FOLLOWS_*`: the
-node's own, the cluster's, or `Answered`, the cluster's where the node
-answers one, else its own, each telling saying which the node's answer
-decided; naming another later is a defect, thrown) and ask
-an act as the identity the connection proved, and
-its `Dispose` ends the follow, lets every call in flight return and frees the
-handle; `Serve` and `ServeLocal` give a `ServedNode`, an operate listener
-this process serves for what it `Post`s — and, from its first `PostCluster`,
-a cluster's gathered view it answers the cluster with — each caller holding
-the role of the list naming it — observers, operators, developers — and none
-where no list does. Every .NET surface operates a node
-through these, on its machine and elsewhere alike; the C ABI is crossed
-directly only for what has no node behind it — validating, editing and
-slicing configuration, the language server's design exports, module
-probing, the audit file, a person's certificate and Modules. Section 18 is
-`RuntimeRules.SecurityRoles` (`RuntimeSecurityRoles`): the role a word names,
-its words, and `Admitted`, the one gate `GatedOperator` asks. Section 19 — a
-person's certificate (ADR-0034, amendment 2026-10-15) — is
-`RuntimeRules.Certificates` (`RuntimeCertificates`): `Request` makes a fresh
-key and a request naming the person, which every build carries, the phone's
-remote build too; `Sign` signs a request by the authority a node
-configuration's `[provision.operator]` names, which only a node's build
-carries, refused in words in a remote build. For a key that never leaves
-its platform's keeper, `Information` and `Assemble` are the request's two
-halves around the keeper's signature, every build carrying them, and
-`RuntimeRemotes.OpenKept` (section 17's `xmip_remote_open_kept_v1`) reaches a
-node presenting the chain with the keeper signing each handshake through a
-callback. `Xmip.Surface`'s `OperatorCertificate` writes their files once,
-for `xmip certificate` and `New-XmipCertificate`, and makes a request
-over a keeper's key and keeps the chain signed for it (`RequestKept`,
-`Keep`, `KeepAnchors`); `IOperatorKeeper` is the one interface each
-platform's keeper implements, and `SecureSurface` names a keeper's key where a
-host's document names a `Certificate` and no `PrivateKey`. Section 22 is
-`RuntimeCertificates.Issue`, a node's build only: a node's key and
-certificate from the cluster's own authority kept in a folder, made there
-where none is, written as `node.pem`, `node.key` and `anchors.pem`
-(`NodeIssued`), which `Xmip.Surface`'s `NodeCertificate` calls for
-`xmip certificate --node` and `New-XmipCertificate -Node` (ADR-0015,
-amendment 2026-10-21). Section 23 is `RuntimeCertificates.Authority`, a node's
-build only: an act on the cluster's authority kept in a folder — set up,
-inspect, revoke, export, back up — or on a node's certificate carried across
-an air gap — request, sign, import, read — its arguments and answer JSON,
-which `Xmip.Surface`'s `AuthorityCertificate` reads into records for
-`xmip certificate`, `New-` and `Get-XmipCertificate` and the desktop's
-Authority page (ADR-0034, amendment 2026-10-22). Section 21 — a
-web host's secure surface, protected by Xmip itself (ADR-0009, amendment
-2026-10-21) — is `RuntimeRules.Hosting` (`RuntimeSecureSurface`), a node's
-build only: `Issue` keeps an authority in a folder, made there where none is,
-and issues a host a certificate for `127.0.0.1` under it
-(`SecureSurfaceIssued`), and `Open` gives a `SecureSurfaceListener` taking
-the `Protection` as a parameter (`Protection.Tls`, `XMIP_PROTECTION_TLS`, the
-one built — the owner, 2026-10-21: *technology and security should not be in
-functions, parameters is ok*), whose `Accept` hands over each browser's
-`SecureSurfaceSession` with its handshake finished, or says a certificate the
-anchors refused (`SecureSurfaceAccepted`); a session is read on one thread and
-written on another, and its `Presented` is the browser's certificate, DER.
-Section 10 — the
-cluster's `cluster.xmip` read, edited and sliced — is `RuntimeRules.Design`
-(`RuntimeDesign`): `TryViews`, `TryEdit`, `TrySlices`, `TryFilterStructure`
-and `TryFilterText`, each the header's JSON or text, or the runtime's
-refusal; `Xmip.Surface` reads them as `ConfigurationViews`, `ClusterEdit` and
-`NodeSlice`, which the desktop's Configure page draws and sends; the cluster's
-file it edits — opened, compared, locked and written whole
-(`ClusterConfiguration`), sliced and delivered to each node
-(`SliceDelivery`, `NodeDelivery`, `SliceDelivery.From` for where), and
-validated, saved and planned with every step audited (`RuntimeCommands`) —
-is `Xmip.Surface`'s too, beneath the page. Section 12 — the
-technologies the runtime carries and what each declares a Location may set —
-is `RuntimeRules.Catalogue` (`RuntimeCatalogue`): `TryRead` brings back the
-header's JSON, every technology or the one named, for the desktop editor's
-Location form. Section 13 — a System Process declared (ADR-0053) — is
-`RuntimeRules.Processes` (`RuntimeProcesses`): `Declare` has the runtime write
-the calling process's declaration and answers the file, or the node's
-refusal of a purpose that is no word; `Read` brings back the declarations
-standing in a directory as `ProcessDeclarations` of `ProcessStanding`; and
-`Undeclare` has the runtime take one away, refusing a file that is no
-declaration's — `ProcessDeclaration.Dispose` and the estate's
-`Read-XmipProcessDeclaration` call it, and neither deletes a file itself.
-Section 25 — every Report listed and one opened (ADR-0072, amendment
-2026-11-10) — is `RuntimeRules.Reports` (`RuntimeReports`): `Ask` hands the
-act, `list` or `open`, and its JSON arguments over and brings back the
-header's JSON, asking again at the true length until it fits — an open so
-asked again is audited once, by the call that receives it — or throws the
-runtime's sentence, opening REFUSED or FAILED; `ReportKind` is
-`XmipReportKind`.
-A node's build only: a remote build refuses it in words (`RemoteBuild`).
-In a composed
-estate the project copies the runtime's built library beside everything that
-references it. `AbiBoundaries` says both boundaries at once. `xmip abi`, `status` and
+the GUI reach the C ABI through it and bind nothing themselves (ADR-0014,
+amendment of 2026-08-26). It is the binding and no more: each export's
+symbol (`OperateAbi`), the structs that mirror the header (`XmipStr`,
+`XmipOperate`, `XmipEvent`, `XmipEventFilter`, `XmipHealthEntry`,
+`XmipMeasurement`, `XmipPublicationHead`, `XmipTopologyNode`,
+`XmipTopologyLink`, `XmipTopologyPlace`), the header's values
+(`HealthState`, `Counted`, `RunList`, `Topology.cs`'s kinds, origins,
+patterns, relations, bands and columns, `AuditPhase`, `AuditSeverity`,
+`AuditKept`, `EventAction`, `EventOutcome`, `RemoteFollows`,
+`Protection`, `ReportKind`) and the two ways a .NET string crosses, one
+(`PinnedStr`) and several in one buffer (`Utf8Pack`). What calls through
+those declarations — the library loaded, each section called, the records
+read back — is `Xmip.Operate` in
+[xmip-core-operate](https://github.com/IlleNilsson/xmip-core-operate), beneath
+`Xmip.Surface`: a definition has no verb (ADR-0058, clause 1; ADR-0052,
+amendment 2026-11-16). It compiles under C# 15's updated memory safety rules,
+a preview: no type is `unsafe`; an `unsafe` block stands only around a
+dereference or a framework call the runtime marks unsafe (`GCHandle.Free`);
+and a member whose safety rests on its caller is marked `unsafe` itself —
+`XmipStr`'s pointer, constructor and `Read`, `PinnedStr.Value`,
+`Utf8Pack.Borrow`, and every raw pointer a header struct exposes.
+`Module/` carries the module boundary, its probe and the probe's judgment of
+whether a library loaded at all (`ModuleProbe.Result.Unloadable`) and
+whether a module conforms, and `StatusMeaning`, what a status code means.
+`AbiBoundaries` says both boundaries at once. `xmip abi`, `status` and
 `probe` render those and `Get-XmipAbi`, `ConvertFrom-XmipStatus` and
 `Get-XmipModuleDescriptor` emit them, so neither face judges a code or a
 module on its own (ADR-0052, amendment 2026-09-24). `dotnet/Xmip.Abi.Test`
-compares both against the headers and holds those answers; `dotnet test dotnet/Xmip.Abi.Test` runs
+compares the binding against the headers — every status, mood, counted kind
+and section's values, the versions, the entrypoints and section 8's struct
+layout — and holds those answers; `dotnet test dotnet/Xmip.Abi.Test` runs
 them.
-
-## What every .NET surface shares
-
-`dotnet/Xmip.Surface` (ADR-0052) is the one implementation behind all four
-operator surfaces; the GUI hosts, the cli and the PowerShell module are thin
-faces over it.
-
-### What each source answers
-
-A face reads one of three sources, chosen by `Surface = "local" |
-"snapshot" | "remote"` in its `[Xmip]` table, or by `--remote`, then
-`--local`, then `--snapshot` on a line (`SurfaceChoice`); `--runtime` names
-the library every one calls the runtime through and chooses none. They do
-not answer alike, and an operator reading a view should know which one it
-is:
-
-| | `local` (`LocalOperator`) | `snapshot` (`SnapshotOperator`) | `remote` (`RemoteOperator`) |
-| --- | --- | --- | --- |
-| Reads | a node's publication on this machine, over gRPC to its operate listener's local endpoint — a named pipe on Windows, a Unix domain socket elsewhere (section 17) | a node's published `snapshot.xmip` | a node's publication on another machine, over gRPC to its operate listener in Xmip's mutual TLS (section 17) |
-| Topology | the node's publication's | the publication's, where it carries one | the node's publication's |
-| Failed Messages | what the node's publication carries: each Port's count and its oldest hundred; Unlisted while the node is unreachable | Listed: each Port's count and its oldest hundred; Unlisted with no file read | as local |
-| A failed Message's Retry or Dismiss; a Subscription's or an Event subscription's pause and resume; a Dead Message's Replay | asked of the node, which takes it as the user this process runs as behind the role its `[operate]` grants (section 18's gate), applies it at once and audits it; refused in its words otherwise | submitted as an order where the publication says its node takes them, taken within a round; declined where it names none | as local, the act the certificate's subject's |
-| A scope's pause and resume | declined: a node's operate listener takes the acts on what it publishes, not a scope's pause | declined: a snapshot cannot be paused | declined, as local |
-
-*Listed* is an
-answer even when it lists none; *Unlisted* is a source that cannot list;
-*Unanswered* one that asked and was not answered, its sentence opening
-`FAILED:` (`FailedMessageList`).
-
-- **Surfaces.** `IOperatorSurface` with its implementations —
-  `ListenerOperator` over a node's operate listener, the runtime's surface
-  (section 17): `LocalOperator` on this machine and `RemoteOperator` on
-  another — and `SnapshotOperator` over a published snapshot — and
-  `ClusterSurfaces`, the set a face holds when more than one
-  cluster is published: one surface per cluster, and nothing added across them
-  (ADR-0052, amendments 2026-09-20 and 2026-11-13). Several clusters are named
-  one way, each of its own kind: `Clusters = [{ Surface = "local",
-  Local = … }, { Surface = "snapshot", Snapshot = … }]` in a host's document,
-  or `--Xmip:Clusters:0:Surface=local` on its line; `Snapshot` is one path,
-  one cluster. `SurfaceChoice.OpenAll` opens each by the one rule a single
-  surface is, refused in its own keys, and the list wins over `Surface`; a
-  command and the prompt read the first (`OpenFirst`). A surface that has
-  published nothing when the set is opened — a node not answering yet —
-  names no cluster and is refused with nothing; it is named by its first
-  publication (`ClusterListTest`). A `ListenerOperator` follows what the
-  runtime calls answered (`RemoteFollows.Answered`): the cluster's view where
-  the node it reaches gathers one (`Gathers`), its own publication where the
-  node refuses, the node's answer deciding in the runtime as each connection
-  is made, never a name; it reads what the follow says it follows. Its
-  `Source` then says, after where the node is reached, what the view says of
-  itself — the cluster, gathered by which node, and how many nodes it
-  reached, the runtime's words (`GatheredClusterTest`; ADR-0052, amendment
-  2026-11-13). A `ListenerOperator` tells every watch
-  first and reads the publication by the next question: a change reaches a
-  .NET watch in about 0.3 ms on the local endpoint (`LocalOperatorTest`
-  holds it under a millisecond). `ConfigurationRuntime` asks the runtime
-  what has no node behind it: `Validate`, and `Plan`, which hands a node's
-  file to `xmip_start_v1`, which reads, validates and publishes its plan and
-  runs nothing; its sentence says *planned … not running*. A node that
-  a `ListenerOperator` loses is told at once to every watch, with a `Source` that
-  says it is unreachable and why, and every answer is empty until it is back
-  — never the publication held from before; the runtime's follow tries it
-  again on its own loop (0, 2, 10 and 30 seconds, the last repeated), whether
-  it was lost or never reached, and every watch is told the moment it
-  answers (`RemoteOperatorTest`, `LocalOperatorTest`; the runtime's
-  `tests/plane`). A snapshot is read once per change: a
-  followed `SnapshotOperator` reads each publication before its change feed
-  announces it, and answers every question from that reading without touching
-  the file; `SurfaceChoice.OpenAll` follows every surface its `Clusters`
-  names (`ClusterSurfaces.Follow`), so no render reads one (ADR-0052, amendment
-  2026-10-03; `SnapshotReadCostTest` holds the bound). A watch begun before
-  its source recovers when the source arrives (`PathArrival`): a
-  `SnapshotOperator` whose publication's directory is not made yet says its
-  first view, waits for the file system's notice and announces a change the
-  moment the source is there — a retry, its interval
-  doubling to five seconds, only where not even the path's root exists to
-  watch (`SurfaceArrivalTest`).
-- **Subscriptions.** `IOperatorSurface.Subscriptions` lists what the nodes
-  route by and `IOperatorSurface.Act` pauses or resumes one (`SubscriptionAct`,
-  which holds no remove, answered as a `SubscriptionOperation`; a
-  Subscription is added and removed in the TOML configuration,
-  `SubscriptionOperation.Configured` says so in words): by the node, over
-  its operate listener, for a `ListenerOperator`, and for `SnapshotOperator`
-  declined in words (`SnapshotOperator.NotActed`): a snapshot is never acted
-  on (ADR-0014, amendment 2026-11-13). `SubscriptionQuery` is the
-  one drill, pattern and order every surface asks of them (ADR-0013,
-  amendment 2026-09-30).
-- **Event subscriptions.** `IOperatorSurface.EventSubscriptions` lists what
-  the nodes' hubs hold and `IOperatorSurface.Act` pauses, resumes or removes
-  one (`EventSubscriptionAct`, answered as an `EventSubscriptionOperation`),
-  reached the same three ways. `EventSubscriptionQuery` is their one drill,
-  pattern and order (ADR-0065, amendments 2026-09-29 and 2026-09-30), and
-  `EventSubscriptionQuery.Unheard` and `Line` the one selection and wording
-  of the members the nodes there do not hear — *RX1: not hearing
-  `<node>` since `<time>`: `<why>`* — which every surface shows read-only
-  beside them (amendment 2026-10-02); the links between nodes are never
-  listed or acted on.
-- **The tree.** `ScopeTree` — the tree, its rollup and the worst leaf beneath
-  a scope, over the runtime's containment, parts, stage words and order;
-  `ScopeIndex`, a publication read once as that tree with every answer a
-  lookup (ADR-0052, amendment 2026-09-15); `Branch` and `Crumb` for
-  the drill-down, and `ScopeItem` for one row of it — its mood, its figures
-  and the leaf that explains it (`Worst`), the next scope on the way to the
-  cause — whether it `Exists`, and `Selected`, the rows a selection names,
-  worst first under a wildcard, which `xmip show` and `Get-XmipScope`
-  both answer with. Every drill starts at `IOperatorSurface.Root`, the scope the
-  publisher publishes at (an Essentials cluster, never the root above it); a
-  stage card counts `IOperatorSurface.Stage` and lists `Locations`, and the
-  prompt's letters are `MessagePath`, each stage its own figure (the owner,
-  2026-09-26: *drill-down does not work and datapoints are wrong*).
-- **Narrowing.** `ScopePattern`, the one wildcard every surface matches with
-  (ADR-0059 clauses 7 and 8), `node::wildcard`'s, called
-  through `RuntimeRules.Matches` (`xmip_scope_matches_v1`); `ScopeFilter`, that pattern applied to a
-  publication so the views narrow alike and none decides for itself what a
-  pattern means; and `ScopeSelection`, what a scope argument selects on the
-  command line and in a cmdlet — the scope itself, or the topmost scopes a
-  wildcard names — with the REFUSED sentence when it names nothing.
-- **Figures.** `Figures`, the six at a scope in the order every surface says
-  them, each also by the kind counted (`Of`); `FigureFlow`, the five as a rate
-  per second between two publications; and `FigureWatch`, the one place a
-  face remembers figures between two reads — the prompt's letters and the
-  board's stage cards alike — so the rate is computed once.
-- **Following.** `SurfaceFollow`, the one follow: the answer now, then a new
-  one whenever the publication advances and the answer changed, a wildcard
-  matched again at every notice, until cancelled — `xmip --follow` and
-  `Get-XmipHealth -Follow` / `Get-XmipScope -Follow` run it.
-- **What a run says.** `RunHeader` for the `[run]` table a publisher writes —
-  `Hidden` where the run declared itself hidden, and `ClusterSurfaces` lists,
-  reaches and names such a cluster only for a face that includes what is
-  hidden, by the one rule `observe::run::shown` through `RuntimeRules.Shown`
-  (`xmip_run_shown_v1`; ADR-0028 and ADR-0052, amendments 2026-09-30) —
-  `NodeCapability` for what one node declared — its roles, and the stages they
-  serve — never inferred from what the node is called (ADR-0056 clause 1),
-  read by the rule of `node::NodeRole::declared` (lowercase exactly, any
-  other word refused and the refusal carried in `Refusal`; amendment
-  2026-10-01) — and `Topology` for the communication view.
-- **Acts and verdicts.** `ScopeAction`, the two acts `xmip_operate.h` carries
-  and no start, stop or restart; `ScopeOperation`, the one shape they answer
-  in, so an exit code and a pipeline object agree, and `ScopeOperation.Who`,
-  who paused — the name stated, else the user the process runs as; and
-  `ConfigurationVerdict` for what came of handing the runtime a node
-  configuration — a saved file, or the text an editor holds.
-- **Plumbing.** `RuntimeLibrary` (discovery by one rule, written here and
-  nowhere else in the estate: `Xmip:RuntimeLibrary`, else
-  `XMIP_RUNTIME_LIBRARY`, else beside the executable, with a library an
-  operator typed over all three; and `Rules`, the one library a process calls
-  the runtime's rules in, and its gRPC client — every surface alike),
-  `SurfaceChoice` (the surface a host chose in
-  its TOML, one per cluster under `Clusters`, and — over a `SurfaceLine` — the one
-  precedence the executable, the prompt and the cmdlets share: a remote
-  node, a local node or a snapshot stated for the invocation, then the
-  document, else no node, said so (`LocalOperator.Unnamed`); a line whose
-  remote names no node is refused in `RemoteOperator.Refusal`'s one
-  sentence, `SurfaceLine.Refusal`),
-  `TomlDocument` (the one TOML reader, and the syntax-tree editing an editor
-  changes a document through, comments and layout kept), `ProcessDeclaration` (what a System
-  Process Xmip owns says of itself, ADR-0053 clause 3, declared and listed
-  through the node — section 13 — and never written here), `English` (a status
-  said in words once, a mood's word and color name asked of the runtime,
-  a stage's name, a rate on its one K, M and G ladder — `Moving` bare for the
-  prompt, `Rate` with its unit, `Flow` for a rate not known yet —
-  and what a surface says of a scope it holds nothing at, beneath or measured)
-  and `SurfaceChange` (one coalescing change stream that wakes every
-  surface when a published snapshot advances).
-- **TLS.** `SecureSurface`, what a surface presents and trusts when it
-  crosses a network (ADR-0063 clause 1): a PEM chain and key and the anchors
-  a peer's chain must reach — `Xmip:Certificate`, `Xmip:PrivateKey` and
-  `Xmip:TrustAnchor`, else `XMIP_CERTIFICATE`, `XMIP_PRIVATE_KEY` and
-  `XMIP_TRUST_ANCHOR`, else nothing presented and nothing trusted — the
-  paths alone (`Paths`), handed to the runtime, whose TLS reads them; no
-  .NET TLS stack does — and `Permits`, the one rule for connecting and
-  binding alike: HTTPS always, plain HTTP to this machine only.
-  `RemoteOperator` presents and checks through it, and says a refused
-  certificate in its reason.
-- **Events.** `EventFeed`, a .NET program's subscription to the process's
-  hub: it finds the runtime by `RuntimeLibrary`'s one rule, subscribes as
-  the Party the account it runs as proves to be among the Parties of the
-  node serving in its process — it names none — audits where the program's
-  `ProgramAudit` records go, and `Follow` yields each Event as it arrives
-  until cancelled. Only code in a node's own process can subscribe, and no
-  export lets a node serve in a face's process (`xmip_start_v1` runs
-  nothing, open problem 20), so in a face it is refused today; no face
-  calls it (open problem 66). A node elsewhere sends its Events over the
-  wire (`xmip-core-event`'s `wire`).
-- **Audit.** `ProgramAudit`, how every .NET program audits (ADR-0062): its
-  name, the directory its configuration names (`Xmip:AuditDirectory`), the
-  runtime library the program was told to load (`Library`, so `--runtime`
-  reaches the audit), `Record`, `Failed` — one exception, one record — `WatchUnhandled`,
-  and `Properties`, the one way a value becomes a record's text for every
-  .NET program and the estate's script module — each
-  a call into `xmip_audit_v1` and never a record of its own; and
-  `Read(AuditQuery)`, every .NET surface's read of the records back — the
-  Audit view, `xmip audit` and `Get-XmipAudit` — through
-  `xmip_audit_read_v1` (ADR-0062, amendment 2026-09-29), `AuditQuery.Verify`
-  asking each writer's audit chain walked (ADR-0070 clause 5); and
-  `OperatingSystemLog`, the one .NET writer to the Windows Event Log or the
-  local syslog, used only when the runtime's library cannot be loaded at all
-  and saying why.
-- **Reports.** `ReportCatalog`, every .NET surface's one list of every
-  Report and one opened (ADR-0072, amendment 2026-11-10) — `xmip report`,
-  `Get-XmipReport` and the Reports view — over section 25: `List` reads the
-  `ReportListing`, the kinds' words (`ReportKindWords`, *Report* and
-  *Probing report*, the runtime's) and a `ReportEntry` for each Report, its kind and
-  its kind's words (`Words`, set once as the list is read), whether it is
-  available, what to expect, the reader that presents a quick one (`ReadBy`,
-  an entrypoint of the header each surface maps to its own command) and a
-  Quest's parameter, row, levels and last probe, read back from where the
-  surface's `ProgramAudit` records go, with the runtime's sentence where
-  they cannot be (`Unread`); `Named` asks the runtime for the one Report of
-  a name, which finds it and refuses a name that is none in its own
-  sentence. `Open` probes the configuration a `ReportProbe` names — a
-  node's, or a cluster's `cluster.xmip` with its node — the probe audited
-  under the surface's program, and reads the `ReportProbed`: its tally, a
-  `ReportCount` per state, what a row is called, a `ReportRow` per
-  requirement and, for the row named, the `ReportRequirement` in full, what
-  is behind it (`ReportBehind`) and the actions that close it
-  (`ReportAction`); what a Quest does not answer is left empty. Every state,
-  kind and word is the runtime's string; no list of them is kept in C#, and
-  each list is an array, which PowerShell indexes.
-
-`dotnet/Xmip.Surface.Relay` is what a web host adds for its browsers; only a
-web host references it, and it serves no surface to other machines — a remote
-surface follows a node, not a web host (ADR-0014, amendment 2026-10-12).
-`SurfaceBinding` is where such a host listens: plain HTTP beyond loopback and HTTPS with no
-certificate or no anchors refused before anything listens, the plain loopback addresses
-answered for the host to say it binds them, and `UseSurface(protection, …)`,
-every HTTPS address bound by `SecureTransport` — a Kestrel transport over the
-runtime's listener (section 21), binding only a `SecureEndPoint` so plain
-loopback keeps Kestrel's sockets — each browser's connection a
-`SecureConnection` carrying the certificate it presented as Kestrel's
-`ITlsConnectionFeature`, one the anchors refused told to the host's audit
-(ADR-0063 clause 1; ADR-0009, amendment 2026-10-21), and who the runtime's
-authentication gate answered the browser is (`xmip_caller_proven_v1`,
-`SecureSurfaceSession.Caller`) as a `ProvenConnection`; and `ProvenCaller`,
-who each request proved, read from that feature alone, so a certificate's
-subject the host reads proves nothing (ADR-0009, amendment 2026-11-01).
-`UseXmipContentSecurity` sets the Operation Web's content security policy
-once, on every response (`ContentSecurity`): `default-src 'self'`, scripts
-from the host and the one inline element carrying the response's nonce
-(`ContentSecurity.Nonce`, which a page's `<ImportMap nonce=…>` carries),
-`style-src 'self'`, `frame-ancestors 'none'`, `base-uri` and `form-action`
-the host's own.
-A caller crosses as an opaque handle the runtime handed out, never a name
-(`HeldCaller`, section 18): the session holds the one it proved, a circuit
-takes its own (`HeldCaller.Hold`, `xmip_caller_hold_v1`) and releases it
-when it ends, the desktop's is the account the runtime read from the
-operating system (`RoleAssignment.ProcessCaller`, `xmip_caller_process_v1`),
-and a handle released, revoked with its listener, past its certificate or
-forged is no one; `HeldCaller.Name` is for display alone. Through a node's
-operate listener the node decides again: an act the gate admitted is taken
-for its caller, a parameter of every act of `IOperatorSurface` (`RemoteNode.Act`,
-`SetSecret` and `Secrets` taking the `HeldCaller`; the command line and the
-PowerShell module pass none), the runtime hands the node the caller's
-certificate, and the node — where its `[operate] relay` names this host —
-acts by the caller's own role and audits who and through (ADR-0009, the
-second amendment of 2026-11-01).
-Every act a
-screen takes goes through `GatedOperator` in `Xmip.Surface`, over the
-runtime's one gate (`xmip_act_admitted_v1`, section 18): taken only where the
-caller's `RoleContext` may operate, as the caller the runtime holds for the
-connection, by its handle — over loopback as from anywhere, since loopback proves where a
-caller is and not who (open problem 35) — and refused in words otherwise; taken or
-refused, audited through the host's `ProgramAudit` (ADR-0009). `Role`,
-`Roles` and `RoleContext` are `Xmip.Surface`'s, beneath both GUIs.
-
-`dotnet/Xmip.Surface.Test` covers the tree and its index, the pattern, the
-filter and the selection, the figures and their flow, runtime discovery and
-the surface precedence, the English, a program's audit — into a directory,
-to the operating system's log when the sink fails, and one entry of its own
-when audit cannot be reached — the
-configuration verdict, the cluster's file edited, saved under its lock,
-refused when another editor changed it, sliced and delivered to each node and
-audited at every step, the process declaration, the snapshot surface and the
-cluster set over fixtures, the remote surface against a hub on a loopback
-port — plain, and over mutual TLS with certificates a test authority issued,
-where a client certificate the host does not trust, a host certificate the
-surface does not trust and no certificate at all are each refused — the
-hub's role gate, where an Observer host refuses every act, an Operator host
-takes each as the certificate's subject, and an act without one is refused,
-from loopback as from elsewhere, over
-the test cluster's names from `test/cluster.xmip` (`TestCluster`) — and where a
-host may bind. It tests no rule the runtime owns: it proves the surface returns what
-the runtime's export returns, and those rules are tested once, where they are
-written. `dotnet test dotnet/Xmip.Surface.Test` runs them, after `cargo build`
-in xmip-core-runtime has left the library the test assemblies load.
 
 `architecture.toml` carries the maturity; this file does not repeat it.

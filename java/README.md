@@ -28,7 +28,7 @@ and `set` with a `ValueLayout`, `MemorySegment.copy` with byte arrays, and
 ## Use
 
 ```java
-try (Library xmip = Library.load(Path.of("xmip_core_runtime.dll"));
+try (Library xmip = Library.load(Path.of("xmip_core_operate.dll"));
      EventSubscription subscription = xmip.subscribe("my-program", "/var/log/my-program",
              new Filter(List.of(), List.of(Outcome.FAILURE), "xmip:///CL1", ""), 0)) {
     subscription.next(Duration.ofSeconds(1), 64)
