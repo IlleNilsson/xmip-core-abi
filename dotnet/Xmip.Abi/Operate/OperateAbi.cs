@@ -324,4 +324,23 @@ public static partial class OperateAbi
     /// <summary>Every Report listed, and one opened: section 25 (ADR-0072,
     /// amendment 2026-11-10).</summary>
     public const string ReportEntrypoint = "xmip_report_v1";
+
+    /// <summary>A module library probed through the runtime's one loader:
+    /// what it declares, why it could not be asked or why the host refuses
+    /// it, and the lines it logged, as JSON: section 26 (ADR-0012, amendment
+    /// 2026-11-17).</summary>
+    public const string ModuleProbeEntrypoint = "xmip_module_probe_v1";
+
+    /// <summary>A configuration document's TOML read into JSON by
+    /// xmip-core-configure, the runtime's one reader: section 27 (ADR-0031,
+    /// amendment 2026-11-17).</summary>
+    public const string DocumentReadEntrypoint = "xmip_document_read_v1";
+
+    /// <summary>A JSON object written as a configuration document's TOML:
+    /// section 27.</summary>
+    public const string DocumentWriteEntrypoint = "xmip_document_write_v1";
+
+    /// <summary>One key of a configuration document set or removed in its
+    /// text, everything else as written: section 27.</summary>
+    public const string DocumentSetEntrypoint = "xmip_document_set_v1";
 }

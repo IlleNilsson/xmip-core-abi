@@ -2371,6 +2371,95 @@ typedef XmipStatus (*XmipReportFn)(XmipStr act, XmipStr arguments, uint8_t *out,
 
 #define XMIP_REPORT_ENTRYPOINT "xmip_report_v1"
 
+/* ===================================================================== */
+/* 26. A module library, probed                                          */
+/* ===================================================================== */
+
+/*
+ * What a module library says when the host opens it and asks - the first
+ * of the conformance rules in section 11 of the specification: it exports
+ * XMIP_ENTRYPOINT, accepts the host's abi_version, fills the descriptor
+ * and destroys cleanly - or why it could not be asked (ADR-0012, amendment
+ * 2026-11-17). The library is opened the way a node opens one, through
+ * the runtime's one loader, and the descriptor judged by the one rule a
+ * node judges it by first: the abi_version this host speaks, a provider
+ * and a module named, and a standard empty only for the core provider
+ * (xmip_module.h section 4). No capability asks a probe, so the trait it
+ * answers and its version are said, not judged. One instance is made and
+ * destroyed and the library unloaded before this returns.
+ *
+ * xmip_module_probe_v1 takes the library's path and writes JSON into out
+ * as UTF-8, its true byte length in out_len whether or not it fit:
+ *
+ *   {"library","unloadable","status","provider","module","standard",
+ *    "abi_version","trait_version","module_version","last_error",
+ *    "refusal","conforms","log":[...]}
+ *
+ * unloadable says why the library could not be asked - not there, no
+ * library for this platform, or no XMIP_ENTRYPOINT - and is empty when it
+ * was; status is what the entrypoint returned, XMIP_E_NOT_FOUND where it
+ * could not be asked; the descriptor's members are empty, abi_version 0,
+ * where no instance was made; trait_version is major.minor and
+ * module_version major.minor.patch; last_error is the module's, read
+ * before it was destroyed; refusal is why the host refuses it, one
+ * sentence - its entrypoint refused, or its descriptor is not one a host
+ * takes - and empty when nothing is wrong; conforms is true when it loaded,
+ * made an instance and nothing is refused; log is each line the module
+ * logged while it was held, "[<level>] <target>: <message>", in order.
+ * XMIP_OK with the answer; XMIP_E_MALFORMED when the path is not UTF-8. A
+ * caller whose room was too small asks again, and the library is probed
+ * again. No snapshot is read and no handle made; any thread, before,
+ * during and without a node; not pure: it runs the library's code. A
+ * node's build only, as section 23. Optional symbol; XMIP_OPERATE_VERSION
+ * is unchanged.
+ */
+typedef XmipStatus (*XmipModuleProbeFn)(XmipStr library, uint8_t *out, size_t cap,
+                                        size_t *out_len);
+
+#define XMIP_MODULE_PROBE_ENTRYPOINT "xmip_module_probe_v1"
+
+/* ===================================================================== */
+/* 27. A configuration document, read, written and one key set           */
+/* ===================================================================== */
+
+/*
+ * Every configuration document a surface reads or writes - its own
+ * (gui.toml, cli.toml, powershell.toml), the Desktop's preferences.toml,
+ * a cluster's cluster.xmip - is read here by xmip-core-configure, the one
+ * reader the runtime reads its configuration with, so a document reads the
+ * same wherever it is read (ADR-0031, amendment 2026-11-17). Each export
+ * has the shape of section 10 - input, argument, the answer in out as
+ * UTF-8, its true byte length in out_len whether or not it fit - and what
+ * crosses besides TOML text is JSON, in memory only (ADR-0031 clause 2):
+ *   xmip_document_read_v1   TOML text in; the document out as a JSON
+ *                           object: a table an object, an array an array,
+ *                           a string, an integer, a float, a boolean, and a
+ *                           date or time as its TOML text.
+ *   xmip_document_write_v1  a JSON object in; its TOML text out, values
+ *                           first, then each table under its own header.
+ *                           A null is refused: TOML has none.
+ *   xmip_document_set_v1    TOML text in, an edit as argument,
+ *                           {"table":[...],"key","value"}: the key in the
+ *                           table the keys name from the root (none: the
+ *                           root) set to value, any JSON but null, or
+ *                           removed where value is null or absent; out the
+ *                           text with that one value changed and every
+ *                           comment, blank line and order elsewhere as
+ *                           written, a comment trailing the old value
+ *                           trailing the new one. A table missing on the
+ *                           way is added when a value is set.
+ * XMIP_OK with the answer; XMIP_E_INVALID with the refusal, one sentence,
+ * in out - text that is not TOML, in the reader's words, JSON that is not
+ * the object asked for, a key on the way that holds a value; and
+ * XMIP_E_MALFORMED when input or argument is not UTF-8. Pure, as section
+ * 7: no handle, any thread, before, during and without a node. A remote
+ * build carries them: a phone reads its own document. Optional symbols;
+ * XMIP_OPERATE_VERSION is unchanged.
+ */
+#define XMIP_DOCUMENT_READ_ENTRYPOINT  "xmip_document_read_v1"
+#define XMIP_DOCUMENT_WRITE_ENTRYPOINT "xmip_document_write_v1"
+#define XMIP_DOCUMENT_SET_ENTRYPOINT   "xmip_document_set_v1"
+
 #ifdef __cplusplus
 }
 #endif
