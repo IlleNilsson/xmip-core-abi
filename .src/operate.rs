@@ -322,8 +322,10 @@ pub mod audit;
 pub mod catalogue;
 pub mod dead_message;
 pub mod design;
+pub mod document;
 pub mod event;
 pub mod message;
+pub mod module_probe;
 pub mod process;
 pub mod publication;
 pub mod remote;
@@ -493,6 +495,22 @@ mod tests {
                 process::PROCESS_UNDECLARE_ENTRYPOINT,
             ),
             ("XMIP_REPORT_ENTRYPOINT", report::REPORT_ENTRYPOINT),
+            (
+                "XMIP_MODULE_PROBE_ENTRYPOINT",
+                module_probe::MODULE_PROBE_ENTRYPOINT,
+            ),
+            (
+                "XMIP_DOCUMENT_READ_ENTRYPOINT",
+                document::DOCUMENT_READ_ENTRYPOINT,
+            ),
+            (
+                "XMIP_DOCUMENT_WRITE_ENTRYPOINT",
+                document::DOCUMENT_WRITE_ENTRYPOINT,
+            ),
+            (
+                "XMIP_DOCUMENT_SET_ENTRYPOINT",
+                document::DOCUMENT_SET_ENTRYPOINT,
+            ),
         ] {
             let line = HEADER
                 .lines()

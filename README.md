@@ -33,7 +33,16 @@ of a database's schema (`xmip_database_upgrade_v1`, the scripts
 (`operate::report`: `xmip_report_v1`, its `list` and `open` acts, and
 `XmipReportKind`, whether a Report presents data that already exists or
 what a Quest probes first; ADR-0072, amendment 2026-11-10), which
-`xmip-core-report` keeps and a node's build of xmip-core-operate answers.
+`xmip-core-report` keeps and a node's build of xmip-core-operate answers,
+and section 26's module library probed (`operate::module_probe`:
+`xmip_module_probe_v1`, opened by the runtime's one loader and judged by the
+rule a node judges a descriptor by; ADR-0012, amendment 2026-11-17), which
+`RuntimeRules.Modules` binds, and section 27's configuration document read,
+written and one key set (`operate::document`: `xmip_document_read_v1`,
+`_write_v1` and `_set_v1`, `xmip-core-configure`'s, the runtime's one
+reader; ADR-0031, amendment 2026-11-17), which `RuntimeRules.Documents`
+binds and every .NET surface and the estate's tooling read a configuration
+Xmip runs through.
 `examples/conforming.rs`
 builds as a cdylib and is the conforming artifact a loader probe is tested
 against.
@@ -92,13 +101,15 @@ dereference or a framework call the runtime marks unsafe (`GCHandle.Free`);
 and a member whose safety rests on its caller is marked `unsafe` itself —
 `XmipStr`'s pointer, constructor and `Read`, `PinnedStr.Value`,
 `Utf8Pack.Borrow`, and every raw pointer a header struct exposes.
-`Module/` carries the module boundary, its probe and the probe's judgment of
-whether a library loaded at all (`ModuleProbe.Result.Unloadable`) and
-whether a module conforms, and `StatusMeaning`, what a status code means.
-`AbiBoundaries` says both boundaries at once. `xmip abi`, `status` and
-`probe` render those and `Get-XmipAbi`, `ConvertFrom-XmipStatus` and
-`Get-XmipModuleDescriptor` emit them, so neither face judges a code or a
-module on its own (ADR-0052, amendment 2026-09-24). `dotnet/Xmip.Abi.Test`
+`Module/` carries the module boundary's version, entrypoint and library
+name, the status codes, and `StatusMeaning`, what a status code means.
+`AbiBoundaries` says both boundaries at once. `xmip abi` and `status` render
+those and `Get-XmipAbi` and `ConvertFrom-XmipStatus` emit them, so neither
+face judges a code on its own (ADR-0052, amendment 2026-09-24). Whether a
+module library loads and conforms is no longer judged here: the runtime's
+one loader probes it, by the rule a node judges a module by, and
+`xmip_module_probe_v1` (`xmip_operate.h` section 26) answers `xmip probe` and
+`Get-XmipModuleDescriptor` alike (ADR-0012, amendment 2026-11-17). `dotnet/Xmip.Abi.Test`
 compares the binding against the headers — every status, mood, counted kind
 and section's values, the versions, the entrypoints and section 8's struct
 layout — and holds those answers; `dotnet test dotnet/Xmip.Abi.Test` runs

@@ -414,7 +414,9 @@ Point 7 is not politeness. A host crashing during recovery calls these in
 orders that a happy path never produces.
 
 A conformance suite belongs in `xmip-core-module-conformance` and can drive
-every one of these from outside the module. It does not exist yet.
+every one of these from outside the module. It does not exist yet. Rule 1
+is driven today by the runtime's loader, exported as
+`xmip_module_probe_v1` (section 15, the operator boundary's section 26).
 
 ---
 
@@ -612,6 +614,31 @@ quick one is, its reader presenting it, before the configuration is read.
 Not pure: `open` reads the configuration and writes one audit record. The list and every answer are `xmip-core-report`'s, the
 composing and the audit the runtime's; a node's build only. The Rust mirror
 is `.src/operate/report.rs`.
+
+Section 26 is a module library probed (ADR-0012, amendment 2026-11-17):
+`xmip_module_probe_v1` takes a library's path, and the runtime's one loader
+opens it as a node opens one — privately, by its path, through
+`xmip_create_module_v1`, with the host table a node hands — keeps the lines
+it logs, reads its descriptor and last error, destroys it and unloads it,
+and judges the descriptor by `abi::validate_module_abi`, the rule a node's
+`abi::accepts` starts with. The answer is JSON in memory: why the library
+could not be asked, the entrypoint's status, what the module declares, its
+last error, why the host refuses it, whether it conforms, and its log. It is
+conformance rule 1 of section 11 driven from outside the module, for
+`xmip probe` and `Get-XmipModuleDescriptor` alike; until 2026-11-17 the .NET
+binding opened the library itself and judged it by a rule of its own. A
+node's build only. The Rust mirror is `.src/operate/module_probe.rs`.
+
+Section 27 is a configuration document read, written and one key of it set
+(ADR-0031, amendment 2026-11-17): `xmip_document_read_v1` reads TOML text
+into a JSON object, `xmip_document_write_v1` writes a JSON object as TOML,
+and `xmip_document_set_v1` sets or removes one key of a TOML text, every
+comment, blank line and order elsewhere as written. Each is
+`xmip-core-configure`'s, the one reader the runtime reads its configuration
+with, so a surface's own document, the Desktop's preferences and a cluster's
+`cluster.xmip` read the same wherever they are read; each takes section
+10's shape. Pure, and in a remote build too: a phone reads its own document.
+The Rust mirror is `.src/operate/document.rs`.
 
 Section 9 is a program's audit record (ADR-0062): `xmip_audit_v1` hands one
 to `xmip-core-audit`, and since 2026-09-29 `xmip_audit_read_v1` answers, as
