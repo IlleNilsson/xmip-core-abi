@@ -79,19 +79,6 @@ function Find-XmipRuntimeLibrary {
     return ''
 }
 
-function New-XmipAuditDirectory {
-    <#
-        .SYNOPSIS
-        A fresh, empty folder for one binding's audit records, made by
-        PowerShell's New-TemporaryDirectory; the caller removes it.
-    #>
-    [CmdletBinding()]
-    [OutputType([string])]
-    param()
-
-    return (New-TemporaryDirectory).FullName
-}
-
 function Get-XmipCompilerEnvironment {
     <#
         .SYNOPSIS
@@ -260,7 +247,8 @@ function Invoke-XmipBindingTest {
         Write-Host "FAILED. $Name did not build."
         return $false
     }
-    [string] $audit = New-XmipAuditDirectory
+    # A fresh, empty folder for this binding's audit records.
+    [string] $audit = (New-TemporaryDirectory).FullName
     try {
         [System.Diagnostics.Stopwatch] $clock = [System.Diagnostics.Stopwatch]::StartNew()
         & $Run $audit | ForEach-Object { Write-Host $_ }
