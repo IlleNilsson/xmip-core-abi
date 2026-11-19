@@ -330,8 +330,11 @@ pub mod process;
 pub mod publication;
 pub mod remote;
 pub mod report;
+pub mod scope_index;
 pub mod secret;
 pub mod subscription;
+pub mod surface;
+pub mod words;
 
 #[cfg(test)]
 mod tests {

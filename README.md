@@ -101,11 +101,17 @@ dereference or a framework call the runtime marks unsafe (`GCHandle.Free`);
 and a member whose safety rests on its caller is marked `unsafe` itself —
 `XmipStr`'s pointer, constructor and `Read`, `PinnedStr.Value`,
 `Utf8Pack.Borrow`, and every raw pointer a header struct exposes.
-`Module/` carries the module boundary's version, entrypoint and library
-name, the status codes, and `StatusMeaning`, what a status code means.
-`AbiBoundaries` says both boundaries at once. `xmip abi` and `status` render
-those and `Get-XmipAbi` and `ConvertFrom-XmipStatus` emit them, so neither
-face judges a code on its own (ADR-0052, amendment 2026-09-24). Whether a
+`Module/` carries the module boundary's version and entrypoint and the
+status codes. What a status code means and both boundaries at once are
+written once, in Rust: `status_meaning::StatusMeaning`, what a status code
+means — its header name, its line of English, whether it is retryable or
+terminal — and `boundaries::Boundaries`, with `boundaries::library_file_name`,
+how a platform names a module's library. `xmip abi` and `status` render
+those, and .NET asks for them through `xmip_status_meaning_v1` and
+`xmip_boundaries_v1` (`xmip_operate.h` section 28.3; `XmipStatusMeaning` and
+`XmipBoundaries` here, `RuntimeWords` in Xmip.Operate), which
+`Get-XmipAbi` and `ConvertFrom-XmipStatus` emit, so no face judges a code
+on its own (ADR-0052, amendments 2026-09-24 and 2026-11-18). Whether a
 module library loads and conforms is no longer judged here: the runtime's
 one loader probes it, by the rule a node judges a module by, and
 `xmip_module_probe_v1` (`xmip_operate.h` section 26) answers `xmip probe` and

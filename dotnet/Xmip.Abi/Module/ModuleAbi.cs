@@ -2,7 +2,9 @@ namespace Xmip.Abi.Module;
 
 /// <summary>
 /// The Xmip module boundary, as declared by <c>include/xmip_module.h</c> in
-/// xmip-core-abi: the version, the entrypoint, and the file the host looks for.
+/// xmip-core-abi: the version and the entrypoint. How a platform names a
+/// module's library is abi's Rust (<c>abi::boundaries</c>), asked through the
+/// operating library's <c>xmip_boundaries_v1</c>.
 /// </summary>
 /// <remarks>
 /// ADR-0012 clause 1: the header is normative and this is not. Nothing here
@@ -16,16 +18,4 @@ public static class ModuleAbi
 
     /// <summary>The one symbol every module exports.</summary>
     public const string Entrypoint = "xmip_create_module_v1";
-
-    /// <summary>
-    /// Platform naming for a loadable module, from section 1 of the header:
-    /// the platform prefix where the platform has one, the platform suffix
-    /// always.
-    /// </summary>
-    public static string LibraryFileName(string moduleName)
-    {
-        return OperatingSystem.IsWindows() ? $"{moduleName}.dll"
-            : OperatingSystem.IsMacOS() ? $"lib{moduleName}.dylib"
-            : $"lib{moduleName}.so";
-    }
 }

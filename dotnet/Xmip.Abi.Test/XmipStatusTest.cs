@@ -10,8 +10,6 @@ namespace Xmip.Abi.Test;
 /// </summary>
 public sealed class XmipStatusTest
 {
-    private const string Unknown = "not a status this build knows";
-
     [Fact]
     public void FindsStatusesInTheHeader()
     {
@@ -81,23 +79,13 @@ public sealed class XmipStatusTest
     }
 
     [Fact]
-    public void ExplainsEveryStatusItKnows()
-    {
-        foreach (XmipStatus status in Enum.GetValues<XmipStatus>())
-        {
-            Assert.NotEqual(Unknown, status.Explain());
-        }
-    }
-
-    [Fact]
-    public void SaysSoRatherThanThrowingOnACodeItDoesNotKnow()
+    public void ReadsACodeItDoesNotKnowAsNeitherRetryableNorTerminal()
     {
         // A number that is not a status is data, not an exception. A module
         // returning something unexpected must not take the operator's session
         // down with it.
         XmipStatus status = (XmipStatus)4711;
 
-        Assert.Equal(Unknown, status.Explain());
         Assert.False(status.IsRetryable());
         Assert.False(status.IsTerminal());
     }

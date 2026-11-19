@@ -9,10 +9,12 @@
 //! layout, so it never appears in a signature that reaches the header. The
 //! traits below are Xmip-side ergonomics over a `#[repr(C)]` vtable.
 
+pub mod boundaries;
 pub mod descriptor;
 pub mod ffi;
 pub mod manifest;
 pub mod operate;
+pub mod status_meaning;
 pub mod unit;
 pub mod unwind;
 
