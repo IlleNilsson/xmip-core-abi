@@ -30,37 +30,4 @@ public static class XmipStatusExtensions
             is XmipStatus.Internal
             or XmipStatus.Panic;
     }
-
-    /// <summary>One line an operator can read, for every code the header
-    /// defines and one more for a code it does not.</summary>
-    public static string Explain(this XmipStatus status)
-    {
-        return status switch
-        {
-            XmipStatus.Ok => "the call succeeded",
-
-            XmipStatus.Invalid => "an argument was outside its contract",
-            XmipStatus.Unsupported => "well formed, and not implemented here",
-            XmipStatus.State => "the wrong lifecycle state for this call",
-            XmipStatus.NotFound => "the thing asked for does not exist",
-
-            XmipStatus.Malformed => "not the standard it claims to be",
-            XmipStatus.Contract => "well formed, and violates the contract",
-            XmipStatus.Truncated => "the stream ended mid-structure",
-
-            XmipStatus.Io => "an input or output fault",
-            XmipStatus.Timeout => "the call did not answer in time",
-            XmipStatus.Unavailable => "the peer refused, or is down",
-            XmipStatus.Auth => "authentication or authorization was refused",
-            XmipStatus.Capacity => "a quota, limit or resource was exhausted",
-
-            XmipStatus.Cancelled => "the host asked for cancellation",
-            XmipStatus.Again => "would block; not a failure",
-
-            XmipStatus.Internal => "a defect in the module",
-            XmipStatus.Panic => "unwinding was caught at the boundary",
-
-            _ => "not a status this build knows",
-        };
-    }
 }

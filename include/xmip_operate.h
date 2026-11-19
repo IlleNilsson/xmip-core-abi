@@ -1981,6 +1981,19 @@ typedef XmipStatus (*XmipOperatorSignFn)(XmipStr configuration, XmipStr request,
 #define XMIP_OPERATOR_KEEP_ENTRYPOINT "xmip_operator_keep_v1"
 #define XMIP_OPERATOR_SIGN_ENTRYPOINT "xmip_operator_sign_v1"
 
+/*
+ * xmip_operator_sign_file_v1 is the signing as a surface asks it of files,
+ * in section 10's text shape: input the path of the request; argument
+ * {"configuration": path, "chain": path or null}. The request is read and
+ * signed as xmip_operator_sign_v1 signs it, and the chain kept whole at
+ * chain where one is named, never over a file; out the chain, PEM, leaf
+ * first. XMIP_E_INVALID with the refusal, one sentence: "No file at <path>."
+ * where the request is not there, a chain named that is there already, or
+ * the authority's refusal, each opening REFUSED: but the first. A node's
+ * build only. Optional symbol; XMIP_OPERATE_VERSION is unchanged.
+ */
+#define XMIP_OPERATOR_SIGN_FILE_ENTRYPOINT "xmip_operator_sign_file_v1"
+
 /* ===================================================================== */
 /* 20. A database's schema: its upgrade between two releases             */
 /* ===================================================================== */
@@ -2011,6 +2024,17 @@ typedef XmipStatus (*XmipDatabaseUpgradeFn)(XmipStr server, uint32_t from, uint3
                                             uint8_t *out, size_t cap, size_t *out_len);
 
 #define XMIP_DATABASE_UPGRADE_ENTRYPOINT "xmip_database_upgrade_v1"
+
+/*
+ * xmip_database_write_v1 writes an upgrade's scripts where an operator
+ * names, in section 10's text shape: input the upgrade as
+ * xmip_database_upgrade_v1 answers it; argument the folder, made where it
+ * is not. No script is written where any of their files is there already;
+ * out the paths written, a JSON array. XMIP_E_INVALID with the refusal,
+ * one sentence. A node's build only. Optional symbol;
+ * XMIP_OPERATE_VERSION is unchanged.
+ */
+#define XMIP_DATABASE_WRITE_ENTRYPOINT "xmip_database_write_v1"
 
 /* ===================================================================== */
 /* 21. A web host's secure surface, protected by Xmip itself             */
@@ -2218,6 +2242,15 @@ typedef XmipStatus (*XmipAuthorityFn)(XmipStr act, XmipStr arguments, uint8_t *o
                                       size_t cap, size_t *out_len);
 
 #define XMIP_AUTHORITY_ENTRYPOINT "xmip_authority_v1"
+
+/*
+ * xmip_authority_name_v1 says the name a cluster's own authority is made
+ * under, in section 10's text shape: input the cluster's name, argument
+ * empty; out the name, "Xmip cluster <cluster> authority". Pure, as
+ * section 7. A node's build only. Optional symbol; XMIP_OPERATE_VERSION is
+ * unchanged.
+ */
+#define XMIP_AUTHORITY_NAME_ENTRYPOINT "xmip_authority_name_v1"
 
 /* ===================================================================== */
 /* 24. A secret a Location presents, set through a node                  */
@@ -2459,6 +2492,516 @@ typedef XmipStatus (*XmipModuleProbeFn)(XmipStr library, uint8_t *out, size_t ca
 #define XMIP_DOCUMENT_READ_ENTRYPOINT  "xmip_document_read_v1"
 #define XMIP_DOCUMENT_WRITE_ENTRYPOINT "xmip_document_write_v1"
 #define XMIP_DOCUMENT_SET_ENTRYPOINT   "xmip_document_set_v1"
+
+/* ===================================================================== */
+/* 28. The surface                                                       */
+/* ===================================================================== */
+
+/*
+ * What every screen, command and cmdlet reads, implemented once in Rust,
+ * operate::surface, and called here by every surface in another language
+ * (ADR-0052, amendment 2026-11-18): the command line calls the same Rust
+ * through its traits. 28.1 is a publication's scope tree, 28.2 a surface
+ * itself, 28.3 what a surface says and how it orders a list. Optional
+ * symbols; XMIP_OPERATE_VERSION is unchanged.
+ */
+
+/* --- 28.1 A publication's scope tree --------------------------------- */
+
+/*
+ * A publication as the tree it is (ADR-0027): every scope with its records
+ * worst first, its worst, its own record, its mood, its children worst
+ * first and its six figures, computed once when the index is built and then
+ * answered by lookup (operate::surface::scope_index). A record is answered
+ * by its place: its position in the records the index was built from - the
+ * array handed to xmip_scope_index_build_v1, or the order
+ * xmip_publication_records_v1 hands a publication's out - so a surface
+ * keeps the records it read and never reads one twice. An index is
+ * immutable: every string and every place borrowed from it stays valid
+ * until xmip_scope_index_free_v1, from any thread. Any thread, before,
+ * during and without a node; a remote build carries this section.
+ *
+ *   xmip_scope_index_build_v1   records and counts in, each record keeping
+ *       its place; revision and source said with it. XMIP_E_INVALID for a
+ *       null array with a length, or a health or counted value section 3
+ *       does not define; XMIP_E_MALFORMED for text that is not UTF-8.
+ *   xmip_scope_index_of_publication_v1   the same, of a publication
+ *       xmip_publication_read_v1 read; the publication may be freed after.
+ *   xmip_scope_index_facts_v1   its revision, how many records and scopes,
+ *       when its newest figure was observed, and its source.
+ *   xmip_scope_index_placed_v1  one scope; XMIP_E_NOT_FOUND where the tree
+ *       holds no such scope. The scope is read as the tree reads one, so
+ *       xmip://h/c/ and xmip:///c are one place.
+ *   xmip_scope_index_children_v1  the scopes directly beneath one, worst
+ *       first, in the fill shape; none beneath a scope the tree lacks.
+ *   xmip_scope_index_list_v1    XMIP_SCOPE_LIST_STAGE_SCOPES, the scopes
+ *       where the stage the argument names begins; _NODES, the names
+ *       directly beneath the root; _MATCHING, the scopes the argument
+ *       matches by the one wildcard (section 7): each in ordinal order, in
+ *       the fill shape. XMIP_E_INVALID for another list.
+ *   xmip_scope_index_label_v1   what a person reads a scope as: a stage
+ *       where it begins by its title, else its segment; borrowed from the
+ *       index, static, or from scope itself where the tree lacks it.
+ *   xmip_scope_index_worst_at_stage_v1  the place of the worst record on a
+ *       stage, -1 for none.
+ *   xmip_scope_index_measure_v1  one figure at a scope as a measurement, its
+ *       window the minute before the index's newest figure, else before
+ *       now_unix_nanos; its scope borrowed from scope. XMIP_E_NOT_FOUND
+ *       where nothing of that kind is counted there; XMIP_E_INVALID for a
+ *       counted value section 4 does not define.
+ *   xmip_scope_index_capabilities_v1  what each node declared by its last
+ *       capability record, as a JSON array by node: node, roles, online,
+ *       published, evidence and refusal; the shape of section 10.
+ *   xmip_scope_index_select_v1  what a pattern selects among the index's
+ *       scopes (ADR-0059 clauses 7 and 8): a pattern with no wildcard
+ *       itself, else the topmost it matches, as the JSON object {argument,
+ *       patterned, scopes}; XMIP_E_NOT_FOUND with the refusal sentence,
+ *       naming source, where a wildcard matches nothing. The shape of
+ *       section 10.
+ *   xmip_scope_relative_v1      XMIP_SCOPE_RELATIVE_PARENT, one step up,
+ *       the root's the root; _NODE_SCOPE, the node's own scope it is on or
+ *       beneath, empty on no node; _NAME, what it is called beneath its
+ *       cluster: written as UTF-8 into out, its true length in out_len. Pure.
+ *   xmip_figures_sum_v1         figures summed: a kind no part published
+ *       stays unpublished, the newest observed wins. Pure.
+ */
+typedef struct XmipScopeIndex XmipScopeIndex;
+
+#define XMIP_FIGURE_STREAMS 1u
+#define XMIP_FIGURE_MESSAGES 2u
+#define XMIP_FIGURE_JOURNEYS 4u
+#define XMIP_FIGURE_BYTES 8u
+#define XMIP_FIGURE_RETRYING 16u
+#define XMIP_FIGURE_FAILED 32u
+
+typedef struct XmipScopePlaced {
+    XmipStr scope;            /* as the tree spells it */
+    XmipStr label;            /* the segment it is called by */
+    const uint32_t *leaves;   /* the records at and beneath it, worst first */
+    size_t leaves_len;
+    int64_t own;              /* the record published at it, or -1 */
+    int32_t mood;             /* section 3: a leaf's own, a parent's rollup; -1 none */
+    int32_t row_mood;         /* the rollup where records lie beneath it; -1 none */
+    uint8_t is_leaf;
+    uint8_t is_container;     /* records lie beneath it, not only at it */
+    uint8_t begins_stage;
+    uint8_t published;        /* XMIP_FIGURE_* bits of the figures counted */
+    XmipStr stage;            /* its stage's word; empty on none */
+    uint64_t streams;
+    uint64_t messages;
+    uint64_t journeys;
+    uint64_t bytes;
+    uint64_t retrying;
+    uint64_t failed;
+} XmipScopePlaced;
+
+typedef struct XmipScopeIndexFacts {
+    uint64_t revision;
+    size_t leaves;
+    size_t scopes;
+    int64_t observed_unix_nanos;
+    uint8_t observed;         /* 1 where observed_unix_nanos says anything */
+    XmipStr source;
+} XmipScopeIndexFacts;
+
+typedef struct XmipFigures {
+    uint64_t streams;
+    uint64_t messages;
+    uint64_t journeys;
+    uint64_t bytes;
+    uint64_t retrying;
+    uint64_t failed;
+    int64_t observed_unix_nanos;
+    uint8_t published;        /* XMIP_FIGURE_* bits */
+    uint8_t observed;
+} XmipFigures;
+
+#define XMIP_SCOPE_LIST_STAGE_SCOPES 1u
+#define XMIP_SCOPE_LIST_NODES 2u
+#define XMIP_SCOPE_LIST_MATCHING 3u
+
+#define XMIP_SCOPE_RELATIVE_PARENT 1u
+#define XMIP_SCOPE_RELATIVE_NODE_SCOPE 2u
+#define XMIP_SCOPE_RELATIVE_NAME 3u
+
+typedef XmipStatus (*XmipScopeIndexBuildFn)(const XmipHealthEntry *records, size_t records_len,
+                                            const XmipMeasurement *counts, size_t counts_len,
+                                            uint64_t revision, XmipStr source,
+                                            XmipScopeIndex **out);
+typedef XmipStatus (*XmipScopeIndexOfPublicationFn)(const XmipPublication *publication,
+                                                    uint64_t revision, XmipStr source,
+                                                    XmipScopeIndex **out);
+typedef void (*XmipScopeIndexFreeFn)(XmipScopeIndex *index);
+typedef XmipStatus (*XmipScopeIndexFactsFn)(const XmipScopeIndex *index,
+                                            XmipScopeIndexFacts *out);
+typedef XmipStatus (*XmipScopeIndexPlacedFn)(const XmipScopeIndex *index, XmipStr scope,
+                                             XmipScopePlaced *out);
+typedef XmipStatus (*XmipScopeIndexChildrenFn)(const XmipScopeIndex *index, XmipStr scope,
+                                               XmipScopePlaced *out, size_t cap,
+                                               size_t *out_len);
+typedef XmipStatus (*XmipScopeIndexListFn)(const XmipScopeIndex *index, uint32_t which,
+                                           XmipStr argument, XmipStr *out, size_t cap,
+                                           size_t *out_len);
+typedef XmipStatus (*XmipScopeIndexLabelFn)(const XmipScopeIndex *index, XmipStr scope,
+                                            XmipStr *out);
+typedef XmipStatus (*XmipScopeIndexWorstAtStageFn)(const XmipScopeIndex *index, XmipStr stage,
+                                                   int64_t *out_place);
+typedef XmipStatus (*XmipScopeIndexMeasureFn)(const XmipScopeIndex *index, XmipStr scope,
+                                              int32_t counted, int64_t now_unix_nanos,
+                                              XmipMeasurement *out);
+typedef XmipStatus (*XmipScopeIndexCapabilitiesFn)(const XmipScopeIndex *index, uint8_t *out,
+                                                   size_t cap, size_t *out_len);
+typedef XmipStatus (*XmipScopeIndexSelectFn)(const XmipScopeIndex *index, XmipStr pattern,
+                                             XmipStr source, uint8_t *out, size_t cap,
+                                             size_t *out_len);
+typedef XmipStatus (*XmipScopeRelativeFn)(XmipStr scope, uint32_t which, uint8_t *out,
+                                          size_t cap, size_t *out_len);
+typedef XmipStatus (*XmipFiguresSumFn)(const XmipFigures *parts, size_t len, XmipFigures *out);
+
+#define XMIP_SCOPE_INDEX_BUILD_ENTRYPOINT "xmip_scope_index_build_v1"
+#define XMIP_SCOPE_INDEX_OF_PUBLICATION_ENTRYPOINT "xmip_scope_index_of_publication_v1"
+#define XMIP_SCOPE_INDEX_FREE_ENTRYPOINT "xmip_scope_index_free_v1"
+#define XMIP_SCOPE_INDEX_FACTS_ENTRYPOINT "xmip_scope_index_facts_v1"
+#define XMIP_SCOPE_INDEX_PLACED_ENTRYPOINT "xmip_scope_index_placed_v1"
+#define XMIP_SCOPE_INDEX_CHILDREN_ENTRYPOINT "xmip_scope_index_children_v1"
+#define XMIP_SCOPE_INDEX_LIST_ENTRYPOINT "xmip_scope_index_list_v1"
+#define XMIP_SCOPE_INDEX_LABEL_ENTRYPOINT "xmip_scope_index_label_v1"
+#define XMIP_SCOPE_INDEX_WORST_AT_STAGE_ENTRYPOINT "xmip_scope_index_worst_at_stage_v1"
+#define XMIP_SCOPE_INDEX_MEASURE_ENTRYPOINT "xmip_scope_index_measure_v1"
+#define XMIP_SCOPE_INDEX_CAPABILITIES_ENTRYPOINT "xmip_scope_index_capabilities_v1"
+#define XMIP_SCOPE_INDEX_SELECT_ENTRYPOINT "xmip_scope_index_select_v1"
+#define XMIP_SCOPE_RELATIVE_ENTRYPOINT "xmip_scope_relative_v1"
+#define XMIP_FIGURES_SUM_ENTRYPOINT "xmip_figures_sum_v1"
+
+/* --- 28.2 A surface --------------------------------------------------- */
+
+/*
+ * A surface - a published snapshot followed as its publisher replaces it,
+ * or a node at its operate listener, on this machine at its local endpoint
+ * or on another at its operate address - opened, read, followed and asked
+ * to act: operate::surface's snapshot and listener, chosen by its choice,
+ * the one the command line reads (ADR-0052, amendment 2026-11-18). A
+ * remote build carries every export here.
+ *
+ * Opened, each handing a surface the caller frees with xmip_surface_free_v1
+ * (which ends its follow), XMIP_OK always - a surface that reaches nothing
+ * says why on every answer, as one whose node does not answer does;
+ * XMIP_E_MALFORMED when a string is not UTF-8:
+ *   xmip_surface_snapshot_v1     the publication at a path (within unused).
+ *   xmip_surface_local_v1        the node at a local endpoint, empty for
+ *                                none named; each call bounded by within
+ *                                milliseconds, 0 for what the node declared.
+ *   xmip_surface_remote_v1       the node at an operate address, presenting
+ *                                the PEM files the three paths name - empty
+ *                                where none is - in Xmip's mutual TLS.
+ *   xmip_surface_remote_kept_v1  the same, the chain at a path whose key the
+ *                                keeper keeper names holds, every signature
+ *                                asked of sign with context (section 17's
+ *                                XmipKeeperSignFn), until it is freed.
+ *
+ * Asked, in one shape (XmipSurfaceAskFn): caller a caller this process
+ * holds (section 18; 0 for this side), input and argument what is asked,
+ * the answer in out as UTF-8, its true length in out_len; XMIP_OK with the
+ * answer, XMIP_E_INVALID with the refusal, one sentence. An act is taken
+ * once: ask with room for its answer, not again.
+ *   xmip_surface_source_v1       where its answers come from, in words.
+ *   xmip_surface_standing_v1     {"connected","reason","gathers"}: whether its
+ *                                node answered when last asked (a snapshot:
+ *                                whether its file is there), why not, and
+ *                                whether it follows its clusters gathered
+ *                                view; nothing asked of a node.
+ *   xmip_surface_act_v1          input {"node","noun","target","act"}, the
+ *                                runtime's words: {"outcome","said"},
+ *                                outcome XMIP_ACTED_* (28.3).
+ *   xmip_surface_act_message_v1  input {"scope","journey","act"}: an act on a
+ *                                failed Message, asked of the node the scope
+ *                                is on: {"node","outcome","said"}.
+ *   xmip_surface_control_v1      input {"scope","action","who"}, action pause
+ *                                or resume: {"applied","result"}.
+ *   xmip_surface_failed_v1       input {"scope","from","most"}: section 16's
+ *                                {"failed_messages":[...]} with "listed"
+ *                                and "failure".
+ *   xmip_surface_secrets_v1      input the node: {"secrets":[{"name","kind",
+ *                                "set_unix_nanos","set_by"}]}, never a value.
+ *   xmip_surface_set_secret_v1   input {"node","name","kind"}, the value the
+ *                                argument: {"applied","result"}.
+ *
+ * Read and followed:
+ *   xmip_surface_answers_v1      whether it answers now - a node that does,
+ *                                a snapshot whose file is there - 1 or 0.
+ *   xmip_surface_read_v1         what it answers from, where it is not the
+ *                                reading seen names: its head as JSON in
+ *                                out - {"reading","changed","revision",
+ *                                "root","said"}, reading naming this reading
+ *                                among those handed - and the publication as
+ *                                section 8 lends one and its scope tree as
+ *                                28.1 holds one, each the caller's to free.
+ *                                Where it is that reading, nothing: out_len
+ *                                0 and both null. XMIP_E_TRUNCATED, nothing
+ *                                handed, where the head does not fit.
+ *   xmip_surface_wait_v1         once its follow has told more than seen
+ *                                times, or within milliseconds passed: how
+ *                                many times and the revision last told. The
+ *                                first wait starts the one follow every
+ *                                waiter shares, which tells once at once.
+ *
+ * Pure, in section 10's shape, a refusal XMIP_E_INVALID:
+ *   xmip_surface_decided_v1      the surface asked for - input {"asked":
+ *                                "line"|"host"|"cluster","cluster",
+ *                                "remote","local","snapshot","kept","base",
+ *                                "environment"} - over the host's [Xmip]
+ *                                table as JSON, the argument:
+ *                                {"surface":"snapshot","path"},
+ *                                {"surface":"local","endpoint"} or
+ *                                {"surface":"remote","address",
+ *                                "certificate","key","anchors","kept"}.
+ *                                environment, an object of variables, is
+ *                                read in place of the process's where a
+ *                                host hands one: a .NET host's variables
+ *                                never reach the process's own on Unix.
+ *   xmip_surface_named_v1        input {"certificate","key","anchors",
+ *                                "kept"}, paths; or, with the host's [Xmip]
+ *                                table as JSON the argument, input
+ *                                {"base","environment","kept"} and the
+ *                                files the table names, else the
+ *                                environment's XMIP_CERTIFICATE,
+ *                                XMIP_PRIVATE_KEY and XMIP_TRUST_ANCHOR:
+ *                                {"certificate","key","anchors","kept"},
+ *                                or the refusal of files not named together
+ *                                or not there.
+ *   xmip_surface_unlisted_v1     input {"listed","failure","scope","source"}:
+ *                                what a list that is none says, empty for
+ *                                one.
+ *   xmip_surface_port_at_v1      input a scope: {"node","port"}.
+ *   xmip_surface_remote_refusal_v1, xmip_surface_local_refusal_v1
+ *                                why --remote or --local with the input after
+ *                                it cannot be obeyed; empty where it can.
+ *   xmip_surface_not_acted_v1    why a snapshot takes no act.
+ *   xmip_surface_unnamed_v1      what a local surface naming no node says.
+ * Optional symbols; XMIP_OPERATE_VERSION is unchanged.
+ */
+typedef struct XmipSurface XmipSurface;
+
+typedef XmipStatus (*XmipSurfaceOpenFn)(XmipStr place, uint32_t within, XmipSurface **out);
+typedef XmipStatus (*XmipSurfaceRemoteFn)(XmipStr address, XmipStr certificate, XmipStr key,
+                                          XmipStr anchors, XmipSurface **out);
+typedef XmipStatus (*XmipSurfaceRemoteKeptFn)(XmipStr address, XmipStr certificate,
+                                              XmipStr anchors, XmipStr keeper,
+                                              XmipKeeperSignFn sign, void *context,
+                                              XmipSurface **out);
+typedef void (*XmipSurfaceFreeFn)(XmipSurface *surface);
+typedef XmipStatus (*XmipSurfaceAskFn)(const XmipSurface *surface, uint64_t caller,
+                                       XmipStr input, XmipStr argument, uint8_t *out,
+                                       size_t cap, size_t *out_len);
+typedef XmipStatus (*XmipSurfaceAnswersFn)(const XmipSurface *surface, uint8_t *out);
+typedef XmipStatus (*XmipSurfaceReadFn)(const XmipSurface *surface, uint64_t seen,
+                                        XmipPublication **out_publication,
+                                        XmipScopeIndex **out_index, uint8_t *out, size_t cap,
+                                        size_t *out_len);
+typedef XmipStatus (*XmipSurfaceWaitFn)(const XmipSurface *surface, uint64_t seen,
+                                        uint32_t within, uint64_t *out_told,
+                                        uint64_t *out_revision);
+
+#define XMIP_SURFACE_SNAPSHOT_ENTRYPOINT       "xmip_surface_snapshot_v1"
+#define XMIP_SURFACE_LOCAL_ENTRYPOINT          "xmip_surface_local_v1"
+#define XMIP_SURFACE_REMOTE_ENTRYPOINT         "xmip_surface_remote_v1"
+#define XMIP_SURFACE_REMOTE_KEPT_ENTRYPOINT    "xmip_surface_remote_kept_v1"
+#define XMIP_SURFACE_FREE_ENTRYPOINT           "xmip_surface_free_v1"
+#define XMIP_SURFACE_SOURCE_ENTRYPOINT         "xmip_surface_source_v1"
+#define XMIP_SURFACE_ANSWERS_ENTRYPOINT        "xmip_surface_answers_v1"
+#define XMIP_SURFACE_STANDING_ENTRYPOINT       "xmip_surface_standing_v1"
+#define XMIP_SURFACE_READ_ENTRYPOINT           "xmip_surface_read_v1"
+#define XMIP_SURFACE_WAIT_ENTRYPOINT           "xmip_surface_wait_v1"
+#define XMIP_SURFACE_ACT_ENTRYPOINT            "xmip_surface_act_v1"
+#define XMIP_SURFACE_ACT_MESSAGE_ENTRYPOINT    "xmip_surface_act_message_v1"
+#define XMIP_SURFACE_CONTROL_ENTRYPOINT        "xmip_surface_control_v1"
+#define XMIP_SURFACE_FAILED_ENTRYPOINT         "xmip_surface_failed_v1"
+#define XMIP_SURFACE_SECRETS_ENTRYPOINT        "xmip_surface_secrets_v1"
+#define XMIP_SURFACE_SET_SECRET_ENTRYPOINT     "xmip_surface_set_secret_v1"
+#define XMIP_SURFACE_DECIDED_ENTRYPOINT        "xmip_surface_decided_v1"
+#define XMIP_SURFACE_NAMED_ENTRYPOINT          "xmip_surface_named_v1"
+#define XMIP_SURFACE_UNLISTED_ENTRYPOINT       "xmip_surface_unlisted_v1"
+#define XMIP_SURFACE_PORT_AT_ENTRYPOINT        "xmip_surface_port_at_v1"
+#define XMIP_SURFACE_REMOTE_REFUSAL_ENTRYPOINT "xmip_surface_remote_refusal_v1"
+#define XMIP_SURFACE_LOCAL_REFUSAL_ENTRYPOINT  "xmip_surface_local_refusal_v1"
+#define XMIP_SURFACE_NOT_ACTED_ENTRYPOINT      "xmip_surface_not_acted_v1"
+#define XMIP_SURFACE_UNNAMED_ENTRYPOINT        "xmip_surface_unnamed_v1"
+
+/* --- 28.3 What a surface says, and a list's order --------------------- */
+
+/*
+ * The words every surface says and the order it lists a node's nouns in,
+ * each once in Rust: operate::surface's english, run_header,
+ * node_capability, configuration_verdict and acted, its three noun queries
+ * over list_order - a text compared ordinally, the one order every surface
+ * sorts by - and abi's status_meaning and boundaries. Pure, as section 7:
+ * no handle, any thread, before, during and without a node; a remote build
+ * carries them all.
+ *
+ * Static words, lent for the life of the library:
+ *   xmip_phrase_v1         a phrase, XMIP_PHRASE_*: a row with no health
+ *                          recorded, why a program that states no audit
+ *                          directory has none to read, the mark after a
+ *                          hidden run's record or group, and
+ *                          what the process stage says where it holds
+ *                          Subscriptions alone. XMIP_E_INVALID for another.
+ *   xmip_act_word_v1       the word an act, XMIP_ACT_* in observe::Act's
+ *                          order, crosses to a node as (section 17's
+ *                          xmip_remote_act_v1). XMIP_E_INVALID for another.
+ *   xmip_act_outcome_v1    what came of an act whose export answered a
+ *                          status: XMIP_OK taken, XMIP_E_AGAIN asked, any
+ *                          other refused (XMIP_ACTED_*), and its word.
+ *   xmip_status_meaning_v1 what a status code means: whether the header
+ *                          defines it, its name ("unknown" where it does
+ *                          not), one line of English, retryable, terminal.
+ *   xmip_boundaries_v1     the two boundaries this build speaks: the
+ *                          module boundary's version, entrypoint and how
+ *                          this platform names a module's library, and the
+ *                          operator boundary's version and entrypoint.
+ *
+ * Sentences, written into out as UTF-8, their true length in out_len
+ * whether or not they fit; XMIP_E_MALFORMED where a text is not UTF-8,
+ * XMIP_E_INVALID with why where a number names nothing:
+ *   xmip_sentence_v1       XMIP_SENTENCE_*: "Nothing at <scope> (<source>).",
+ *                          beneath, measured at.
+ *   xmip_act_said_v1       "OK. ", "ASKED. " or "REFUSED: " and the result.
+ *   xmip_age_v1            how long before now observed was, both Unix
+ *                          nanoseconds: "12s ago", "3m ago", "2h ago".
+ *   xmip_figure_v1         a figure with its thousands grouped, "1,234", or
+ *                          a dash where has is 0.
+ *   xmip_figures_line_v1   the six figures, Streams, Messages, Journeys,
+ *                          bytes, Retrying and Failed, in one line; has and
+ *                          values six entries each.
+ *   xmip_text_v1           XMIP_TEXT_VALUE: the text, or a dash where it is
+ *                          blank; XMIP_TEXT_TO_THE_SECOND: an RFC 3339 time
+ *                          without its fractional seconds.
+ *   xmip_who_v1            section 10's shape: who acts, the stated name
+ *                          trimmed where it names someone, else the user.
+ *   xmip_validated_v1      the sentence a validation's verdict says, from
+ *                          the document's path, the status and the problems
+ *                          the runtime listed.
+ *
+ * A run and a node's declaration, section 10's shape, JSON both ways:
+ *   xmip_run_said_v1        a run, observe::Run's JSON, in; out
+ *                           {"said","line","started":[{"node","roles",
+ *                           "online","refusal"}]}, one started node for each
+ *                           of its roles' entries.
+ *   xmip_capability_said_v1 {"node","roles","online","published","refusal"}
+ *                           in; out {"said","words","line","purpose",
+ *                           "stages","route","origin"}.
+ *
+ * A node's nouns listed:
+ *   xmip_list_query_v1     XMIP_LIST_*, the list as its section's JSON
+ *                          (14, 15 or 16), each entry with at least the
+ *                          members the query reads - a Dead Message's
+ *                          declines are counted, never read, so each may
+ *                          be an empty pair - and the query, {"pattern",
+ *                          "location", "name" | "id" | "message", "sort",
+ *                          "order"}; out {"places":[...]}, each a place in
+ *                          the list given, chosen and in order - and for
+ *                          Event subscriptions "unheard", the members not
+ *                          heard that stand there - or XMIP_E_INVALID with
+ *                          the REFUSED sentence of a column or an order the
+ *                          list does not take.
+ *   xmip_list_columns_v1   the columns a list sorts by, its first the
+ *                          default, static, in the fill shape of section 7.
+ *   xmip_list_words_v1     XMIP_LIST_WORD_*, from two texts: a
+ *                          Subscription's scope (node, name), a Dead Message
+ *                          Queue entry's (node, Message), who an Event
+ *                          subscriber is (declared name, Party), a member
+ *                          not heard (by, said).
+ * Optional symbols; XMIP_OPERATE_VERSION is unchanged.
+ */
+#define XMIP_PHRASE_NOTHING_RECORDED   0
+#define XMIP_PHRASE_NO_AUDIT_DIRECTORY 1
+#define XMIP_PHRASE_TEST_MARK          2
+#define XMIP_PHRASE_NO_WORK_PROCESS    3
+
+#define XMIP_ACT_PAUSE   0
+#define XMIP_ACT_RESUME  1
+#define XMIP_ACT_REMOVE  2
+#define XMIP_ACT_REPLAY  3
+#define XMIP_ACT_RETRY   4
+#define XMIP_ACT_DISMISS 5
+
+#define XMIP_ACTED_TAKEN     0
+#define XMIP_ACTED_ASKED     1
+#define XMIP_ACTED_REFUSED   2
+
+#define XMIP_SENTENCE_NOTHING_AT       0
+#define XMIP_SENTENCE_NOTHING_BENEATH  1
+#define XMIP_SENTENCE_NOTHING_MEASURED 2
+
+#define XMIP_TEXT_VALUE         0
+#define XMIP_TEXT_TO_THE_SECOND 1
+
+#define XMIP_LIST_SUBSCRIPTIONS       0
+#define XMIP_LIST_EVENT_SUBSCRIPTIONS 1
+#define XMIP_LIST_DEAD_MESSAGES       2
+
+#define XMIP_LIST_WORD_SUBSCRIPTION_SCOPE 0
+#define XMIP_LIST_WORD_DEAD_MESSAGE_SCOPE 1
+#define XMIP_LIST_WORD_EVENT_WHO          2
+#define XMIP_LIST_WORD_UNHEARD_LINE       3
+
+typedef struct XmipStatusMeaning {
+    uint8_t known;
+    XmipStr name;
+    XmipStr meaning;
+    uint8_t retryable;
+    uint8_t terminal;
+} XmipStatusMeaning;
+
+typedef struct XmipBoundaries {
+    uint32_t module_version;
+    XmipStr module_entrypoint;
+    XmipStr module_library_file_name;
+    uint32_t operate_version;
+    XmipStr operate_entrypoint;
+} XmipBoundaries;
+
+typedef XmipStatus (*XmipWordFn)(int32_t which, XmipStr *out);
+typedef XmipStatus (*XmipActOutcomeFn)(XmipStatus status, int32_t *out, XmipStr *word);
+typedef XmipStatus (*XmipStatusMeaningFn)(XmipStatus code, XmipStatusMeaning *out);
+typedef XmipStatus (*XmipBoundariesFn)(XmipBoundaries *out);
+typedef XmipStatus (*XmipSentenceFn)(int32_t which, XmipStr first, XmipStr second,
+                                     uint8_t *out, size_t cap, size_t *out_len);
+typedef XmipStatus (*XmipActSaidFn)(int32_t outcome, XmipStr result, uint8_t *out,
+                                    size_t cap, size_t *out_len);
+typedef XmipStatus (*XmipAgeFn)(int64_t observed, int64_t now, uint8_t *out, size_t cap,
+                                size_t *out_len);
+typedef XmipStatus (*XmipFigureFn)(uint8_t has, uint64_t value, uint8_t *out, size_t cap,
+                                   size_t *out_len);
+typedef XmipStatus (*XmipFiguresLineFn)(const uint8_t *has, const uint64_t *values,
+                                        uint8_t *out, size_t cap, size_t *out_len);
+typedef XmipStatus (*XmipTextFn)(int32_t which, XmipStr text, uint8_t *out, size_t cap,
+                                 size_t *out_len);
+typedef XmipStatus (*XmipValidatedFn)(XmipStr path, XmipStatus status,
+                                      const XmipStr *problems, size_t problems_len,
+                                      uint8_t *out, size_t cap, size_t *out_len);
+typedef XmipStatus (*XmipListQueryFn)(int32_t list, XmipStr entries, XmipStr query,
+                                      uint8_t *out, size_t cap, size_t *out_len);
+typedef XmipStatus (*XmipListColumnsFn)(int32_t list, XmipStr *out, size_t cap,
+                                        size_t *out_len);
+
+#define XMIP_PHRASE_ENTRYPOINT          "xmip_phrase_v1"
+#define XMIP_ACT_WORD_ENTRYPOINT        "xmip_act_word_v1"
+#define XMIP_ACT_OUTCOME_ENTRYPOINT     "xmip_act_outcome_v1"
+#define XMIP_STATUS_MEANING_ENTRYPOINT  "xmip_status_meaning_v1"
+#define XMIP_BOUNDARIES_ENTRYPOINT      "xmip_boundaries_v1"
+#define XMIP_SENTENCE_ENTRYPOINT        "xmip_sentence_v1"
+#define XMIP_ACT_SAID_ENTRYPOINT        "xmip_act_said_v1"
+#define XMIP_AGE_ENTRYPOINT             "xmip_age_v1"
+#define XMIP_FIGURE_ENTRYPOINT          "xmip_figure_v1"
+#define XMIP_FIGURES_LINE_ENTRYPOINT    "xmip_figures_line_v1"
+#define XMIP_TEXT_ENTRYPOINT            "xmip_text_v1"
+#define XMIP_WHO_ENTRYPOINT             "xmip_who_v1"
+#define XMIP_VALIDATED_ENTRYPOINT       "xmip_validated_v1"
+#define XMIP_RUN_SAID_ENTRYPOINT        "xmip_run_said_v1"
+#define XMIP_CAPABILITY_SAID_ENTRYPOINT "xmip_capability_said_v1"
+#define XMIP_LIST_QUERY_ENTRYPOINT      "xmip_list_query_v1"
+#define XMIP_LIST_COLUMNS_ENTRYPOINT    "xmip_list_columns_v1"
+#define XMIP_LIST_WORDS_ENTRYPOINT      "xmip_list_words_v1"
 
 #ifdef __cplusplus
 }

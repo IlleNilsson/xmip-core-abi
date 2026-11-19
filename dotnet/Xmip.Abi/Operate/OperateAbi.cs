@@ -307,6 +307,15 @@ public static partial class OperateAbi
     /// <c>[provision.operator]</c> names: section 19.</summary>
     public const string OperatorSignEntrypoint = "xmip_operator_sign_v1";
 
+    /// <summary>A person's request read from its file, signed, and its chain
+    /// kept whole where a file is named, never over one: section 19 in
+    /// section 10's text shape (ADR-0052, amendment 2026-11-18).</summary>
+    public const string OperatorSignFileEntrypoint = "xmip_operator_sign_file_v1";
+
+    /// <summary>The name a cluster's own authority is made under: section
+    /// 23 in section 10's text shape (ADR-0052, amendment 2026-11-18).</summary>
+    public const string AuthorityNameEntrypoint = "xmip_authority_name_v1";
+
     /// <summary>A node's key and certificate issued by the cluster's own
     /// authority, for a node put on a machine of its own: section 22.</summary>
     public const string NodeIssueEntrypoint = "xmip_node_issue_v1";
@@ -320,6 +329,11 @@ public static partial class OperateAbi
     /// schema version to a later one: section 20 (ADR-0015, amendment
     /// 2026-10-20).</summary>
     public const string DatabaseUpgradeEntrypoint = "xmip_database_upgrade_v1";
+
+    /// <summary>An upgrade's scripts written into a folder, none over a file:
+    /// section 20 in section 10's text shape (ADR-0052, amendment
+    /// 2026-11-17).</summary>
+    public const string DatabaseWriteEntrypoint = "xmip_database_write_v1";
 
     /// <summary>Every Report listed, and one opened: section 25 (ADR-0072,
     /// amendment 2026-11-10).</summary>
