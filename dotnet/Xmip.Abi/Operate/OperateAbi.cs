@@ -122,9 +122,10 @@ public static partial class OperateAbi
     public const string ClusterSlicesEntrypoint = "xmip_cluster_slices_v1";
 
     /// <summary>One node's document sliced from a cluster's <c>cluster.xmip</c>
-    /// and signed by the cluster's authority beside that file, with the
-    /// authority's certificate: section 10, <c>design::signed_slice</c>
-    /// (ADR-0031, amendment 2026-11-06).</summary>
+    /// and signed by the cluster's authority beside that file, or kept where
+    /// the argument's <c>authority</c> names, with the authority's
+    /// certificate: section 10, <c>design::signed_slice</c> (ADR-0031,
+    /// amendments 2026-11-06 and 2026-11-19).</summary>
     public const string ClusterSignedSliceEntrypoint = "xmip_cluster_signed_slice_v1";
 
     /// <summary>Subscribe to the process's Events with a filter: section 11,
