@@ -34,9 +34,11 @@ pub const CLUSTER_EDIT_ENTRYPOINT: &str = "xmip_cluster_edit_v1";
 pub const CLUSTER_SLICES_ENTRYPOINT: &str = "xmip_cluster_slices_v1";
 
 /// `xmip_cluster_signed_slice_v1`: a cluster's `cluster.xmip` in, and
-/// `{"cluster","node"}`, the file's path and a node; that node's document,
-/// signed by the cluster's authority beside the file, and the authority's
-/// certificate out (ADR-0031, amendment 2026-11-06).
+/// `{"cluster","node"}`, the file's path and a node, and where given
+/// `"name"`, the cluster's name the environment gives, and `"authority"`,
+/// the folder its authority is kept in; that node's document, signed by the
+/// cluster's authority kept there or beside the file, and the authority's
+/// certificate out (ADR-0031, amendments 2026-11-06 and 2026-11-19).
 pub const CLUSTER_SIGNED_SLICE_ENTRYPOINT: &str = "xmip_cluster_signed_slice_v1";
 
 /// The one shape of them all. `input` is the text the export reads,

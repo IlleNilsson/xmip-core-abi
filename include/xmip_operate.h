@@ -1010,8 +1010,13 @@ typedef XmipStatus (*XmipAuditReadFn)(XmipStr directory,
  *                             kept) and the authority's certificate, PEM,
  *                             which a surface writes beside the slice as
  *                             authority/authority.pem (ADR-0031, amendment
- *                             2026-11-06). Not pure: it reads and may make
- *                             the authority.
+ *                             2026-11-06). The argument may add "name",
+ *                             the cluster's name where the environment
+ *                             gives it (configure::slice_named), and
+ *                             "authority", the folder the cluster's
+ *                             authority is kept in, which then signs
+ *                             (ADR-0031, amendment 2026-11-19). Not pure:
+ *                             it reads and may make the authority.
  */
 typedef XmipStatus (*XmipDesignFn)(XmipStr input, XmipStr argument,
                                    uint8_t *out, size_t cap, size_t *out_len);
