@@ -59,26 +59,14 @@ function Find-XmipRuntimeLibrary {
     [OutputType([string])]
     param()
 
-    [string] $name = 'libxmip_core_operate.so'
-    if ($IsWindows) {
-        $name = 'xmip_core_operate.dll'
-    }
-    elseif ($IsMacOS) {
-        $name = 'libxmip_core_operate.dylib'
-    }
-    [string] $target = Join-Path $PSScriptRoot '..' '..' 'core' 'operation' 'operate' 'target'
-    # The newer of the two builds: a stale release lacks what debug has.
-    $built = @(
-        foreach ($flavor in @('release', 'debug')) {
-            Get-Item -LiteralPath (Join-Path $target $flavor $name) -ErrorAction SilentlyContinue
-        }
-    ) | Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1
-    if ($built) {
-        return $built.FullName
+    # The library the estate's landing built, named by XMIP_RUNTIME_LIBRARY
+    # (Build-XmipLandingLibrary): where it is, is the estate's one rule, read
+    # there and nowhere here.
+    if ($env:XMIP_RUNTIME_LIBRARY -and (Test-Path -LiteralPath $env:XMIP_RUNTIME_LIBRARY)) {
+        return $env:XMIP_RUNTIME_LIBRARY
     }
     return ''
 }
-
 function Get-XmipCompilerEnvironment {
     <#
         .SYNOPSIS
@@ -270,7 +258,7 @@ if ([string]::IsNullOrWhiteSpace($Library)) {
     $Library = Find-XmipRuntimeLibrary
 }
 if ([string]::IsNullOrWhiteSpace($Library) -or -not (Test-Path -LiteralPath $Library)) {
-    Write-Host 'FAILED. No runtime library; build module/core/operation/operate or pass -Library.'
+    Write-Host 'FAILED. No runtime library; set XMIP_RUNTIME_LIBRARY or pass -Library.'
     exit 2
 }
 $Library = (Resolve-Path -LiteralPath $Library).Path
