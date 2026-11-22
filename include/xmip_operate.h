@@ -2008,7 +2008,9 @@ typedef XmipStatus (*XmipOperatorSignFn)(XmipStr configuration, XmipStr request,
  * ADR-0015, amendment 2026-10-20), and a node publishes each database it
  * keeps at <node>/storage/<domain> - runtime, administration, audit - its
  * evidence "schema version <n> on <engine>" - and at <node>/storage which
- * Storage it uses and whether it answers. A release's schema only adds
+ * Storage it uses and whether it answers, and of each standby whether its
+ * primary says it follows it now (ADR-0056, amendment 2026-11-22). A
+ * release's schema only adds
  * to the one before; its upgrade is the difference between the two, and
  * the schema, its versions and the scripts are xmip-core-persist's.
  *
