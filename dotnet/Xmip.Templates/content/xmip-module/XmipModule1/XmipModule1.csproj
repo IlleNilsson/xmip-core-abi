@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    An Xmip Module: its units in C#, published with NativeAOT as a native
+    library an Xmip node opens through the C ABI. Xmip.Module makes the
+    library shared, exports the entrypoint and writes the module's
+    [[modules]] entry, XmipModule1.module.xmip, beside it when published for
+    the platform the node runs on (linux-x64, win-x64, osx-arm64 ...).
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net11.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <!-- What a configuration pins of the module. -->
+    <Version>0.1.0</Version>
+    <!-- Compiled ahead of time: a node loads no .NET runtime. -->
+    <PublishAot>true</PublishAot>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Xmip.Module" Version="XMIP_MODULE_VERSION" />
+  </ItemGroup>
+
+</Project>

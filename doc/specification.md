@@ -11,7 +11,9 @@ function tables it must fill. The header is normative. Where this document and
 the header disagree, the header wins and this document is a bug.
 
 Scope is the universal boundary plus the four traits in creation wave one —
-transport, message, path and contract. The remaining thirteen traits are not
+transport, message, path and contract — and the tables of two kinds of
+compiled unit, a Work Process unit's and a Promote unit's (section 10). The
+remaining thirteen traits are not
 specified here. ADR-0012's reasoning still holds: a trait table designed
 without an implementation in front of it is a guess, and guesses become
 `v1` and then become permanent.
@@ -394,6 +396,24 @@ module keeps nothing between turns, so any thread may call `advance` at any
 time, many at once. A unit compiled from a design carries its program and runs
 `xmip-core-process`'s engine over it; a unit written by hand runs its own.
 
+### Promote
+
+Header section 14 (ADR-0066, amendment 2026-10-22; ADR-0075). A Promote unit
+reads values out of a Message's content into its context, at receive alone; as
+a Work Process unit's, the descriptor's module is `promote` and its standard
+the unit's name, and a library holds one unit. `open` is called once for each
+step entry that calls the unit, never per Message, with the stage word and the
+entry's settings, read through the unit's declaration in its manifest with
+every default filled in, as one JSON object, the transfer form of its
+`settings` table, and gives back the step, or refuses the settings with `XMIP_E_CONTRACT` and why
+in `last_error`; `release` lets it go. `promote` reads the content through its
+reader and hands each value found to the host's sink under the property it is
+promoted into, with its kind and its bytes as the message trait writes a leaf;
+a value not found is not handed on. A step keeps nothing between Messages, so
+any thread may call `promote` on it at any time, many at once. A unit written
+in .NET is published with NativeAOT over `Xmip.Module`, which exports this
+table; the runtime's loader is `ffi/loaded_promotion.rs`.
+
 ---
 
 ## 11. Conformance
@@ -453,10 +473,13 @@ in the estate records why.
 
 ## 14. The license of the boundary
 
-`include/xmip_module.h` is AGPL-3.0-or-later, like the rest of Xmip, and there
-is no exception for the boundary. The reasoning, the rejected permissive
-header and the note for implementers are clause 9 of ADR-0012 and ADR-0023 in
-the estate's decision record; this specification does not restate a decision.
+`include/xmip_module.h`, this specification and everything else in
+xmip-core-abi are Apache-2.0, where the rest of Xmip is AGPL-3.0-or-later:
+what a module links or compiles into itself is permissive, so a module stays
+its author's to license. The decision and its reasoning are ADR-0075 and the
+amendments of 2026-11-24 to ADR-0012 clause 9, ADR-0023 and ADR-0061 decision
+6 in the estate's decision record; this specification does not restate a
+decision.
 
 ## 15. The operator boundary
 

@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The program Xmip.Module's build/Xmip.Module.targets runs after a module
+    builds: it loads the module's assembly, lets it export its unit as it
+    would in a node, and writes the module's [[modules]] entry beside it
+    (Xmip.Module's ModuleEntry). Carried in Xmip.Module's package, under
+    tools/, never a package of its own.
+  -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Xmip.Module.Entry</RootNamespace>
+    <AssemblyName>Xmip.Module.Entry</AssemblyName>
+    <IsPackable>false</IsPackable>
+    <!-- Run on whatever .NET the developer builds with that is this one or
+         newer. -->
+    <RollForward>LatestMajor</RollForward>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Xmip.Module\Xmip.Module.csproj" />
+  </ItemGroup>
+
+</Project>

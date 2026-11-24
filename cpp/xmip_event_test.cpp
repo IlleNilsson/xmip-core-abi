@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: Apache-2.0
 // Copyright the Xmip authors.
 
 // xmip_event_test.cpp - include/xmip_event.hpp through the runtime's real

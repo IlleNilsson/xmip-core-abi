@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Xmip.Module's tests: the table its entrypoint fills, driven as a node
+    drives it — created, a step opened with its settings, a Message's
+    content read through a reader and its values handed to a sink — and the
+    [[modules]] entry written from a unit's declaration. The proof that a
+    NativeAOT library of it opens in a node is the runtime's
+    (ffi/loaded_promotion.rs, run on purpose).
+
+    Target framework and the rest come from Directory.Build.props.
+  -->
+
+  <PropertyGroup>
+    <RootNamespace>Xmip.Module.Test</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <!-- xUnit v3 under VSTest, as Xmip.Abi.Test. -->
+    <OutputType>Exe</OutputType>
+    <IsTestingPlatformApplication>false</IsTestingPlatformApplication>
+    <!-- The test drives the table through its function pointers. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <LangVersion>preview</LangVersion>
+    <Features>$(Features);updated-memory-safety-rules</Features>
+    <NoWarn>$(NoWarn);CS1591;IDE0380</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.11.1" />
+    <PackageReference Include="xunit.v3" Version="4.0.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="4.0.1">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Xmip.Module\Xmip.Module.csproj" />
+    <ProjectReference Include="..\Xmip.Abi\Xmip.Abi.csproj" />
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,20 @@
+<Project>
+
+  <!--
+    What makes a project that references Xmip.Module an Xmip module: a
+    native shared library, compiled ahead of time (ADR-0075). Set here unless
+    the project says otherwise.
+  -->
+
+  <PropertyGroup>
+    <NativeLib Condition="'$(NativeLib)' == ''">Shared</NativeLib>
+    <PublishAot Condition="'$(PublishAot)' == ''">true</PublishAot>
+    <!-- A module's unit exports itself from a [ModuleInitializer] as the
+         library loads (Xmip.Module's Export). CA2255 warns a library off
+         module initializers because whoever loads it did not ask for them;
+         a module's library is its own program, and the node loading it asks
+         for exactly that. -->
+    <NoWarn>$(NoWarn);CA2255</NoWarn>
+  </PropertyGroup>
+
+</Project>

@@ -1,0 +1,39 @@
+<Project>
+
+  <!--
+    How an Xmip module is built (ADR-0075):
+
+    - NativeAOT exports xmip_create_module_v1 from Xmip.Module's assembly
+      into the module's library, so the module's own code writes no export;
+    - the module's own assembly is rooted, so its [ModuleInitializer] and the
+      unit it exports are compiled in though nothing else names them;
+    - after it builds, its [[modules]] entry is written beside it,
+      <TargetName>.module.xmip, from the unit's own declaration, and
+      published beside its library.
+  -->
+
+  <ItemGroup>
+    <UnmanagedEntryPointsAssembly Include="Xmip.Module" />
+    <TrimmerRootAssembly Include="$(AssemblyName)" />
+  </ItemGroup>
+
+  <Target Name="XmipModuleEntry" AfterTargets="Build" Condition="'$(XmipModuleEntry)' != 'false'">
+    <PropertyGroup>
+      <_XmipDotnet>$(DOTNET_HOST_PATH)</_XmipDotnet>
+      <_XmipDotnet Condition="'$(_XmipDotnet)' == ''">dotnet</_XmipDotnet>
+      <_XmipEntryWriter>$(MSBuildThisFileDirectory)..\tools\net11.0\Xmip.Module.Entry.dll</_XmipEntryWriter>
+      <_XmipModuleName Condition="'$(XmipModuleName)' != ''">$(XmipModuleName)</_XmipModuleName>
+      <_XmipModuleName Condition="'$(XmipModuleName)' == ''">$(AssemblyName)</_XmipModuleName>
+      <_XmipModuleEntry>$(TargetDir)$(TargetName).module.xmip</_XmipModuleEntry>
+    </PropertyGroup>
+    <Exec Command="&quot;$(_XmipDotnet)&quot; &quot;$(_XmipEntryWriter)&quot; &quot;$(TargetPath)&quot; &quot;$(_XmipModuleName)&quot; &quot;$(Version)&quot; &quot;$(TargetName)&quot; &quot;$(_XmipModuleEntry)&quot;" />
+    <ItemGroup>
+      <FileWrites Include="$(_XmipModuleEntry)" />
+    </ItemGroup>
+  </Target>
+
+  <Target Name="XmipModuleEntryPublished" AfterTargets="Publish" Condition="'$(XmipModuleEntry)' != 'false'">
+    <Copy SourceFiles="$(TargetDir)$(TargetName).module.xmip" DestinationFolder="$(PublishDir)" />
+  </Target>
+
+</Project>

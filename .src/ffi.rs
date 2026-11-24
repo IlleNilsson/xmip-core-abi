@@ -311,9 +311,73 @@ pub struct WorkProcessVtable {
     >,
 }
 
+/// `XmipValueKind`; header section 10. A C enum, so an `i32` on the wire.
+pub mod value_kind {
+    pub const NULL: i32 = 0;
+    pub const BOOL: i32 = 1;
+    pub const NUMBER: i32 = 2;
+    pub const STRING: i32 = 3;
+    pub const BINARY: i32 = 4;
+    pub const SEQUENCE: i32 = 5;
+    pub const MAP: i32 = 6;
+}
+
+/// Where a Promote unit hands each value it promotes; header section 14.
+/// What `promoted` is handed is borrowed for that call.
+#[repr(C)]
+pub struct PromotionSink {
+    pub ctx: *mut core::ffi::c_void,
+    pub promoted: Option<
+        unsafe extern "C" fn(
+            ctx: *mut core::ffi::c_void,
+            property: Str,
+            kind: i32,
+            value: Slice,
+        ) -> i32,
+    >,
+}
+
+/// Header section 14: a Promote unit. `open` takes a step entry's stage word
+/// and its settings as one JSON object and gives back the step, once per
+/// entry; `promote` reads a Message's content and hands each value found to
+/// the sink, from any thread, many at once; `release` lets a step go.
+#[repr(C)]
+pub struct PromoteVtable {
+    pub header: VtableHeader,
+    pub open: Option<
+        unsafe extern "C" fn(
+            state: *mut core::ffi::c_void,
+            stage: Str,
+            settings: Str,
+            out_step: *mut *mut core::ffi::c_void,
+        ) -> i32,
+    >,
+    pub release:
+        Option<unsafe extern "C" fn(state: *mut core::ffi::c_void, step: *mut core::ffi::c_void)>,
+    pub promote: Option<
+        unsafe extern "C" fn(
+            state: *mut core::ffi::c_void,
+            step: *mut core::ffi::c_void,
+            content: *const Reader,
+            sink: *const PromotionSink,
+        ) -> i32,
+    >,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_promote_table_is_the_headers_shape() {
+        let pointer = core::mem::size_of::<usize>();
+        assert_eq!(
+            core::mem::size_of::<PromoteVtable>(),
+            core::mem::size_of::<VtableHeader>() + 3 * pointer
+        );
+        assert_eq!(core::mem::size_of::<PromotionSink>(), 2 * pointer);
+        assert_eq!(value_kind::BINARY, 4);
+    }
 
     #[test]
     fn the_work_process_table_is_the_headers_shape() {

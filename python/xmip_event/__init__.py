@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: Apache-2.0
 # Copyright the Xmip authors.
 
 """Xmip's Events, subscribed from Python over ctypes (xmip_operate.h section 11).

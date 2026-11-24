@@ -42,13 +42,16 @@ internal static class Header
         return found;
     }
 
-    /// <summary>Every enumerator <c>XMIP_&lt;family&gt;_NAME = value</c> in the
-    /// operate header, for one family such as <c>HEALTH</c>.</summary>
-    public static IReadOnlyDictionary<string, int> Enumerators(string family)
+    /// <summary>Every enumerator <c>XMIP_&lt;family&gt;_NAME = value</c> in
+    /// <paramref name="header"/>, the operate header unless named, for one
+    /// family such as <c>HEALTH</c>.</summary>
+    public static IReadOnlyDictionary<string, int> Enumerators(
+        string family,
+        string header = "xmip_operate.h")
     {
         Dictionary<string, int> found = [];
 
-        foreach (Match match in Enumerator.Matches(Text("xmip_operate.h")))
+        foreach (Match match in Enumerator.Matches(Text(header)))
         {
             if (string.Equals(match.Groups[1].Value, family, StringComparison.Ordinal))
             {

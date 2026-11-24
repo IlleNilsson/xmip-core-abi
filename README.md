@@ -101,8 +101,11 @@ dereference or a framework call the runtime marks unsafe (`GCHandle.Free`);
 and a member whose safety rests on its caller is marked `unsafe` itself —
 `XmipStr`'s pointer, constructor and `Read`, `PinnedStr.Value`,
 `Utf8Pack.Borrow`, and every raw pointer a header struct exposes.
-`Module/` carries the module boundary's version and entrypoint and the
-status codes. What a status code means and both boundaries at once are
+`Module/` carries the module boundary's version and entrypoint, the status
+codes, and the shapes a module fills: the host, the descriptor, the module
+handle (`XmipModuleHandle`, the header's `XmipModule`), the table header,
+the reader, the value kinds and section 14's Promote table and sink. What a
+status code means and both boundaries at once are
 written once, in Rust: `status_meaning::StatusMeaning`, what a status code
 means — its header name, its line of English, whether it is retryable or
 terminal — and `boundaries::Boundaries`, with `boundaries::library_file_name`,
@@ -120,5 +123,31 @@ compares the binding against the headers — every status, mood, counted kind
 and section's values, the versions, the entrypoints and section 8's struct
 layout — and holds those answers; `dotnet test dotnet/Xmip.Abi.Test` runs
 them.
+
+`dotnet/Xmip.Module` is the module side of `xmip_module.h` in .NET, as the
+Rust crate is for Rust (ADR-0012 clause 2; ADR-0075): a developer writes a
+unit in C# — a `PromoteUnit` today, header section 14 — and publishes it with
+NativeAOT as a library a node opens through the C ABI exactly as it opens a
+Rust module. It exports `xmip_create_module_v1` from its own assembly
+(`Entrypoint`), and its build writes the module's `[[modules]]` entry beside
+the library (`ModuleEntry`, run by `dotnet/Xmip.Module.Entry`, which the
+package carries in `tools/`). Its package, `Xmip.Module`, carries
+`Xmip.Abi`'s assembly inside it. `dotnet/Xmip.Module.Test` drives the table
+as a node does; the guide is `doc/writing-a-module-in-dotnet.md`, and the
+proof that a published library opens in a node is the runtime's
+`ffi/loaded_promotion.rs`, run on purpose. `dotnet/Xmip.Templates` is the
+`dotnet new` templates package beside it, `dotnet new xmip-module`: the two
+packages a developer installs share this repository, its license and one
+version, `XmipPackageVersion` in `dotnet/Directory.Build.props`, which the
+template's module names `Xmip.Module` at as it is packed
+(`test/DeveloperPackage.Test.ps1`).
+
+This repository is Apache-2.0 ([LICENSE](LICENSE), [NOTICE](NOTICE)) — the
+headers, the specification, the Rust crate, the bindings, `Xmip.Abi`,
+`Xmip.Module` and `Xmip.Templates` — because a module links or compiles it into itself, and a
+module stays its author's to license (ADR-0075; ADR-0061, amendment
+2026-11-24). The rest of Xmip is AGPL-3.0-or-later. The crate depends on no
+Xmip crate and the .NET projects on no Xmip project outside this repository,
+so nothing AGPL is linked through it (`test/License.Test.ps1`).
 
 `architecture.toml` carries the maturity; this file does not repeat it.

@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* SPDX-License-Identifier: Apache-2.0 */
 /* Copyright the Xmip authors. */
 
 /*
@@ -451,16 +451,21 @@ typedef XmipStatus (*XmipStageTitleFn)(XmipStr stage, XmipStr *out);
 /*
  * What a node declared of itself (ADR-0056), read from one health record it
  * published: its name in *out_node (borrowed from scope), its roles in the
- * fill shape (static words, declaration order), and *out_online 1 when it
- * may assume the internet. XMIP_E_NOT_FOUND when the record is not a
- * capability record at all; XMIP_E_INVALID, *out_node still written, when it
- * names a word that is no role, the refusal written as xmip_role_declared_v1
- * writes one.
+ * fill shape (static words, declaration order), and its Node capabilities
+ * in the fill shape too, into capabilities (borrowed from evidence,
+ * declaration order; "online" among them where it may assume the internet,
+ * ADR-0056, amendment 2026-11-24). XMIP_E_NOT_FOUND when the record is not
+ * a capability record at all; XMIP_E_INVALID, *out_node still written, when
+ * it names a word that is no role or a Node capability that is none, the
+ * refusal written as xmip_role_declared_v1 writes one.
  */
 typedef XmipStatus (*XmipCapabilityPublishedFn)(XmipScope scope, XmipStr evidence,
                                                 XmipStr *out_node,
                                                 XmipStr *roles, size_t cap,
-                                                size_t *out_len, uint8_t *out_online,
+                                                size_t *out_len,
+                                                XmipStr *capabilities,
+                                                size_t capabilities_cap,
+                                                size_t *capabilities_len,
                                                 uint8_t *refusal, size_t refusal_cap,
                                                 size_t *refusal_len);
 
@@ -597,12 +602,13 @@ typedef enum {
 } XmipTopologyColumn;
 
 typedef enum {
-    XMIP_RUN_TESTS  = 0,
-    XMIP_RUN_NODES  = 1,
-    XMIP_RUN_ROLES  = 2,
-    XMIP_RUN_ONLINE = 3,
+    XMIP_RUN_TESTS        = 0,
+    XMIP_RUN_NODES        = 1,
+    XMIP_RUN_ROLES        = 2,
+    /* each node's Node capabilities, <node>=online+erp-direct (ADR-0056) */
+    XMIP_RUN_CAPABILITIES = 3,
     /* the nodes on machines of their own, never spawned; the rest simulated */
-    XMIP_RUN_REAL   = 4
+    XMIP_RUN_REAL         = 4
 } XmipRunList;
 
 /*
@@ -2557,8 +2563,9 @@ typedef XmipStatus (*XmipModuleProbeFn)(XmipStr library, uint8_t *out, size_t ca
  *       where nothing of that kind is counted there; XMIP_E_INVALID for a
  *       counted value section 4 does not define.
  *   xmip_scope_index_capabilities_v1  what each node declared by its last
- *       capability record, as a JSON array by node: node, roles, online,
- *       published, evidence and refusal; the shape of section 10.
+ *       capability record, as a JSON array by node: node, roles,
+ *       capabilities, published, evidence and refusal; the shape of section
+ *       10.
  *   xmip_scope_index_select_v1  what a pattern selects among the index's
  *       scopes (ADR-0059 clauses 7 and 8): a pattern with no wildcard
  *       itself, else the topmost it matches, as the JSON object {argument,
@@ -2891,11 +2898,12 @@ typedef XmipStatus (*XmipSurfaceWaitFn)(const XmipSurface *surface, uint64_t see
  * A run and a node's declaration, section 10's shape, JSON both ways:
  *   xmip_run_said_v1        a run, observe::Run's JSON, in; out
  *                           {"said","line","started":[{"node","roles",
- *                           "online","refusal"}]}, one started node for each
- *                           of its roles' entries.
- *   xmip_capability_said_v1 {"node","roles","online","published","refusal"}
- *                           in; out {"said","words","line","purpose",
- *                           "stages","route","origin"}.
+ *                           "capabilities","refusal"}]}, one started node for
+ *                           each of its roles' entries.
+ *   xmip_capability_said_v1 {"node","roles","capabilities","published",
+ *                           "refusal"} in; out {"said","words","line",
+ *                           "purpose","stages","named","origin"}, named its
+ *                           Node capabilities in one phrase.
  *
  * A node's nouns listed:
  *   xmip_list_query_v1     XMIP_LIST_*, the list as its section's JSON

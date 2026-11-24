@@ -38,7 +38,11 @@
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
 
     <Authors>Ilian Nilsson</Authors>
-    <PackageLicenseExpression>AGPL-3.0-or-later</PackageLicenseExpression>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+
+    <!-- The developer packages' one version (ADR-0075): Xmip.Module's, and
+         Xmip.Templates', whose module names Xmip.Module at it. -->
+    <XmipPackageVersion>0.1.0</XmipPackageVersion>
   </PropertyGroup>
 
   <!--

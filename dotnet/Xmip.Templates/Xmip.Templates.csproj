@@ -1,0 +1,74 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Xmip.Templates: the `dotnet new` templates a developer starts an Xmip
+    extension from (ADR-0075), beside Xmip.Module, so the two packages a
+    developer installs have one repository, one license and one version.
+    `dotnet new xmip-module` gives a Module with one Promote unit over
+    Xmip.Module and its test, publishing with NativeAOT to a library a node
+    opens through the C ABI, and its [[modules]] entry.
+
+    No code of its own: the package is the content folder. Its projects are
+    not the estate's to build — they reference Xmip.Module as a developer's
+    do — so the estate's walk for projects does not enter a folder holding
+    .template.config (Find-XmipFile). The module's project names Xmip.Module
+    at XMIP_MODULE_VERSION, which the pack writes as this package's own
+    version, XmipPackageVersion, Xmip.Module's too.
+
+    Target framework and the rest come from Directory.Build.props.
+  -->
+
+  <PropertyGroup>
+    <PackageType>Template</PackageType>
+    <PackageId>Xmip.Templates</PackageId>
+    <Version>$(XmipPackageVersion)</Version>
+    <Authors>Xmip</Authors>
+    <Company>Xmip</Company>
+    <Title>Xmip templates</Title>
+    <Description>dotnet new templates for Xmip: xmip-module, a Module with a Promote unit in C#, published with NativeAOT as a native library an Xmip node opens through the C ABI.</Description>
+    <PackageTags>xmip;integration;messaging;module;nativeaot;dotnet-new;templates</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageProjectUrl>https://github.com/IlleNilsson/Xmip</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/IlleNilsson/xmip-core-abi</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+
+    <IncludeContentInPack>true</IncludeContentInPack>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <!-- .template.config is a dot folder, which pack leaves out by default. -->
+    <NoDefaultExcludes>true</NoDefaultExcludes>
+    <EnableDefaultItems>false</EnableDefaultItems>
+    <!-- Nothing is compiled, so nothing is documented and nothing restored. -->
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <RestorePackagesWithLockFile>false</RestorePackagesWithLockFile>
+    <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
+    <TargetsForTfmSpecificContentInPackage>$(TargetsForTfmSpecificContentInPackage);XmipVersionedModule</TargetsForTfmSpecificContentInPackage>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <_XmipModuleProject>content\xmip-module\XmipModule1\XmipModule1.csproj</_XmipModuleProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="content\**\*" Exclude="content\**\bin\**;content\**\obj\**;$(_XmipModuleProject)"
+             PackagePath="content" />
+    <None Include="README.md" Pack="true" PackagePath="\" />
+    <!-- Apache-2.0's NOTICE travels with what carries the content. -->
+    <None Include="..\..\NOTICE" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <!-- The module's project, packed with XMIP_MODULE_VERSION written as this
+       package's version: the template names Xmip.Module at the version it
+       is packed with, never a copy kept by hand. -->
+  <Target Name="XmipVersionedModule">
+    <PropertyGroup>
+      <_XmipVersioned>$(IntermediateOutputPath)XmipModule1.csproj</_XmipVersioned>
+      <_XmipModuleText>$([MSBuild]::Escape($([System.IO.File]::ReadAllText('$(MSBuildProjectDirectory)\$(_XmipModuleProject)').Replace('XMIP_MODULE_VERSION', '$(Version)'))))</_XmipModuleText>
+    </PropertyGroup>
+    <WriteLinesToFile File="$(_XmipVersioned)" Lines="$(_XmipModuleText)" Overwrite="true" WriteOnlyWhenDifferent="true" />
+    <ItemGroup>
+      <TfmSpecificPackageFile Include="$(_XmipVersioned)" PackagePath="content/xmip-module/XmipModule1/XmipModule1.csproj" />
+    </ItemGroup>
+  </Target>
+
+</Project>

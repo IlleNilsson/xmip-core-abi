@@ -1,0 +1,83 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Xmip.Module: what a developer writes a Module's units with in C#, and
+    publishes with NativeAOT as a native library a node opens through the C
+    ABI exactly as it opens a Rust module (ADR-0075). The module side of
+    include/xmip_module.h, as the abi crate is for Rust (ADR-0012 clause 2):
+    the exported entrypoint and the tables (Entrypoint.cs), a plain managed
+    API per unit capability whose table the header declares (PromoteUnit),
+    and the [[modules]] entry written beside the library at build
+    (ModuleEntry, build/Xmip.Module.targets). The header's shapes are
+    Xmip.Abi's, once; this package carries Xmip.Abi's assembly inside it
+    rather than as a package of its own, the four packages ADR-0075 names.
+
+    Target framework and the rest come from Directory.Build.props.
+  -->
+
+  <PropertyGroup>
+    <RootNamespace>Xmip.Module</RootNamespace>
+    <AssemblyName>Xmip.Module</AssemblyName>
+
+    <!-- The module side of a C ABI: the table, the reader and the sink. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- As Xmip.Abi: C# 15's updated memory safety rules, a preview. -->
+    <LangVersion>preview</LangVersion>
+    <Features>$(Features);updated-memory-safety-rules</Features>
+    <NoWarn>$(NoWarn);IDE0380</NoWarn>
+    <!-- Compiled ahead of time into every module that references it. -->
+    <IsAotCompatible>true</IsAotCompatible>
+
+    <PackageId>Xmip.Module</PackageId>
+    <Version>$(XmipPackageVersion)</Version>
+    <Authors>Xmip</Authors>
+    <Company>Xmip</Company>
+    <Description>Write an Xmip Module's units in C# and publish them with NativeAOT as a native library an Xmip node opens through the C ABI, as it opens a Rust module.</Description>
+    <PackageTags>xmip;integration;messaging;module;nativeaot</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageProjectUrl>https://github.com/IlleNilsson/Xmip</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/IlleNilsson/xmip-core-abi</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <TargetsForTfmSpecificBuildOutput>$(TargetsForTfmSpecificBuildOutput);XmipAbiInPackage</TargetsForTfmSpecificBuildOutput>
+    <TargetsForTfmSpecificContentInPackage>$(TargetsForTfmSpecificContentInPackage);XmipEntryWriterInPackage</TargetsForTfmSpecificContentInPackage>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Inside this package, not a dependency of it. -->
+    <ProjectReference Include="..\Xmip.Abi\Xmip.Abi.csproj" PrivateAssets="all" />
+    <InternalsVisibleTo Include="Xmip.Module.Test" />
+    <None Include="README.md" Pack="true" PackagePath="\" />
+    <!-- Apache-2.0's NOTICE travels with what carries the code. -->
+    <None Include="..\..\NOTICE" Pack="true" PackagePath="\" />
+    <None Include="build\Xmip.Module.props" Pack="true" PackagePath="build\" />
+    <None Include="build\Xmip.Module.targets" Pack="true" PackagePath="build\" />
+  </ItemGroup>
+
+  <!-- Xmip.Abi's assembly and its documentation beside this one in lib/. -->
+  <Target Name="XmipAbiInPackage" DependsOnTargets="ResolveReferences">
+    <ItemGroup>
+      <_XmipAbi Include="@(ReferenceCopyLocalPaths->WithMetadataValue('ReferenceSourceTarget', 'ProjectReference'))" />
+      <BuildOutputInPackage Include="@(_XmipAbi->WithMetadataValue('Extension', '.dll'))" />
+      <BuildOutputInPackage Include="@(_XmipAbi->WithMetadataValue('Extension', '.xml'))" />
+    </ItemGroup>
+  </Target>
+
+  <!-- The program that writes a module's [[modules]] entry at build, in
+       tools/: built here, since it references this assembly. -->
+  <Target Name="XmipEntryWriterInPackage">
+    <MSBuild Projects="..\Xmip.Module.Entry\Xmip.Module.Entry.csproj"
+             Targets="Build"
+             Properties="Configuration=$(Configuration)">
+      <Output TaskParameter="TargetOutputs" ItemName="_XmipEntryWriter" />
+    </MSBuild>
+    <ItemGroup>
+      <_XmipEntryWriterFile Include="%(_XmipEntryWriter.RootDir)%(_XmipEntryWriter.Directory)*.dll;%(_XmipEntryWriter.RootDir)%(_XmipEntryWriter.Directory)*.runtimeconfig.json;%(_XmipEntryWriter.RootDir)%(_XmipEntryWriter.Directory)*.deps.json" />
+      <TfmSpecificPackageFile Include="@(_XmipEntryWriterFile)" PackagePath="tools/$(TargetFramework)/%(Filename)%(Extension)" />
+    </ItemGroup>
+  </Target>
+
+</Project>

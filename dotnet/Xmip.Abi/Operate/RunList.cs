@@ -13,8 +13,9 @@ public enum RunList
     /// <summary>The roles each node was started with, as entries.</summary>
     Roles = 2,
 
-    /// <summary>The nodes that may assume the internet.</summary>
-    Online = 3,
+    /// <summary>Each node's Node capabilities, <c>&lt;node&gt;=online+erp-direct</c>
+    /// (ADR-0056, amendment 2026-11-24).</summary>
+    Capabilities = 3,
 
     /// <summary>The nodes on machines of their own, never spawned: every
     /// other node is simulated.</summary>

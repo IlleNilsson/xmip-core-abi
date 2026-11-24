@@ -2,7 +2,7 @@
 name = "xmip-core-abi"
 version = "0.1.0"
 edition = "2024"
-license = "AGPL-3.0-or-later"
+license = "Apache-2.0"
 repository = "https://github.com/IlleNilsson/xmip-core-abi"
 description = "Rust binding over the Xmip module boundary. The header is normative, this is not."
 

@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="XmipModule1/XmipModule1.csproj" />
+  <Project Path="XmipModule1.Test/XmipModule1.Test.csproj" />
+</Solution>

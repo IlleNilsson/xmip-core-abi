@@ -290,7 +290,8 @@ pub mod rule {
     pub type StageTitleFn = unsafe extern "C" fn(stage: Str, out: *mut Str) -> i32;
 
     /// The capability a node published: its name (borrowed from `scope`),
-    /// its roles, its online capability, or its refusal.
+    /// its roles, its Node capabilities (borrowed from `evidence`), or its
+    /// refusal.
     pub type CapabilityPublishedFn = unsafe extern "C" fn(
         scope: Scope,
         evidence: Str,
@@ -298,7 +299,9 @@ pub mod rule {
         roles: *mut Str,
         cap: usize,
         out_len: *mut usize,
-        out_online: *mut u8,
+        capabilities: *mut Str,
+        capabilities_cap: usize,
+        capabilities_len: *mut usize,
         refusal: *mut u8,
         refusal_cap: usize,
         refusal_len: *mut usize,

@@ -1,0 +1,7 @@
+xmip-core-abi
+Copyright the Xmip authors.
+
+Licensed under the Apache License, Version 2.0 (LICENSE): the module
+boundary, which a module is written and compiled against, so that a
+module stays its author's to license (ADR-0075). The rest of Xmip is
+AGPL-3.0-or-later.

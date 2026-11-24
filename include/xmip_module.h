@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* SPDX-License-Identifier: Apache-2.0 */
 /* Copyright the Xmip authors. */
 
 /*
@@ -10,14 +10,14 @@
  * here. A module written in C, C++, Zig, Go or Rust is the same module to the
  * host, and the host cannot tell which it loaded.
  *
- * License. AGPL-3.0-or-later, like the rest of Xmip. There is no exception for
- * the boundary. A user takes Xmip under Xmip's license, and may additionally have
- * to satisfy the licenses of what Xmip itself depends on. Reconciling that is the
- * user's business, not Xmip's.
+ * License. Apache-2.0, as all of xmip-core-abi is: everything a module links or
+ * compiles into itself is, so a module stays its author's to license as they
+ * choose (ADR-0075; ADR-0061 decision 6). The rest of Xmip - the runtime, the
+ * node, the transports, the tools - is AGPL-3.0-or-later, and a module that
+ * links any of it is part of Xmip.
  *
- * The boundary is still a boundary in the sense that matters here: it is a C ABI,
- * it is language-neutral, and no implementer is obliged to write Rust or link
- * Xmip code. It is not a license exemption.
+ * The boundary is a C ABI, language-neutral: no implementer is obliged to write
+ * Rust or link Xmip's runtime.
  */
 
 #ifndef XMIP_MODULE_H
@@ -485,6 +485,50 @@ typedef struct {
     XmipStatus (*advance)(void *state, XmipSlice turn,
                           uint8_t *out, size_t cap, size_t *out_len);
 } XmipWorkProcessVtable;
+
+/* ===================================================================== */
+/* 14. Trait: promote                                                    */
+/* ===================================================================== */
+
+/*
+ * A Promote unit: values read out of a Message's content into its context,
+ * at receive alone (ADR-0066, amendment 2026-10-22; ADR-0075). As a Work
+ * Process unit's (section 13), the descriptor's module is "promote" and its
+ * standard the unit's name: a library holds one unit.
+ *
+ * open is called once for each step entry that calls the unit, never per
+ * Message, with the stage word it is called at and the entry's settings,
+ * read through the unit's declaration in its manifest with every default
+ * filled in, as one JSON object, the transfer form of its `settings` table:
+ * text, a duration, an address, a secret and a choice as strings, an
+ * integer as a number, a boolean as itself, a table as an object of its
+ * values. It gives back the step opened, or refuses the settings with
+ * XMIP_E_CONTRACT, why in last_error. release lets a step go.
+ *
+ * promote reads the Message's content through `content` and hands each
+ * value it promotes to `sink`, under the context property it is promoted
+ * into: its kind, one of section 10's leaf kinds BOOL, NUMBER, STRING or
+ * BINARY, and its bytes, written as section 10's `value` writes a leaf - a
+ * BOOL as true or false, a NUMBER as its text. A value it does not find it
+ * does not hand on. What the sink is handed is borrowed for that call;
+ * promote may be called from any thread, many at once, on one step.
+ */
+typedef struct {
+    void *ctx;
+    XmipStatus (*promoted)(void *ctx, XmipStr property,
+                           XmipValueKind kind, XmipSlice value);
+} XmipPromotionSink;
+
+typedef struct {
+    XmipVtableHeader header;
+
+    XmipStatus (*open)(void *state, XmipStr stage, XmipStr settings,
+                       void **out_step);
+    void       (*release)(void *state, void *step);
+    XmipStatus (*promote)(void *state, void *step,
+                          const XmipReader *content,
+                          const XmipPromotionSink *sink);
+} XmipPromoteVtable;
 
 #ifdef __cplusplus
 }  /* extern "C" */
