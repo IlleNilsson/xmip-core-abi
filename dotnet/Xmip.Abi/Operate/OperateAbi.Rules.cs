@@ -13,10 +13,6 @@ public static partial class OperateAbi
     /// section 7, forwarded to <c>node::wildcard::matches</c>.</summary>
     public const string ScopeMatchesEntrypoint = "xmip_scope_matches_v1";
 
-    /// <summary>Whether what a run made is shown, as the run declared and the
-    /// reader asked: section 7, <c>observe::run::shown</c>.</summary>
-    public const string RunShownEntrypoint = "xmip_run_shown_v1";
-
     /// <summary>A scope's segments: section 7, <c>node::Scope::segments</c>.</summary>
     public const string ScopePartsEntrypoint = "xmip_scope_parts_v1";
 

@@ -70,10 +70,8 @@ pub mod phrase {
     pub const NOTHING_RECORDED: i32 = 0;
     /// Why a program stating no audit directory has no audit to read.
     pub const NO_AUDIT_DIRECTORY: i32 = 1;
-    /// What follows a hidden run's record or group.
-    pub const TEST_MARK: i32 = 2;
     /// What the process stage says where it holds Subscriptions alone.
-    pub const NO_WORK_PROCESS: i32 = 3;
+    pub const NO_WORK_PROCESS: i32 = 2;
 }
 
 /// The acts an operator takes on a node's nouns, `observe::Act`'s order.
@@ -293,7 +291,6 @@ mod tests {
         for (define, value) in [
             ("XMIP_PHRASE_NOTHING_RECORDED", phrase::NOTHING_RECORDED),
             ("XMIP_PHRASE_NO_AUDIT_DIRECTORY", phrase::NO_AUDIT_DIRECTORY),
-            ("XMIP_PHRASE_TEST_MARK", phrase::TEST_MARK),
             ("XMIP_PHRASE_NO_WORK_PROCESS", phrase::NO_WORK_PROCESS),
             ("XMIP_ACT_PAUSE", act::PAUSE),
             ("XMIP_ACT_RESUME", act::RESUME),

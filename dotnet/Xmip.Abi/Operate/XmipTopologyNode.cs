@@ -48,4 +48,9 @@ public struct XmipTopologyNode
     /// <summary><c>place</c>: a Storage node's place in <c>[storage]
     /// nodes</c>, from 0; -1 for anything else.</summary>
     public int Place;
+
+    /// <summary><c>standing</c>: where a Storage node of several stands
+    /// among them as it reports itself running, as a person reads it —
+    /// <c>Storage, standby</c>; empty for anything else.</summary>
+    public XmipStr Standing;
 }

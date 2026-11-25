@@ -25,7 +25,6 @@ public sealed class OperateAbiTest
     [InlineData("XMIP_VALIDATE_ENTRYPOINT", OperateAbi.ValidateEntrypoint)]
     [InlineData("XMIP_SCOPE_CONTAINS_ENTRYPOINT", OperateAbi.ScopeContainsEntrypoint)]
     [InlineData("XMIP_SCOPE_MATCHES_ENTRYPOINT", OperateAbi.ScopeMatchesEntrypoint)]
-    [InlineData("XMIP_RUN_SHOWN_ENTRYPOINT", OperateAbi.RunShownEntrypoint)]
     [InlineData("XMIP_SCOPE_PARTS_ENTRYPOINT", OperateAbi.ScopePartsEntrypoint)]
     [InlineData("XMIP_SCOPE_NODE_ENTRYPOINT", OperateAbi.ScopeNodeEntrypoint)]
     [InlineData("XMIP_STAGE_WORDS_ENTRYPOINT", OperateAbi.StageWordsEntrypoint)]
@@ -246,9 +245,9 @@ public sealed class OperateAbiTest
     {
         int text = Marshal.SizeOf<Module.XmipStr>();
 
-        // Six strings, four ints and two doubles: kind pads to 8, health and
-        // origin are 8, place pads to 8.
-        Assert.Equal((6 * text) + 8 + 8 + 16 + 8, Marshal.SizeOf<XmipTopologyNode>());
+        // Seven strings, four ints and two doubles: kind pads to 8, health and
+        // origin are 8, place pads to 8 before the standing.
+        Assert.Equal((7 * text) + 8 + 8 + 16 + 8, Marshal.SizeOf<XmipTopologyNode>());
         // Five strings, four ints, volume, three doubles, attempts padded:
         // pattern, origin and relation pad to 16.
         Assert.Equal((5 * text) + 16 + 8 + 8 + 24 + 8, Marshal.SizeOf<XmipTopologyLink>());

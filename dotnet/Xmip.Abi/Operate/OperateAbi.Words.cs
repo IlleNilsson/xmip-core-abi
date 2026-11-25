@@ -66,10 +66,8 @@ public static partial class OperateAbi
         public const int NothingRecorded = 0;
         /// <summary><c>XMIP_PHRASE_NO_AUDIT_DIRECTORY</c>.</summary>
         public const int NoAuditDirectory = 1;
-        /// <summary><c>XMIP_PHRASE_TEST_MARK</c>.</summary>
-        public const int TestMark = 2;
         /// <summary><c>XMIP_PHRASE_NO_WORK_PROCESS</c>.</summary>
-        public const int NoWorkProcess = 3;
+        public const int NoWorkProcess = 2;
     }
 
     /// <summary><c>XMIP_ACT_*</c>, in <c>observe::Act</c>'s order.</summary>

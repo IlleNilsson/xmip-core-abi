@@ -150,8 +150,6 @@ pub struct PublicationHead {
     pub has_run: u8,
     pub cluster: Str,
     pub stress: Str,
-    /// 1 where the run declared itself hidden (`observe::Run::hidden`).
-    pub hidden: u8,
     pub has_topology: u8,
     pub topology_source: Str,
     pub topology_observed_unix_nanos: i64,
@@ -178,6 +176,11 @@ pub struct TopologyNode {
     pub roles: Str,
     /// Its place in `[storage] nodes`, from zero; -1 for none.
     pub place: i32,
+    /// Where a Storage node of several stands among them as it reports
+    /// itself running, as a person reads it — `Storage, primary`, `Storage,
+    /// standby` or `Storage, finding` (`observe::topology::StorageStanding`);
+    /// empty for none.
+    pub standing: Str,
 }
 
 /// Header section 8. One communication relationship, and how its ends are
@@ -430,9 +433,9 @@ mod tests {
     #[test]
     fn the_structs_are_plain_c_layouts() {
         let s = size_of::<Str>();
-        // Six strings, four ints and two doubles: kind pads to 8, health and
-        // origin are 8, place pads to 8.
-        assert_eq!(size_of::<TopologyNode>(), 6 * s + 8 + 8 + 16 + 8);
+        // Seven strings, four ints and two doubles: kind pads to 8, health and
+        // origin are 8, place pads to 8 before the standing.
+        assert_eq!(size_of::<TopologyNode>(), 7 * s + 8 + 8 + 16 + 8);
         // Five strings, four ints, volume, three doubles, attempts padded:
         // pattern, origin and relation pad to 16.
         assert_eq!(size_of::<TopologyLink>(), 5 * s + 16 + 8 + 8 + 24 + 8);

@@ -37,7 +37,6 @@ public sealed class OperateAbiWordsTest
     [Theory]
     [InlineData("XMIP_PHRASE_NOTHING_RECORDED", OperateAbi.Phrase.NothingRecorded)]
     [InlineData("XMIP_PHRASE_NO_AUDIT_DIRECTORY", OperateAbi.Phrase.NoAuditDirectory)]
-    [InlineData("XMIP_PHRASE_TEST_MARK", OperateAbi.Phrase.TestMark)]
     [InlineData("XMIP_PHRASE_NO_WORK_PROCESS", OperateAbi.Phrase.NoWorkProcess)]
     [InlineData("XMIP_ACT_PAUSE", OperateAbi.Act.Pause)]
     [InlineData("XMIP_ACT_RESUME", OperateAbi.Act.Resume)]

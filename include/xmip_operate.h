@@ -318,17 +318,6 @@ typedef XmipStatus (*XmipScopeMatchesFn)(XmipScope candidate, XmipStr pattern,
                                          uint8_t *out_matches);
 
 /*
- * Whether something a run made is shown - the run's cluster, its audit
- * records: always where the run declared nothing (hidden 0), and where it
- * declared itself hidden (1) only when the reader asked to include what is
- * hidden (including_hidden 1). The one rule of observe::run::shown (ADR-0028
- * and ADR-0052, amendments 2026-09-30); nothing is read out of a name.
- * *out_shown is 1 or 0.
- */
-typedef XmipStatus (*XmipRunShownFn)(uint8_t hidden, uint8_t including_hidden,
-                                     uint8_t *out_shown);
-
-/*
  * The segments of a scope's path, top first, in the fill shape of section 5:
  * up to cap entries into out, the true count in out_len. Each entry borrows
  * from scope. The root has none.
@@ -482,7 +471,6 @@ typedef XmipStatus (*XmipCapabilityEntryFn)(XmipStr entry, XmipStr *out_node,
 
 #define XMIP_SCOPE_CONTAINS_ENTRYPOINT "xmip_scope_contains_v1"
 #define XMIP_SCOPE_MATCHES_ENTRYPOINT  "xmip_scope_matches_v1"
-#define XMIP_RUN_SHOWN_ENTRYPOINT      "xmip_run_shown_v1"
 #define XMIP_SCOPE_PARTS_ENTRYPOINT    "xmip_scope_parts_v1"
 #define XMIP_SCOPE_NODE_ENTRYPOINT     "xmip_scope_node_v1"
 #define XMIP_STAGE_WORDS_ENTRYPOINT    "xmip_stage_words_v1"
@@ -614,8 +602,7 @@ typedef enum {
 /*
  * Who published and at which scope, and the single values of the run and
  * the topology: has_run and has_topology are 1 when the publication says
- * either, and the fields beside them are empty when it does not. hidden is
- * 1 where the run declared itself hidden (observe::Run::hidden).
+ * either, and the fields beside them are empty when it does not.
  */
 typedef struct {
     XmipStr   source;
@@ -623,7 +610,6 @@ typedef struct {
     uint8_t   has_run;
     XmipStr   cluster;
     XmipStr   stress;
-    uint8_t   hidden;    /* 1 where the run declared itself hidden */
     uint8_t   has_topology;
     XmipStr   topology_source;
     int64_t   topology_observed_unix_nanos;
@@ -638,7 +624,11 @@ typedef struct {
  * or is no node - what xmip_role_purpose_v1 (section 7) says it is for -
  * and a Storage node listed in [storage] nodes its place in that list in
  * place, from 0; -1 for anything else (ADR-0052 and ADR-0056, amendments
- * 2026-11-13; changed in place, XMIP_OPERATE_VERSION unchanged).
+ * 2026-11-13; changed in place, XMIP_OPERATE_VERSION unchanged). A Storage
+ * node of several says in standing where it stands among them as it reports
+ * itself running, as a person reads it - "Storage, primary", "Storage,
+ * standby" or "Storage, finding" - empty for anything else (ADR-0052,
+ * amendment 2026-11-25; changed in place, XMIP_OPERATE_VERSION unchanged).
  */
 typedef struct {
     XmipStr     id;
@@ -653,6 +643,7 @@ typedef struct {
     XmipStr     evidence;
     XmipStr     roles;      /* role words, comma separated; empty for none */
     int32_t     place;      /* its place in [storage] nodes from 0; -1 none */
+    XmipStr     standing;   /* "Storage, primary", "Storage, standby"; empty */
 } XmipTopologyNode;
 
 /*
@@ -884,9 +875,9 @@ typedef XmipStatus (*XmipAuditFn)(XmipStr program, XmipStr directory, XmipStr ac
  * date and time with no zone, is UTC), sort (at, location, node, program,
  * host, action, phase, severity, summary), order (ascending, descending; the
  * default is descending), offset and limit (at most 1000; 100 when unstated),
- * hidden (exclude, include) and verify (no, yes: walk the audit chain of each
- * writer of the records matched, ADR-0070 clause 5). An empty value is no
- * filter. The answer is JSON, in memory only (ADR-0031
+ * and verify (no, yes: walk the audit chain of each writer of the records
+ * matched, ADR-0070 clause 5). An empty value is no filter. The answer is
+ * JSON, in memory only (ADR-0031
  * clause 2), written into out as UTF-8, its true byte length in out_len
  * whether or not it fit:
  *
@@ -906,8 +897,8 @@ typedef XmipStatus (*XmipAuditFn)(XmipStr program, XmipStr directory, XmipStr ac
  * at the top, a cluster's nodes and its own programs, a node's programs -
  * and none once a program is asked; chains are empty unless verify is yes,
  * and then each writer's chain - a node's location, or a program's name -
- * walked whole over every record of it, hidden ones among them, with the
- * first place it breaks (a record deleted, changed or out of order) or
+ * walked whole over every record of it, with the first place it breaks (a
+ * record deleted, changed or out of order) or
  * that it is whole, in one sentence opening OK or FAILED; fragments are
  * empty unless verify is yes, and then each part of the file that is not a
  * whole record, apart from the chains: a record whose write was interrupted,
@@ -2855,10 +2846,9 @@ typedef XmipStatus (*XmipSurfaceWaitFn)(const XmipSurface *surface, uint64_t see
  * Static words, lent for the life of the library:
  *   xmip_phrase_v1         a phrase, XMIP_PHRASE_*: a row with no health
  *                          recorded, why a program that states no audit
- *                          directory has none to read, the mark after a
- *                          hidden run's record or group, and
- *                          what the process stage says where it holds
- *                          Subscriptions alone. XMIP_E_INVALID for another.
+ *                          directory has none to read, and what the process
+ *                          stage says where it holds Subscriptions alone.
+ *                          XMIP_E_INVALID for another.
  *   xmip_act_word_v1       the word an act, XMIP_ACT_* in observe::Act's
  *                          order, crosses to a node as (section 17's
  *                          xmip_remote_act_v1). XMIP_E_INVALID for another.
@@ -2929,8 +2919,7 @@ typedef XmipStatus (*XmipSurfaceWaitFn)(const XmipSurface *surface, uint64_t see
  */
 #define XMIP_PHRASE_NOTHING_RECORDED   0
 #define XMIP_PHRASE_NO_AUDIT_DIRECTORY 1
-#define XMIP_PHRASE_TEST_MARK          2
-#define XMIP_PHRASE_NO_WORK_PROCESS    3
+#define XMIP_PHRASE_NO_WORK_PROCESS    2
 
 #define XMIP_ACT_PAUSE   0
 #define XMIP_ACT_RESUME  1
