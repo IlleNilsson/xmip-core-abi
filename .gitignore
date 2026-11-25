@@ -10,6 +10,9 @@ obj/
 **/bin/
 **/obj/
 *.user
+# The template's content restored in place takes the lock-file setting of
+# dotnet/Directory.Build.props; the template ships no lock file.
+dotnet/Xmip.Templates/content/**/packages.lock.json
 
 # Cargo.lock is not committed.
 #

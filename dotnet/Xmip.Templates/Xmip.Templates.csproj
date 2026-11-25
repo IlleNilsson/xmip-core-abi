@@ -50,7 +50,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Content Include="content\**\*" Exclude="content\**\bin\**;content\**\obj\**;$(_XmipModuleProject)"
+    <!-- A restore in place, an editor's or a build's, inherits the estate's
+         lock-file setting and leaves what it made: none of it is template. -->
+    <Content Include="content\**\*"
+             Exclude="content\**\bin\**;content\**\obj\**;content\**\packages.lock.json;$(_XmipModuleProject)"
              PackagePath="content" />
     <None Include="README.md" Pack="true" PackagePath="\" />
     <!-- Apache-2.0's NOTICE travels with what carries the content. -->
