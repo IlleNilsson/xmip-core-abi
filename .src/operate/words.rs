@@ -111,6 +111,8 @@ pub mod list {
     pub const SUBSCRIPTIONS: i32 = 0;
     pub const EVENT_SUBSCRIPTIONS: i32 = 1;
     pub const DEAD_MESSAGES: i32 = 2;
+    /// A Work Process's Instances (section 29).
+    pub const INSTANCES: i32 = 3;
 }
 
 /// The words a row of a noun's list shows.
@@ -309,6 +311,7 @@ mod tests {
             ("XMIP_LIST_SUBSCRIPTIONS", list::SUBSCRIPTIONS),
             ("XMIP_LIST_EVENT_SUBSCRIPTIONS", list::EVENT_SUBSCRIPTIONS),
             ("XMIP_LIST_DEAD_MESSAGES", list::DEAD_MESSAGES),
+            ("XMIP_LIST_INSTANCES", list::INSTANCES),
             (
                 "XMIP_LIST_WORD_SUBSCRIPTION_SCOPE",
                 list_word::SUBSCRIPTION_SCOPE,

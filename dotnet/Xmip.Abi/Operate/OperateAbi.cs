@@ -201,6 +201,15 @@ public static partial class OperateAbi
     public const string PublicationFailedMessagesEntrypoint =
         "xmip_publication_failed_messages_v1";
 
+    /// <summary>The Instances of each Work Process of the nodes running in
+    /// this process, read from the Ledger, and the Messages that failed in its
+    /// queue: section 29 (ADR-0066, amendment 2026-11-25).</summary>
+    public const string InstancesEntrypoint = "xmip_instances_v1";
+
+    /// <summary>The Instances a read publication carries: section 29 over
+    /// section 8's handle.</summary>
+    public const string PublicationInstancesEntrypoint = "xmip_publication_instances_v1";
+
     /// <summary>The technologies the runtime carries and the settings each
     /// declares: section 12 (ADR-0064, amendment 2026-09-26).</summary>
     public const string TechnologyCatalogueEntrypoint = "xmip_technology_catalogue_v1";

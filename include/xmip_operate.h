@@ -2897,17 +2897,21 @@ typedef XmipStatus (*XmipSurfaceWaitFn)(const XmipSurface *surface, uint64_t see
  *
  * A node's nouns listed:
  *   xmip_list_query_v1     XMIP_LIST_*, the list as its section's JSON
- *                          (14, 15 or 16), each entry with at least the
+ *                          (14, 15, 16 or 29), each entry with at least the
  *                          members the query reads - a Dead Message's
  *                          declines are counted, never read, so each may
  *                          be an empty pair - and the query, {"pattern",
  *                          "location", "name" | "id" | "message", "sort",
- *                          "order"}; out {"places":[...]}, each a place in
- *                          the list given, chosen and in order - and for
- *                          Event subscriptions "unheard", the members not
- *                          heard that stand there - or XMIP_E_INVALID with
- *                          the REFUSED sentence of a column or an order the
- *                          list does not take.
+ *                          "order"}, for Instances {"location",
+ *                          "work_process", "instance"}; out
+ *                          {"places":[...]}, each a place in the list given,
+ *                          chosen and in order - for Event subscriptions
+ *                          "unheard", the members not heard that stand
+ *                          there; for Instances, each Work Process's place,
+ *                          and "instances", the places of its Instances
+ *                          chosen - or XMIP_E_INVALID with the REFUSED
+ *                          sentence of a column or an order the list does
+ *                          not take.
  *   xmip_list_columns_v1   the columns a list sorts by, its first the
  *                          default, static, in the fill shape of section 7.
  *   xmip_list_words_v1     XMIP_LIST_WORD_*, from two texts: a
@@ -2942,6 +2946,7 @@ typedef XmipStatus (*XmipSurfaceWaitFn)(const XmipSurface *surface, uint64_t see
 #define XMIP_LIST_SUBSCRIPTIONS       0
 #define XMIP_LIST_EVENT_SUBSCRIPTIONS 1
 #define XMIP_LIST_DEAD_MESSAGES       2
+#define XMIP_LIST_INSTANCES           3
 
 #define XMIP_LIST_WORD_SUBSCRIPTION_SCOPE 0
 #define XMIP_LIST_WORD_DEAD_MESSAGE_SCOPE 1
@@ -3006,6 +3011,84 @@ typedef XmipStatus (*XmipListColumnsFn)(int32_t list, XmipStr *out, size_t cap,
 #define XMIP_LIST_QUERY_ENTRYPOINT      "xmip_list_query_v1"
 #define XMIP_LIST_COLUMNS_ENTRYPOINT    "xmip_list_columns_v1"
 #define XMIP_LIST_WORDS_ENTRYPOINT      "xmip_list_words_v1"
+
+/* ===================================================================== */
+/* 29. A Work Process's Instances, listed                                */
+/* ===================================================================== */
+
+/*
+ * A Work Process is designed, compiled to a unit and run a turn at a time
+ * from the Ledger; each run of it is an Instance, which holds no thread
+ * while it waits for a Message of its key or a time (runtime-model.md
+ * section 22). The owner, 2026-11-25: "A Work Process is like an
+ * Orchestration in BizTalk. So it is aware via subscriptions, even when
+ * running or not." So every surface lists the Instances of each Work
+ * Process (ADR-0066, amendment 2026-11-25): which exist, each running,
+ * waiting, failed, dismissed or completed, its own values, and its history
+ * of Messages; and, beside them, the Messages that failed in its queue.
+ *
+ * A node's publication carries, for every Work Process it runs, the newest
+ * twenty Instances it knows - read from the Ledger as it starts, then as its
+ * own turns write them - and the oldest hundred of the Messages that failed
+ * in its queue; a cluster's publication carries each node's.
+ *
+ * A list is JSON, written into out as UTF-8, its true byte length in out_len
+ * whether or not it fit:
+ *
+ *   {"work_process_instances":[{"node","work_process","failed_count",
+ *     "failed":[{"journey","sequence","reason"}],
+ *     "instances":[{"instance","state","waits_for","until_unix_nanos",
+ *                   "correlations","code","reason","failed_by","values",
+ *                   "history":[{"at_unix_nanos","what","message","journey"}],
+ *                   "earlier","turns","updated_unix_nanos"}]}]}
+ *
+ * node is the scope of the node that runs the Work Process and work_process
+ * its configured name; failed_count how many Messages that failed wait in
+ * its queue now, and failed the oldest of them, each its Journey's
+ * identifier - the one an act names - its place in the queue and why.
+ * instances are newest written first: instance its identifier, the Journey
+ * of the Message that started it; state running, waiting, failed,
+ * dismissed - an operator dismissed the Message that failed it - or
+ * completed; waits_for message, time, "message or time", or empty, and
+ * until_unix_nanos its earliest deadline or null; correlations and values
+ * arrays of [name, value] pairs - each Correlation it holds a key in with
+ * the key, each value it keeps of its own; code and reason the error no
+ * scope caught and why, and failed_by the Journey whose turn failed it,
+ * empty where it has not failed; history the Messages it handled, oldest
+ * first - what (started, arrived, due, made, published, failed, retried or
+ * dismissed), the Message and the Journey of the turn - the newest
+ * sixty-four, earlier how many came before them; turns how many it has
+ * taken; updated_unix_nanos when Xmip Storage last wrote it.
+ *
+ * xmip_instances_v1 lists, for every node running in this process at or
+ * beneath node (empty: every one), the Instances of its Work Process
+ * work_process (empty: every one it runs), read from the Ledger - the
+ * Process Instance table searched by the Work Process, newest written first
+ * - at most most of each (0: a hundred), and the oldest most of the
+ * Messages that failed in its queue. XMIP_OK; XMIP_E_MALFORMED when node or
+ * work_process is not UTF-8; XMIP_E_IO with the reason, opening FAILED,
+ * when Xmip Storage did not answer.
+ *
+ * xmip_publication_instances_v1 lists what a read publication (section 8)
+ * carries. XMIP_E_INVALID for no handle.
+ *
+ * A Message that failed at a Work Process takes section 16's acts, Retry
+ * and Dismiss, noun message, target its Journey's identifier, asked at a
+ * node's door through section 17's act and Xmip Storage, and applied by
+ * the node that runs the Work Process. Where its turn failed an Instance,
+ * Retry takes that turn again from where the Instance stood before it,
+ * every other Message of its key waiting until then, and Dismiss ends the
+ * Instance, its keys let go.
+ *
+ * Optional symbols, as section 7's are; XMIP_OPERATE_VERSION is unchanged.
+ */
+typedef XmipStatus (*XmipInstancesFn)(XmipScope node, XmipStr work_process, uint32_t most,
+                                      uint8_t *out, size_t cap, size_t *out_len);
+typedef XmipStatus (*XmipPublicationInstancesFn)(const XmipPublication *publication,
+                                                 uint8_t *out, size_t cap, size_t *out_len);
+
+#define XMIP_INSTANCES_ENTRYPOINT             "xmip_instances_v1"
+#define XMIP_PUBLICATION_INSTANCES_ENTRYPOINT "xmip_publication_instances_v1"
 
 #ifdef __cplusplus
 }

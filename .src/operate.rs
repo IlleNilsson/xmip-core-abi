@@ -320,6 +320,7 @@ pub mod dead_message;
 pub mod design;
 pub mod document;
 pub mod event;
+pub mod instance;
 pub mod message;
 pub mod module_probe;
 pub mod process;

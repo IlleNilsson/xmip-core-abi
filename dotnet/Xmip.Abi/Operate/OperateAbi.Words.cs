@@ -127,6 +127,8 @@ public static partial class OperateAbi
         public const int EventSubscriptions = 1;
         /// <summary><c>XMIP_LIST_DEAD_MESSAGES</c>.</summary>
         public const int DeadMessages = 2;
+        /// <summary><c>XMIP_LIST_INSTANCES</c>.</summary>
+        public const int Instances = 3;
     }
 
     /// <summary><c>XMIP_LIST_WORD_*</c>.</summary>

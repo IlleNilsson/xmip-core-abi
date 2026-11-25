@@ -55,6 +55,7 @@ public sealed class OperateAbiWordsTest
     [InlineData("XMIP_LIST_SUBSCRIPTIONS", OperateAbi.List.Subscriptions)]
     [InlineData("XMIP_LIST_EVENT_SUBSCRIPTIONS", OperateAbi.List.EventSubscriptions)]
     [InlineData("XMIP_LIST_DEAD_MESSAGES", OperateAbi.List.DeadMessages)]
+    [InlineData("XMIP_LIST_INSTANCES", OperateAbi.List.Instances)]
     [InlineData("XMIP_LIST_WORD_SUBSCRIPTION_SCOPE", OperateAbi.ListWord.SubscriptionScope)]
     [InlineData("XMIP_LIST_WORD_DEAD_MESSAGE_SCOPE", OperateAbi.ListWord.DeadMessageScope)]
     [InlineData("XMIP_LIST_WORD_EVENT_WHO", OperateAbi.ListWord.EventWho)]

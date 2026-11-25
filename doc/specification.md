@@ -598,7 +598,25 @@ takes it out of the queue. Each is one write under a claim, audited with who
 acted, as `message.retry` or `message.dismiss`. No such Journey, one whose
 Message has not failed, or a node that does not send its Port is refused in
 words, opening REFUSED. The Rust mirror is `.src/operate/message.rs`; .NET
-binds it as `RuntimeMessages`.
+binds it as `RuntimeMessages`. A Message that failed at a Work Process takes
+the same acts, applied by the node that runs the Work Process (section 29).
+
+Section 29 is a Work Process's Instances (runtime-model.md section 22;
+ADR-0066, amendment 2026-11-25; the owner, 2026-11-25: *A Work Process is
+like an Orchestration in BizTalk. So it is aware via subscriptions, even when
+running or not*). Each run of a Work Process is an Instance, kept in the
+Ledger and holding no thread while it waits. `xmip_instances_v1` lists, from
+the Ledger, the Instances of each Work Process of every node running in the
+process, newest written first — each running, waiting for a Message of its
+key in each Correlation it holds until its earliest deadline, failed with its
+code and why and the Journey whose turn failed it, dismissed or completed;
+its own values; its history of Messages — and the Messages that failed in its
+queue; `xmip_publication_instances_v1` is what a read publication carries, the
+newest twenty of each that its node knows. A Message that failed there takes
+section 16's Retry and Dismiss: Retry takes the turn that failed its Instance
+again from where the Instance stood before it, and Dismiss ends that
+Instance. The Rust mirror is `.src/operate/instance.rs`; .NET binds the first
+as `RuntimeInstances` and the second in `PublicationReader`.
 
 Section 20 is a database's schema (open problem 41; ADR-0015, amendment
 2026-10-20). Every Xmip database records the schema version it holds, and a
