@@ -55,6 +55,9 @@ pub const RUN_SAID_ENTRYPOINT: &str = "xmip_run_said_v1";
 /// `xmip_capability_said_v1`: a node's declaration as a surface says it.
 pub const CAPABILITY_SAID_ENTRYPOINT: &str = "xmip_capability_said_v1";
 
+/// `xmip_cluster_said_v1`: a cluster as every surface shows it, and its tooltip.
+pub const CLUSTER_SAID_ENTRYPOINT: &str = "xmip_cluster_said_v1";
+
 /// `xmip_list_query_v1`: a noun's list, chosen and ordered as a query asks.
 pub const LIST_QUERY_ENTRYPOINT: &str = "xmip_list_query_v1";
 
@@ -151,8 +154,8 @@ pub struct Boundaries {
     pub operate_entrypoint: Str,
 }
 
-/// `xmip_who_v1`, `xmip_run_said_v1` and `xmip_capability_said_v1` take
-/// section 10's shape.
+/// `xmip_who_v1`, `xmip_run_said_v1`, `xmip_capability_said_v1` and
+/// `xmip_cluster_said_v1` take section 10's shape.
 pub type SaidFn = super::design::DesignFn;
 
 /// `xmip_phrase_v1`, `xmip_act_word_v1`: a number in, a static text out.
@@ -277,6 +280,7 @@ mod tests {
                 "XMIP_CAPABILITY_SAID_ENTRYPOINT",
                 CAPABILITY_SAID_ENTRYPOINT,
             ),
+            ("XMIP_CLUSTER_SAID_ENTRYPOINT", CLUSTER_SAID_ENTRYPOINT),
             ("XMIP_LIST_QUERY_ENTRYPOINT", LIST_QUERY_ENTRYPOINT),
             ("XMIP_LIST_COLUMNS_ENTRYPOINT", LIST_COLUMNS_ENTRYPOINT),
             ("XMIP_LIST_WORDS_ENTRYPOINT", LIST_WORDS_ENTRYPOINT),

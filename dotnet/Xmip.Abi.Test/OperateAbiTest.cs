@@ -253,8 +253,8 @@ public sealed class OperateAbiTest
         Assert.Equal((5 * text) + 16 + 8 + 8 + 24 + 8, Marshal.SizeOf<XmipTopologyLink>());
         // A string, two doubles and two ints.
         Assert.Equal(text + 16 + 8, Marshal.SizeOf<XmipTopologyPlace>());
-        // Five strings, two flags padded, and when the topology was drawn.
-        Assert.Equal((5 * text) + 8 + 8 + 8, Marshal.SizeOf<XmipPublicationHead>());
+        // Seven strings, two flags padded, and when the topology was drawn.
+        Assert.Equal((7 * text) + 8 + 8 + 8, Marshal.SizeOf<XmipPublicationHead>());
     }
 
     [Theory]

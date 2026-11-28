@@ -26,6 +26,7 @@ public sealed class OperateAbiWordsTest
     [InlineData("XMIP_VALIDATED_ENTRYPOINT", OperateAbi.ValidatedEntrypoint)]
     [InlineData("XMIP_RUN_SAID_ENTRYPOINT", OperateAbi.RunSaidEntrypoint)]
     [InlineData("XMIP_CAPABILITY_SAID_ENTRYPOINT", OperateAbi.CapabilitySaidEntrypoint)]
+    [InlineData("XMIP_CLUSTER_SAID_ENTRYPOINT", OperateAbi.ClusterSaidEntrypoint)]
     [InlineData("XMIP_LIST_QUERY_ENTRYPOINT", OperateAbi.ListQueryEntrypoint)]
     [InlineData("XMIP_LIST_COLUMNS_ENTRYPOINT", OperateAbi.ListColumnsEntrypoint)]
     [InlineData("XMIP_LIST_WORDS_ENTRYPOINT", OperateAbi.ListWordsEntrypoint)]

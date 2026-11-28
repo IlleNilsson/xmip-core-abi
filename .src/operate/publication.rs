@@ -142,6 +142,8 @@ pub struct Curve {
 
 /// Header section 8. Who published, where, and the run's and topology's own
 /// single values; `has_run` and `has_topology` say whether either was said.
+/// `short_name` and `cluster_file` are how its cluster is named for a person,
+/// each empty where the publisher does not say it.
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct PublicationHead {
@@ -153,6 +155,8 @@ pub struct PublicationHead {
     pub has_topology: u8,
     pub topology_source: Str,
     pub topology_observed_unix_nanos: i64,
+    pub short_name: Str,
+    pub cluster_file: Str,
 }
 
 /// Header section 8. One thing that communicates.
@@ -441,7 +445,7 @@ mod tests {
         assert_eq!(size_of::<TopologyLink>(), 5 * s + 16 + 8 + 8 + 24 + 8);
         // A string, two doubles and two ints.
         assert_eq!(size_of::<TopologyPlace>(), s + 16 + 8);
-        // Five strings, two flags padded, and when the topology was drawn.
-        assert_eq!(size_of::<PublicationHead>(), 5 * s + 8 + 8 + 8);
+        // Seven strings, two flags padded, and when the topology was drawn.
+        assert_eq!(size_of::<PublicationHead>(), 7 * s + 8 + 8 + 8);
     }
 }

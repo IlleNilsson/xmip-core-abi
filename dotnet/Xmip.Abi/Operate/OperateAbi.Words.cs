@@ -50,6 +50,9 @@ public static partial class OperateAbi
     /// <summary>A node's declaration as a surface says it.</summary>
     public const string CapabilitySaidEntrypoint = "xmip_capability_said_v1";
 
+    /// <summary>A cluster as every surface shows it, and its tooltip.</summary>
+    public const string ClusterSaidEntrypoint = "xmip_cluster_said_v1";
+
     /// <summary>A noun's list, chosen and ordered as a query asks.</summary>
     public const string ListQueryEntrypoint = "xmip_list_query_v1";
 

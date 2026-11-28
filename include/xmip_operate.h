@@ -602,7 +602,11 @@ typedef enum {
 /*
  * Who published and at which scope, and the single values of the run and
  * the topology: has_run and has_topology are 1 when the publication says
- * either, and the fields beside them are empty when it does not.
+ * either, and the fields beside them are empty when it does not. short_name
+ * and cluster_file are how its cluster is named for a person, its [cluster]
+ * table: the short name the cluster's file declares and that file, each
+ * empty where the publisher does not say it (observe::Naming; ADR-0028,
+ * amendment 2026-11-28; changed in place, XMIP_OPERATE_VERSION unchanged).
  */
 typedef struct {
     XmipStr   source;
@@ -613,6 +617,8 @@ typedef struct {
     uint8_t   has_topology;
     XmipStr   topology_source;
     int64_t   topology_observed_unix_nanos;
+    XmipStr   short_name;
+    XmipStr   cluster_file;
 } XmipPublicationHead;
 
 /*
@@ -2894,6 +2900,13 @@ typedef XmipStatus (*XmipSurfaceWaitFn)(const XmipSurface *surface, uint64_t see
  *                           "refusal"} in; out {"said","words","line",
  *                           "purpose","stages","named","origin"}, named its
  *                           Node capabilities in one phrase.
+ *   xmip_cluster_said_v1    {"name","short_name","file"} in, any left out
+ *                           empty; out {"shown","title"}: the short name the
+ *                           cluster's file declares, else its name, and the
+ *                           tooltip beside it, the file's name, the short name,
+ *                           the run's name and the file, a middle dot between
+ *                           spaces between each (operate::surface::cluster_named;
+ *                           ADR-0028, amendment 2026-11-28).
  *
  * A node's nouns listed:
  *   xmip_list_query_v1     XMIP_LIST_*, the list as its section's JSON
@@ -3008,6 +3021,7 @@ typedef XmipStatus (*XmipListColumnsFn)(int32_t list, XmipStr *out, size_t cap,
 #define XMIP_VALIDATED_ENTRYPOINT       "xmip_validated_v1"
 #define XMIP_RUN_SAID_ENTRYPOINT        "xmip_run_said_v1"
 #define XMIP_CAPABILITY_SAID_ENTRYPOINT "xmip_capability_said_v1"
+#define XMIP_CLUSTER_SAID_ENTRYPOINT    "xmip_cluster_said_v1"
 #define XMIP_LIST_QUERY_ENTRYPOINT      "xmip_list_query_v1"
 #define XMIP_LIST_COLUMNS_ENTRYPOINT    "xmip_list_columns_v1"
 #define XMIP_LIST_WORDS_ENTRYPOINT      "xmip_list_words_v1"
