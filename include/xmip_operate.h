@@ -975,9 +975,13 @@ typedef XmipStatus (*XmipAuditReadFn)(XmipStr directory,
  *                             kind, name, column, target, a Subscription's
  *                             filter and summary), edges (from, to, kind),
  *                             problems, and the operators and kinds a filter
- *                             row offers; and document, "cluster" where the
+ *                             row offers; document, "cluster" where the
  *                             text declares its nodes, "node" where it is a
- *                             node's own document, which no tool edits.
+ *                             node's own document, which no tool edits; and
+ *                             cluster, the cluster's name the file declares,
+ *                             its cluster_name or else its short name
+ *                             (configure::cluster::cluster_name), and
+ *                             short_name, each empty where it declares none.
  *                             For an editor (ADR-0064, amendment
  *                             2026-10-13): written, each table's section,
  *                             header keys, and the bytes of its header,
@@ -1015,7 +1019,8 @@ typedef XmipStatus (*XmipAuditReadFn)(XmipStr directory,
  *                             authority/authority.pem (ADR-0031, amendment
  *                             2026-11-06). The argument may add "name",
  *                             the cluster's name where the environment
- *                             gives it (configure::slice_named), and
+ *                             gives it, refused where the file declares
+ *                             another (configure::slice_named), and
  *                             "authority", the folder the cluster's
  *                             authority is kept in, which then signs
  *                             (ADR-0031, amendment 2026-11-19). Not pure:
@@ -2903,10 +2908,11 @@ typedef XmipStatus (*XmipSurfaceWaitFn)(const XmipSurface *surface, uint64_t see
  *   xmip_cluster_said_v1    {"name","short_name","file"} in, any left out
  *                           empty; out {"shown","title"}: the short name the
  *                           cluster's file declares, else its name, and the
- *                           tooltip beside it, the file's name, the short name,
- *                           the run's name and the file, a middle dot between
- *                           spaces between each (operate::surface::cluster_named;
- *                           ADR-0028, amendment 2026-11-28).
+ *                           tooltip beside it, the file's name, the short name
+ *                           where it is not the cluster's name, the cluster's
+ *                           name and the file, a middle dot between spaces
+ *                           between each (operate::surface::cluster_named;
+ *                           ADR-0028, amendments 2026-11-28).
  *
  * A node's nouns listed:
  *   xmip_list_query_v1     XMIP_LIST_*, the list as its section's JSON
